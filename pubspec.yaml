@@ -168,6 +168,7 @@ flutter:
     - assets/metadata/
     - assets/linux/
     - assets/icons/
+    - assets/certificates/
 
 flutter_launcher_icons:
   # ... (Keep existing launcher icon config)

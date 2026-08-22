@@ -296,14 +296,57 @@ jobs:
       - name: Build Windows
         run: flutter build windows
 
-      - name: Verify Windows bundle includes SQLite
+      - name: Bundle nt-flash for Windows
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $release = gh release view --repo thorinside/nt-flash --json tagName,assets | ConvertFrom-Json
+          $asset = $release.assets |
+            Where-Object { $_.name -like "*-windows.zip" } |
+            Select-Object -First 1
+          if ($null -eq $asset) {
+            throw "The latest nt-flash release has no Windows zip asset"
+          }
+          if (-not $asset.digest -or -not $asset.digest.StartsWith("sha256:")) {
+            throw "The nt-flash Windows asset has no SHA-256 digest"
+          }
+
+          $archivePath = Join-Path $env:RUNNER_TEMP $asset.name
+          gh release download $release.tagName `
+            --repo thorinside/nt-flash `
+            --pattern $asset.name `
+            --output $archivePath
+
+          $expectedDigest = $asset.digest.Substring(7).ToLowerInvariant()
+          $actualDigest = (Get-FileHash -Algorithm SHA256 $archivePath).Hash.ToLowerInvariant()
+          if ($actualDigest -ne $expectedDigest) {
+            throw "nt-flash Windows asset SHA-256 mismatch"
+          }
+
+          $extractDir = Join-Path $env:RUNNER_TEMP "nt-flash-windows"
+          Expand-Archive -Path $archivePath -DestinationPath $extractDir -Force
+          $binary = Get-ChildItem -Path $extractDir -Filter "nt-flash.exe" -Recurse -File |
+            Select-Object -First 1
+          if ($null -eq $binary) {
+            throw "The nt-flash Windows archive contains no nt-flash.exe"
+          }
+
+          $destination = "build/windows/x64/runner/Release/nt-flash.exe"
+          Copy-Item -Path $binary.FullName -Destination $destination
+
+      - name: Verify Windows bundle dependencies
         shell: pwsh
         run: |
           $releaseDir = "build/windows/x64/runner/Release"
           $sqliteDll = Join-Path $releaseDir "sqlite3.dll"
+          $flashTool = Join-Path $releaseDir "nt-flash.exe"
           $manifest = Join-Path $releaseDir "data/flutter_assets/NativeAssetsManifest.json"
           if (-not (Test-Path $sqliteDll)) {
             throw "Windows release bundle is missing sqlite3.dll"
+          }
+          if (-not (Test-Path $flashTool)) {
+            throw "Windows release bundle is missing nt-flash.exe"
           }
           if (-not (Test-Path $manifest)) {
             throw "Windows release bundle is missing NativeAssetsManifest.json"

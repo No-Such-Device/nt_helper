@@ -6,33 +6,72 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:nt_helper/models/flash_progress.dart';
+import 'package:nt_helper/services/github_tls_support.dart';
+import 'package:nt_helper/services/startup_log_service.dart';
+import 'package:nt_helper/services/tls_certificate_diagnostics.dart';
 import 'package:nt_helper/utils/sandbox_utils.dart';
 import 'package:nt_helper/utils/build_config.dart';
+
+typedef TrustedHttpClientFactory = Future<http.Client> Function();
+typedef TlsDiagnostics = Future<String> Function(Uri uri);
 
 /// Manages the nt-flash tool binary - auto-downloading from GitHub releases
 class FlashToolManager {
   final http.Client _httpClient;
+  final TrustedHttpClientFactory _trustedClientFactory;
+  final TlsDiagnostics _tlsDiagnostics;
+  final String _operatingSystem;
+  final String _resolvedExecutable;
+  final bool _isSandboxed;
+  final Directory? _toolDirectoryOverride;
+
   static const String _githubApiUrl =
       'https://api.github.com/repos/thorinside/nt-flash/releases/latest';
+  static const _trustedRootRetryHosts = {
+    'api.github.com',
+    'github.com',
+    'release-assets.githubusercontent.com',
+  };
 
-  FlashToolManager({http.Client? httpClient})
-    : _httpClient = httpClient ?? http.Client();
+  FlashToolManager({
+    http.Client? httpClient,
+    TrustedHttpClientFactory? trustedClientFactory,
+    TlsDiagnostics? tlsDiagnostics,
+    String? operatingSystemOverride,
+    String? resolvedExecutableOverride,
+    bool? isSandboxedOverride,
+    Directory? toolDirectoryOverride,
+  }) : _httpClient = httpClient ?? http.Client(),
+       _trustedClientFactory =
+           trustedClientFactory ?? GitHubTlsSupport.createTrustedClient,
+       _tlsDiagnostics = tlsDiagnostics ?? TlsCertificateDiagnostics.inspect,
+       _operatingSystem = operatingSystemOverride ?? Platform.operatingSystem,
+       _resolvedExecutable =
+           resolvedExecutableOverride ?? Platform.resolvedExecutable,
+       _isSandboxed =
+           isSandboxedOverride ??
+           (Platform.isMacOS && SandboxUtils.isSandboxed),
+       _toolDirectoryOverride = toolDirectoryOverride;
 
   /// Get the path to the nt-flash tool
   ///
-  /// - Sandboxed builds (TestFlight/App Store): Uses bundled binary in app bundle
-  /// - Non-sandboxed builds: Downloads to Application Support if needed
+  /// - Windows builds: Prefer nt-flash.exe bundled beside nt_helper.exe
+  /// - Sandboxed macOS builds: Use the bundled helper app
+  /// - Other builds: Download to Application Support if needed
   Future<String> getToolPath() async {
-    // On macOS sandboxed builds, use the bundled binary
-    if (Platform.isMacOS && SandboxUtils.isSandboxed) {
+    if (_isWindows || (_isMacOS && _isSandboxed)) {
       final bundledPath = _getBundledToolPath();
       if (await _isToolPresent(bundledPath)) {
         return bundledPath;
       }
-      // Bundled binary missing - this is a build configuration error
-      throw const FlashToolDownloadException(
-        'Bundled nt-flash binary not found. This is a build configuration error.',
-      );
+
+      // A sandboxed macOS app cannot download and execute a new helper. Windows
+      // retains the legacy download path for development and older packages.
+      if (_isMacOS && _isSandboxed) {
+        throw const FlashToolDownloadException(
+          'Bundled nt-flash binary not found. This is a build configuration error.',
+        );
+      }
     }
 
     // Non-sandboxed: download on demand
@@ -48,13 +87,17 @@ class FlashToolManager {
     return toolPath;
   }
 
-  /// Get path to bundled nt-flash in app bundle (macOS only)
+  /// Get the platform-specific path to a bundled nt-flash binary.
   ///
   /// The binary is placed in Contents/Helpers/nt-flash.app/Contents/MacOS/nt-flash
   /// as a proper helper bundle during the TestFlight build process.
   String _getBundledToolPath() {
+    if (_isWindows) {
+      return path.join(path.dirname(_resolvedExecutable), 'nt-flash.exe');
+    }
+
     // Platform.resolvedExecutable is /path/to/App.app/Contents/MacOS/nt_helper
-    final exeDir = path.dirname(Platform.resolvedExecutable);
+    final exeDir = path.dirname(_resolvedExecutable);
     final contentsDir = path.dirname(exeDir);
     return path.join(
       contentsDir,
@@ -68,6 +111,14 @@ class FlashToolManager {
 
   /// Get the directory where the tool is stored
   Future<Directory> _getToolDirectory() async {
+    final override = _toolDirectoryOverride;
+    if (override != null) {
+      if (!await override.exists()) {
+        await override.create(recursive: true);
+      }
+      return override;
+    }
+
     final appSupport = await getApplicationSupportDirectory();
     final toolDir = Directory(path.join(appSupport.path, 'nt-flash'));
     if (!await toolDir.exists()) {
@@ -84,7 +135,7 @@ class FlashToolManager {
     }
 
     // On Unix, check executable permission
-    if (Platform.isLinux || Platform.isMacOS) {
+    if (_isLinux || _isMacOS) {
       final stat = await file.stat();
       // Check if any execute bit is set (owner, group, or other)
       return (stat.mode & 0x49) != 0; // 0x49 = 0111 in octal (execute bits)
@@ -95,7 +146,7 @@ class FlashToolManager {
 
   /// Get the binary name after extraction
   String _getBinaryName() {
-    if (Platform.isWindows) {
+    if (_isWindows) {
       return 'nt-flash.exe';
     }
     return 'nt-flash';
@@ -103,11 +154,11 @@ class FlashToolManager {
 
   /// Get the platform keyword used in asset names (macos, windows, linux)
   String _getPlatformKeyword() {
-    if (Platform.isMacOS) {
+    if (_isMacOS) {
       return 'macos';
-    } else if (Platform.isWindows) {
+    } else if (_isWindows) {
       return 'windows';
-    } else if (Platform.isLinux) {
+    } else if (_isLinux) {
       return 'linux';
     }
     throw UnsupportedError('Platform not supported for firmware updates');
@@ -117,9 +168,10 @@ class FlashToolManager {
   Future<void> _downloadTool(String toolDir, String binaryName) async {
     if (kPlayStoreBuild) return;
     // Fetch latest release info from GitHub API
-    final releaseResponse = await _httpClient.get(
+    final releaseResponse = await _getWithTlsFallback(
       Uri.parse(_githubApiUrl),
       headers: {'Accept': 'application/vnd.github.v3+json'},
+      purpose: 'fetching nt-flash release metadata',
     );
 
     if (releaseResponse.statusCode != 200) {
@@ -156,7 +208,10 @@ class FlashToolManager {
     }
 
     // Download the archive
-    final archiveResponse = await _httpClient.get(Uri.parse(downloadUrl));
+    final archiveResponse = await _getWithTlsFallback(
+      Uri.parse(downloadUrl),
+      purpose: 'downloading the nt-flash archive',
+    );
 
     if (archiveResponse.statusCode != 200) {
       throw FlashToolDownloadException(
@@ -175,7 +230,7 @@ class FlashToolManager {
     final toolPath = path.join(toolDir, binaryName);
 
     // Set executable permission on Unix
-    if (Platform.isLinux || Platform.isMacOS) {
+    if (_isLinux || _isMacOS) {
       final chmodResult = await Process.run('chmod', ['+x', toolPath]);
       if (chmodResult.exitCode != 0) {
         throw FlashToolDownloadException(
@@ -185,8 +240,56 @@ class FlashToolManager {
     }
 
     // On macOS, remove quarantine attribute (best effort)
-    if (Platform.isMacOS) {
+    if (_isMacOS) {
       await _removeQuarantineAttribute(toolPath);
+    }
+  }
+
+  Future<http.Response> _getWithTlsFallback(
+    Uri uri, {
+    Map<String, String>? headers,
+    required String purpose,
+  }) async {
+    try {
+      return await _httpClient.get(uri, headers: headers);
+    } catch (error) {
+      if (!TlsCertificateDiagnostics.isTlsFailure(error)) rethrow;
+
+      final diagnostics = await _safeTlsDiagnostics(uri);
+      if (!_trustedRootRetryHosts.contains(uri.host)) {
+        throw FlashToolDownloadException(
+          'TLS certificate verification failed for ${uri.host} while '
+          '$purpose. A trusted-root retry is not permitted for this host. '
+          '$diagnostics',
+        );
+      }
+
+      http.Client? trustedClient;
+      try {
+        trustedClient = await _trustedClientFactory();
+        final response = await trustedClient.get(uri, headers: headers);
+        StartupLogService.log(
+          'FlashToolManager: bundled GitHub roots recovered TLS for '
+          '${uri.host}. $diagnostics',
+        );
+        return response;
+      } catch (trustedError) {
+        throw FlashToolDownloadException(
+          'TLS certificate verification failed for ${uri.host} while '
+          '$purpose. The retry with bundled public roots also failed: '
+          '$trustedError. $diagnostics',
+        );
+      } finally {
+        trustedClient?.close();
+      }
+    }
+  }
+
+  Future<String> _safeTlsDiagnostics(Uri uri) async {
+    try {
+      return await _tlsDiagnostics(uri);
+    } catch (error) {
+      return 'certificateDiagnosticsUnavailable=$error';
     }
   }
 
@@ -276,4 +379,8 @@ class FlashToolManager {
   static String getBinaryNameForTesting({required bool isWindows}) {
     return isWindows ? 'nt-flash.exe' : 'nt-flash';
   }
+
+  bool get _isWindows => _operatingSystem == 'windows';
+  bool get _isMacOS => _operatingSystem == 'macos';
+  bool get _isLinux => _operatingSystem == 'linux';
 }

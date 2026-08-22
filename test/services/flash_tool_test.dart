@@ -1,8 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:nt_helper/models/flash_progress.dart';
 import 'package:nt_helper/models/flash_stage.dart';
 import 'package:nt_helper/services/flash_tool_bridge.dart';
 import 'package:nt_helper/services/flash_tool_manager.dart';
+import 'package:path/path.dart' as path;
 
 void main() {
   group('FlashStage', () {
@@ -94,6 +101,141 @@ void main() {
       expect(
         FlashToolManager.getBinaryNameForTesting(isWindows: false),
         'nt-flash',
+      );
+    });
+  });
+
+  group('FlashToolManager bundled Windows tool', () {
+    late Directory tempDirectory;
+
+    setUp(() async {
+      tempDirectory = await Directory.systemTemp.createTemp(
+        'flash-tool-manager-test-',
+      );
+    });
+
+    tearDown(() async {
+      if (await tempDirectory.exists()) {
+        await tempDirectory.delete(recursive: true);
+      }
+    });
+
+    test('prefers nt-flash.exe next to the Windows executable', () async {
+      final executablePath = path.join(tempDirectory.path, 'nt_helper.exe');
+      final bundledToolPath = path.join(tempDirectory.path, 'nt-flash.exe');
+      await File(bundledToolPath).writeAsBytes([1, 2, 3]);
+      var networkCalls = 0;
+      final manager = FlashToolManager(
+        httpClient: MockClient((_) async {
+          networkCalls++;
+          throw StateError('Network should not be used for a bundled tool');
+        }),
+        operatingSystemOverride: 'windows',
+        resolvedExecutableOverride: executablePath,
+        toolDirectoryOverride: Directory(
+          path.join(tempDirectory.path, 'support'),
+        ),
+      );
+
+      expect(await manager.getToolPath(), bundledToolPath);
+      expect(networkCalls, 0);
+    });
+
+    test('retries rejected TLS requests with scoped trusted roots', () async {
+      final toolDirectory = Directory(path.join(tempDirectory.path, 'support'));
+      final archive = Archive()
+        ..addFile(ArchiveFile('nt-flash.exe', 4, [1, 2, 3, 4]));
+      final archiveBytes = ZipEncoder().encode(archive);
+      final downloadUrl =
+          'https://github.com/thorinside/nt-flash/releases/download/'
+          'v1.2.3/nt-flash-v1.2.3-windows.zip';
+      var primaryCalls = 0;
+      var fallbackCalls = 0;
+      final diagnosedHosts = <String>[];
+      final manager = FlashToolManager(
+        httpClient: MockClient((_) async {
+          primaryCalls++;
+          throw HandshakeException(
+            'CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate',
+          );
+        }),
+        trustedClientFactory: () async => MockClient((request) async {
+          fallbackCalls++;
+          if (request.url.host == 'api.github.com') {
+            return http.Response(
+              jsonEncode({
+                'assets': [
+                  {
+                    'name': 'nt-flash-v1.2.3-windows.zip',
+                    'browser_download_url': downloadUrl,
+                  },
+                ],
+              }),
+              200,
+            );
+          }
+          return http.Response.bytes(archiveBytes, 200);
+        }),
+        tlsDiagnostics: (uri) async {
+          diagnosedHosts.add(uri.host);
+          return 'host=${uri.host}; issuer=Test Missing Root';
+        },
+        operatingSystemOverride: 'windows',
+        resolvedExecutableOverride: path.join(
+          tempDirectory.path,
+          'nt_helper.exe',
+        ),
+        toolDirectoryOverride: toolDirectory,
+      );
+
+      final toolPath = await manager.getToolPath();
+
+      expect(toolPath, path.join(toolDirectory.path, 'nt-flash.exe'));
+      expect(await File(toolPath).readAsBytes(), [1, 2, 3, 4]);
+      expect(primaryCalls, 2);
+      expect(fallbackCalls, 2);
+      expect(diagnosedHosts, ['api.github.com', 'github.com']);
+    });
+
+    test('reports rejected certificate details when trusted retry fails', () {
+      final manager = FlashToolManager(
+        httpClient: MockClient(
+          (_) async => throw HandshakeException(
+            'CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate',
+          ),
+        ),
+        trustedClientFactory: () async => MockClient(
+          (_) async => throw HandshakeException(
+            'CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate',
+          ),
+        ),
+        tlsDiagnostics: (uri) async =>
+            'host=${uri.host}; subject=CN=proxy; issuer=CN=Local Inspection CA',
+        operatingSystemOverride: 'windows',
+        resolvedExecutableOverride: path.join(
+          tempDirectory.path,
+          'nt_helper.exe',
+        ),
+        toolDirectoryOverride: Directory(
+          path.join(tempDirectory.path, 'support'),
+        ),
+      );
+
+      expect(
+        manager.getToolPath(),
+        throwsA(
+          isA<FlashToolDownloadException>()
+              .having(
+                (error) => error.message,
+                'message',
+                contains('TLS certificate verification failed'),
+              )
+              .having(
+                (error) => error.message,
+                'diagnostics',
+                contains('issuer=CN=Local Inspection CA'),
+              ),
+        ),
       );
     });
   });
