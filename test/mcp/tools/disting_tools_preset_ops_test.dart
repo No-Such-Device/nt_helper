@@ -378,7 +378,7 @@ void main() {
 
   group('editSlot — offline specification limitation', () {
     test(
-      'offline mode omitting required specs returns success with limitation',
+      'offline same-algorithm patch does not invent specification defaults',
       () async {
         const guid = 'offline-edit-spec-required';
         final manager = MockDistingMidiManager();
@@ -430,15 +430,131 @@ void main() {
         final json = jsonDecode(result) as Map<String, dynamic>;
 
         expect(json['success'], isTrue);
-        expect(json['limitation'], isNotNull);
-        expect(
-          (json['limitation'] as String).toLowerCase(),
-          contains('offline mode'),
+        expect(json['limitation'], isNull);
+        verifyNever(() => controller.clearSlot(any()));
+        verifyNever(() => controller.addAlgorithm(any()));
+      },
+    );
+  });
+
+  group('getCurrentPreset — required specifications', () {
+    test(
+      'exports known specification values with algorithm identity',
+      () async {
+        const guid = 'known-required-spec';
+        final manager = MockDistingMidiManager();
+        final algorithm = Algorithm(
+          algorithmIndex: 0,
+          guid: guid,
+          name: 'Known Required Spec',
+          specifications: const [4],
         );
-        expect(
-          (json['limitation'] as String).toLowerCase(),
-          contains('specification'),
+        final algorithmInfo = AlgorithmInfo(
+          algorithmIndex: 0,
+          guid: guid,
+          name: 'Known Required Spec',
+          specifications: [
+            Specification(
+              name: 'Channels',
+              min: 1,
+              max: 8,
+              defaultValue: 2,
+              type: 0,
+            ),
+          ],
         );
+        when(() => cubit.state).thenReturn(
+          DistingState.synchronized(
+            disting: manager,
+            distingVersion: 'Test',
+            firmwareVersion: FirmwareVersion('1.17'),
+            presetName: 'Test Preset',
+            algorithms: [algorithmInfo],
+            slots: const [],
+            unitStrings: const [],
+          ),
+        );
+        when(
+          () => controller.getAllSlots(),
+        ).thenAnswer((_) async => {0: algorithm});
+        when(
+          () => controller.getParametersForSlot(0),
+        ).thenAnswer((_) async => const []);
+        when(() => controller.getSlotName(0)).thenAnswer((_) async => null);
+
+        final json =
+            jsonDecode(await distingTools.getCurrentPreset({}))
+                as Map<String, dynamic>;
+        final editArguments =
+            json['edit_slot_arguments'] as Map<String, dynamic>;
+        final data = editArguments['data'] as Map<String, dynamic>;
+
+        expect(json['restore_ready'], isTrue);
+        expect(data['algorithm'], {
+          'guid': guid,
+          'name': 'Known Required Spec',
+          'specifications': [4],
+        });
+      },
+    );
+
+    test(
+      'omits unsafe algorithm replay when required values are unavailable',
+      () async {
+        const guid = 'unknown-required-spec';
+        final manager = MockDistingMidiManager();
+        final algorithm = Algorithm(
+          algorithmIndex: 0,
+          guid: guid,
+          name: 'Unknown Required Spec',
+        );
+        final algorithmInfo = AlgorithmInfo(
+          algorithmIndex: 0,
+          guid: guid,
+          name: 'Unknown Required Spec',
+          specifications: [
+            Specification(
+              name: 'Channels',
+              min: 1,
+              max: 8,
+              defaultValue: 2,
+              type: 0,
+            ),
+          ],
+        );
+        when(() => cubit.state).thenReturn(
+          DistingState.synchronized(
+            disting: manager,
+            distingVersion: 'Test',
+            firmwareVersion: FirmwareVersion('1.17'),
+            presetName: 'Test Preset',
+            algorithms: [algorithmInfo],
+            slots: const [],
+            unitStrings: const [],
+          ),
+        );
+        when(
+          () => controller.getAllSlots(),
+        ).thenAnswer((_) async => {0: algorithm});
+        when(
+          () => controller.getParametersForSlot(0),
+        ).thenAnswer((_) async => const []);
+        when(() => controller.getSlotName(0)).thenAnswer((_) async => null);
+
+        final json =
+            jsonDecode(await distingTools.getCurrentPreset({}))
+                as Map<String, dynamic>;
+        final editArguments =
+            json['edit_slot_arguments'] as Map<String, dynamic>;
+        final data = editArguments['data'] as Map<String, dynamic>;
+
+        expect(json['restore_ready'], isFalse);
+        expect(json['restore_limitation'], contains('unavailable'));
+        expect(json['algorithm_identity'], {
+          'guid': guid,
+          'name': 'Unknown Required Spec',
+        });
+        expect(data.containsKey('algorithm'), isFalse);
       },
     );
   });
@@ -655,6 +771,86 @@ void main() {
   });
 
   group('editSlot — validation', () {
+    test(
+      'same required-spec algorithm can be replayed without specifications',
+      () async {
+        const guid = 'same-required-spec';
+        final manager = MockDistingMidiManager();
+        final currentAlgorithm = Algorithm(
+          algorithmIndex: 0,
+          guid: guid,
+          name: 'Same Required Spec',
+        );
+        final requiredSpecAlgorithm = AlgorithmInfo(
+          algorithmIndex: 0,
+          guid: guid,
+          name: 'Same Required Spec',
+          specifications: [
+            Specification(
+              name: 'Channels',
+              min: 1,
+              max: 8,
+              defaultValue: 2,
+              type: 0,
+            ),
+          ],
+        );
+        final parameter = ParameterInfo(
+          algorithmIndex: 0,
+          parameterNumber: 0,
+          min: -100,
+          max: 100,
+          defaultValue: 0,
+          unit: 0,
+          name: 'Pan',
+          powerOfTen: 0,
+        );
+
+        when(() => cubit.state).thenReturn(
+          DistingState.synchronized(
+            disting: manager,
+            distingVersion: 'Test',
+            firmwareVersion: FirmwareVersion('1.17'),
+            presetName: 'Test Preset',
+            algorithms: [requiredSpecAlgorithm],
+            slots: const [],
+            unitStrings: const [],
+          ),
+        );
+        when(
+          () => controller.getAlgorithmInSlot(0),
+        ).thenAnswer((_) async => currentAlgorithm);
+        when(
+          () => controller.getParametersForSlot(0),
+        ).thenAnswer((_) async => [parameter]);
+        when(
+          () => controller.updateParameterValue(0, 0, -35),
+        ).thenAnswer((_) async {});
+        when(() => controller.getParameterValue(0, 0)).thenAnswer(
+          (_) async =>
+              ParameterValue(algorithmIndex: 0, parameterNumber: 0, value: -35),
+        );
+        when(() => controller.getSlotName(0)).thenAnswer((_) async => null);
+
+        final result = await distingTools.editSlot({
+          'slot_index': 0,
+          'data': {
+            'algorithm': {'guid': guid},
+            'parameters': [
+              {'parameter_number': 0, 'value': -35},
+            ],
+          },
+        });
+        final json = jsonDecode(result) as Map<String, dynamic>;
+
+        expect(json['success'], isTrue);
+        expect(json['persisted'], isTrue);
+        verify(() => controller.updateParameterValue(0, 0, -35)).called(1);
+        verifyNever(() => controller.clearSlot(any()));
+        verifyNever(() => controller.addAlgorithm(any()));
+      },
+    );
+
     test('missing slot_index returns error', () async {
       final result = await distingTools.editSlot({});
       final json = jsonDecode(result) as Map<String, dynamic>;

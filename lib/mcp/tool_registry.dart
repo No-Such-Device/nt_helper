@@ -369,10 +369,12 @@ class ToolRegistry {
             'Read the current preset without changing it, one bounded page at a '
             'time. Each response contains one populated slot and at most 4 '
             'parameters by default as compact edit_slot_arguments: custom name, '
-            'algorithm/specifications, exact current values, and enabled mappings. '
-            'Use those arguments directly with edit_slot when creating or restoring '
-            'a preset. Follow paging.next until has_more is false; never assume the '
-            'first page is complete or change the source preset between pages.',
+            'restorable algorithm/specifications when known, exact current values, '
+            'and enabled mappings. restore_ready is false when required construction '
+            'values are unavailable; in that case the safe edit_slot_arguments omit '
+            'the algorithm and only patch an existing matching slot. Follow '
+            'paging.next until has_more is false; never assume the first page is '
+            'complete or change the source preset between pages.',
         inputSchema: {
           'properties': {
             'slot_offset': {
@@ -541,7 +543,8 @@ class ToolRegistry {
       ToolRegistryEntry(
         name: 'edit_preset',
         description:
-            'Edit the entire preset state including name and all slots. WARNING: Replaces the full preset.',
+            'Edit and save the entire preset state including name and all slots. '
+            'A successful response has persisted=true. WARNING: Replaces the full preset.',
         inputSchema: {
           'properties': {
             'data': {
@@ -568,7 +571,9 @@ class ToolRegistry {
       ToolRegistryEntry(
         name: 'edit_slot',
         description:
-            'Edit a specific slot: change algorithm, set parameters, or rename. Device must be in connected mode.',
+            'Edit and save a specific slot: change algorithm, set parameters, or rename. '
+            'Repeating the current algorithm GUID does not require its construction specifications. '
+            'A successful response has persisted=true. Device must be in connected mode.',
         inputSchema: {
           'properties': {
             'slot_index': {
@@ -637,8 +642,9 @@ class ToolRegistry {
       ToolRegistryEntry(
         name: 'edit_parameter',
         description:
-            'Edit a single parameter value and/or mapping. Validation errors include '
-            'allowed enum labels or numeric ranges for a corrected retry. Device must be in connected mode.',
+            'Edit and save a single parameter value and/or mapping. Validation errors include '
+            'allowed enum labels or numeric ranges for a corrected retry. A successful response '
+            'has persisted=true. Device must be in connected mode.',
         inputSchema: {
           'properties': {
             'slot_index': {

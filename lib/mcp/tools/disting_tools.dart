@@ -222,6 +222,7 @@ class DistingTools {
           'preset_name': presetName,
           'populated_slot_count': 0,
           'edit_slot_arguments': null,
+          'restore_ready': true,
           'slot_parameter_count': 0,
           'paging': {
             'slot_offset': 0,
@@ -324,6 +325,17 @@ class DistingTools {
         parametersJsonList.add(paramData);
       }
 
+      final requiredSpecifications =
+          _getDeviceAlgorithmInfo(algorithm.guid)?.specifications ?? const [];
+      final hasRequiredSpecifications = requiredSpecifications.isNotEmpty;
+      final hasRestorableSpecifications =
+          !hasRequiredSpecifications ||
+          (algorithm.specifications.length == requiredSpecifications.length &&
+              algorithm.specifications.indexed.every((entry) {
+                final specification = requiredSpecifications[entry.$1];
+                return entry.$2 >= specification.min &&
+                    entry.$2 <= specification.max;
+              }));
       final algorithmData = <String, dynamic>{
         'guid': algorithm.guid,
         'name': algorithm.name,
@@ -360,9 +372,22 @@ class DistingTools {
           'slot_index': slotIndex,
           'data': {
             'name': slotName ?? algorithm.name,
-            'algorithm': algorithmData,
+            if (hasRestorableSpecifications) 'algorithm': algorithmData,
             'parameters': parametersJsonList,
           },
+        },
+        'restore_ready': hasRestorableSpecifications,
+        if (!hasRestorableSpecifications) ...{
+          'algorithm_identity': {
+            'guid': algorithm.guid,
+            'name': algorithm.name,
+          },
+          'restore_limitation':
+              'Current specification values for required-spec algorithm '
+              '"${algorithm.guid}" are unavailable. edit_slot_arguments '
+              'omit the algorithm and can safely patch an existing matching '
+              'slot, but cannot recreate it without known explicit '
+              'specifications.',
         },
         'slot_parameter_count': parameterInfos.length,
         'paging': {
@@ -3265,6 +3290,7 @@ class DistingTools {
         return jsonEncode(
           convertToSnakeCaseKeys({
             'success': true,
+            'persisted': true,
             'preset_name': presetName,
             'slots': slotsJsonList,
           }),
@@ -3384,9 +3410,16 @@ class DistingTools {
             algorithmData['specifications'] as List<dynamic>?;
         final requiredSpecs = deviceAlgoInfo?.specifications ?? [];
         final offlineMode = _isOfflineMode();
+        final isCurrentAlgorithm =
+            currentAlgorithm?.guid == resolvedAlgorithmGuid;
 
         if (requiredSpecs.isNotEmpty) {
-          if (offlineMode) {
+          if (isCurrentAlgorithm &&
+              (specifications == null || specifications.isEmpty)) {
+            // Algorithm identity in a patch is redundant when the requested
+            // GUID is already instantiated. Its construction specifications
+            // are not needed to update parameters, mappings, or the slot name.
+          } else if (offlineMode) {
             effectiveOfflineSpecifications = requiredSpecs
                 .map((s) => s.defaultValue)
                 .toList();
@@ -3764,6 +3797,7 @@ class DistingTools {
 
         final response = <String, dynamic>{
           'success': true,
+          'persisted': true,
           'slot_index': slotIndex,
           'algorithm': {
             'guid': updatedAlgorithm.guid,
@@ -4051,6 +4085,7 @@ class DistingTools {
       final updatedValue = updatedParamValue?.value ?? 0;
 
       final Map<String, dynamic> result = {
+        'persisted': true,
         'slot_index': slotIndex,
         'parameter_number': resolvedParameterNumber,
         'parameter_name': parameterName,

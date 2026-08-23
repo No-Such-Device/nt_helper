@@ -227,11 +227,19 @@ current state rather than the compact overview from `show_preset`.
 
 **Returns**: Preset name plus compact `edit_slot_arguments` for one populated
 slot and a bounded slice of its parameter values. The arguments include the
-custom slot name, algorithm and specifications, readable parameter names,
-exact current values, and enabled CV/MIDI/i2c/performance mappings. They can be
-passed directly to `edit_slot` when creating or restoring a preset. Static
-ranges, defaults, type flags, and full enum lists are omitted; use
-`show_parameter` when those inspection details are needed.
+custom slot name, readable parameter names, exact current values, and enabled
+CV/MIDI/i2c/performance mappings. They also include algorithm identity and its
+construction specifications when those values are known.
+
+`restore_ready` states whether the page can recreate its slot. When a preset
+was loaded from the device and the firmware did not report the current values
+for a required-spec algorithm, `restore_ready` is false. In that case the safe
+`edit_slot_arguments` deliberately omit `algorithm`, so they can patch an
+existing matching slot without triggering replacement validation. The
+response also returns `algorithm_identity` and a `restore_limitation`; do not
+claim that such a page is a standalone complete backup. Static ranges,
+defaults, type flags, and full enum lists remain omitted; use `show_parameter`
+when those inspection details are needed.
 
 The `paging.next` object contains the exact next `get_preset` call. Follow it
 until `has_more` is false; the first page is not the complete preset. Do not
@@ -259,6 +267,7 @@ reads the current live state.
       ]
     }
   },
+  "restore_ready": true,
   "slot_parameter_count": 18,
   "paging": {
     "slot_offset": 0,
@@ -454,7 +463,10 @@ bulk changes. For a name-only change, use `rename_preset`.
 
 #### edit_slot
 
-Edit a specific slot: change algorithm, set parameters, or rename.
+Edit and save a specific slot: change algorithm, set parameters, or rename.
+Repeating the GUID already instantiated in the slot is a patch and does not
+require its construction specifications. A successful response reports
+`persisted: true`.
 
 **Parameters**:
 - `slot_index` (required, integer): Slot index (0-39)
@@ -492,7 +504,8 @@ Edit a specific slot: change algorithm, set parameters, or rename.
 
 #### edit_parameter
 
-Edit a single parameter value and/or mapping.
+Edit and save a single parameter value and/or mapping. A successful response
+reports `persisted: true`.
 
 **Parameters**:
 - `slot_index` (required, integer): Slot index (0-39)
