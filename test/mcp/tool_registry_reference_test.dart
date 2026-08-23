@@ -84,8 +84,14 @@ void main() {
       final renamePreset = registry.findByName('rename_preset');
 
       expect(getPreset, isNotNull);
-      expect(getPreset!.description, contains('complete current preset'));
-      expect(getPreset.description, contains('without changing it'));
+      expect(getPreset!.description, contains('bounded page'));
+      expect(getPreset.description, contains('paging.next'));
+      final getProperties =
+          getPreset.inputSchema['properties'] as Map<String, dynamic>;
+      expect(getProperties['slot_offset']['default'], 0);
+      expect(getProperties['parameter_offset']['default'], 0);
+      expect(getProperties['parameter_limit']['default'], 4);
+      expect(getProperties['parameter_limit']['maximum'], 16);
       expect(renamePreset, isNotNull);
       expect(renamePreset!.description, contains('Non-destructively'));
       expect(renamePreset.description, contains('instead of edit_preset'));

@@ -33,6 +33,8 @@ class DistingTools {
 
   // Use shared constants
   final int maxSlots = MCPConstants.maxSlots;
+  static const int _defaultPresetParameterPageSize = 4;
+  static const int _maxPresetParameterPageSize = 16;
 
   DistingTools(this._controller, this._distingCubit);
 
@@ -167,145 +169,238 @@ class DistingTools {
     return null;
   }
 
-  /// MCP Tool: Gets the entire current preset state.
-  /// Parameters: None
-  /// Returns:
-  ///   A JSON string representing the current preset including name,
-  ///   and details for each slot (algorithm and parameters).
+  /// MCP Tool: Gets one bounded page of the current preset state.
+  ///
+  /// Pages contain at most one populated slot and a bounded parameter slice.
+  /// The response includes the exact arguments for the next page so callers do
+  /// not need to understand or reconstruct the paging algorithm.
   Future<String> getCurrentPreset(Map<String, dynamic> params) async {
     try {
+      final rawSlotOffset = params['slot_offset'];
+      final rawParameterOffset = params['parameter_offset'];
+      final rawParameterLimit = params['parameter_limit'];
+      if ((rawSlotOffset != null && rawSlotOffset is! int) ||
+          (rawParameterOffset != null && rawParameterOffset is! int) ||
+          (rawParameterLimit != null && rawParameterLimit is! int)) {
+        return jsonEncode(
+          MCPUtils.buildError(
+            'slot_offset, parameter_offset, and parameter_limit must be integers.',
+          ),
+        );
+      }
+
+      final slotOffset = rawSlotOffset as int? ?? 0;
+      final parameterOffset = rawParameterOffset as int? ?? 0;
+      final parameterLimit =
+          rawParameterLimit as int? ?? _defaultPresetParameterPageSize;
+      if (slotOffset < 0 || parameterOffset < 0) {
+        return jsonEncode(
+          MCPUtils.buildError(
+            'slot_offset and parameter_offset must be zero or greater.',
+          ),
+        );
+      }
+      if (parameterLimit < 1 || parameterLimit > _maxPresetParameterPageSize) {
+        return jsonEncode(
+          MCPUtils.buildError(
+            'parameter_limit must be between 1 and '
+            '$_maxPresetParameterPageSize.',
+          ),
+        );
+      }
+
       final presetName = await _controller.getCurrentPresetName();
       final Map<int, Algorithm?> slotAlgorithms = await _controller
           .getAllSlots();
 
-      List<Map<String, dynamic>?> slotsJsonList = List.filled(maxSlots, null);
+      final populatedSlots =
+          slotAlgorithms.entries.where((entry) => entry.value != null).toList()
+            ..sort((left, right) => left.key.compareTo(right.key));
+      if (populatedSlots.isEmpty) {
+        return jsonEncode({
+          'success': true,
+          'preset_name': presetName,
+          'populated_slot_count': 0,
+          'slots': const <dynamic>[],
+          'paging': {
+            'slot_offset': 0,
+            'parameter_offset': 0,
+            'parameter_limit': parameterLimit,
+            'count': 0,
+            'total': 0,
+            'has_more': false,
+            'next': null,
+          },
+        });
+      }
 
-      for (int i = 0; i < maxSlots; i++) {
-        final algorithm = slotAlgorithms[i];
-        if (algorithm != null) {
-          // To get parameters, we need to call getParametersForSlot for each non-empty slot
-          final List<ParameterInfo> parameterInfos = await _controller
-              .getParametersForSlot(i);
+      if (slotOffset >= populatedSlots.length) {
+        return jsonEncode(
+          MCPUtils.buildError(
+            'slot_offset $slotOffset is outside the populated slot range '
+            '(0-${populatedSlots.length - 1}).',
+            details: {
+              'populated_slot_count': populatedSlots.length,
+              'restart': {
+                'tool': 'get_preset',
+                'arguments': {
+                  'slot_offset': 0,
+                  'parameter_offset': 0,
+                  'parameter_limit': parameterLimit,
+                },
+              },
+            },
+          ),
+        );
+      }
 
-          List<Map<String, dynamic>> parametersJsonList = [];
-          for (
-            int paramIndex = 0;
-            paramIndex < parameterInfos.length;
-            paramIndex++
-          ) {
-            final pInfo = parameterInfos[paramIndex];
-            final ParameterValue? paramValue = await _controller
-                .getParameterValue(i, pInfo.parameterNumber);
-            final int? liveRawValue = paramValue?.value;
+      final slotEntry = populatedSlots[slotOffset];
+      final slotIndex = slotEntry.key;
+      final algorithm = slotEntry.value!;
+      final parameterInfos = await _controller.getParametersForSlot(slotIndex);
+      if (parameterOffset > parameterInfos.length) {
+        return jsonEncode(
+          MCPUtils.buildError(
+            'parameter_offset $parameterOffset exceeds the slot parameter '
+            'count (${parameterInfos.length}).',
+            details: {
+              'slot_index': slotIndex,
+              'restart': {
+                'tool': 'get_preset',
+                'arguments': {
+                  'slot_offset': slotOffset,
+                  'parameter_offset': 0,
+                  'parameter_limit': parameterLimit,
+                },
+              },
+            },
+          ),
+        );
+      }
 
-            // Build base parameter object
-            final paramData = <String, dynamic>{
-              'parameter_number': pInfo.parameterNumber,
-              'parameter_name': pInfo.name,
-              'is_disabled': paramValue?.isDisabled ?? false,
-              'is_input': pInfo.isInput,
-              'is_output': pInfo.isOutput,
-              'is_audio': pInfo.isAudio,
-              'is_output_mode': pInfo.isOutputMode,
-            };
+      final end = parameterOffset + parameterLimit < parameterInfos.length
+          ? parameterOffset + parameterLimit
+          : parameterInfos.length;
+      final parametersJsonList = <Map<String, dynamic>>[];
+      for (final pInfo in parameterInfos.sublist(parameterOffset, end)) {
+        final paramValue = await _controller.getParameterValue(
+          slotIndex,
+          pInfo.parameterNumber,
+        );
+        final liveRawValue = paramValue?.value;
+        final paramData = <String, dynamic>{
+          'parameter_number': pInfo.parameterNumber,
+          'parameter_name': pInfo.name,
+          'is_disabled': paramValue?.isDisabled ?? false,
+          'is_input': pInfo.isInput,
+          'is_output': pInfo.isOutput,
+          'is_audio': pInfo.isAudio,
+          'is_output_mode': pInfo.isOutputMode,
+        };
 
-            if (_isEnumParameter(pInfo)) {
-              final enumValues = await _getParameterEnumValues(
-                i,
-                pInfo.parameterNumber,
-              );
-              if (enumValues != null) {
-                paramData['is_enum'] = true;
-                paramData['valid_enum_values'] = enumValues;
-                if (liveRawValue != null) {
-                  paramData['value'] =
-                      _enumIndexToString(enumValues, liveRawValue) ?? '';
-                }
-              }
-            } else {
-              paramData['value'] = liveRawValue != null
-                  ? _scaleForDisplay(liveRawValue, pInfo.powerOfTen)
-                  : null;
-              paramData['min_value'] = _scaleForDisplay(
-                pInfo.min,
-                pInfo.powerOfTen,
-              );
-              paramData['max_value'] = _scaleForDisplay(
-                pInfo.max,
-                pInfo.powerOfTen,
-              );
-              paramData['default_value'] = _scaleForDisplay(
-                pInfo.defaultValue,
-                pInfo.powerOfTen,
-              );
+        if (_isEnumParameter(pInfo)) {
+          final enumValues = await _getParameterEnumValues(
+            slotIndex,
+            pInfo.parameterNumber,
+          );
+          if (enumValues != null) {
+            paramData['is_enum'] = true;
+            paramData['valid_enum_values'] = enumValues;
+            if (liveRawValue != null) {
+              paramData['value'] =
+                  _enumIndexToString(enumValues, liveRawValue) ?? '';
             }
-
-            // Add mapping information (performance page, MIDI, CV, etc.)
-            try {
-              final mapping = await _controller.getParameterMapping(
-                i,
-                pInfo.parameterNumber,
-              );
-              final mappingJson = await _buildMappingJson(mapping);
-              if (mappingJson != null) {
-                paramData['mapping'] = mappingJson;
-              }
-            } catch (e) {
-              // Intentionally empty
-            }
-
-            parametersJsonList.add(paramData);
           }
+        } else {
+          paramData['value'] = liveRawValue != null
+              ? _scaleForDisplay(liveRawValue, pInfo.powerOfTen)
+              : null;
+          paramData['min_value'] = _scaleForDisplay(
+            pInfo.min,
+            pInfo.powerOfTen,
+          );
+          paramData['max_value'] = _scaleForDisplay(
+            pInfo.max,
+            pInfo.powerOfTen,
+          );
+          paramData['default_value'] = _scaleForDisplay(
+            pInfo.defaultValue,
+            pInfo.powerOfTen,
+          );
+        }
 
-          // Build algorithm object with specifications if present
-          final algorithmData = {
-            'guid': algorithm.guid,
-            'name': algorithm.name,
-            'algorithm_index': algorithm.algorithmIndex,
-          };
+        try {
+          final mapping = await _controller.getParameterMapping(
+            slotIndex,
+            pInfo.parameterNumber,
+          );
+          final mappingJson = await _buildMappingJson(mapping);
+          if (mappingJson != null) paramData['mapping'] = mappingJson;
+        } catch (_) {
+          // A missing mapping does not make the parameter unreadable.
+        }
+        parametersJsonList.add(paramData);
+      }
 
-          // Add specifications if the algorithm has them
-          if (algorithm.specifications.isNotEmpty) {
-            algorithmData['specifications'] = algorithm.specifications;
-          }
+      final algorithmData = <String, dynamic>{
+        'guid': algorithm.guid,
+        'name': algorithm.name,
+        'algorithm_index': algorithm.algorithmIndex,
+        if (algorithm.specifications.isNotEmpty)
+          'specifications': algorithm.specifications,
+      };
+      String? slotName;
+      try {
+        slotName = await _controller.getSlotName(slotIndex);
+      } catch (_) {
+        // Fall back to the algorithm name if a custom name is unavailable.
+      }
 
-          String? slotName;
-          try {
-            slotName = await _controller.getSlotName(i);
-          } catch (_) {
-            // The algorithm name remains available when a custom name cannot
-            // be read from the current adapter.
-          }
+      Map<String, dynamic>? nextArguments;
+      if (end < parameterInfos.length) {
+        nextArguments = {
+          'slot_offset': slotOffset,
+          'parameter_offset': end,
+          'parameter_limit': parameterLimit,
+        };
+      } else if (slotOffset + 1 < populatedSlots.length) {
+        nextArguments = {
+          'slot_offset': slotOffset + 1,
+          'parameter_offset': 0,
+          'parameter_limit': parameterLimit,
+        };
+      }
 
-          slotsJsonList[i] = {
-            'slot_index': i,
+      return jsonEncode({
+        'success': true,
+        'preset_name': presetName,
+        'populated_slot_count': populatedSlots.length,
+        'slots': [
+          {
+            'slot_index': slotIndex,
             'name': slotName ?? algorithm.name,
             'algorithm': algorithmData,
             'parameters': parametersJsonList,
-            'total_parameters': parametersJsonList.length,
-          };
-        }
-      }
-
-      final Map<String, dynamic> presetData = _buildPresetJson(
-        presetName,
-        slotsJsonList,
-      );
-      return jsonEncode(
-        convertToSnakeCaseKeys(presetData),
-      ); // Apply converter here
+            'total_parameters': parameterInfos.length,
+          },
+        ],
+        'paging': {
+          'slot_offset': slotOffset,
+          'parameter_offset': parameterOffset,
+          'parameter_limit': parameterLimit,
+          'count': parametersJsonList.length,
+          'total': parameterInfos.length,
+          'has_more': nextArguments != null,
+          'next': nextArguments == null
+              ? null
+              : {'tool': 'get_preset', 'arguments': nextArguments},
+        },
+      });
     } catch (e) {
       return jsonEncode(
         convertToSnakeCaseKeys(MCPUtils.buildError(e.toString())),
       );
     }
-  }
-
-  Map<String, dynamic> _buildPresetJson(
-    String presetName,
-    List<Map<String, dynamic>?> slotsData,
-  ) {
-    return {'preset_name': presetName, 'slots': slotsData};
   }
 
   /// MCP Tool: Adds an algorithm to the first available slot (determined by hardware).

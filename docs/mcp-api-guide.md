@@ -211,18 +211,64 @@ Show a compact preset overview: preset name and slot list with algorithm names a
 
 #### get_preset
 
-Read the complete current preset without changing it. This is the safe choice
-for backup/export or whenever a task needs exact current state rather than the
-compact overview from `show_preset`.
+Read the complete current preset without changing it, one bounded page at a
+time. This is the safe choice for backup/export or whenever a task needs exact
+current state rather than the compact overview from `show_preset`.
 
-**Parameters**: None
+**Parameters**:
+- `slot_offset` (optional, integer): Zero-based offset into populated slots.
+  Default: 0.
+- `parameter_offset` (optional, integer): Zero-based parameter offset within
+  the current slot. Default: 0.
+- `parameter_limit` (optional, integer): Parameters in this page. Default: 4;
+  minimum: 1; maximum: 16.
 
-**Returns**: Preset name plus every populated slot's custom name, algorithm,
-specifications, parameter values and ranges, exact enum labels, and enabled
-CV/MIDI/i2c/performance mappings. Large responses become a `tool_reference`.
+**Returns**: Preset name plus one populated slot's custom name, algorithm,
+specifications, and a bounded slice of its parameter values, ranges, exact enum
+labels, and enabled CV/MIDI/i2c/performance mappings. The `paging.next` object
+contains the exact next `get_preset` call. Follow it until `has_more` is false;
+the first page is not the complete preset. Do not modify the preset while
+paging through an export, because each page reads the current live state.
 
 ```json
 {"tool": "get_preset", "arguments": {}}
+```
+
+**Example paging response**:
+
+```json
+{
+  "success": true,
+  "preset_name": "My Synth",
+  "populated_slot_count": 3,
+  "slots": [
+    {
+      "slot_index": 0,
+      "name": "Lead Voice",
+      "algorithm": {"guid": "vcod", "name": "Dual VCO"},
+      "parameters": [
+        {"parameter_number": 0, "parameter_name": "Pitch", "value": 60}
+      ],
+      "total_parameters": 18
+    }
+  ],
+  "paging": {
+    "slot_offset": 0,
+    "parameter_offset": 0,
+    "parameter_limit": 1,
+    "count": 1,
+    "total": 18,
+    "has_more": true,
+    "next": {
+      "tool": "get_preset",
+      "arguments": {
+        "slot_offset": 0,
+        "parameter_offset": 1,
+        "parameter_limit": 1
+      }
+    }
+  }
+}
 ```
 
 ---

@@ -365,12 +365,35 @@ class ToolRegistry {
       ToolRegistryEntry(
         name: 'get_preset',
         description:
-            'Read the complete current preset without changing it: preset name, '
-            'slot names, algorithms and specifications, parameter values and '
-            'ranges, exact enum labels, and enabled mappings. Use this for '
-            'backup/export or when the compact show_preset result is insufficient. '
-            'Large results are returned as references that can be read or searched.',
-        inputSchema: {'properties': {}},
+            'Read the current preset without changing it, one bounded page at a '
+            'time. Each response contains one populated slot and at most 4 '
+            'parameters by default, including exact enum labels and enabled '
+            'mappings. Follow paging.next exactly until has_more is false; never '
+            'assume the first page is the complete preset or change the preset '
+            'between pages.',
+        inputSchema: {
+          'properties': {
+            'slot_offset': {
+              'type': 'integer',
+              'minimum': 0,
+              'default': 0,
+              'description': 'Zero-based offset into populated slots.',
+            },
+            'parameter_offset': {
+              'type': 'integer',
+              'minimum': 0,
+              'default': 0,
+              'description': 'Zero-based parameter offset in this slot.',
+            },
+            'parameter_limit': {
+              'type': 'integer',
+              'minimum': 1,
+              'maximum': 16,
+              'default': 4,
+              'description': 'Parameters to return in this page (1-16).',
+            },
+          },
+        },
         handler: (args) => _distingTools.getCurrentPreset(args),
         timeout: const Duration(seconds: 30),
       ),

@@ -69,7 +69,7 @@ preset inspection and editing. Key preset workflows include:
 | Tool | Purpose |
 |------|---------|
 | `show_preset` | Read a compact preset overview |
-| `get_preset` | Read complete current state for backup/export |
+| `get_preset` | Page through complete current state for backup/export |
 | `rename_preset` | Rename and save without changing preset contents |
 | `show_slot` / `show_parameter` | Inspect exact slot and parameter state |
 | `edit_slot` / `edit_parameter` | Apply focused partial changes |

@@ -1766,7 +1766,7 @@ void main() {
       }
     });
 
-    test('getCurrentPreset response uses parameter_name key', () async {
+    test('getCurrentPreset returns a bounded parameter page', () async {
       when(
         () => controller.getParameterValue(0, any(that: isA<int>())),
       ).thenAnswer((inv) async {
@@ -1798,14 +1798,35 @@ void main() {
         () => controller.getSlotName(0),
       ).thenAnswer((_) async => 'Lead Voice');
 
-      final result = await distingTools.getCurrentPreset({});
+      final result = await distingTools.getCurrentPreset({
+        'parameter_limit': 1,
+      });
       final json = jsonDecode(result) as Map<String, dynamic>;
       final slots = json['slots'] as List<dynamic>;
-      final slot = (slots.firstWhere((s) => s != null)) as Map<String, dynamic>;
+      final slot = slots.single as Map<String, dynamic>;
       final params = slot['parameters'] as List<dynamic>;
 
+      expect(json['success'], isTrue);
+      expect(json['populated_slot_count'], 1);
       expect(slot['name'], 'Lead Voice');
+      expect(params, hasLength(1));
       expect(params.first['mapping'], {'performance_page': 3});
+      expect(json['paging'], {
+        'slot_offset': 0,
+        'parameter_offset': 0,
+        'parameter_limit': 1,
+        'count': 1,
+        'total': 3,
+        'has_more': true,
+        'next': {
+          'tool': 'get_preset',
+          'arguments': {
+            'slot_offset': 0,
+            'parameter_offset': 1,
+            'parameter_limit': 1,
+          },
+        },
+      });
 
       for (final p in params) {
         final param = p as Map<String, dynamic>;
@@ -1821,6 +1842,64 @@ void main() {
           reason: 'getCurrentPreset response should not use bare name key',
         );
       }
+
+      final nextArguments =
+          ((json['paging'] as Map<String, dynamic>)['next']
+                  as Map<String, dynamic>)['arguments']
+              as Map<String, dynamic>;
+      final next =
+          jsonDecode(await distingTools.getCurrentPreset(nextArguments))
+              as Map<String, dynamic>;
+      final nextSlot = (next['slots'] as List<dynamic>).single;
+      final nextParams = nextSlot['parameters'] as List<dynamic>;
+      expect(nextParams.single['parameter_number'], 5);
+    });
+
+    test(
+      'getCurrentPreset continuation advances to the next populated slot',
+      () async {
+        final secondAlgorithm = Algorithm(
+          algorithmIndex: 1,
+          guid: 'next',
+          name: 'Next Algorithm',
+        );
+        when(
+          () => controller.getAllSlots(),
+        ).thenAnswer((_) async => {3: secondAlgorithm, 0: testAlgorithm});
+        when(
+          () => controller.getParametersForSlot(0),
+        ).thenAnswer((_) async => const <ParameterInfo>[]);
+        when(
+          () => controller.getSlotName(0),
+        ).thenAnswer((_) async => 'Empty Control Slot');
+
+        final json =
+            jsonDecode(await distingTools.getCurrentPreset({}))
+                as Map<String, dynamic>;
+        final paging = json['paging'] as Map<String, dynamic>;
+        final next = paging['next'] as Map<String, dynamic>;
+
+        expect(json['populated_slot_count'], 2);
+        expect((json['slots'] as List<dynamic>).single['slot_index'], 0);
+        expect(paging['count'], 0);
+        expect(paging['has_more'], isTrue);
+        expect(next['arguments'], {
+          'slot_offset': 1,
+          'parameter_offset': 0,
+          'parameter_limit': 4,
+        });
+      },
+    );
+
+    test('getCurrentPreset rejects an unbounded parameter page', () async {
+      final json =
+          jsonDecode(
+                await distingTools.getCurrentPreset({'parameter_limit': 17}),
+              )
+              as Map<String, dynamic>;
+
+      expect(json['success'], isFalse);
+      expect(json['error'], contains('between 1 and 16'));
     });
 
     test('editPreset response uses parameter_name key', () async {

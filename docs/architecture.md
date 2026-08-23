@@ -894,7 +894,7 @@ await McpServerService.instance.stop();
 - `find_algorithm_in_preset` - Locate algorithm instances
 
 **Disting Tools** (`lib/mcp/tools/disting_tools.dart`):
-- `get_preset` - Complete preset state
+- `get_preset` - Bounded pages of complete preset state
 - `add_algorithm` / `remove_algorithm`
 - `set_parameter_value` / `get_parameter_value`
 - `move_algorithm_up` / `move_algorithm_down`

@@ -479,7 +479,7 @@ The following tools support mappings:
 
 - **`edit` tool**: Supports CV, MIDI, i2c, and performance page mappings at preset/slot/parameter levels
 - **`show` tool**: Displays only enabled mappings (disabled mappings are omitted)
-- **`get_preset` tool**: Shows enabled CV, MIDI, i2c, and performance page mappings
+- **`get_preset` tool**: Shows enabled CV, MIDI, i2c, and performance page mappings in bounded pages
 
 ### JSON Schema
 
