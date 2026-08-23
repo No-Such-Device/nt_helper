@@ -92,6 +92,15 @@ void main() {
       expect(getProperties['parameter_offset']['default'], 0);
       expect(getProperties['parameter_limit']['default'], 4);
       expect(getProperties['parameter_limit']['maximum'], 16);
+      final showSlot = registry.findByName('show_slot');
+      expect(showSlot, isNotNull);
+      expect(showSlot!.description, contains('paged parameter summaries'));
+      expect(showSlot.description, contains('Follow next'));
+      final showProperties =
+          showSlot.inputSchema['properties'] as Map<String, dynamic>;
+      expect(showProperties['parameter_offset']['default'], 0);
+      expect(showProperties['parameter_limit']['default'], 8);
+      expect(showProperties['parameter_limit']['maximum'], 16);
       expect(renamePreset, isNotNull);
       expect(renamePreset!.description, contains('Non-destructively'));
       expect(renamePreset.description, contains('instead of edit_preset'));

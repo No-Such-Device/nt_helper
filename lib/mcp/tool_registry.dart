@@ -317,7 +317,8 @@ class ToolRegistry {
       ToolRegistryEntry(
         name: 'search_parameters',
         description:
-            'Search for parameters by name within the current preset or a specific slot. Uses exact or partial name matching.',
+            'Search for parameters by name within the current preset or a specific slot. '
+            'Prefer this over browsing show_slot pages when you know all or part of the name.',
         inputSchema: {
           'properties': {
             'query': {
@@ -367,10 +368,11 @@ class ToolRegistry {
         description:
             'Read the current preset without changing it, one bounded page at a '
             'time. Each response contains one populated slot and at most 4 '
-            'parameters by default, including exact enum labels and enabled '
-            'mappings. Follow paging.next exactly until has_more is false; never '
-            'assume the first page is the complete preset or change the preset '
-            'between pages.',
+            'parameters by default as compact edit_slot_arguments: custom name, '
+            'algorithm/specifications, exact current values, and enabled mappings. '
+            'Use those arguments directly with edit_slot when creating or restoring '
+            'a preset. Follow paging.next until has_more is false; never assume the '
+            'first page is complete or change the source preset between pages.',
         inputSchema: {
           'properties': {
             'slot_offset': {
@@ -403,9 +405,10 @@ class ToolRegistry {
       ToolRegistryEntry(
         name: 'show_slot',
         description:
-            'Show a slot with its algorithm info and parameter summaries (name, current value, range). '
-            'Does NOT include enum value lists or full mapping details — use show_parameter for those. '
-            'Parameters with mappings show has_mapping: true. Large results are returned as references that can be read or searched.',
+            'Show a slot with compact, paged parameter summaries (name and current value). '
+            'Returns at most 8 parameters by default. Follow next exactly when has_more is true. '
+            'Does NOT include ranges, enum value lists, or full mappings; use show_parameter for those. '
+            'is_enum, is_disabled, and has_mapping are included only when true.',
         inputSchema: {
           'properties': {
             'slot_index': {
@@ -414,10 +417,28 @@ class ToolRegistry {
               'maximum': _slotMaximum,
               'description': 'Slot index ($_slotRangeDescription).',
             },
+            'parameter_offset': {
+              'type': 'integer',
+              'minimum': 0,
+              'default': 0,
+              'description': 'Zero-based parameter offset in the slot.',
+            },
+            'parameter_limit': {
+              'type': 'integer',
+              'minimum': 1,
+              'maximum': 16,
+              'default': 8,
+              'description':
+                  'Parameters in this response (1-16); this does not limit the slot total.',
+            },
           },
           'required': ['slot_index'],
         },
-        handler: (args) => _algoTools.showSlot(args['slot_index']),
+        handler: (args) => _algoTools.showSlot(
+          args['slot_index'],
+          offset: args['parameter_offset'] as int? ?? 0,
+          limit: args['parameter_limit'] as int?,
+        ),
       ),
     );
 
@@ -425,7 +446,8 @@ class ToolRegistry {
       ToolRegistryEntry(
         name: 'show_parameter',
         description:
-            'Show a single parameter with its value, range, unit, and enabled mappings.',
+            'Show one parameter with exact edit-preparation metadata: current and default values, '
+            'range, unit, complete enum vocabulary, disabled state, and enabled mappings.',
         inputSchema: {
           'properties': {
             'slot_index': {
@@ -615,7 +637,8 @@ class ToolRegistry {
       ToolRegistryEntry(
         name: 'edit_parameter',
         description:
-            'Edit a single parameter value and/or mapping. Device must be in connected mode.',
+            'Edit a single parameter value and/or mapping. Validation errors include '
+            'allowed enum labels or numeric ranges for a corrected retry. Device must be in connected mode.',
         inputSchema: {
           'properties': {
             'slot_index': {

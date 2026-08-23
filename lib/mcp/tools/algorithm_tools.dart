@@ -16,6 +16,8 @@ import 'package:nt_helper/mcp/utils/bus_mapping.dart';
 class MCPAlgorithmTools {
   // Make service instance-based if needed, or keep static if stateless
   static final _metadataService = AlgorithmMetadataService();
+  static const int _defaultShowSlotParameterLimit = 8;
+  static const int _maxShowSlotParameterLimit = 16;
   final DistingController _controller;
   final DistingCubit _distingCubit;
 
@@ -675,6 +677,25 @@ class MCPAlgorithmTools {
       );
     }
 
+    final effectiveLimit = limit ?? _defaultShowSlotParameterLimit;
+    if (offset < 0) {
+      return jsonEncode(
+        convertToSnakeCaseKeys({
+          'success': false,
+          'error': 'parameter_offset must be zero or greater.',
+        }),
+      );
+    }
+    if (effectiveLimit < 1 || effectiveLimit > _maxShowSlotParameterLimit) {
+      return jsonEncode(
+        convertToSnakeCaseKeys({
+          'success': false,
+          'error':
+              'parameter_limit must be between 1 and $_maxShowSlotParameterLimit per page.',
+        }),
+      );
+    }
+
     if (!_controller.isSynchronized) {
       return jsonEncode(
         convertToSnakeCaseKeys({
@@ -692,8 +713,10 @@ class MCPAlgorithmTools {
           'algorithm': {'guid': '', 'name': ''},
           'parameter_count': 0,
           'offset': 0,
-          'limit': 0,
+          'limit': effectiveLimit,
+          'count': 0,
           'has_more': false,
+          'next': null,
           'parameters': <dynamic>[],
         }),
       );
@@ -709,7 +732,6 @@ class MCPAlgorithmTools {
 
     final totalCount = parameters.length;
     final clampedOffset = offset.clamp(0, totalCount);
-    final effectiveLimit = limit ?? (totalCount - clampedOffset);
     final endIndex = (clampedOffset + effectiveLimit).clamp(0, totalCount);
     final hasMore = endIndex < totalCount;
 
@@ -728,11 +750,27 @@ class MCPAlgorithmTools {
     return jsonEncode(
       convertToSnakeCaseKeys({
         'slot_index': slotIndex,
-        'algorithm': {'guid': algorithm.guid, 'name': algorithm.name},
+        'algorithm': {
+          'guid': algorithm.guid,
+          'name': algorithm.name,
+          if (algorithm.specifications.isNotEmpty)
+            'specifications': algorithm.specifications,
+        },
         'parameter_count': totalCount,
         'offset': clampedOffset,
         'limit': effectiveLimit,
+        'count': parametersJson.length,
         'has_more': hasMore,
+        'next': hasMore
+            ? {
+                'tool': 'show_slot',
+                'arguments': {
+                  'slot_index': slotIndex,
+                  'parameter_offset': endIndex,
+                  'parameter_limit': effectiveLimit,
+                },
+              }
+            : null,
         'parameters': parametersJson,
       }),
     );
@@ -1095,7 +1133,7 @@ class MCPAlgorithmTools {
     final paramJson = <String, dynamic>{
       'parameter_number': parameter.parameterNumber,
       'parameter_name': parameter.name,
-      'is_disabled': value.isDisabled,
+      if (value.isDisabled) 'is_disabled': true,
     };
 
     if (isEnum) {
@@ -1115,14 +1153,6 @@ class MCPAlgorithmTools {
     } else {
       paramJson['value'] = MCPUtils.scaleForDisplay(
         value.value,
-        parameter.powerOfTen,
-      );
-      paramJson['min'] = MCPUtils.scaleForDisplay(
-        parameter.min,
-        parameter.powerOfTen,
-      );
-      paramJson['max'] = MCPUtils.scaleForDisplay(
-        parameter.max,
         parameter.powerOfTen,
       );
     }
@@ -1175,8 +1205,13 @@ class MCPAlgorithmTools {
       }
       paramJson['is_enum'] = true;
       paramJson['value'] = currentEnumValue ?? '';
+      paramJson['default'] = parameter.defaultValue;
       if (enumValues != null) {
         paramJson['valid_enum_values'] = enumValues;
+        if (parameter.defaultValue >= 0 &&
+            parameter.defaultValue < enumValues.length) {
+          paramJson['default'] = enumValues[parameter.defaultValue];
+        }
       }
     } else {
       paramJson['value'] = MCPUtils.scaleForDisplay(
@@ -1189,6 +1224,10 @@ class MCPAlgorithmTools {
       );
       paramJson['max'] = MCPUtils.scaleForDisplay(
         parameter.max,
+        parameter.powerOfTen,
+      );
+      paramJson['default'] = MCPUtils.scaleForDisplay(
+        parameter.defaultValue,
         parameter.powerOfTen,
       );
     }

@@ -165,6 +165,8 @@ Provide either `guid` or `name`.
 #### search_parameters
 
 Search for parameters by name within the current preset or a specific slot.
+Prefer this over browsing `show_slot` pages when you already know all or part
+of the parameter name.
 
 **Parameters**:
 - `query` (required, string): Parameter name (case-insensitive)
@@ -223,12 +225,18 @@ current state rather than the compact overview from `show_preset`.
 - `parameter_limit` (optional, integer): Parameters in this page. Default: 4;
   minimum: 1; maximum: 16.
 
-**Returns**: Preset name plus one populated slot's custom name, algorithm,
-specifications, and a bounded slice of its parameter values, ranges, exact enum
-labels, and enabled CV/MIDI/i2c/performance mappings. The `paging.next` object
-contains the exact next `get_preset` call. Follow it until `has_more` is false;
-the first page is not the complete preset. Do not modify the preset while
-paging through an export, because each page reads the current live state.
+**Returns**: Preset name plus compact `edit_slot_arguments` for one populated
+slot and a bounded slice of its parameter values. The arguments include the
+custom slot name, algorithm and specifications, readable parameter names,
+exact current values, and enabled CV/MIDI/i2c/performance mappings. They can be
+passed directly to `edit_slot` when creating or restoring a preset. Static
+ranges, defaults, type flags, and full enum lists are omitted; use
+`show_parameter` when those inspection details are needed.
+
+The `paging.next` object contains the exact next `get_preset` call. Follow it
+until `has_more` is false; the first page is not the complete preset. Do not
+modify the source preset while paging through an export, because each page
+reads the current live state.
 
 ```json
 {"tool": "get_preset", "arguments": {}}
@@ -241,17 +249,17 @@ paging through an export, because each page reads the current live state.
   "success": true,
   "preset_name": "My Synth",
   "populated_slot_count": 3,
-  "slots": [
-    {
-      "slot_index": 0,
+  "edit_slot_arguments": {
+    "slot_index": 0,
+    "data": {
       "name": "Lead Voice",
       "algorithm": {"guid": "vcod", "name": "Dual VCO"},
       "parameters": [
-        {"parameter_number": 0, "parameter_name": "Pitch", "value": 60}
-      ],
-      "total_parameters": 18
+        {"parameter_number": 0, "name": "Pitch", "value": 60}
+      ]
     }
-  ],
+  },
+  "slot_parameter_count": 18,
   "paging": {
     "slot_offset": 0,
     "parameter_offset": 0,
@@ -275,13 +283,19 @@ paging through an export, because each page reads the current live state.
 
 #### show_slot
 
-Show a slot with parameter summaries. Each parameter shows its name, current value, and range (for numerics). Does NOT include enum value lists or full mapping detail — use `show_parameter` for those. Large results may be returned as a `tool_reference`.
+Show a slot with compact, paged parameter summaries. Each parameter shows its
+name and current value. Ranges, enum value lists, and full mapping details are
+reserved for `show_parameter`. The `is_enum`, `is_disabled`, and `has_mapping`
+flags are included only when true.
 
 **Parameters**:
 - `slot_index` (required, integer): Slot index (0-39)
+- `parameter_offset` (optional, integer): Zero-based parameter offset. Default: 0.
+- `parameter_limit` (optional, integer): Parameters in this response. Default: 8;
+  minimum: 1; maximum page size: 16. This does not limit the slot total.
 
 ```json
-{"tool": "show_slot", "arguments": {"slot_index": 0}}
+{"tool": "show_slot", "arguments": {"slot_index": 0, "parameter_limit": 2}}
 ```
 
 **Example response**:
@@ -290,10 +304,18 @@ Show a slot with parameter summaries. Each parameter shows its name, current val
   "slot_index": 0,
   "algorithm": {"guid": "vcod", "name": "Dual VCO"},
   "parameter_count": 18,
+  "offset": 0,
+  "limit": 2,
+  "count": 2,
+  "has_more": true,
   "parameters": [
-    {"parameter_number": 0, "parameter_name": "Pitch", "is_disabled": false, "value": 60, "min": 0, "max": 127},
-    {"parameter_number": 1, "parameter_name": "Waveform", "is_disabled": false, "is_enum": true, "value": "Sawtooth", "has_mapping": true, "performance_page": 1}
-  ]
+    {"parameter_number": 0, "parameter_name": "Pitch", "value": 60},
+    {"parameter_number": 1, "parameter_name": "Waveform", "is_enum": true, "value": "Sawtooth", "has_mapping": true, "performance_page": 1}
+  ],
+  "next": {
+    "tool": "show_slot",
+    "arguments": {"slot_index": 0, "parameter_offset": 2, "parameter_limit": 2}
+  }
 }
 ```
 
@@ -318,7 +340,12 @@ as a `tool_reference`.
 
 #### show_parameter
 
-Show a single parameter with its value, range, unit, and enabled mappings.
+Show a single parameter with its current and default values, range, unit,
+complete enum vocabulary, disabled state, and enabled mappings. This is the
+detailed inspection tool to use before an enum or mapping-sensitive edit.
+Focused edit validation errors also report allowed enum labels or numeric
+ranges; when that information is already present, use it directly rather than
+making a redundant inspection call.
 
 **Parameters**:
 - `slot_index` (required, integer): Slot index (0-39)

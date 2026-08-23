@@ -221,7 +221,8 @@ class DistingTools {
           'success': true,
           'preset_name': presetName,
           'populated_slot_count': 0,
-          'slots': const <dynamic>[],
+          'edit_slot_arguments': null,
+          'slot_parameter_count': 0,
           'paging': {
             'slot_offset': 0,
             'parameter_offset': 0,
@@ -290,12 +291,7 @@ class DistingTools {
         final liveRawValue = paramValue?.value;
         final paramData = <String, dynamic>{
           'parameter_number': pInfo.parameterNumber,
-          'parameter_name': pInfo.name,
-          'is_disabled': paramValue?.isDisabled ?? false,
-          'is_input': pInfo.isInput,
-          'is_output': pInfo.isOutput,
-          'is_audio': pInfo.isAudio,
-          'is_output_mode': pInfo.isOutputMode,
+          'name': pInfo.name,
         };
 
         if (_isEnumParameter(pInfo)) {
@@ -304,8 +300,6 @@ class DistingTools {
             pInfo.parameterNumber,
           );
           if (enumValues != null) {
-            paramData['is_enum'] = true;
-            paramData['valid_enum_values'] = enumValues;
             if (liveRawValue != null) {
               paramData['value'] =
                   _enumIndexToString(enumValues, liveRawValue) ?? '';
@@ -315,18 +309,6 @@ class DistingTools {
           paramData['value'] = liveRawValue != null
               ? _scaleForDisplay(liveRawValue, pInfo.powerOfTen)
               : null;
-          paramData['min_value'] = _scaleForDisplay(
-            pInfo.min,
-            pInfo.powerOfTen,
-          );
-          paramData['max_value'] = _scaleForDisplay(
-            pInfo.max,
-            pInfo.powerOfTen,
-          );
-          paramData['default_value'] = _scaleForDisplay(
-            pInfo.defaultValue,
-            pInfo.powerOfTen,
-          );
         }
 
         try {
@@ -345,7 +327,6 @@ class DistingTools {
       final algorithmData = <String, dynamic>{
         'guid': algorithm.guid,
         'name': algorithm.name,
-        'algorithm_index': algorithm.algorithmIndex,
         if (algorithm.specifications.isNotEmpty)
           'specifications': algorithm.specifications,
       };
@@ -375,15 +356,15 @@ class DistingTools {
         'success': true,
         'preset_name': presetName,
         'populated_slot_count': populatedSlots.length,
-        'slots': [
-          {
-            'slot_index': slotIndex,
+        'edit_slot_arguments': {
+          'slot_index': slotIndex,
+          'data': {
             'name': slotName ?? algorithm.name,
             'algorithm': algorithmData,
             'parameters': parametersJsonList,
-            'total_parameters': parameterInfos.length,
           },
-        ],
+        },
+        'slot_parameter_count': parameterInfos.length,
         'paging': {
           'slot_offset': slotOffset,
           'parameter_offset': parameterOffset,

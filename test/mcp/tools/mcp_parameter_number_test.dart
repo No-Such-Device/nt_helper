@@ -1802,15 +1802,23 @@ void main() {
         'parameter_limit': 1,
       });
       final json = jsonDecode(result) as Map<String, dynamic>;
-      final slots = json['slots'] as List<dynamic>;
-      final slot = slots.single as Map<String, dynamic>;
+      final editArguments = json['edit_slot_arguments'] as Map<String, dynamic>;
+      final slot = editArguments['data'] as Map<String, dynamic>;
       final params = slot['parameters'] as List<dynamic>;
 
       expect(json['success'], isTrue);
       expect(json['populated_slot_count'], 1);
+      expect(editArguments['slot_index'], 0);
       expect(slot['name'], 'Lead Voice');
+      expect(slot['algorithm'], {'guid': 'test', 'name': 'TestAlgo'});
       expect(params, hasLength(1));
-      expect(params.first['mapping'], {'performance_page': 3});
+      expect(params.single, {
+        'parameter_number': 0,
+        'name': 'Level',
+        'value': 50,
+        'mapping': {'performance_page': 3},
+      });
+      expect(json['slot_parameter_count'], 3);
       expect(json['paging'], {
         'slot_offset': 0,
         'parameter_offset': 0,
@@ -1828,21 +1836,6 @@ void main() {
         },
       });
 
-      for (final p in params) {
-        final param = p as Map<String, dynamic>;
-        expect(
-          param.containsKey('parameter_name'),
-          isTrue,
-          reason:
-              'getCurrentPreset response should use parameter_name, not name',
-        );
-        expect(
-          param.containsKey('name'),
-          isFalse,
-          reason: 'getCurrentPreset response should not use bare name key',
-        );
-      }
-
       final nextArguments =
           ((json['paging'] as Map<String, dynamic>)['next']
                   as Map<String, dynamic>)['arguments']
@@ -1850,7 +1843,9 @@ void main() {
       final next =
           jsonDecode(await distingTools.getCurrentPreset(nextArguments))
               as Map<String, dynamic>;
-      final nextSlot = (next['slots'] as List<dynamic>).single;
+      final nextEditArguments =
+          next['edit_slot_arguments'] as Map<String, dynamic>;
+      final nextSlot = nextEditArguments['data'] as Map<String, dynamic>;
       final nextParams = nextSlot['parameters'] as List<dynamic>;
       expect(nextParams.single['parameter_number'], 5);
     });
@@ -1880,7 +1875,10 @@ void main() {
         final next = paging['next'] as Map<String, dynamic>;
 
         expect(json['populated_slot_count'], 2);
-        expect((json['slots'] as List<dynamic>).single['slot_index'], 0);
+        expect(
+          (json['edit_slot_arguments'] as Map<String, dynamic>)['slot_index'],
+          0,
+        );
         expect(paging['count'], 0);
         expect(paging['has_more'], isTrue);
         expect(next['arguments'], {

@@ -4,7 +4,12 @@ import 'package:flutter/foundation.dart' show DiagnosticLevel;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart'
-    show Algorithm, Mapping, ParameterInfo, ParameterValue;
+    show
+        Algorithm,
+        Mapping,
+        ParameterEnumStrings,
+        ParameterInfo,
+        ParameterValue;
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:nt_helper/models/cpu_usage.dart';
 import 'package:nt_helper/mcp/tools/algorithm_tools.dart';
@@ -440,7 +445,9 @@ void main() {
       expect(json['algorithm'], isA<Map>());
       expect((json['algorithm'] as Map<String, dynamic>)['guid'], equals(''));
       expect(json['parameter_count'], equals(0));
+      expect(json['count'], equals(0));
       expect(json['has_more'], isFalse);
+      expect(json['next'], isNull);
     });
 
     test('triggers _ensureSlotReady when parameters empty', () async {
@@ -460,16 +467,67 @@ void main() {
   });
 
   group('showSlot — result sizing', () {
-    test('returns all parameters by default', () async {
-      final result = await algoTools.showSlot(0);
-      final json = jsonDecode(result) as Map<String, dynamic>;
+    test(
+      'returns a bounded page by default with an exact continuation',
+      () async {
+        final parameters = List.generate(
+          10,
+          (index) => ParameterInfo(
+            algorithmIndex: 0,
+            parameterNumber: index,
+            min: 0,
+            max: 100,
+            defaultValue: 0,
+            unit: 0,
+            name: 'Parameter $index',
+            powerOfTen: 0,
+          ),
+        );
+        final values = List.generate(
+          10,
+          (index) => ParameterValue(
+            algorithmIndex: 0,
+            parameterNumber: index,
+            value: index,
+          ),
+        );
+        final mappings = List.generate(
+          10,
+          (index) => Mapping(
+            algorithmIndex: 0,
+            parameterNumber: index,
+            packedMappingData: PackedMappingData.filler(),
+          ),
+        );
+        when(
+          () => controller.getParametersForSlot(0),
+        ).thenAnswer((_) async => parameters);
+        when(
+          () => controller.getValuesForSlot(0),
+        ).thenAnswer((_) async => values);
+        when(
+          () => controller.getMappingsForSlot(0),
+        ).thenAnswer((_) async => mappings);
 
-      expect(json['parameter_count'], equals(3));
-      expect(json['offset'], equals(0));
-      expect(json['limit'], equals(3));
-      expect(json['has_more'], isFalse);
-      expect((json['parameters'] as List).length, equals(3));
-    });
+        final result = await algoTools.showSlot(0);
+        final json = jsonDecode(result) as Map<String, dynamic>;
+
+        expect(json['parameter_count'], equals(10));
+        expect(json['offset'], equals(0));
+        expect(json['limit'], equals(8));
+        expect(json['count'], equals(8));
+        expect(json['has_more'], isTrue);
+        expect((json['parameters'] as List).length, equals(8));
+        expect(json['next'], {
+          'tool': 'show_slot',
+          'arguments': {
+            'slot_index': 0,
+            'parameter_offset': 8,
+            'parameter_limit': 8,
+          },
+        });
+      },
+    );
 
     test('respects custom limit', () async {
       final result = await algoTools.showSlot(0, limit: 2);
@@ -477,6 +535,14 @@ void main() {
 
       expect((json['parameters'] as List).length, equals(2));
       expect(json['has_more'], isTrue);
+      expect(json['next'], {
+        'tool': 'show_slot',
+        'arguments': {
+          'slot_index': 0,
+          'parameter_offset': 2,
+          'parameter_limit': 2,
+        },
+      });
     });
 
     test('respects offset', () async {
@@ -495,11 +561,39 @@ void main() {
       expect((json['parameters'] as List), isEmpty);
       expect(json['has_more'], isFalse);
     });
+
+    test(
+      'rejects a parameter page larger than the context-safe maximum',
+      () async {
+        final result = await algoTools.showSlot(0, limit: 17);
+        final json = jsonDecode(result) as Map<String, dynamic>;
+
+        expect(json['success'], isFalse);
+        expect(json['error'], contains('between 1 and 16 per page'));
+      },
+    );
   });
 
   group('showSlot — parameter summary format', () {
+    test('includes algorithm specification values', () async {
+      when(() => controller.getAlgorithmInSlot(0)).thenAnswer(
+        (_) async => Algorithm(
+          algorithmIndex: 0,
+          guid: 'test',
+          name: 'TestAlgo',
+          specifications: const [2, 4],
+        ),
+      );
+
+      final result = await algoTools.showSlot(0);
+      final json = jsonDecode(result) as Map<String, dynamic>;
+      final algorithm = json['algorithm'] as Map<String, dynamic>;
+
+      expect(algorithm['specifications'], equals([2, 4]));
+    });
+
     test(
-      'numeric parameter has value, min, max but no valid_enum_values',
+      'numeric summary has current state but omits inspection metadata',
       () async {
         final result = await algoTools.showSlot(0);
         final json = jsonDecode(result) as Map<String, dynamic>;
@@ -507,8 +601,9 @@ void main() {
         final param = (json['parameters'] as List)[0] as Map<String, dynamic>;
         expect(param['parameter_name'], equals('Level'));
         expect(param['value'], isNotNull);
-        expect(param['min'], isNotNull);
-        expect(param['max'], isNotNull);
+        expect(param.containsKey('min'), isFalse);
+        expect(param.containsKey('max'), isFalse);
+        expect(param.containsKey('is_disabled'), isFalse);
         expect(param.containsKey('valid_enum_values'), isFalse);
       },
     );
@@ -832,49 +927,102 @@ void main() {
   });
 
   group('_buildParameterJson — scaling and disabled', () {
-    test('applies powerOfTen scaling to value, min, max', () async {
-      final scaledParams = [
+    test(
+      'applies powerOfTen scaling to value, min, max, and default',
+      () async {
+        final scaledParams = [
+          ParameterInfo(
+            algorithmIndex: 0,
+            parameterNumber: 0,
+            min: 0,
+            max: 10000,
+            defaultValue: 5000,
+            unit: 0,
+            name: 'ScaledParam',
+            powerOfTen: 2,
+          ),
+        ];
+        final scaledValues = [
+          ParameterValue(algorithmIndex: 0, parameterNumber: 0, value: 150),
+        ];
+        final scaledMappings = [
+          Mapping(
+            algorithmIndex: 0,
+            parameterNumber: 0,
+            packedMappingData: PackedMappingData.filler(),
+          ),
+        ];
+
+        when(
+          () => controller.getParametersForSlot(0),
+        ).thenAnswer((_) async => scaledParams);
+        when(
+          () => controller.getValuesForSlot(0),
+        ).thenAnswer((_) async => scaledValues);
+        when(
+          () => controller.getMappingsForSlot(0),
+        ).thenAnswer((_) async => scaledMappings);
+
+        final result = await algoTools.showParameter('0:0');
+        final json = jsonDecode(result) as Map<String, dynamic>;
+
+        // Display-scaled: 150 / 10^2 = 1.5
+        expect(json['value'], equals(1.5));
+        // Display-scaled: 0 / 10^2 = 0
+        expect(json['min'], equals(0));
+        // Display-scaled: 10000 / 10^2 = 100.0
+        expect(json['max'], equals(100.0));
+        // Display-scaled: 5000 / 10^2 = 50.0
+        expect(json['default'], equals(50.0));
+      },
+    );
+
+    test('reports readable enum current and default values', () async {
+      final enumParameters = [
         ParameterInfo(
           algorithmIndex: 0,
           parameterNumber: 0,
           min: 0,
-          max: 10000,
-          defaultValue: 5000,
-          unit: 0,
-          name: 'ScaledParam',
-          powerOfTen: 2,
+          max: 2,
+          defaultValue: 1,
+          unit: 1,
+          name: 'Mode',
+          powerOfTen: 0,
         ),
       ];
-      final scaledValues = [
-        ParameterValue(algorithmIndex: 0, parameterNumber: 0, value: 150),
+      final enumValues = [
+        ParameterValue(algorithmIndex: 0, parameterNumber: 0, value: 2),
       ];
-      final scaledMappings = [
+      final enumMappings = [
         Mapping(
           algorithmIndex: 0,
           parameterNumber: 0,
           packedMappingData: PackedMappingData.filler(),
         ),
       ];
-
       when(
         () => controller.getParametersForSlot(0),
-      ).thenAnswer((_) async => scaledParams);
+      ).thenAnswer((_) async => enumParameters);
       when(
         () => controller.getValuesForSlot(0),
-      ).thenAnswer((_) async => scaledValues);
+      ).thenAnswer((_) async => enumValues);
       when(
         () => controller.getMappingsForSlot(0),
-      ).thenAnswer((_) async => scaledMappings);
+      ).thenAnswer((_) async => enumMappings);
+      when(() => controller.getParameterEnumStrings(0, 0)).thenAnswer(
+        (_) async => ParameterEnumStrings(
+          algorithmIndex: 0,
+          parameterNumber: 0,
+          values: ['Off', 'Low', 'High'],
+        ),
+      );
 
       final result = await algoTools.showParameter('0:0');
       final json = jsonDecode(result) as Map<String, dynamic>;
 
-      // Display-scaled: 150 / 10^2 = 1.5
-      expect(json['value'], equals(1.5));
-      // Display-scaled: 0 / 10^2 = 0
-      expect(json['min'], equals(0));
-      // Display-scaled: 10000 / 10^2 = 100.0
-      expect(json['max'], equals(100.0));
+      expect(json['value'], equals('High'));
+      expect(json['default'], equals('Low'));
+      expect(json['valid_enum_values'], equals(['Off', 'Low', 'High']));
     });
 
     test('includes is_disabled flag', () async {
