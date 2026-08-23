@@ -61,7 +61,10 @@ class AnthropicSubscriptionProvider
     final body = <String, dynamic>{
       'model': model,
       'max_tokens': 4096,
-      'messages': _delegate.convertMessages(messages),
+      'messages': withAnthropicRollingCacheBreakpoint(
+        _delegate.convertMessages(messages),
+      ),
+      'cache_control': anthropicLongCacheControl,
     };
 
     // Prepend required system prefix for subscription auth
@@ -72,7 +75,7 @@ class AnthropicSubscriptionProvider
       {
         'type': 'text',
         'text': fullSystemPrompt,
-        'cache_control': {'type': 'ephemeral'},
+        'cache_control': anthropicLongCacheControl,
       },
     ];
 
@@ -86,7 +89,7 @@ class AnthropicSubscriptionProvider
             },
           )
           .toList();
-      toolsList.last['cache_control'] = {'type': 'ephemeral'};
+      toolsList.last['cache_control'] = anthropicLongCacheControl;
       body['tools'] = toolsList;
     }
 

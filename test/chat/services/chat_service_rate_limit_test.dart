@@ -35,6 +35,46 @@ void main() {
     );
   });
 
+  group('Provider-safe tool history', () {
+    test('drops orphan results and unmatched calls at the boundary', () {
+      final repaired = providerSafeToolHistory([
+        LlmMessage.user('start'),
+        LlmMessage.toolResult(
+          toolCallId: 'orphan',
+          toolName: 'show_preset',
+          content: '{}',
+        ),
+        LlmMessage.assistantWithToolCalls(const [
+          LlmToolCall(id: 'matched', name: 'show_preset', arguments: {}),
+          LlmToolCall(id: 'missing', name: 'show_slot', arguments: {}),
+        ], content: 'Checking.'),
+        LlmMessage.toolResult(
+          toolCallId: 'matched',
+          toolName: 'show_preset',
+          content: '{"success":true}',
+        ),
+      ]);
+
+      expect(repaired, hasLength(3));
+      expect(repaired[0].role, LlmRole.user);
+      expect(repaired[1].content, 'Checking.');
+      expect(repaired[1].toolCalls?.map((call) => call.id), ['matched']);
+      expect(repaired[2].toolCallId, 'matched');
+    });
+
+    test('keeps assistant text when all incomplete calls are removed', () {
+      final repaired = providerSafeToolHistory([
+        LlmMessage.assistantWithToolCalls(const [
+          LlmToolCall(id: 'missing', name: 'show_slot', arguments: {}),
+        ], content: 'I will inspect that.'),
+      ]);
+
+      expect(repaired, hasLength(1));
+      expect(repaired.single.content, 'I will inspect that.');
+      expect(repaired.single.toolCalls, isNull);
+    });
+  });
+
   group('Tool references', () {
     test('large tool result reference is sent to the next model call', () async {
       const referenceResult =

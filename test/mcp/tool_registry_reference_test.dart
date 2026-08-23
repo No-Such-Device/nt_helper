@@ -77,5 +77,24 @@ void main() {
       expect(names, contains(ToolReferenceStore.readToolName));
       expect(names, contains(ToolReferenceStore.searchToolName));
     });
+
+    test('preset read and rename tools advertise safe distinct semantics', () {
+      final registry = ToolRegistry(MockDistingCubit());
+      final getPreset = registry.findByName('get_preset');
+      final renamePreset = registry.findByName('rename_preset');
+
+      expect(getPreset, isNotNull);
+      expect(getPreset!.description, contains('complete current preset'));
+      expect(getPreset.description, contains('without changing it'));
+      expect(renamePreset, isNotNull);
+      expect(renamePreset!.description, contains('Non-destructively'));
+      expect(renamePreset.description, contains('instead of edit_preset'));
+      expect(renamePreset.inputSchema['required'], ['name']);
+      final properties =
+          renamePreset.inputSchema['properties'] as Map<String, dynamic>;
+      final name = properties['name'] as Map<String, dynamic>;
+      expect(name['minLength'], 1);
+      expect(name['maxLength'], 31);
+    });
   });
 }

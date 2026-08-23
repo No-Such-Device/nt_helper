@@ -246,11 +246,9 @@ class DistingTools {
                 i,
                 pInfo.parameterNumber,
               );
-              if (mapping != null) {
-                final perfPageIndex = mapping.packedMappingData.perfPageIndex;
-                if (perfPageIndex > 0) {
-                  paramData['performance_page'] = perfPageIndex;
-                }
+              final mappingJson = await _buildMappingJson(mapping);
+              if (mappingJson != null) {
+                paramData['mapping'] = mappingJson;
               }
             } catch (e) {
               // Intentionally empty
@@ -271,8 +269,17 @@ class DistingTools {
             algorithmData['specifications'] = algorithm.specifications;
           }
 
+          String? slotName;
+          try {
+            slotName = await _controller.getSlotName(i);
+          } catch (_) {
+            // The algorithm name remains available when a custom name cannot
+            // be read from the current adapter.
+          }
+
           slotsJsonList[i] = {
             'slot_index': i,
+            'name': slotName ?? algorithm.name,
             'algorithm': algorithmData,
             'parameters': parametersJsonList,
             'total_parameters': parametersJsonList.length,
@@ -634,7 +641,7 @@ class DistingTools {
           return jsonEncode(
             convertToSnakeCaseKeys(
               MCPUtils.buildError(
-                'Parameter with name "$parameterNameParam" not found in slot $slotIndex. Check `get_current_preset` for available parameters.',
+                'Parameter with name "$parameterNameParam" not found in slot $slotIndex. Check `get_preset` for available parameters.',
               ),
             ),
           );
@@ -911,17 +918,33 @@ class DistingTools {
   Future<String> setPresetName(Map<String, dynamic> params) async {
     final String? name = params['name'] as String?;
 
-    // Validate name parameter
-    final nameError = MCPUtils.validateRequiredParam(name, 'name');
-    if (nameError != null) {
-      return jsonEncode(convertToSnakeCaseKeys(nameError));
+    final trimmedName = name?.trim();
+    if (trimmedName == null || trimmedName.isEmpty) {
+      return jsonEncode(
+        convertToSnakeCaseKeys(
+          MCPUtils.buildError('Preset name must contain 1-31 characters.'),
+        ),
+      );
+    }
+    if (trimmedName.length > 31) {
+      return jsonEncode(
+        convertToSnakeCaseKeys(
+          MCPUtils.buildError(
+            'Preset name is ${trimmedName.length} characters; the maximum is 31.',
+          ),
+        ),
+      );
     }
 
     try {
-      await _controller.setPresetName(name!);
+      await _controller.setPresetName(trimmedName);
+      final appliedName = await _controller.getCurrentPresetName();
       return jsonEncode(
         convertToSnakeCaseKeys(
-          MCPUtils.buildSuccess('Preset name set to "$name".'),
+          MCPUtils.buildSuccess(
+            'Preset renamed to "$appliedName" and saved without changing its contents.',
+            data: {'preset_name': appliedName, 'persisted': true},
+          ),
         ),
       );
     } catch (e) {

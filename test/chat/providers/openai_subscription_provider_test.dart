@@ -104,7 +104,14 @@ void main() {
           {
             'type': 'response.completed',
             'response': {
-              'usage': {'input_tokens': 10, 'output_tokens': 2},
+              'usage': {
+                'input_tokens': 10,
+                'output_tokens': 2,
+                'input_tokens_details': {
+                  'cached_tokens': 8,
+                  'cache_write_tokens': 1,
+                },
+              },
             },
           },
         ]),
@@ -112,6 +119,7 @@ void main() {
       final provider = OpenAISubscriptionProvider(
         model: 'gpt-5.4-mini',
         allowAuthRefresh: false,
+        promptCacheKey: 'chat-session-123',
         authService: auth,
         client: client,
       );
@@ -140,11 +148,15 @@ void main() {
       expect(response.toolCalls.single.arguments, {'slot': 1});
       expect(response.usage?.inputTokens, 10);
       expect(response.usage?.outputTokens, 2);
+      expect(response.usage?.cacheReadInputTokens, 8);
+      expect(response.usage?.cacheCreationInputTokens, 1);
+      expect(response.usage?.contextInputTokens, 10);
 
       final body =
           jsonDecode(client.requests.single.body) as Map<String, dynamic>;
       expect(body['model'], 'gpt-5.4-mini');
       expect(body['stream'], isTrue);
+      expect(body['prompt_cache_key'], 'chat-session-123');
       expect((body['tools'] as List).single['type'], 'function');
       expect(client.requests.single.headers['Authorization'], 'Bearer token');
       expect(client.requests.single.headers['ChatGPT-Account-ID'], 'account');

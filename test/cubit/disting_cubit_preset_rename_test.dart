@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -71,6 +73,38 @@ void main() {
   }
 
   group('renamePreset auto-save', () {
+    test('awaitable rename completes only after the save completes', () async {
+      final saveCompleter = Completer<void>();
+      when(
+        () => mockDisting.requestSavePreset(),
+      ).thenAnswer((_) => saveCompleter.future);
+      cubit.emit(makeSyncState(presetName: 'Old Name'));
+
+      var completed = false;
+      final rename = cubit.renamePresetAndSave('New Name').then((_) {
+        completed = true;
+      });
+      await pumpEventQueue();
+
+      expect(completed, isFalse);
+      saveCompleter.complete();
+      await rename;
+      expect(completed, isTrue);
+    });
+
+    test('awaitable rename reports a failed write', () async {
+      when(
+        () => mockDisting.requestSetPresetName(any()),
+      ).thenThrow(StateError('rename failed'));
+      cubit.emit(makeSyncState(presetName: 'Old Name'));
+
+      await expectLater(
+        cubit.renamePresetAndSave('New Name'),
+        throwsA(isA<StateError>()),
+      );
+      verifyNever(() => mockDisting.requestSavePreset());
+    });
+
     test('rename to non-empty name calls set then save in order', () async {
       cubit.emit(makeSyncState(presetName: 'Old Name'));
 

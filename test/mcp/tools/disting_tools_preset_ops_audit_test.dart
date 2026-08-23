@@ -310,13 +310,51 @@ void main() {
 
     test('sets name successfully', () async {
       when(() => controller.setPresetName('NewName')).thenAnswer((_) async {});
+      when(
+        () => controller.getCurrentPresetName(),
+      ).thenAnswer((_) async => 'NewName');
 
       final result = await distingTools.setPresetName({'name': 'NewName'});
       final json = jsonDecode(result) as Map<String, dynamic>;
       expect(json['success'], isTrue);
       expect(json['message'], contains('NewName'));
+      expect(json['preset_name'], 'NewName');
+      expect(json['persisted'], isTrue);
       verify(() => controller.setPresetName('NewName')).called(1);
     });
+
+    test('trims the name before applying it', () async {
+      when(() => controller.setPresetName('NewName')).thenAnswer((_) async {});
+      when(
+        () => controller.getCurrentPresetName(),
+      ).thenAnswer((_) async => 'NewName');
+
+      final result = await distingTools.setPresetName({'name': '  NewName  '});
+      final json = jsonDecode(result) as Map<String, dynamic>;
+
+      expect(json['success'], isTrue);
+      verify(() => controller.setPresetName('NewName')).called(1);
+    });
+
+    test(
+      'rejects blank and overlong names without changing hardware',
+      () async {
+        final blank =
+            jsonDecode(await distingTools.setPresetName({'name': '   '}))
+                as Map<String, dynamic>;
+        final overlong =
+            jsonDecode(
+                  await distingTools.setPresetName({
+                    'name': List.filled(32, 'x').join(),
+                  }),
+                )
+                as Map<String, dynamic>;
+
+        expect(blank['success'], isFalse);
+        expect(overlong['success'], isFalse);
+        verifyNever(() => controller.setPresetName(any()));
+      },
+    );
   });
 
   group('getSlotName', () {

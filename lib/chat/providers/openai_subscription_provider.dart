@@ -13,6 +13,7 @@ import 'package:nt_helper/services/debug_service.dart';
 class OpenAISubscriptionProvider implements LlmProvider {
   final String model;
   final bool allowAuthRefresh;
+  final String promptCacheKey;
   final CodexAuthService authService;
   final http.Client _client;
 
@@ -22,6 +23,7 @@ class OpenAISubscriptionProvider implements LlmProvider {
   OpenAISubscriptionProvider({
     required this.model,
     required this.allowAuthRefresh,
+    this.promptCacheKey = 'nt_helper_chat',
     CodexAuthService? authService,
     http.Client? client,
   }) : authService = authService ?? CodexAuthService(client: client),
@@ -97,7 +99,7 @@ class OpenAISubscriptionProvider implements LlmProvider {
       'store': false,
       'stream': true,
       'include': const <String>[],
-      'prompt_cache_key': 'nt_helper_chat',
+      'prompt_cache_key': promptCacheKey,
     });
     return _client.send(request);
   }
@@ -297,12 +299,17 @@ class OpenAISubscriptionProvider implements LlmProvider {
     if (rawResponse is! Map) return null;
     final usage = rawResponse['usage'];
     if (usage is! Map) return null;
+    final inputTokens = _intField(usage['input_tokens']);
+    final inputTokenDetails = usage['input_tokens_details'] as Map?;
     return LlmUsage(
-      inputTokens: _intField(usage['input_tokens']),
+      inputTokens: inputTokens,
       outputTokens: _intField(usage['output_tokens']),
-      cacheReadInputTokens: _intField(
-        (usage['input_tokens_details'] as Map?)?['cached_tokens'],
+      cacheCreationInputTokens: _intField(
+        inputTokenDetails?['cache_write_tokens'],
       ),
+      cacheReadInputTokens: _intField(inputTokenDetails?['cached_tokens']),
+      // OpenAI's input_tokens already includes cached tokens.
+      peakInputTokens: inputTokens,
     );
   }
 

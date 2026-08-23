@@ -1782,12 +1782,30 @@ void main() {
           any(that: isA<int>()),
         ),
       ).thenAnswer((_) async => null);
+      when(
+        () => controller.getParameterMapping(0, any(that: isA<int>())),
+      ).thenAnswer((invocation) async {
+        final parameterNumber = invocation.positionalArguments[1] as int;
+        return Mapping(
+          algorithmIndex: 0,
+          parameterNumber: parameterNumber,
+          packedMappingData: PackedMappingData.filler().copyWith(
+            perfPageIndex: parameterNumber == 0 ? 3 : 0,
+          ),
+        );
+      });
+      when(
+        () => controller.getSlotName(0),
+      ).thenAnswer((_) async => 'Lead Voice');
 
       final result = await distingTools.getCurrentPreset({});
       final json = jsonDecode(result) as Map<String, dynamic>;
       final slots = json['slots'] as List<dynamic>;
       final slot = (slots.firstWhere((s) => s != null)) as Map<String, dynamic>;
       final params = slot['parameters'] as List<dynamic>;
+
+      expect(slot['name'], 'Lead Voice');
+      expect(params.first['mapping'], {'performance_page': 3});
 
       for (final p in params) {
         final param = p as Map<String, dynamic>;

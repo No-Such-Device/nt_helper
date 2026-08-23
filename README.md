@@ -63,17 +63,17 @@ This project is open source.
 
 ## MCP Tools
 
-The application includes an MCP (Model Context Protocol) server with 6 tools for AI-assisted preset creation:
+The MCP server and in-app chat share one registry of focused tools for safe
+preset inspection and editing. Key preset workflows include:
 
 | Tool | Purpose |
 |------|---------|
-| `search` | Find algorithms by name or category |
-| `show` | Inspect preset, slot, parameter, routing, CPU, or screen |
-| `new` | Create a new preset with optional algorithms |
-| `save` | Save the current preset to the device |
-| `add` | Add an algorithm to the preset |
-| `edit` | Modify preset, slot, or parameter values/mappings |
-
-Most tools use `target` to specify what they operate on (e.g., `target: "algorithm"`, `target: "slot"`).
+| `show_preset` | Read a compact preset overview |
+| `get_preset` | Read complete current state for backup/export |
+| `rename_preset` | Rename and save without changing preset contents |
+| `show_slot` / `show_parameter` | Inspect exact slot and parameter state |
+| `edit_slot` / `edit_parameter` | Apply focused partial changes |
+| `edit_preset` | Deliberately replace the full preset |
+| `new` / `save` | Create or persist a preset |
 
 See [docs/mcp-api-guide.md](docs/mcp-api-guide.md) for detailed documentation.

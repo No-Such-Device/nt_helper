@@ -209,6 +209,24 @@ Show a compact preset overview: preset name and slot list with algorithm names a
 
 ---
 
+#### get_preset
+
+Read the complete current preset without changing it. This is the safe choice
+for backup/export or whenever a task needs exact current state rather than the
+compact overview from `show_preset`.
+
+**Parameters**: None
+
+**Returns**: Preset name plus every populated slot's custom name, algorithm,
+specifications, parameter values and ranges, exact enum labels, and enabled
+CV/MIDI/i2c/performance mappings. Large responses become a `tool_reference`.
+
+```json
+{"tool": "get_preset", "arguments": {}}
+```
+
+---
+
 #### show_slot
 
 Show a slot with parameter summaries. Each parameter shows its name, current value, and range (for numerics). Does NOT include enum value lists or full mapping detail — use `show_parameter` for those. Large results may be returned as a `tool_reference`.
@@ -309,14 +327,34 @@ Show CPU usage for the device and per-slot usage breakdown.
 
 ### Edit Tools
 
+#### rename_preset
+
+Rename and save the current preset without changing any slot, algorithm,
+parameter, specification, slot name, or mapping.
+
+**Parameters**:
+- `name` (required, string): New preset name. Leading/trailing whitespace is
+  removed; the resulting name must contain 1-31 characters.
+
+```json
+{"tool": "rename_preset", "arguments": {"name": "Live Set"}}
+```
+
+This operation saves automatically. Use it for a name-only change; do not
+reconstruct the preset with `edit_preset` merely to rename it.
+
+---
+
 #### edit_preset
 
-Edit the entire preset state including name and all slots. Replaces the full preset.
+Replace the entire preset state including name and all slots. This is a
+destructive full replacement, not a partial update.
 
 **Parameters**:
 - `data` (required, object): Full preset data with `name` and `slots` array
 
-**Use when**: Restructuring preset, reordering algorithms, bulk changes.
+**Use when**: Restructuring preset, reordering algorithms, or making deliberate
+bulk changes. For a name-only change, use `rename_preset`.
 
 ```json
 {
@@ -721,12 +759,14 @@ Returns full detail: `valid_enum_values` for enums, complete mapping configurati
 | `search` target="algorithm" | `search_algorithms` |
 | `search` target="parameter" | `search_parameters` |
 | `show` target="preset" | `show_preset` |
+| `get_current_preset` | `get_preset` |
 | `show` target="slot" | `show_slot` |
 | `show` target="parameter" | `show_parameter` |
 | `show` target="screen" | `show_screen` |
 | `show` target="routing" | `show_routing` |
 | `show` target="cpu" | `show_cpu` |
 | `edit` target="preset" | `edit_preset` |
+| `set_preset_name` | `rename_preset` |
 | `edit` target="slot" | `edit_slot` |
 | `edit` target="parameter" | `edit_parameter` |
 | `new` | `new` (unchanged) |
@@ -736,5 +776,5 @@ Returns full detail: `valid_enum_values` for enums, complete mapping configurati
 
 ---
 
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-08-23
 **MCP Library**: mcp_dart 1.2.2

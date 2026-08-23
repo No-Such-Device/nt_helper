@@ -94,8 +94,8 @@ class DistingControllerImpl implements DistingController {
 
   @override
   Future<void> setPresetName(String name) async {
-    _distingCubit.renamePreset(name);
-    return Future.value();
+    _getSynchronizedState();
+    await _distingCubit.renamePresetAndSave(name);
   }
 
   @override

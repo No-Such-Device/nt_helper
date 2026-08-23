@@ -17,6 +17,7 @@ import 'package:nt_helper/chat/services/memory_service.dart';
 import 'package:nt_helper/chat/services/system_prompt.dart';
 import 'package:nt_helper/chat/services/tool_bridge_service.dart';
 import 'package:nt_helper/mcp/tool_registry.dart';
+import 'package:uuid/uuid.dart';
 
 typedef LlmProviderFactory = LlmProvider Function(ChatSettings settings);
 
@@ -27,7 +28,6 @@ class ChatCubit extends Cubit<ChatState> {
   StreamSubscription<dynamic>? _loopSubscription;
   LlmProvider? _activeProvider;
   Future<void>? _summarizationFuture;
-  Future<void>? _memoryRefreshFuture;
   bool _compacting = false;
 
   // Accumulated LLM message history for the agentic loop
@@ -41,10 +41,11 @@ class ChatCubit extends Cubit<ChatState> {
   bool _bootstrapped = false;
   String? _memoryContent;
   String? _dailyLogs;
+  String? _activeSystemPrompt;
+  String _promptCacheKey = const Uuid().v4();
   int _currentContextWindowTokens = LlmProvider.defaultContextWindowTokens;
   int _lastContextInputTokens = 0;
   bool _needsCompaction = false;
-  Object? _memoryRefreshError;
 
   static const _compactionThresholdPercent = 85;
 
@@ -131,8 +132,6 @@ class ChatCubit extends Cubit<ChatState> {
         _bootstrapped = true;
       }
 
-      await _waitForMemoryRefresh();
-
       // Wait for any in-flight summarization before compaction/provider reset.
       if (_summarizationFuture != null) {
         await _summarizationFuture;
@@ -182,10 +181,7 @@ class ChatCubit extends Cubit<ChatState> {
       final chatService = ChatService(
         provider: _activeProvider!,
         toolBridge: toolBridge,
-        systemPrompt: distingNtSystemPrompt(
-          memoryContent: _memoryContent,
-          dailyLogs: _dailyLogs,
-        ),
+        systemPrompt: _systemPromptForSession,
       );
 
       // Run agentic loop
@@ -348,12 +344,6 @@ class ChatCubit extends Cubit<ChatState> {
             clearToolName: true,
           ),
         );
-        // Keep cached memory context in sync for subsequent turns.
-        if (name == 'memory_write') {
-          _queueMemoryRefresh(_refreshMemory);
-        } else if (name == 'memory_append_daily') {
-          _queueMemoryRefresh(_refreshDailyLogs);
-        }
       case ChatLoopAssistantMessage(
         content: final content,
         usage: final usage,
@@ -420,32 +410,11 @@ class ChatCubit extends Cubit<ChatState> {
     }
   }
 
-  Future<void> _refreshMemory() async {
-    _memoryContent = await _memoryService.readMemory();
-  }
-
-  Future<void> _refreshDailyLogs() async {
-    _dailyLogs = await _memoryService.readDailyLogs();
-  }
-
-  void _queueMemoryRefresh(Future<void> Function() refresh) {
-    _memoryRefreshFuture = (_memoryRefreshFuture ?? Future<void>.value())
-        .then((_) => refresh())
-        .catchError((Object error) {
-          _memoryRefreshError ??= error;
-        });
-  }
-
-  Future<void> _waitForMemoryRefresh({bool reportErrors = true}) async {
-    final future = _memoryRefreshFuture;
-    if (future == null) return;
-    await future;
-    _memoryRefreshFuture = null;
-    final error = _memoryRefreshError;
-    _memoryRefreshError = null;
-    if (reportErrors && error != null) {
-      throw StateError('Failed to refresh chat memory context: $error');
-    }
+  String get _systemPromptForSession {
+    return _activeSystemPrompt ??= distingNtSystemPrompt(
+      memoryContent: _memoryContent,
+      dailyLogs: _dailyLogs,
+    );
   }
 
   Future<void> _resetActiveProvider(ChatSettings settings) async {
@@ -541,10 +510,7 @@ class ChatCubit extends Cubit<ChatState> {
     final chatService = ChatService(
       provider: _activeProvider!,
       toolBridge: toolBridge,
-      systemPrompt: distingNtSystemPrompt(
-        memoryContent: _memoryContent,
-        dailyLogs: _dailyLogs,
-      ),
+      systemPrompt: _systemPromptForSession,
     );
 
     final completer = Completer<void>();
@@ -690,12 +656,13 @@ class ChatCubit extends Cubit<ChatState> {
       await _summarizationFuture;
       _summarizationFuture = null;
     }
-    await _waitForMemoryRefresh(reportErrors: false);
     if (_llmHistory.isNotEmpty) {
       await _memoryService.saveSessionSnapshot(_llmHistory.toList());
     }
     _llmHistory.clear();
     _bootstrapped = false;
+    _activeSystemPrompt = null;
+    _promptCacheKey = const Uuid().v4();
     _needsCompaction = false;
     _lastContextInputTokens = 0;
     emit(const ChatReady());
@@ -730,7 +697,6 @@ class ChatCubit extends Cubit<ChatState> {
         _dailyLogs = await _memoryService.readDailyLogs();
         _bootstrapped = true;
       }
-      await _waitForMemoryRefresh();
       if (_summarizationFuture != null) {
         await _summarizationFuture;
         _summarizationFuture = null;
@@ -771,6 +737,9 @@ class ChatCubit extends Cubit<ChatState> {
 
   void dismissError() {
     _llmHistory.clear();
+    _bootstrapped = false;
+    _activeSystemPrompt = null;
+    _promptCacheKey = const Uuid().v4();
     _needsCompaction = false;
     _lastContextInputTokens = 0;
     emit(const ChatReady());
@@ -831,11 +800,13 @@ class ChatCubit extends Cubit<ChatState> {
           apiKey: settings.openaiApiKey!,
           model: settings.openaiModel,
           baseUrl: settings.openaiBaseUrl,
+          promptCacheKey: _promptCacheKey,
         );
       case LlmProviderType.openaiSubscription:
         return OpenAISubscriptionProvider(
           model: settings.openaiSubscriptionModel,
           allowAuthRefresh: settings.allowCodexAuthRefresh,
+          promptCacheKey: _promptCacheKey,
         );
     }
   }
@@ -859,7 +830,6 @@ class ChatCubit extends Cubit<ChatState> {
       await _summarizationFuture;
       _summarizationFuture = null;
     }
-    await _waitForMemoryRefresh(reportErrors: false);
     if (_llmHistory.isNotEmpty) {
       await _memoryService.saveSessionSnapshot(_llmHistory.toList());
     }

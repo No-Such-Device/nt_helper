@@ -42,7 +42,20 @@ void main() {
         expect(systemBlocks, hasLength(1));
         expect(systemBlocks[0]['type'], 'text');
         expect(systemBlocks[0]['text'], 'You are helpful.');
-        expect(systemBlocks[0]['cache_control'], {'type': 'ephemeral'});
+        expect(systemBlocks[0]['cache_control'], {
+          'type': 'ephemeral',
+          'ttl': '1h',
+        });
+        expect(capturedBody!['cache_control'], {
+          'type': 'ephemeral',
+          'ttl': '1h',
+        });
+        final messages = capturedBody!['messages'] as List<dynamic>;
+        final userContent = messages.single['content'] as List<dynamic>;
+        expect(userContent.last['cache_control'], {
+          'type': 'ephemeral',
+          'ttl': '1h',
+        });
       },
     );
 
@@ -86,7 +99,36 @@ void main() {
       final tools = capturedBody!['tools'] as List;
       expect(tools, hasLength(2));
       expect(tools[0].containsKey('cache_control'), isFalse);
-      expect(tools[1]['cache_control'], {'type': 'ephemeral'});
+      expect(tools[1]['cache_control'], {'type': 'ephemeral', 'ttl': '1h'});
+    });
+
+    test('marks the latest tool result as the rolling breakpoint', () {
+      final converted = withAnthropicRollingCacheBreakpoint([
+        {
+          'role': 'assistant',
+          'content': [
+            {
+              'type': 'tool_use',
+              'id': 'call_1',
+              'name': 'show_preset',
+              'input': <String, dynamic>{},
+            },
+          ],
+        },
+        {
+          'role': 'user',
+          'content': [
+            {
+              'type': 'tool_result',
+              'tool_use_id': 'call_1',
+              'content': '{"success":true}',
+            },
+          ],
+        },
+      ]);
+
+      final content = converted.last['content'] as List<dynamic>;
+      expect(content.last['cache_control'], anthropicLongCacheControl);
     });
 
     test('parseResponse extracts cache token fields', () {

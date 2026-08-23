@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:bloc_test/bloc_test.dart';
@@ -860,18 +861,14 @@ void main() {
     });
   });
 
-  group('Memory cache coherence', () {
+  group('Prompt cache prefix stability', () {
     test(
-      'waits for memory_write refresh before building next system prompt',
+      'keeps the bootstrapped system prompt byte-stable across turns',
       () async {
-        final refreshCompleter = Completer<String>();
         var readMemoryCalls = 0;
-        when(() => memoryService.readMemory()).thenAnswer((_) {
+        when(() => memoryService.readMemory()).thenAnswer((_) async {
           readMemoryCalls++;
-          if (readMemoryCalls == 1) {
-            return Future.value('old memory');
-          }
-          return refreshCompleter.future;
+          return 'old memory';
         });
 
         final memoryWriteTool = ToolRegistryEntry(
@@ -886,7 +883,10 @@ void main() {
         ).thenAnswer((_) async => '{"success":true}');
 
         var providerCallCount = 0;
+        String? firstTurnSystemPrompt;
         String? secondTurnSystemPrompt;
+        String? firstTurnToolPrefix;
+        String? secondTurnToolPrefix;
         final provider = MockLlmProvider();
         when(() => provider.dispose()).thenReturn(null);
         when(
@@ -899,6 +899,19 @@ void main() {
           providerCallCount++;
           switch (providerCallCount) {
             case 1:
+              firstTurnSystemPrompt =
+                  invocation.namedArguments[#systemPrompt] as String?;
+              firstTurnToolPrefix = jsonEncode(
+                (invocation.namedArguments[#tools] as List<LlmToolDefinition>)
+                    .map(
+                      (tool) => {
+                        'name': tool.name,
+                        'description': tool.description,
+                        'input_schema': tool.inputSchema,
+                      },
+                    )
+                    .toList(),
+              );
               return const LlmResponse(
                 isComplete: false,
                 toolCalls: [
@@ -918,6 +931,17 @@ void main() {
             default:
               secondTurnSystemPrompt =
                   invocation.namedArguments[#systemPrompt] as String?;
+              secondTurnToolPrefix = jsonEncode(
+                (invocation.namedArguments[#tools] as List<LlmToolDefinition>)
+                    .map(
+                      (tool) => {
+                        'name': tool.name,
+                        'description': tool.description,
+                        'input_schema': tool.inputSchema,
+                      },
+                    )
+                    .toList(),
+              );
               return const LlmResponse(
                 content: 'using memory',
                 isComplete: true,
@@ -936,28 +960,16 @@ void main() {
         await cubit.sendMessage('remember this', _settings);
         await Future<void>.delayed(const Duration(milliseconds: 100));
         expect(providerCallCount, 2);
-        expect(readMemoryCalls, 2);
+        expect(readMemoryCalls, 1);
 
-        final secondSend = cubit.sendMessage(
-          'what do you remember?',
-          _settings,
-        );
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-        expect(
-          providerCallCount,
-          2,
-          reason:
-              'Second turn should wait for the queued memory refresh before '
-              'calling the provider.',
-        );
-
-        refreshCompleter.complete('updated memory');
-        await secondSend;
+        await cubit.sendMessage('what do you remember?', _settings);
         await Future<void>.delayed(const Duration(milliseconds: 100));
 
         expect(providerCallCount, 3);
-        expect(secondTurnSystemPrompt, contains('updated memory'));
-        expect(secondTurnSystemPrompt, isNot(contains('old memory')));
+        expect(secondTurnSystemPrompt, firstTurnSystemPrompt);
+        expect(secondTurnSystemPrompt, contains('old memory'));
+        expect(secondTurnToolPrefix, firstTurnToolPrefix);
+        expect(readMemoryCalls, 1);
       },
     );
   });

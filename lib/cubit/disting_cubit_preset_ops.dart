@@ -54,7 +54,7 @@ mixin _DistingCubitPresetOps on _DistingCubitBase {
     );
   }
 
-  void renamePresetImpl(String newName) async {
+  Future<void> renamePresetImpl(String newName) async {
     final currentState = state;
     if (currentState is! DistingStateSynchronized) return;
 
@@ -73,31 +73,28 @@ mixin _DistingCubitPresetOps on _DistingCubitBase {
     emit(currentState.copyWith(presetName: finalName, isDirty: true));
 
     final disting = currentState.disting;
-    disting
-        .requestSetPresetName(finalName)
-        .then(
-          (_) {
-            disting.requestSavePreset().catchError((_) {});
-          },
-          onError: (e, s) {
-            // Revert to device truth if the request failed
-            _renamePresetVerificationOperation?.cancel();
-            _renamePresetVerificationOperation = CancelableOperation.fromFuture(
-              Future.delayed(const Duration(milliseconds: 250), () async {
-                final syncState = state;
-                if (syncState is! DistingStateSynchronized) return;
-                final actual = await disting.requestPresetName();
-                final latestState = state;
-                if (actual != null &&
-                    latestState is DistingStateSynchronized &&
-                    latestState.presetName != actual) {
-                  emit(latestState.copyWith(presetName: actual));
-                }
-              }),
-              onCancel: () {},
-            );
-          },
-        );
+    try {
+      await disting.requestSetPresetName(finalName);
+      await disting.requestSavePreset();
+    } catch (_) {
+      // Reconcile the optimistic state with device truth after a failed write.
+      _renamePresetVerificationOperation?.cancel();
+      _renamePresetVerificationOperation = CancelableOperation.fromFuture(
+        Future.delayed(const Duration(milliseconds: 250), () async {
+          final syncState = state;
+          if (syncState is! DistingStateSynchronized) return;
+          final actual = await disting.requestPresetName();
+          final latestState = state;
+          if (actual != null &&
+              latestState is DistingStateSynchronized &&
+              latestState.presetName != actual) {
+            emit(latestState.copyWith(presetName: actual));
+          }
+        }),
+        onCancel: () {},
+      );
+      rethrow;
+    }
 
     // Verification loop to ensure the name actually took
     _renamePresetVerificationOperation?.cancel();

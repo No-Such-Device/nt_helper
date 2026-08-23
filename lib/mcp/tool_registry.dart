@@ -363,6 +363,21 @@ class ToolRegistry {
 
     _entries.add(
       ToolRegistryEntry(
+        name: 'get_preset',
+        description:
+            'Read the complete current preset without changing it: preset name, '
+            'slot names, algorithms and specifications, parameter values and '
+            'ranges, exact enum labels, and enabled mappings. Use this for '
+            'backup/export or when the compact show_preset result is insufficient. '
+            'Large results are returned as references that can be read or searched.',
+        inputSchema: {'properties': {}},
+        handler: (args) => _distingTools.getCurrentPreset(args),
+        timeout: const Duration(seconds: 30),
+      ),
+    );
+
+    _entries.add(
+      ToolRegistryEntry(
         name: 'show_slot',
         description:
             'Show a slot with its algorithm info and parameter summaries (name, current value, range). '
@@ -635,6 +650,30 @@ class ToolRegistry {
   }
 
   void _registerPresetTools() {
+    _entries.add(
+      ToolRegistryEntry(
+        name: 'rename_preset',
+        description:
+            'Non-destructively rename the current preset and save it. Preserves '
+            'every slot, algorithm, parameter value, specification, slot name, '
+            'and mapping. Use this instead of edit_preset for a name-only change. '
+            'The name is trimmed and must be 1-31 characters.',
+        inputSchema: {
+          'properties': {
+            'name': {
+              'type': 'string',
+              'minLength': 1,
+              'maxLength': 31,
+              'description': 'New preset name (1-31 characters).',
+            },
+          },
+          'required': ['name'],
+        },
+        handler: (args) => _distingTools.setPresetName(args),
+        timeout: const Duration(seconds: 15),
+      ),
+    );
+
     _entries.add(
       ToolRegistryEntry(
         name: 'new',

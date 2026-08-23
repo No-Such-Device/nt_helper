@@ -10,6 +10,107 @@ import 'package:nt_helper/chat/providers/openai_provider.dart';
 
 void main() {
   group('OpenAIProvider parsing', () {
+    test('sends a stable prompt cache key to the official API', () async {
+      Map<String, dynamic>? capturedBody;
+      final provider = OpenAIProvider(
+        apiKey: 'test-key',
+        model: 'gpt-5.6',
+        promptCacheKey: 'chat-session-123',
+        client: MockClient((request) async {
+          capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(
+            jsonEncode({
+              'choices': [
+                {
+                  'message': {'role': 'assistant', 'content': 'ok'},
+                  'finish_reason': 'stop',
+                },
+              ],
+            }),
+            200,
+          );
+        }),
+      );
+
+      await provider.sendMessages(
+        messages: [LlmMessage.user('Hi')],
+        tools: const [],
+      );
+
+      expect(capturedBody!['prompt_cache_key'], 'chat-session-123');
+    });
+
+    test(
+      'does not send OpenAI-only cache fields to compatible proxies',
+      () async {
+        Map<String, dynamic>? capturedBody;
+        final provider = OpenAIProvider(
+          apiKey: 'test-key',
+          model: 'local-model',
+          baseUrl: 'http://localhost:1234/v1/chat/completions',
+          promptCacheKey: 'chat-session-123',
+          client: MockClient((request) async {
+            capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
+            return http.Response(
+              jsonEncode({
+                'choices': [
+                  {
+                    'message': {'role': 'assistant', 'content': 'ok'},
+                    'finish_reason': 'stop',
+                  },
+                ],
+              }),
+              200,
+            );
+          }),
+        );
+
+        await provider.sendMessages(
+          messages: [LlmMessage.user('Hi')],
+          tools: const [],
+        );
+
+        expect(capturedBody!.containsKey('prompt_cache_key'), isFalse);
+      },
+    );
+
+    test('parses prompt cache read and write telemetry', () async {
+      final provider = OpenAIProvider(
+        apiKey: 'test-key',
+        model: 'gpt-5.6',
+        client: MockClient((_) async {
+          return http.Response(
+            jsonEncode({
+              'choices': [
+                {
+                  'message': {'role': 'assistant', 'content': 'ok'},
+                  'finish_reason': 'stop',
+                },
+              ],
+              'usage': {
+                'prompt_tokens': 2500,
+                'completion_tokens': 10,
+                'prompt_tokens_details': {
+                  'cached_tokens': 2000,
+                  'cache_write_tokens': 400,
+                },
+              },
+            }),
+            200,
+          );
+        }),
+      );
+
+      final response = await provider.sendMessages(
+        messages: [LlmMessage.user('Hi')],
+        tools: const [],
+      );
+
+      expect(response.usage?.cacheReadInputTokens, 2000);
+      expect(response.usage?.cacheCreationInputTokens, 400);
+      expect(response.usage?.contextInputTokens, 2500);
+    });
+
     test('accepts tool arguments returned as an object', () async {
       final provider = OpenAIProvider(
         apiKey: 'test-key',

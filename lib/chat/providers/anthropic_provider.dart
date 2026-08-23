@@ -7,6 +7,11 @@ import 'package:nt_helper/chat/providers/llm_provider.dart';
 import 'package:nt_helper/chat/providers/model_context_window.dart';
 import 'package:nt_helper/services/debug_service.dart';
 
+const anthropicLongCacheControl = <String, String>{
+  'type': 'ephemeral',
+  'ttl': '1h',
+};
+
 /// Anthropic Claude Messages API provider.
 class AnthropicProvider with LlmErrorHandling implements LlmProvider {
   final String apiKey;
@@ -44,7 +49,13 @@ class AnthropicProvider with LlmErrorHandling implements LlmProvider {
     final body = <String, dynamic>{
       'model': model,
       'max_tokens': 4096,
-      'messages': convertMessages(messages),
+      'messages': withAnthropicRollingCacheBreakpoint(
+        convertMessages(messages),
+      ),
+      // Automatic caching advances the rolling history breakpoint on every
+      // agentic-loop request. Explicit system/tool breakpoints below preserve
+      // reusable fallbacks when a turn adds many content blocks.
+      'cache_control': anthropicLongCacheControl,
     };
 
     if (systemPrompt != null) {
@@ -52,7 +63,7 @@ class AnthropicProvider with LlmErrorHandling implements LlmProvider {
         {
           'type': 'text',
           'text': systemPrompt,
-          'cache_control': {'type': 'ephemeral'},
+          'cache_control': anthropicLongCacheControl,
         },
       ];
     }
@@ -67,7 +78,7 @@ class AnthropicProvider with LlmErrorHandling implements LlmProvider {
             },
           )
           .toList();
-      toolsList.last['cache_control'] = {'type': 'ephemeral'};
+      toolsList.last['cache_control'] = anthropicLongCacheControl;
       body['tools'] = toolsList;
     }
 
@@ -252,6 +263,50 @@ class AnthropicProvider with LlmErrorHandling implements LlmProvider {
   void dispose() {
     _client.close();
   }
+}
+
+/// Adds the explicit rolling-history breakpoint used by the Pi harness.
+///
+/// Anthropic's top-level automatic cache control remains enabled as a forward
+/// moving cache. This explicit breakpoint provides the same system, tools,
+/// and latest-user-message fallback layout used by Substrate's Pi adapter.
+List<Map<String, dynamic>> withAnthropicRollingCacheBreakpoint(
+  List<Map<String, dynamic>> messages,
+) {
+  final result = messages
+      .map((message) => Map<String, dynamic>.of(message))
+      .toList(growable: false);
+
+  for (var index = result.length - 1; index >= 0; index--) {
+    final message = result[index];
+    if (message['role'] != 'user') continue;
+
+    final content = message['content'];
+    if (content is String) {
+      message['content'] = <Map<String, dynamic>>[
+        {
+          'type': 'text',
+          'text': content,
+          'cache_control': anthropicLongCacheControl,
+        },
+      ];
+      break;
+    }
+    if (content is List && content.isNotEmpty) {
+      final blocks = List<dynamic>.of(content);
+      final last = blocks.last;
+      if (last is Map) {
+        blocks[blocks.length - 1] = <String, dynamic>{
+          ...last.cast<String, dynamic>(),
+          'cache_control': anthropicLongCacheControl,
+        };
+        message['content'] = blocks;
+        break;
+      }
+    }
+  }
+
+  return result;
 }
 
 class LlmApiException implements Exception {

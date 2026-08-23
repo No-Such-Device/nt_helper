@@ -493,8 +493,15 @@ class DistingCubit extends _DistingCubitBase
     return onRemoveAlgorithmImpl(algorithmIndex);
   }
 
-  void renamePreset(String newName) async {
-    renamePresetImpl(newName);
+  void renamePreset(String newName) {
+    renamePresetAndSave(newName).ignore();
+  }
+
+  /// Rename and persist the current preset, completing only after both device
+  /// writes succeed. UI callers use [renamePreset], while tool/controller
+  /// callers await this method so failures are observable.
+  Future<void> renamePresetAndSave(String newName) {
+    return renamePresetImpl(newName);
   }
 
   Future<int> moveAlgorithmUp(int algorithmIndex) async {

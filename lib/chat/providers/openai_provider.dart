@@ -14,6 +14,7 @@ class OpenAIProvider with LlmErrorHandling implements LlmProvider {
   final String apiKey;
   final String model;
   final String baseUrl;
+  final String? promptCacheKey;
   final http.Client _client;
 
   static const _defaultBaseUrl = 'https://api.openai.com/v1/chat/completions';
@@ -22,6 +23,7 @@ class OpenAIProvider with LlmErrorHandling implements LlmProvider {
     required this.apiKey,
     required this.model,
     String? baseUrl,
+    this.promptCacheKey,
     http.Client? client,
   }) : baseUrl = baseUrl ?? _defaultBaseUrl,
        _client = client ?? http.Client();
@@ -54,6 +56,10 @@ class OpenAIProvider with LlmErrorHandling implements LlmProvider {
     apiMessages.addAll(_convertMessages(messages));
 
     final body = <String, dynamic>{'model': model, 'messages': apiMessages};
+
+    if (promptCacheKey != null && _isOfficialOpenAIEndpoint) {
+      body['prompt_cache_key'] = promptCacheKey;
+    }
 
     if (tools.isNotEmpty) {
       body['tools'] = tools
@@ -202,6 +208,10 @@ class OpenAIProvider with LlmErrorHandling implements LlmProvider {
     final message = choice['message'] as Map<String, dynamic>;
     final finishReason = choice['finish_reason'] as String?;
     final usage = json['usage'] as Map<String, dynamic>?;
+    final promptTokenDetails = usage?['prompt_tokens_details'] as Map?;
+    final promptTokens = usage != null
+        ? _parseIntField(usage['prompt_tokens'])
+        : 0;
 
     final textContent = _parseTextContent(message['content']);
     final toolCalls = <LlmToolCall>[];
@@ -227,11 +237,23 @@ class OpenAIProvider with LlmErrorHandling implements LlmProvider {
       isComplete: finishReason != 'tool_calls',
       usage: usage != null
           ? LlmUsage(
-              inputTokens: _parseIntField(usage['prompt_tokens']),
+              inputTokens: promptTokens,
               outputTokens: _parseIntField(usage['completion_tokens']),
+              cacheCreationInputTokens: _parseIntField(
+                promptTokenDetails?['cache_write_tokens'],
+              ),
+              cacheReadInputTokens: _parseIntField(
+                promptTokenDetails?['cached_tokens'],
+              ),
+              // OpenAI's prompt_tokens already includes cached tokens.
+              peakInputTokens: promptTokens,
             )
           : null,
     );
+  }
+
+  bool get _isOfficialOpenAIEndpoint {
+    return Uri.tryParse(baseUrl)?.host == 'api.openai.com';
   }
 
   /// Parse a field that should be an int but may arrive as a String from
