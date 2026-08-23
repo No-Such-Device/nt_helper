@@ -3,6 +3,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:nt_helper/chat/models/allowed_file_root.dart';
 import 'package:nt_helper/chat/models/chat_settings.dart';
 import 'package:nt_helper/chat/services/codex_auth_service.dart';
+import 'package:nt_helper/chat/services/model_catalog_service.dart';
+import 'package:nt_helper/chat/ui/editable_model_selector.dart';
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 import 'package:path/path.dart' as path;
@@ -16,18 +18,10 @@ class ChatSettingsDialog extends StatefulWidget {
 }
 
 class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
-  static const _openaiSubscriptionModels = [
-    'gpt-5.5',
-    'gpt-5.4',
-    'gpt-5.4-mini',
-    'gpt-5.3-codex',
-    'gpt-5.3-codex-spark',
-    'gpt-5.2',
-  ];
-
   final _settings = SettingsService();
   final _codexAuthService = CodexAuthService();
   final _uuid = const Uuid();
+  late final OpenAISubscriptionModelCatalog _openaiSubscriptionModelCatalog;
   late LlmProviderType _provider;
   late bool _useAnthropicSubscription;
   late bool _useOpenaiSubscription;
@@ -42,6 +36,12 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
   bool _showAdvanced = false;
   bool? _codexAuthFound;
   String? _codexAuthError;
+  bool _modelListLoading = false;
+  String? _modelListError;
+  int _modelLoadGeneration = 0;
+  List<LlmModelOption> _anthropicModels = const [];
+  List<LlmModelOption> _openAIModels = const [];
+  List<LlmModelOption> _openaiSubscriptionModels = const [];
 
   bool get _isOpenAI => _provider == LlmProviderType.openai;
   bool get _isOpenaiSubscription => _isOpenAI && _useOpenaiSubscription;
@@ -58,6 +58,9 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
   @override
   void initState() {
     super.initState();
+    _openaiSubscriptionModelCatalog = OpenAISubscriptionModelCatalog(
+      authService: _codexAuthService,
+    );
     final savedProvider = _settings.chatLlmProvider;
     _useAnthropicSubscription =
         savedProvider == LlmProviderType.anthropicSubscription;
@@ -88,7 +91,11 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
     _showAdvanced =
         _settings.openaiBaseUrl != null && _settings.openaiBaseUrl!.isNotEmpty;
     if (_isOpenaiSubscription) {
-      _validateCodexAuth();
+      _loadOpenAISubscriptionModels();
+    } else if (_isOpenAI) {
+      _loadOpenAIModels();
+    } else {
+      _loadAnthropicModels();
     }
   }
 
@@ -100,6 +107,7 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
     _openaiModelController.dispose();
     _openaiSubscriptionModelController.dispose();
     _openaiBaseUrlController.dispose();
+    _openaiSubscriptionModelCatalog.dispose();
     _codexAuthService.dispose();
     super.dispose();
   }
@@ -199,24 +207,182 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
     _updateRoot(index, root.copyWith(acl: acl));
   }
 
-  Future<void> _validateCodexAuth() async {
+  Future<void> _loadOpenAISubscriptionModels() async {
+    final generation = ++_modelLoadGeneration;
     setState(() {
       _codexAuthFound = null;
       _codexAuthError = null;
+      _modelListLoading = true;
+      _modelListError = null;
     });
-    final found = await _codexAuthService.authFound();
-    if (!mounted) return;
+    try {
+      final models = await _openaiSubscriptionModelCatalog.fetchModels(
+        allowAuthRefresh: _allowCodexAuthRefresh,
+      );
+      if (!mounted || generation != _modelLoadGeneration) return;
+      setState(() {
+        _codexAuthFound = true;
+        _modelListLoading = false;
+        _openaiSubscriptionModels = models;
+        _modelListError = models.isEmpty
+            ? 'No selectable subscription models were returned.'
+            : null;
+      });
+    } on CodexAuthException catch (error) {
+      if (!mounted || generation != _modelLoadGeneration) return;
+      setState(() {
+        _codexAuthFound = false;
+        _codexAuthError = error.message;
+        _modelListLoading = false;
+      });
+    } on ModelCatalogException catch (error) {
+      if (!mounted || generation != _modelLoadGeneration) return;
+      setState(() {
+        _codexAuthFound = true;
+        _modelListLoading = false;
+        _modelListError = '${error.message} Keeping the saved model.';
+      });
+    } on Object {
+      if (!mounted || generation != _modelLoadGeneration) return;
+      setState(() {
+        _codexAuthFound = true;
+        _modelListLoading = false;
+        _modelListError =
+            'Could not load subscription models. Keeping the saved model.';
+      });
+    }
+  }
+
+  Future<void> _loadOpenAIModels() async {
+    final apiKey = _openaiKeyController.text.trim();
+    final generation = ++_modelLoadGeneration;
+    if (apiKey.isEmpty) {
+      setState(() {
+        _modelListLoading = false;
+        _modelListError = 'Enter an API key to load available models.';
+      });
+      return;
+    }
+
     setState(() {
-      _codexAuthFound = found;
-      _codexAuthError = found
-          ? null
-          : 'Codex auth not found. Run `codex login` in a terminal.';
+      _modelListLoading = true;
+      _modelListError = null;
     });
+    OpenAIModelCatalog? catalog;
+    try {
+      catalog = OpenAIModelCatalog(
+        apiKey: apiKey,
+        baseUrl: _showAdvanced ? _openaiBaseUrlController.text : null,
+      );
+      final models = await catalog.fetchModels();
+      if (!mounted || generation != _modelLoadGeneration) return;
+      setState(() {
+        _openAIModels = models;
+        _modelListLoading = false;
+        _modelListError = models.isEmpty
+            ? 'No models were returned. You can still enter a model ID.'
+            : null;
+      });
+    } on ModelCatalogException catch (error) {
+      if (!mounted || generation != _modelLoadGeneration) return;
+      setState(() {
+        _modelListLoading = false;
+        _modelListError = '${error.message} You can still enter a model ID.';
+      });
+    } on Object {
+      if (!mounted || generation != _modelLoadGeneration) return;
+      setState(() {
+        _modelListLoading = false;
+        _modelListError =
+            'Could not load OpenAI models. You can still enter a model ID.';
+      });
+    } finally {
+      catalog?.dispose();
+    }
+  }
+
+  Future<void> _loadAnthropicModels() async {
+    final credential = _anthropicKeyController.text.trim();
+    final generation = ++_modelLoadGeneration;
+    if (credential.isEmpty) {
+      setState(() {
+        _modelListLoading = false;
+        _modelListError = _useAnthropicSubscription
+            ? 'Enter an OAuth token to load available models.'
+            : 'Enter an API key to load available models.';
+      });
+      return;
+    }
+
+    setState(() {
+      _modelListLoading = true;
+      _modelListError = null;
+    });
+    final catalog = AnthropicModelCatalog(
+      credential: credential,
+      subscriptionAuth: _useAnthropicSubscription,
+    );
+    try {
+      final models = await catalog.fetchModels();
+      if (!mounted || generation != _modelLoadGeneration) return;
+      setState(() {
+        _anthropicModels = models;
+        _modelListLoading = false;
+        _modelListError = models.isEmpty
+            ? 'No models were returned. You can still enter a model ID.'
+            : null;
+      });
+    } on ModelCatalogException catch (error) {
+      if (!mounted || generation != _modelLoadGeneration) return;
+      setState(() {
+        _modelListLoading = false;
+        _modelListError = '${error.message} You can still enter a model ID.';
+      });
+    } on Object {
+      if (!mounted || generation != _modelLoadGeneration) return;
+      setState(() {
+        _modelListLoading = false;
+        _modelListError =
+            'Could not load Anthropic models. You can still enter a model ID.';
+      });
+    } finally {
+      catalog.dispose();
+    }
   }
 
   Future<void> _setOpenaiSubscription(bool value) async {
-    setState(() => _useOpenaiSubscription = value);
-    if (value) await _validateCodexAuth();
+    setState(() {
+      _useOpenaiSubscription = value;
+      _modelListError = null;
+    });
+    if (value) {
+      await _loadOpenAISubscriptionModels();
+    } else {
+      await _loadOpenAIModels();
+    }
+  }
+
+  Future<void> _setAnthropicSubscription(bool value) async {
+    setState(() {
+      _useAnthropicSubscription = value;
+      _anthropicModels = const [];
+      _modelListError = null;
+    });
+    await _loadAnthropicModels();
+  }
+
+  Future<void> _setProvider(LlmProviderType provider) async {
+    setState(() {
+      _provider = provider;
+      _modelListError = null;
+    });
+    if (_isOpenaiSubscription) {
+      await _loadOpenAISubscriptionModels();
+    } else if (_isOpenAI) {
+      await _loadOpenAIModels();
+    } else {
+      await _loadAnthropicModels();
+    }
   }
 
   Future<void> _setAllowCodexAuthRefresh(bool value) async {
@@ -281,7 +447,7 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
                   ),
                 ],
                 selected: {_provider},
-                onSelectionChanged: (s) => setState(() => _provider = s.first),
+                onSelectionChanged: (s) => _setProvider(s.first),
               ),
               if (_isOpenAI) ..._buildOpenAISettings(theme),
               if (!_isOpenAI) ..._buildAnthropicSettings(theme),
@@ -320,7 +486,7 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
         ),
       ),
       value: _useAnthropicSubscription,
-      onChanged: (v) => setState(() => _useAnthropicSubscription = v),
+      onChanged: _setAnthropicSubscription,
       contentPadding: EdgeInsets.zero,
       dense: true,
     ),
@@ -354,16 +520,14 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
     const SizedBox(height: 16),
     Text('Model', style: theme.textTheme.titleSmall),
     const SizedBox(height: 8),
-    DigitShortcutBlocker(
-      child: TextField(
-        key: const ValueKey('model_anthropic'),
-        controller: _anthropicModelController,
-        decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-          hintText: 'claude-haiku-4-5-20251001',
-          isDense: true,
-        ),
-      ),
+    EditableModelSelector(
+      fieldKey: const ValueKey('model_anthropic'),
+      controller: _anthropicModelController,
+      suggestions: _anthropicModels,
+      hintText: 'claude-haiku-4-5-20251001',
+      loading: _modelListLoading,
+      error: _modelListError,
+      onRefresh: _loadAnthropicModels,
     ),
   ];
 
@@ -418,7 +582,15 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
     const SizedBox(height: 16),
     Text('Model', style: theme.textTheme.titleSmall),
     const SizedBox(height: 8),
-    _buildOpenAISubscriptionModelDropdown(),
+    EditableModelSelector(
+      fieldKey: const ValueKey('model_openai_subscription'),
+      controller: _openaiSubscriptionModelController,
+      suggestions: _openaiSubscriptionModels,
+      hintText: 'gpt-5.4-mini',
+      loading: _modelListLoading,
+      error: _modelListError,
+      onRefresh: _loadOpenAISubscriptionModels,
+    ),
     const SizedBox(height: 12),
     SwitchListTile(
       title: Text(
@@ -431,33 +603,6 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
       dense: true,
     ),
   ];
-
-  Widget _buildOpenAISubscriptionModelDropdown() {
-    final current = _openaiSubscriptionModelController.text.trim();
-    final models =
-        current.isNotEmpty && !_openaiSubscriptionModels.contains(current)
-        ? [current, ..._openaiSubscriptionModels]
-        : _openaiSubscriptionModels;
-
-    return DropdownButtonFormField<String>(
-      key: const ValueKey('model_openai_subscription'),
-      initialValue: models.contains(current) ? current : 'gpt-5.4-mini',
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
-        isDense: true,
-      ),
-      items: models
-          .map(
-            (model) =>
-                DropdownMenuItem<String>(value: model, child: Text(model)),
-          )
-          .toList(),
-      onChanged: (model) {
-        if (model == null) return;
-        _openaiSubscriptionModelController.text = model;
-      },
-    );
-  }
 
   List<Widget> _buildOpenAIApiKeySettings(ThemeData theme) => [
     const SizedBox(height: 16),
@@ -478,16 +623,14 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
     const SizedBox(height: 16),
     Text('Model', style: theme.textTheme.titleSmall),
     const SizedBox(height: 8),
-    DigitShortcutBlocker(
-      child: TextField(
-        key: const ValueKey('model_openai'),
-        controller: _openaiModelController,
-        decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-          hintText: 'gpt-5-nano',
-          isDense: true,
-        ),
-      ),
+    EditableModelSelector(
+      fieldKey: const ValueKey('model_openai'),
+      controller: _openaiModelController,
+      suggestions: _openAIModels,
+      hintText: 'gpt-5-nano',
+      loading: _modelListLoading,
+      error: _modelListError,
+      onRefresh: _loadOpenAIModels,
     ),
     const SizedBox(height: 12),
     GestureDetector(

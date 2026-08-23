@@ -8,6 +8,7 @@ import 'package:nt_helper/chat/providers/anthropic_provider.dart'
 import 'package:nt_helper/chat/providers/llm_provider.dart';
 import 'package:nt_helper/chat/providers/model_context_window.dart';
 import 'package:nt_helper/chat/services/codex_auth_service.dart';
+import 'package:nt_helper/chat/services/model_catalog_service.dart';
 import 'package:nt_helper/services/debug_service.dart';
 
 class OpenAISubscriptionProvider implements LlmProvider {
@@ -17,8 +18,8 @@ class OpenAISubscriptionProvider implements LlmProvider {
   final CodexAuthService authService;
   final http.Client _client;
 
-  static const _baseUrl = 'https://chatgpt.com/backend-api/codex/responses';
-  static const _clientVersion = '0.135.0';
+  static const _baseUrl = openAISubscriptionResponsesUrl;
+  static const _clientVersion = openAISubscriptionClientVersion;
 
   OpenAISubscriptionProvider({
     required this.model,
