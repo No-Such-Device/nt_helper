@@ -206,6 +206,14 @@ class ParameterEditorRegistry {
     ParameterUnits.modernHasStrings,
   ];
 
+  /// Units used by sample selectors. Modern NT sample parameters use Confirm,
+  /// while older and built-in algorithms may still expose HasStrings.
+  static const _sampleUnits = [
+    ParameterUnits.legacyFileFolder,
+    ParameterUnits.modernHasStrings,
+    ParameterUnits.modernConfirm,
+  ];
+
   /// Units for path-based parameters (programs, convolver)
   static const _pathUnits = [
     ParameterUnits.legacyFilePath,
@@ -304,7 +312,7 @@ class ParameterEditorRegistry {
     ParameterEditorRule(
       algorithmGuid: 'samp',
       parameterNamePattern: r'.*:Sample',
-      units: _folderUnits,
+      units: _sampleUnits,
       baseDirectory: '/samples',
       mode: FileSelectionMode.fileOnly,
       allowedExtensions: ['.wav', '.aif', '.aiff'],
@@ -321,7 +329,7 @@ class ParameterEditorRegistry {
     ),
     ParameterEditorRule(
       parameterNamePattern: r'^Sample$',
-      units: _folderUnits,
+      units: _sampleUnits,
       baseDirectory: '/samples',
       mode: FileSelectionMode.fileOnly,
       allowedExtensions: ['.wav', '.aif', '.aiff'],

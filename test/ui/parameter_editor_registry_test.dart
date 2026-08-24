@@ -114,10 +114,11 @@ void main() {
       }
     });
 
-    test('Sample Player Sample matches with both legacy and modern units', () {
+    test('Sample selector accepts legacy, string, and confirm units', () {
       for (final unit in [
         ParameterUnits.legacyFileFolder,
         ParameterUnits.modernHasStrings,
+        ParameterUnits.modernConfirm,
       ]) {
         final slot = createTestSlot(
           guid: 'splr',
@@ -185,6 +186,21 @@ void main() {
         expect(fileEditor.rule.ntSampleFolderEnumeration, isFalse);
         expect(fileEditor.rule.zeroValueSentinelLabel, isNull);
       }
+    });
+
+    test('generic confirm Sample uses the selected-folder file picker', () {
+      final slot = createTestSlot(
+        guid: 'ThCa',
+        parameterName: 'Sample',
+        unit: ParameterUnits.modernConfirm,
+      );
+
+      final editor = findEditor(slot);
+      expect(editor, isA<FileParameterEditor>());
+      final fileEditor = editor as FileParameterEditor;
+      expect(fileEditor.rule.mode, FileSelectionMode.fileOnly);
+      expect(fileEditor.rule.baseDirectory, '/samples');
+      expect(fileEditor.rule.allowedExtensions, ['.wav', '.aif', '.aiff']);
     });
 
     test('Text input matches with both legacy and modern units', () {
