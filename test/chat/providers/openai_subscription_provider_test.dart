@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:nt_helper/chat/models/llm_types.dart';
 import 'package:nt_helper/chat/providers/openai_subscription_provider.dart';
 import 'package:nt_helper/chat/services/codex_auth_service.dart';
+import 'package:nt_helper/chat/services/codex_client_version_service.dart';
+import 'package:nt_helper/chat/services/codex_model_metadata_service.dart';
 
 class _FakeAuthService extends CodexAuthService {
   int refreshCount = 0;
@@ -28,6 +30,24 @@ class _FakeAuthService extends CodexAuthService {
 
   @override
   void dispose() {}
+}
+
+class _FakeCodexClientVersionService extends CodexClientVersionService {
+  _FakeCodexClientVersionService()
+    : super(versionFilePath: '/unused/version.json');
+
+  @override
+  Future<String> resolve() async => '9.8.7';
+}
+
+class _FakeCodexModelMetadataService extends CodexModelMetadataService {
+  final bool lite;
+
+  _FakeCodexModelMetadataService({required this.lite})
+    : super(modelsCachePath: '/unused/models_cache.json');
+
+  @override
+  Future<bool> useResponsesLite(String model) async => lite;
 }
 
 class _QueueClient extends http.BaseClient {
@@ -65,6 +85,8 @@ void main() {
         model: 'gpt-5.5',
         allowAuthRefresh: false,
         authService: auth,
+        clientVersionService: _FakeCodexClientVersionService(),
+        modelMetadataService: _FakeCodexModelMetadataService(lite: false),
         client: client,
       );
       addTearDown(provider.dispose);
@@ -75,7 +97,7 @@ void main() {
       expect(client.requests.single.method, 'GET');
       expect(
         client.requests.single.url.toString(),
-        'https://chatgpt.com/backend-api/codex/models?model=gpt-5.5&client_version=0.135.0',
+        'https://chatgpt.com/backend-api/codex/models?model=gpt-5.5&client_version=9.8.7',
       );
       expect(client.requests.single.headers['Authorization'], 'Bearer token');
       expect(client.requests.single.headers['ChatGPT-Account-ID'], 'account');
@@ -121,6 +143,8 @@ void main() {
         allowAuthRefresh: false,
         promptCacheKey: 'chat-session-123',
         authService: auth,
+        clientVersionService: _FakeCodexClientVersionService(),
+        modelMetadataService: _FakeCodexModelMetadataService(lite: false),
         client: client,
       );
       addTearDown(provider.dispose);
@@ -160,7 +184,130 @@ void main() {
       expect((body['tools'] as List).single['type'], 'function');
       expect(client.requests.single.headers['Authorization'], 'Bearer token');
       expect(client.requests.single.headers['ChatGPT-Account-ID'], 'account');
+      expect(client.requests.single.headers['version'], '9.8.7');
+      expect(
+        client
+            .requests
+            .single
+            .headers['x-openai-internal-codex-responses-lite'],
+        isNull,
+      );
     });
+
+    test(
+      'uses the model-driven Responses Lite contract for gpt-5.6-sol',
+      () async {
+        final auth = _FakeAuthService(
+          const CodexAuthSnapshot(
+            accessToken: 'token',
+            refreshToken: 'refresh',
+            accountId: 'account',
+          ),
+        );
+        final client = _QueueClient([
+          (_) => _sseResponse([
+            {'type': 'response.output_text.delta', 'delta': 'ok'},
+            {
+              'type': 'response.output_item.done',
+              'item': {
+                'type': 'function_call',
+                'call_id': 'call_lite',
+                'namespace': 'functions',
+                'name': 'show_preset',
+                'arguments': '{"slot":1}',
+              },
+            },
+          ]),
+          (_) => _sseResponse([
+            {'type': 'response.output_text.delta', 'delta': 'done'},
+          ]),
+        ]);
+        final provider = OpenAISubscriptionProvider(
+          model: 'gpt-5.6-sol',
+          allowAuthRefresh: false,
+          promptCacheKey: 'chat-session-123',
+          authService: auth,
+          clientVersionService: _FakeCodexClientVersionService(),
+          modelMetadataService: _FakeCodexModelMetadataService(lite: true),
+          client: client,
+        );
+        addTearDown(provider.dispose);
+
+        final response = await provider.sendMessages(
+          messages: [LlmMessage.user('hello')],
+          tools: const [
+            LlmToolDefinition(
+              name: 'show_preset',
+              description: 'Show preset',
+              inputSchema: {
+                'properties': {
+                  'slot': {'type': 'integer'},
+                },
+              },
+            ),
+          ],
+          systemPrompt: 'Stable nt_helper instructions.',
+        );
+
+        final request = client.requests.single;
+        expect(
+          request.headers['x-openai-internal-codex-responses-lite'],
+          'true',
+        );
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body, isNot(contains('instructions')));
+        expect(body, isNot(contains('tools')));
+        expect(body['reasoning'], {'context': 'all_turns'});
+        final input = body['input'] as List<dynamic>;
+        expect(input.first['type'], 'additional_tools');
+        expect(input.first['role'], 'developer');
+        final namespace = input.first['tools'].single as Map<String, dynamic>;
+        expect(namespace['type'], 'namespace');
+        expect(namespace['name'], 'functions');
+        expect(namespace['tools'].single['name'], 'show_preset');
+        expect(input[1]['role'], 'developer');
+        expect(
+          input[1]['content'].single['text'],
+          'Stable nt_helper instructions.',
+        );
+        expect(input[2]['role'], 'user');
+        expect(response.toolCalls.single.name, 'show_preset');
+        expect(response.toolCalls.single.namespace, 'functions');
+        expect(response.toolCalls.single.arguments, {'slot': 1});
+
+        await provider.sendMessages(
+          messages: [
+            LlmMessage.user('hello'),
+            LlmMessage.assistantWithToolCalls(response.toolCalls),
+            LlmMessage.toolResult(
+              toolCallId: 'call_lite',
+              toolName: 'show_preset',
+              content: '{"name":"test"}',
+            ),
+          ],
+          tools: const [
+            LlmToolDefinition(
+              name: 'show_preset',
+              description: 'Show preset',
+              inputSchema: {
+                'properties': {
+                  'slot': {'type': 'integer'},
+                },
+              },
+            ),
+          ],
+          systemPrompt: 'Stable nt_helper instructions.',
+        );
+
+        final nextBody =
+            jsonDecode(client.requests.last.body) as Map<String, dynamic>;
+        final nextInput = nextBody['input'] as List<dynamic>;
+        final priorCall = nextInput.singleWhere(
+          (item) => item['type'] == 'function_call',
+        );
+        expect(priorCall['namespace'], 'functions');
+      },
+    );
 
     test('refreshes on 401 and retries once when allowed', () async {
       final auth = _FakeAuthService(
@@ -186,6 +333,8 @@ void main() {
         model: 'gpt-5.4-mini',
         allowAuthRefresh: true,
         authService: auth,
+        clientVersionService: _FakeCodexClientVersionService(),
+        modelMetadataService: _FakeCodexModelMetadataService(lite: false),
         client: client,
       );
       addTearDown(provider.dispose);
@@ -224,6 +373,8 @@ void main() {
           model: 'gpt-5.4-mini',
           allowAuthRefresh: false,
           authService: auth,
+          clientVersionService: _FakeCodexClientVersionService(),
+          modelMetadataService: _FakeCodexModelMetadataService(lite: false),
           client: client,
         );
         addTearDown(provider.dispose);

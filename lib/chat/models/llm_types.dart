@@ -104,11 +104,13 @@ class LlmMessage {
 class LlmToolCall {
   final String id;
   final String name;
+  final String? namespace;
   final Map<String, dynamic> arguments;
 
   const LlmToolCall({
     required this.id,
     required this.name,
+    this.namespace,
     required this.arguments,
   });
 }

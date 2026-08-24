@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:nt_helper/chat/services/model_catalog_service.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
@@ -33,7 +35,12 @@ class EditableModelSelector extends StatelessWidget {
         LlmModelOption(id: current, displayName: current),
       ...suggestions,
     ];
-    final theme = Theme.of(context);
+    final statusMessage = loading
+        ? 'Loading available models…'
+        : error ??
+              (suggestions.isEmpty
+                  ? 'Enter a model ID or refresh the available models.'
+                  : '${suggestions.length} models available. You can also enter a model ID.');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,9 +62,7 @@ class EditableModelSelector extends StatelessWidget {
                 .map(
                   (model) => DropdownMenuEntry<String>(
                     value: model.id,
-                    label: model.displayName == model.id
-                        ? model.id
-                        : '${model.id} — ${model.displayName}',
+                    label: model.displayName,
                   ),
                 )
                 .toList(),
@@ -67,33 +72,99 @@ class EditableModelSelector extends StatelessWidget {
             },
           ),
         ),
-        if (loading) ...[
-          const SizedBox(height: 8),
-          const LinearProgressIndicator(),
-          const SizedBox(height: 4),
-          Semantics(
-            liveRegion: true,
-            child: const Text('Loading available models…'),
-          ),
-        ],
-        if (error != null) ...[
-          const SizedBox(height: 8),
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              error!,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.error,
-              ),
-            ),
-          ),
-        ],
+        SettingsStatusRegion(
+          message: statusMessage,
+          loading: loading,
+          isError: error != null,
+          isSuccess: !loading && error == null && suggestions.isNotEmpty,
+        ),
         TextButton.icon(
           onPressed: loading ? null : onRefresh,
           icon: const ExcludeSemantics(child: Icon(Icons.refresh)),
           label: const Text('Refresh model list'),
         ),
       ],
+    );
+  }
+}
+
+/// A fixed-height status lane for settings controls with asynchronous state.
+///
+/// Loading, success, empty, and error content all occupy the same space so
+/// controls below it never move while a request is in flight.
+class SettingsStatusRegion extends StatelessWidget {
+  final String message;
+  final bool loading;
+  final bool isError;
+  final bool isSuccess;
+
+  const SettingsStatusRegion({
+    super.key,
+    required this.message,
+    this.loading = false,
+    this.isError = false,
+    this.isSuccess = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = isError
+        ? theme.colorScheme.error
+        : theme.colorScheme.onSurfaceVariant;
+    final textStyle = theme.textTheme.bodySmall?.copyWith(color: color);
+    final textHeight = TextPainter(
+      text: TextSpan(text: 'Status\nStatus', style: textStyle),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 2,
+    )..layout();
+    final laneHeight = math.max(48.0, 8 + textHeight.height.ceilToDouble());
+
+    return SizedBox(
+      height: laneHeight,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Semantics(
+          container: true,
+          liveRegion: true,
+          label: message,
+          child: ExcludeSemantics(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: loading
+                      ? CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: theme.colorScheme.primary,
+                        )
+                      : Icon(
+                          isError
+                              ? Icons.error_outline
+                              : isSuccess
+                              ? Icons.check_circle_outline
+                              : Icons.info_outline,
+                          size: 18,
+                          color: color,
+                        ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    message,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: textStyle,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -8,6 +8,8 @@ import 'package:nt_helper/chat/providers/anthropic_provider.dart'
 import 'package:nt_helper/chat/providers/llm_provider.dart';
 import 'package:nt_helper/chat/providers/model_context_window.dart';
 import 'package:nt_helper/chat/services/codex_auth_service.dart';
+import 'package:nt_helper/chat/services/codex_client_version_service.dart';
+import 'package:nt_helper/chat/services/codex_model_metadata_service.dart';
 import 'package:nt_helper/chat/services/model_catalog_service.dart';
 import 'package:nt_helper/services/debug_service.dart';
 
@@ -16,18 +18,33 @@ class OpenAISubscriptionProvider implements LlmProvider {
   final bool allowAuthRefresh;
   final String promptCacheKey;
   final CodexAuthService authService;
+  final CodexClientVersionService _clientVersionService;
+  final CodexModelMetadataService _modelMetadataService;
   final http.Client _client;
 
   static const _baseUrl = openAISubscriptionResponsesUrl;
-  static const _clientVersion = openAISubscriptionClientVersion;
 
   OpenAISubscriptionProvider({
     required this.model,
     required this.allowAuthRefresh,
     this.promptCacheKey = 'nt_helper_chat',
     CodexAuthService? authService,
+    CodexClientVersionService? clientVersionService,
+    CodexModelMetadataService? modelMetadataService,
     http.Client? client,
   }) : authService = authService ?? CodexAuthService(client: client),
+       _clientVersionService =
+           clientVersionService ??
+           CodexClientVersionService.forAuthFile(
+             authService?.authFilePath ??
+                 CodexAuthService.defaultAuthFilePath(),
+           ),
+       _modelMetadataService =
+           modelMetadataService ??
+           CodexModelMetadataService.forAuthFile(
+             authService?.authFilePath ??
+                 CodexAuthService.defaultAuthFilePath(),
+           ),
        _client = client ?? http.Client();
 
   @override
@@ -36,12 +53,13 @@ class OpenAISubscriptionProvider implements LlmProvider {
   @override
   Future<int?> resolveContextWindowTokens() async {
     try {
+      final clientVersion = await _clientVersionService.resolve();
       final auth = await authService.loadAuth();
       return OpenAIContextWindowResolver.resolveSubscription(
         model: model,
-        headers: {'version': _clientVersion, ...auth.authHeaders},
+        headers: {'version': clientVersion, ...auth.authHeaders},
         client: _client,
-        clientVersion: _clientVersion,
+        clientVersion: clientVersion,
         baseUrl: _baseUrl,
       );
     } on Object {
@@ -55,12 +73,30 @@ class OpenAISubscriptionProvider implements LlmProvider {
     required List<LlmToolDefinition> tools,
     String? systemPrompt,
   }) async {
+    final clientVersion = await _clientVersionService.resolve();
+    final useResponsesLite = await _modelMetadataService.useResponsesLite(
+      model,
+    );
     var auth = await authService.loadAuth();
-    var response = await _sendRequest(auth, messages, tools, systemPrompt);
+    var response = await _sendRequest(
+      auth,
+      messages,
+      tools,
+      systemPrompt,
+      clientVersion,
+      useResponsesLite,
+    );
 
     if (response.statusCode == 401 && allowAuthRefresh) {
       auth = await authService.refreshAuth();
-      response = await _sendRequest(auth, messages, tools, systemPrompt);
+      response = await _sendRequest(
+        auth,
+        messages,
+        tools,
+        systemPrompt,
+        clientVersion,
+        useResponsesLite,
+      );
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -80,29 +116,72 @@ class OpenAISubscriptionProvider implements LlmProvider {
     List<LlmMessage> messages,
     List<LlmToolDefinition> tools,
     String? systemPrompt,
+    String clientVersion,
+    bool useResponsesLite,
   ) async {
     final request = http.Request('POST', Uri.parse(_baseUrl));
     request.headers.addAll({
       'Content-Type': 'application/json',
       'Accept': 'text/event-stream',
-      'version': _clientVersion,
+      'version': clientVersion,
+      if (useResponsesLite) 'x-openai-internal-codex-responses-lite': 'true',
       ...auth.authHeaders,
     });
+    final convertedTools = _convertTools(tools);
+    final convertedInput = _convertMessages(messages);
     request.body = jsonEncode({
       'model': model,
-      if (systemPrompt != null && systemPrompt.isNotEmpty)
+      if (!useResponsesLite && systemPrompt != null && systemPrompt.isNotEmpty)
         'instructions': systemPrompt,
-      'input': _convertMessages(messages),
-      'tools': _convertTools(tools),
+      'input': useResponsesLite
+          ? _responsesLiteInput(
+              messages: convertedInput,
+              tools: convertedTools,
+              systemPrompt: systemPrompt,
+            )
+          : convertedInput,
+      if (!useResponsesLite) 'tools': convertedTools,
       'tool_choice': 'auto',
       'parallel_tool_calls': false,
-      'reasoning': null,
+      'reasoning': useResponsesLite ? {'context': 'all_turns'} : null,
       'store': false,
       'stream': true,
       'include': const <String>[],
       'prompt_cache_key': promptCacheKey,
     });
     return _client.send(request);
+  }
+
+  List<Map<String, dynamic>> _responsesLiteInput({
+    required List<Map<String, dynamic>> messages,
+    required List<Map<String, dynamic>> tools,
+    required String? systemPrompt,
+  }) {
+    return [
+      {
+        'type': 'additional_tools',
+        'role': 'developer',
+        'tools': tools.isEmpty
+            ? const <Map<String, dynamic>>[]
+            : [
+                {
+                  'type': 'namespace',
+                  'name': 'functions',
+                  'description': '',
+                  'tools': tools,
+                },
+              ],
+      },
+      if (systemPrompt != null && systemPrompt.isNotEmpty)
+        {
+          'type': 'message',
+          'role': 'developer',
+          'content': [
+            {'type': 'input_text', 'text': systemPrompt},
+          ],
+        },
+      ...messages,
+    ];
   }
 
   List<Map<String, dynamic>> _convertMessages(List<LlmMessage> messages) {
@@ -147,6 +226,7 @@ class OpenAISubscriptionProvider implements LlmProvider {
             result.add({
               'type': 'function_call',
               'name': toolCall.name,
+              if (toolCall.namespace != null) 'namespace': toolCall.namespace,
               'arguments': jsonEncode(toolCall.arguments),
               'call_id': toolCall.id,
             });
@@ -253,10 +333,12 @@ class OpenAISubscriptionProvider implements LlmProvider {
         final name = item['name'];
         final callId = item['call_id'];
         if (name is String && callId is String) {
+          final namespace = item['namespace'];
           toolCalls.add(
             LlmToolCall(
               id: callId,
               name: name,
+              namespace: namespace is String ? namespace : null,
               arguments: _parseArguments(item['arguments']),
             ),
           );

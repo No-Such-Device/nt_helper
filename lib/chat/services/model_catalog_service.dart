@@ -2,12 +2,12 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:nt_helper/chat/services/codex_auth_service.dart';
+import 'package:nt_helper/chat/services/codex_client_version_service.dart';
 
 const openAISubscriptionResponsesUrl =
     'https://chatgpt.com/backend-api/codex/responses';
 const openAISubscriptionModelsUrl =
     'https://chatgpt.com/backend-api/codex/models';
-const openAISubscriptionClientVersion = '0.135.0';
 
 class LlmModelOption {
   final String id;
@@ -36,27 +36,36 @@ class ModelCatalogException implements Exception {
 /// public `/v1/models` API, whose results describe API-key availability.
 class OpenAISubscriptionModelCatalog {
   final CodexAuthService authService;
+  final CodexClientVersionService clientVersionService;
   final http.Client _client;
   final Uri modelsUri;
-  final String clientVersion;
 
   OpenAISubscriptionModelCatalog({
     required this.authService,
+    CodexClientVersionService? clientVersionService,
     http.Client? client,
     Uri? modelsUri,
-    this.clientVersion = openAISubscriptionClientVersion,
-  }) : _client = client ?? http.Client(),
+  }) : clientVersionService =
+           clientVersionService ??
+           CodexClientVersionService.forAuthFile(authService.authFilePath),
+       _client = client ?? http.Client(),
        modelsUri = modelsUri ?? Uri.parse(openAISubscriptionModelsUrl);
 
   Future<List<LlmModelOption>> fetchModels({
     required bool allowAuthRefresh,
   }) async {
+    late final String clientVersion;
+    try {
+      clientVersion = await clientVersionService.resolve();
+    } on CodexClientVersionException catch (error) {
+      throw ModelCatalogException(error.message);
+    }
     var auth = await authService.loadAuth();
-    var response = await _getModels(auth);
+    var response = await _getModels(auth, clientVersion);
 
     if (response.statusCode == 401 && allowAuthRefresh) {
       auth = await authService.refreshAuth();
-      response = await _getModels(auth);
+      response = await _getModels(auth, clientVersion);
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -74,7 +83,10 @@ class OpenAISubscriptionModelCatalog {
     }
   }
 
-  Future<http.Response> _getModels(CodexAuthSnapshot auth) {
+  Future<http.Response> _getModels(
+    CodexAuthSnapshot auth,
+    String clientVersion,
+  ) {
     final uri = modelsUri.replace(
       queryParameters: {
         ...modelsUri.queryParameters,

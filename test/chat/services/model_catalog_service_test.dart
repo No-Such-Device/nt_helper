@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:nt_helper/chat/services/codex_auth_service.dart';
+import 'package:nt_helper/chat/services/codex_client_version_service.dart';
 import 'package:nt_helper/chat/services/model_catalog_service.dart';
 
 class _FakeAuthService extends CodexAuthService {
@@ -16,6 +17,14 @@ class _FakeAuthService extends CodexAuthService {
 
   @override
   void dispose() {}
+}
+
+class _FakeCodexClientVersionService extends CodexClientVersionService {
+  _FakeCodexClientVersionService()
+    : super(versionFilePath: '/unused/version.json');
+
+  @override
+  Future<String> resolve() async => '9.8.7';
 }
 
 void main() {
@@ -62,6 +71,7 @@ void main() {
       );
       final catalog = OpenAISubscriptionModelCatalog(
         authService: auth,
+        clientVersionService: _FakeCodexClientVersionService(),
         client: client,
         modelsUri: Uri.parse('https://example.test/backend-api/codex/models'),
       );
@@ -72,11 +82,39 @@ void main() {
       expect(models.single.id, 'gpt-subscription');
       expect(
         captured.url.toString(),
-        'https://example.test/backend-api/codex/models?client_version=0.135.0',
+        'https://example.test/backend-api/codex/models?client_version=9.8.7',
       );
       expect(captured.headers['Authorization'], 'Bearer access-token');
       expect(captured.headers['ChatGPT-Account-ID'], 'account-id');
-      expect(captured.headers['version'], '0.135.0');
+      expect(captured.headers['version'], '9.8.7');
+    });
+
+    test('reports unavailable Codex version metadata', () async {
+      final auth = _FakeAuthService(
+        const CodexAuthSnapshot(
+          accessToken: 'access-token',
+          refreshToken: 'refresh-token',
+          accountId: 'account-id',
+        ),
+      );
+      final catalog = OpenAISubscriptionModelCatalog(
+        authService: auth,
+        clientVersionService: CodexClientVersionService(
+          versionFilePath: '/missing/version.json',
+        ),
+      );
+      addTearDown(catalog.dispose);
+
+      await expectLater(
+        catalog.fetchModels(allowAuthRefresh: false),
+        throwsA(
+          isA<ModelCatalogException>().having(
+            (error) => error.message,
+            'message',
+            contains('Open Codex once'),
+          ),
+        ),
+      );
     });
   });
 

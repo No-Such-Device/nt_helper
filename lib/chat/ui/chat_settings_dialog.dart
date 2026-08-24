@@ -555,30 +555,18 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
 
   List<Widget> _buildOpenAISubscriptionSettings(ThemeData theme) => [
     const SizedBox(height: 8),
-    Semantics(
-      liveRegion: true,
-      child: Text(
-        _codexAuthFound == null
-            ? 'Codex auth: checking...'
-            : _codexAuthFound!
-            ? 'Codex auth: found'
-            : 'Codex auth: not found',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: _codexAuthFound == false
-              ? theme.colorScheme.error
-              : theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
+    SettingsStatusRegion(
+      message:
+          _codexAuthError ??
+          (_codexAuthFound == null
+              ? 'Checking Codex authentication…'
+              : _codexAuthFound!
+              ? 'Codex authentication found.'
+              : 'Codex authentication not found.'),
+      loading: _codexAuthFound == null,
+      isError: _codexAuthFound == false || _codexAuthError != null,
+      isSuccess: _codexAuthFound == true && _codexAuthError == null,
     ),
-    if (_codexAuthError != null) ...[
-      const SizedBox(height: 4),
-      Text(
-        _codexAuthError!,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.error,
-        ),
-      ),
-    ],
     const SizedBox(height: 16),
     Text('Model', style: theme.textTheme.titleSmall),
     const SizedBox(height: 8),
