@@ -126,7 +126,7 @@ class ChatMessage {
   factory ChatMessage.thinking() => ChatMessage(
     id: _generateId(),
     role: ChatMessageRole.thinking,
-    content: 'Thinking...',
+    content: 'Working...',
     timestamp: DateTime.now(),
   );
 

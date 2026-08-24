@@ -159,7 +159,7 @@ class _ChatPanelState extends State<ChatPanel> {
   Widget _buildChat(BuildContext context, ChatReady state) {
     final messages = state.messages;
     final messageCount = messages.length;
-    final isProcessing = state.isProcessing && state.currentToolName == null;
+    final isProcessing = state.isProcessing;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -175,11 +175,7 @@ class _ChatPanelState extends State<ChatPanel> {
       _wasProcessing = state.isProcessing;
     });
 
-    final displayItems = _groupMessages(
-      messages,
-      state.isProcessing,
-      state.currentToolName,
-    );
+    final displayItems = _groupMessages(messages, state.isProcessing);
 
     return Column(
       children: [
@@ -661,7 +657,6 @@ class _Thinking extends _DisplayItem {}
 List<_DisplayItem> _groupMessages(
   List<ChatMessage> messages,
   bool isProcessing,
-  String? currentToolName,
 ) {
   final items = <_DisplayItem>[];
   int i = 0;
@@ -679,12 +674,12 @@ List<_DisplayItem> _groupMessages(
       items.add(_ToolGroup(toolMessages));
     } else {
       final isLast = i == messages.length - 1;
-      final hasThinking = isProcessing && currentToolName == null;
+      final hasThinking = isProcessing;
       items.add(_SingleMessage(msg, isNew: isLast && !hasThinking));
       i++;
     }
   }
-  if (isProcessing && currentToolName == null) {
+  if (isProcessing) {
     items.add(_Thinking());
   }
   return items;

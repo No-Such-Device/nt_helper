@@ -28,7 +28,7 @@ class ChatMessageBubble extends StatelessWidget {
       ChatMessageRole.compaction => const _CompactionChip(),
       ChatMessageRole.toolCall ||
       ChatMessageRole.toolResult => const SizedBox.shrink(),
-      ChatMessageRole.thinking => _ThinkingIndicator(),
+      ChatMessageRole.thinking => _ThinkingIndicator(label: message.content),
     };
   }
 }
@@ -637,29 +637,43 @@ class _CompactionChip extends StatelessWidget {
 }
 
 class _ThinkingIndicator extends StatelessWidget {
+  final String label;
+
+  const _ThinkingIndicator({required this.label});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: theme.colorScheme.primary,
-            ),
+    return Semantics(
+      liveRegion: true,
+      label: label,
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(
-            'Thinking...',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

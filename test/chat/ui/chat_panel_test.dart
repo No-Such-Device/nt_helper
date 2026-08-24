@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -103,5 +105,80 @@ void main() {
     await tester.pumpAndSettle();
 
     verifyNever(() => mockCubit.clearChat());
+  });
+
+  testWidgets('tool use does not move a bottom-pinned transcript', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final mockCubit = _MockChatCubit();
+    final messages = List.generate(
+      8,
+      (index) => ChatMessage.assistant(
+        index == 7
+            ? 'Stable transcript anchor'
+            : 'Earlier response $index with enough text to fill the panel.',
+      ),
+    );
+    final thinkingState = ChatReady(messages: messages, isProcessing: true);
+    final states = StreamController<ChatState>();
+    addTearDown(states.close);
+    whenListen(mockCubit, states.stream, initialState: thinkingState);
+    when(
+      () => mockCubit.contextSummary,
+    ).thenReturn(ChatContextSummary(messageCount: messages.length));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: BlocProvider<ChatCubit>.value(
+            value: mockCubit,
+            child: const ChatPanel(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(milliseconds: 250));
+    final listScroll = tester.state<ScrollableState>(
+      find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    listScroll.position.jumpTo(listScroll.position.maxScrollExtent);
+    await tester.pump();
+
+    final anchor = find.text('Stable transcript anchor');
+    expect(anchor, findsOneWidget);
+    final thinkingY = tester.getTopLeft(anchor).dy;
+
+    states.add(
+      ChatReady(
+        messages: messages,
+        isProcessing: true,
+        currentToolName: 'show_preset',
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('Working...'), findsOneWidget);
+    expect(find.bySemanticsLabel('Working...'), findsOneWidget);
+    expect(tester.getTopLeft(anchor).dy, closeTo(thinkingY, 0.1));
+
+    states.add(thinkingState);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('Working...'), findsOneWidget);
+    expect(tester.getTopLeft(anchor).dy, closeTo(thinkingY, 0.1));
   });
 }
