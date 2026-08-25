@@ -65,29 +65,28 @@ void main() {
     expect(writtenValues.single, 2);
   });
 
-  testWidgets(
-    'NT folder values follow alphabetic breadth-first catalogue order',
-    (tester) async {
-      final writtenValues = <int>[];
+  testWidgets('NT folder values follow alphabetic catalogue order', (
+    tester,
+  ) async {
+    final writtenValues = <int>[];
 
-      await _pumpEditor(
-        tester,
-        cubit: cubit,
-        slot: _chimeraSlot(lionFolderValue: 1),
-        parameterNumber: 0,
-        onValueChanged: writtenValues.add,
-      );
+    await _pumpEditor(
+      tester,
+      cubit: cubit,
+      slot: _chimeraSlot(lionFolderValue: 1),
+      parameterNumber: 0,
+      onValueChanged: writtenValues.add,
+    );
 
-      expect(find.text('Breaks/Lion'), findsOneWidget);
+    expect(find.text('Breaks/Lion'), findsOneWidget);
 
-      await tester.tap(find.text('Browse'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Breaks/Lion').last);
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Browse'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Breaks/Lion').last);
+    await tester.pumpAndSettle();
 
-      expect(writtenValues.single, 1);
-    },
-  );
+    expect(writtenValues.single, 1);
+  });
 
   testWidgets(
     'exact Folder and Sample pair follows the same recursive catalogue',
@@ -101,6 +100,75 @@ void main() {
 
       expect(find.text('Breaks/Lion'), findsOneWidget);
       expect(find.text('lion-a'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'exact Folder picker matches the NT depth-first playable-leaf catalogue',
+    (tester) async {
+      final writtenValues = <int>[];
+      sampleTree['/samples'] = DirectoryListing(
+        entries: [
+          _dir('XMAS22-DigitalDrums'),
+          _dir('Multisamples'),
+          _dir('Layered'),
+          _dir('Before'),
+          _dir('PPG_Wave2_Free'),
+        ],
+      );
+      sampleTree['/samples/Before'] = DirectoryListing(
+        entries: [_file('before.wav')],
+      );
+      sampleTree['/samples/Multisamples'] = DirectoryListing(
+        entries: [_dir('BoC_Bass flute'), _dir('BoC_Apart')],
+      );
+      sampleTree['/samples/Multisamples/BoC_Apart'] = DirectoryListing(
+        entries: [_file('apart.wav')],
+      );
+      sampleTree['/samples/Multisamples/BoC_Bass flute'] = DirectoryListing(
+        entries: [_file('bass.wav')],
+      );
+      sampleTree['/samples/Layered'] = DirectoryListing(
+        entries: [_file('parent.wav'), _dir('Nested')],
+      );
+      sampleTree['/samples/Layered/Nested'] = DirectoryListing(
+        entries: [_file('duplicate.wav')],
+      );
+      sampleTree['/samples/PPG_Wave2_Free'] = DirectoryListing(
+        entries: [_file('book.pdf'), _dir('PPG_Wave2_Free_Samples')],
+      );
+      sampleTree['/samples/PPG_Wave2_Free/PPG_Wave2_Free_Samples'] =
+          DirectoryListing(entries: [_file('duplicate.wav')]);
+      sampleTree['/samples/XMAS22-DigitalDrums'] = DirectoryListing(
+        entries: [_file('xmas.wav')],
+      );
+
+      await _pumpEditor(
+        tester,
+        cubit: cubit,
+        slot: _capicolaSlot(
+          folderValue: 0,
+          folderMax: 5,
+          folderString: 'Before',
+        ),
+        parameterNumber: 0,
+        onValueChanged: writtenValues.add,
+      );
+
+      await tester.tap(find.text('Browse'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Folder catalogue incomplete'), findsNothing);
+      expect(
+        find.text('PPG_Wave2_Free/PPG_Wave2_Free_Samples'),
+        findsOneWidget,
+      );
+      expect(find.text('Layered/Nested'), findsNothing);
+
+      await tester.tap(find.text('XMAS22-DigitalDrums'));
+      await tester.pumpAndSettle();
+
+      expect(writtenValues.single, 5);
     },
   );
 
@@ -440,7 +508,11 @@ Slot _chimeraSlot({
   );
 }
 
-Slot _capicolaSlot({String? folderString}) {
+Slot _capicolaSlot({
+  int folderValue = 1,
+  int folderMax = 2,
+  String? folderString,
+}) {
   return Slot(
     algorithm: Algorithm(algorithmIndex: 0, guid: 'ThCa', name: 'Capicola'),
     routing: RoutingInfo(algorithmIndex: 0, routingInfo: List.filled(6, 0)),
@@ -450,7 +522,7 @@ Slot _capicolaSlot({String? folderString}) {
         algorithmIndex: 0,
         parameterNumber: 0,
         min: 0,
-        max: 2,
+        max: folderMax,
         defaultValue: 0,
         unit: ParameterUnits.modernHasStrings,
         name: 'Folder',
@@ -468,7 +540,7 @@ Slot _capicolaSlot({String? folderString}) {
       ),
     ],
     values: [
-      ParameterValue(algorithmIndex: 0, parameterNumber: 0, value: 1),
+      ParameterValue(algorithmIndex: 0, parameterNumber: 0, value: folderValue),
       ParameterValue(algorithmIndex: 0, parameterNumber: 1, value: 0),
     ],
     enums: [ParameterEnumStrings.filler(), ParameterEnumStrings.filler()],

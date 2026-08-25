@@ -870,46 +870,41 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
     final rootListing = await listingFor(basePath);
     if (rootListing == null) return results;
 
-    // The NT walks folders breadth-first. At each depth it sorts sibling names
-    // alphabetically, numbers only playable folders, then continues into the
-    // sorted children at the next depth.
-    final pending =
-        <({String currentPath, String relativePath, DirectoryListing listing})>[
-          (currentPath: basePath, relativePath: '', listing: rootListing),
-        ];
-
-    for (var cursor = 0; cursor < pending.length; cursor++) {
-      final current = pending[cursor];
-      for (final directory in directoriesFor(current.listing)) {
+    // The NT walks folders alphabetically and depth-first. A directory with
+    // playable samples consumes one catalogue value and is treated as a leaf.
+    // Otherwise its subdirectories are expanded in place; non-sample files do
+    // not affect the traversal.
+    Future<void> walk(
+      String currentPath,
+      String relativePath,
+      DirectoryListing listing,
+    ) async {
+      for (final directory in directoriesFor(listing)) {
         final name = _directoryEntryName(directory);
-        final childRelativePath = current.relativePath.isEmpty
+        final childRelativePath = relativePath.isEmpty
             ? name
-            : '${current.relativePath}/$name';
-        final childPath = '${current.currentPath}/$name';
+            : '$relativePath/$name';
+        final childPath = '$currentPath/$name';
         final childListing = await listingFor(childPath);
-        if (childListing != null) {
-          // The firmware only assigns folder numbers to directories that
-          // directly contain playable samples. Container-only directories are
-          // still traversed but do not consume a catalogue value.
-          if (containsPlayableSample(childListing)) {
-            results.add(
-              DirectoryEntry(
-                name: childRelativePath,
-                attributes: directory.attributes | 0x10,
-                date: directory.date,
-                time: directory.time,
-                size: directory.size,
-              ),
-            );
-          }
-          pending.add((
-            currentPath: childPath,
-            relativePath: childRelativePath,
-            listing: childListing,
-          ));
+        if (childListing == null) continue;
+
+        if (containsPlayableSample(childListing)) {
+          results.add(
+            DirectoryEntry(
+              name: childRelativePath,
+              attributes: directory.attributes | 0x10,
+              date: directory.date,
+              time: directory.time,
+              size: directory.size,
+            ),
+          );
+        } else {
+          await walk(childPath, childRelativePath, childListing);
         }
       }
     }
+
+    await walk(basePath, '', rootListing);
     return results;
   }
 

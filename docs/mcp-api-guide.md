@@ -421,9 +421,11 @@ exact `next` call when more entries remain. This is a diagnostic view of the
 device response, not the folder numbering algorithm itself.
 
 The NT sample-folder catalogue is reconstructed separately: traverse folders
-breadth-first, sort sibling folder names case-insensitively at each level, and
+depth-first, sort sibling folder names case-insensitively at each level, and
 assign values only to folders that directly contain `.wav`, `.aif`, or `.aiff`
-files. Container-only folders are traversed without consuming a value.
+files. Once a playable folder is assigned a value, do not descend into its
+subfolders. Otherwise traverse its subfolders without consuming a value;
+non-sample files such as PDFs do not affect the catalogue.
 
 ---
 
