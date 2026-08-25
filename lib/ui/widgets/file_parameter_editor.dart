@@ -849,7 +849,11 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
         if (name.isEmpty || name.startsWith('.')) return false;
         if (_looksLikeFileName(name)) return false;
         return !widget.rule.excludeDirs.contains(name);
-      }).toList();
+      }).toList()..sort((a, b) {
+        final aName = _directoryEntryName(a).toLowerCase();
+        final bName = _directoryEntryName(b).toLowerCase();
+        return aName.compareTo(bName);
+      });
     }
 
     bool containsPlayableSample(DirectoryListing listing) {
@@ -866,9 +870,9 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
     final rootListing = await listingFor(basePath);
     if (rootListing == null) return results;
 
-    // The NT walks folders breadth-first. It numbers every playable folder at
-    // the current depth before considering directories at the next depth, and
-    // preserves the directory response's sibling order.
+    // The NT walks folders breadth-first. At each depth it sorts sibling names
+    // alphabetically, numbers only playable folders, then continues into the
+    // sorted children at the next depth.
     final pending =
         <({String currentPath, String relativePath, DirectoryListing listing})>[
           (currentPath: basePath, relativePath: '', listing: rootListing),

@@ -38,7 +38,7 @@ void main() {
 
   group('FileParameterEditor Poly Multisample folder/sample helpers', () {
     testWidgets(
-      'pymu Folder value 0 resolves to first folder in NT response order',
+      'pymu Folder value 0 resolves to first alphabetic playable folder',
       (tester) async {
         final slot = _polySlot(guid: 'pymu', folderMin: 0, folderValue: 0);
 
@@ -50,13 +50,52 @@ void main() {
     );
 
     testWidgets(
-      'pyms Folder value 1 resolves to first folder in NT response order',
+      'pyms Folder value 1 resolves to first alphabetic playable folder',
       (tester) async {
         final slot = _polySlot(guid: 'pyms', folderMin: 1, folderValue: 1);
 
         await _pumpEditor(tester, cubit: cubit, slot: slot, parameterNumber: 0);
 
         expect(find.text('ZTop'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'raw SD response order is alphabetized before folder values are assigned',
+      (tester) async {
+        when(() => manager.requestDirectoryListing('/samples')).thenAnswer(
+          (_) async => DirectoryListing(
+            entries: [
+              _dir('TSSD_Free_Wav'),
+              _dir('12VoltPunch_Wav_Free'),
+              _dir('!LABS Soft Pno - PedOn'),
+              _dir('Blofeld_Drums_Samples'),
+            ],
+          ),
+        );
+        for (final folder in const [
+          'TSSD_Free_Wav',
+          '12VoltPunch_Wav_Free',
+          '!LABS Soft Pno - PedOn',
+          'Blofeld_Drums_Samples',
+        ]) {
+          when(
+            () => manager.requestDirectoryListing('/samples/$folder'),
+          ).thenAnswer(
+            (_) async => DirectoryListing(entries: [_file('sample.wav')]),
+          );
+        }
+        final slot = _polySlot(
+          guid: 'pymu',
+          folderMin: 0,
+          folderValue: 0,
+          folderMax: 3,
+        );
+
+        await _pumpEditor(tester, cubit: cubit, slot: slot, parameterNumber: 0);
+
+        expect(find.text('!LABS Soft Pno - PedOn'), findsOneWidget);
+        expect(find.text('TSSD_Free_Wav'), findsNothing);
       },
     );
 
@@ -74,20 +113,20 @@ void main() {
           onValueChanged: writtenValues.add,
         );
 
-        expect(find.text('Multisample/BoC Alpha'), findsOneWidget);
+        expect(find.text('Multisample/BoC Beta'), findsOneWidget);
 
         await tester.tap(find.text('Browse'));
         await tester.pumpAndSettle();
 
         expect(find.text('Multisample'), findsNothing);
         expect(find.text('Multisample/BoC Alpha'), findsWidgets);
-        expect(find.text('Multisample/BoC Beta'), findsOneWidget);
+        expect(find.text('Multisample/BoC Beta'), findsWidgets);
         expect(find.text('.Hidden'), findsNothing);
 
-        await tester.tap(find.text('Multisample/BoC Beta'));
+        await tester.tap(find.text('Multisample/BoC Beta').last);
         await tester.pumpAndSettle();
 
-        expect(writtenValues.single, 1);
+        expect(writtenValues.single, 2);
       },
     );
 
@@ -146,7 +185,7 @@ void main() {
       await tester.tap(find.text('Browse'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Multisamples'), findsOneWidget);
+      expect(find.text('Multisamples'), findsWidgets);
     });
 
     testWidgets('Sample value 0 displays Multisample instead of first file', (
@@ -179,7 +218,7 @@ void main() {
       tester,
     ) async {
       final writtenValues = <int>[];
-      final slot = _polySlot(guid: 'pymu', folderMin: 0, folderValue: 2);
+      final slot = _polySlot(guid: 'pymu', folderMin: 0, folderValue: 1);
 
       await _pumpEditor(
         tester,

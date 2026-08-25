@@ -62,11 +62,11 @@ void main() {
     await tester.tap(find.text('Drums/Beef'));
     await tester.pumpAndSettle();
 
-    expect(writtenValues.single, 0);
+    expect(writtenValues.single, 2);
   });
 
   testWidgets(
-    'NT folder values follow device-response breadth-first catalogue order',
+    'NT folder values follow alphabetic breadth-first catalogue order',
     (tester) async {
       final writtenValues = <int>[];
 
@@ -325,9 +325,9 @@ Future<void> _pumpEditors(
 Slot _chimeraSlot({
   int lionFolderValue = 1,
   int lionSampleValue = 0,
-  int goatFolderValue = 2,
+  int goatFolderValue = 0,
   int goatSampleValue = 0,
-  int beefFolderValue = 0,
+  int beefFolderValue = 2,
   int kickSampleValue = 0,
 }) {
   final parameterValues = [
