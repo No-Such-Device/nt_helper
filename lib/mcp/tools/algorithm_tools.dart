@@ -776,6 +776,37 @@ class MCPAlgorithmTools {
     );
   }
 
+  /// Force one slot to be re-read from the NT, then return its compact state.
+  Future<String> refreshSlot(int slotIndex) async {
+    if (slotIndex < 0 || slotIndex >= MCPConstants.maxSlots) {
+      return jsonEncode({
+        'success': false,
+        'error':
+            'Invalid slot index: $slotIndex. Must be 0-${MCPConstants.maxSlots - 1}.',
+      });
+    }
+    if (!_controller.isSynchronized) {
+      return jsonEncode({'success': false, 'error': 'Device not synchronized'});
+    }
+
+    try {
+      await _controller.refreshSlot(slotIndex);
+      final refreshedSlot = jsonDecode(await showSlot(slotIndex));
+      return jsonEncode({
+        'success': true,
+        'refreshed': true,
+        'slot_index': slotIndex,
+        'slot': refreshedSlot,
+      });
+    } catch (e) {
+      return jsonEncode({
+        'success': false,
+        'slot_index': slotIndex,
+        'error': 'Failed to refresh slot from the NT: ${e.toString()}',
+      });
+    }
+  }
+
   /// Show the complete metadata shape reported by the connected device for a
   /// slot. This intentionally returns raw values so automated hardware suites
   /// can compare the device with the offline metadata resolver exactly.
@@ -1091,6 +1122,103 @@ class MCPAlgorithmTools {
           'error': 'Failed to capture screenshot: ${e.toString()}',
         }),
       );
+    }
+  }
+
+  /// List one directory on the connected NT without sorting its response.
+  ///
+  /// The absolute [ordinal] values deliberately preserve the order returned by
+  /// the device. Agents can recurse through entries whose [is_directory] field
+  /// is true and compare that raw order with a parameter catalogue.
+  Future<String> listSdDirectory(Map<String, dynamic> params) async {
+    final rawPath = params['path'];
+    if (rawPath is! String || rawPath.trim().isEmpty) {
+      return jsonEncode({
+        'success': false,
+        'error': 'path must be a non-empty absolute NT SD card path.',
+      });
+    }
+
+    final trimmedPath = rawPath.trim();
+    if (!trimmedPath.startsWith('/')) {
+      return jsonEncode({
+        'success': false,
+        'error': 'path must be an absolute NT SD card path starting with /.',
+      });
+    }
+
+    final path = trimmedPath == '/'
+        ? '/'
+        : trimmedPath.replaceFirst(RegExp(r'/+$'), '');
+    final offset = params['offset'] as int? ?? 0;
+    final limit = params['limit'] as int? ?? 128;
+    if (offset < 0) {
+      return jsonEncode({
+        'success': false,
+        'error': 'offset must be zero or greater.',
+      });
+    }
+    if (limit < 1 || limit > 512) {
+      return jsonEncode({
+        'success': false,
+        'error': 'limit must be between 1 and 512.',
+      });
+    }
+
+    final state = _distingCubit.state;
+    if (state is! DistingStateSynchronized) {
+      return jsonEncode({'success': false, 'error': 'Device not synchronized'});
+    }
+
+    try {
+      final listing = await state.disting.requestDirectoryListing(path);
+      if (listing == null) {
+        return jsonEncode({
+          'success': false,
+          'path': path,
+          'error': 'The NT did not return a directory listing.',
+        });
+      }
+
+      final total = listing.entries.length;
+      final safeOffset = offset.clamp(0, total);
+      final end = (safeOffset + limit).clamp(safeOffset, total);
+      final entries = <Map<String, dynamic>>[];
+      for (var ordinal = safeOffset; ordinal < end; ordinal++) {
+        final entry = listing.entries[ordinal];
+        entries.add({
+          'ordinal': ordinal,
+          'name': entry.name,
+          'is_directory': entry.isDirectory,
+          'attributes': entry.attributes,
+          'date': entry.date,
+          'time': entry.time,
+          'size': entry.size,
+        });
+      }
+
+      final hasMore = end < total;
+      return jsonEncode({
+        'path': path,
+        'order': 'device_response',
+        'total': total,
+        'offset': safeOffset,
+        'limit': limit,
+        'count': entries.length,
+        'has_more': hasMore,
+        if (hasMore)
+          'next': {
+            'tool': 'list_sd_directory',
+            'arguments': {'path': path, 'offset': end, 'limit': limit},
+          },
+        'entries': entries,
+      });
+    } catch (e) {
+      return jsonEncode({
+        'success': false,
+        'path': path,
+        'error': 'Failed to list NT SD directory: ${e.toString()}',
+      });
     }
   }
 

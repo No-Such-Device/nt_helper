@@ -43,6 +43,43 @@ void main() {
     );
   }
 
+  Slot createNtSampleCatalogueSlot() {
+    final slot = createTestSlot(
+      guid: 'ThCa',
+      parameterName: 'Folder',
+      unit: ParameterUnits.modernHasStrings,
+    );
+    return slot.copyWith(
+      parameters: [
+        slot.parameters.single,
+        ParameterInfo(
+          algorithmIndex: 0,
+          parameterNumber: 1,
+          min: 0,
+          max: 100,
+          defaultValue: 0,
+          unit: ParameterUnits.modernConfirm,
+          name: 'Sample',
+          powerOfTen: 0,
+        ),
+      ],
+      values: [
+        slot.values.single,
+        ParameterValue(algorithmIndex: 0, parameterNumber: 1, value: 0),
+      ],
+      enums: [slot.enums.single, ParameterEnumStrings.filler()],
+      mappings: [
+        slot.mappings.single,
+        Mapping(
+          algorithmIndex: 0,
+          parameterNumber: 1,
+          packedMappingData: PackedMappingData.filler(),
+        ),
+      ],
+      valueStrings: [slot.valueStrings.single, ParameterValueString.filler()],
+    );
+  }
+
   Widget? findEditor(Slot slot) {
     return ParameterEditorRegistry.findEditorFor(
       slot: slot,
@@ -189,18 +226,31 @@ void main() {
     });
 
     test('generic confirm Sample uses the selected-folder file picker', () {
-      final slot = createTestSlot(
-        guid: 'ThCa',
-        parameterName: 'Sample',
-        unit: ParameterUnits.modernConfirm,
+      final slot = createNtSampleCatalogueSlot();
+      final editor = ParameterEditorRegistry.findEditorFor(
+        slot: slot,
+        parameterInfo: slot.parameters[1],
+        parameterNumber: 1,
+        currentValue: 0,
+        onValueChanged: (_) {},
       );
-
-      final editor = findEditor(slot);
       expect(editor, isA<FileParameterEditor>());
       final fileEditor = editor as FileParameterEditor;
       expect(fileEditor.rule.mode, FileSelectionMode.fileOnly);
       expect(fileEditor.rule.baseDirectory, '/samples');
       expect(fileEditor.rule.allowedExtensions, ['.wav', '.aif', '.aiff']);
+      expect(fileEditor.rule.ntSampleFolderEnumeration, isTrue);
+    });
+
+    test('generic Folder uses the recursive NT sample catalogue', () {
+      final slot = createNtSampleCatalogueSlot();
+
+      final editor = findEditor(slot);
+      expect(editor, isA<FileParameterEditor>());
+      final fileEditor = editor as FileParameterEditor;
+      expect(fileEditor.rule.mode, FileSelectionMode.folderOnly);
+      expect(fileEditor.rule.baseDirectory, '/samples');
+      expect(fileEditor.rule.ntSampleFolderEnumeration, isTrue);
     });
 
     test('Text input matches with both legacy and modern units', () {

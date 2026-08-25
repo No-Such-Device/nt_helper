@@ -446,6 +446,29 @@ class ToolRegistry {
 
     _entries.add(
       ToolRegistryEntry(
+        name: 'refresh_slot',
+        description:
+            'Force one slot to be re-read from the connected Disting NT, update nt_helper state, '
+            'and return the refreshed compact slot view. Use this before comparing parameter numbers '
+            'or value strings with show_screen.',
+        inputSchema: {
+          'properties': {
+            'slot_index': {
+              'type': 'integer',
+              'minimum': _slotMinimum,
+              'maximum': _slotMaximum,
+              'description': 'Slot index ($_slotRangeDescription).',
+            },
+          },
+          'required': ['slot_index'],
+        },
+        handler: (args) => _algoTools.refreshSlot(args['slot_index'] as int),
+        timeout: const Duration(seconds: 30),
+      ),
+    );
+
+    _entries.add(
+      ToolRegistryEntry(
         name: 'show_parameter',
         description:
             'Show one parameter with exact edit-preparation metadata: current and default values, '
@@ -514,6 +537,41 @@ class ToolRegistry {
         },
         handler: (args) =>
             _algoTools.showScreen(displayMode: args['display_mode']),
+      ),
+    );
+
+    _entries.add(
+      ToolRegistryEntry(
+        name: 'list_sd_directory',
+        description:
+            'Read one directory directly from the connected Disting NT SD card in exact device response order. '
+            'No alphabetical or date sorting is applied. Use each entry ordinal as evidence, and recurse by calling '
+            'this tool with the child path when is_directory is true.',
+        inputSchema: {
+          'properties': {
+            'path': {
+              'type': 'string',
+              'description':
+                  'Absolute NT SD card directory path, for example /samples or /samples/Multisamples.',
+            },
+            'offset': {
+              'type': 'integer',
+              'minimum': 0,
+              'default': 0,
+              'description': 'Zero-based raw device-response entry offset.',
+            },
+            'limit': {
+              'type': 'integer',
+              'minimum': 1,
+              'maximum': 512,
+              'default': 128,
+              'description': 'Maximum raw entries to return (1-512).',
+            },
+          },
+          'required': ['path'],
+        },
+        handler: (args) => _algoTools.listSdDirectory(args),
+        timeout: const Duration(seconds: 30),
       ),
     );
 

@@ -37,6 +37,7 @@ void main() {
     when(() => cubit.state).thenReturn(DistingStateInitial());
     when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.disting()).thenReturn(manager);
+    when(() => cubit.refreshSlot(any())).thenAnswer((_) async {});
     sampleTree = _chimeraSampleTree();
     _stubChimeraSampleTree(manager, sampleTree);
   });
@@ -61,7 +62,71 @@ void main() {
     await tester.tap(find.text('Drums/Beef'));
     await tester.pumpAndSettle();
 
-    expect(writtenValues.single, 4);
+    expect(writtenValues.single, 0);
+  });
+
+  testWidgets(
+    'NT folder values follow device-response breadth-first catalogue order',
+    (tester) async {
+      final writtenValues = <int>[];
+
+      await _pumpEditor(
+        tester,
+        cubit: cubit,
+        slot: _chimeraSlot(lionFolderValue: 1),
+        parameterNumber: 0,
+        onValueChanged: writtenValues.add,
+      );
+
+      expect(find.text('Breaks/Lion'), findsOneWidget);
+
+      await tester.tap(find.text('Browse'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Breaks/Lion').last);
+      await tester.pumpAndSettle();
+
+      expect(writtenValues.single, 1);
+    },
+  );
+
+  testWidgets(
+    'exact Folder and Sample pair follows the same recursive catalogue',
+    (tester) async {
+      await _pumpEditors(
+        tester,
+        cubit: cubit,
+        slot: _capicolaSlot(),
+        parameterNumbers: const [0, 1],
+      );
+
+      expect(find.text('Breaks/Lion'), findsOneWidget);
+      expect(find.text('lion-a'), findsOneWidget);
+    },
+  );
+
+  testWidgets('NT folder string blocks a mismatched reconstructed catalogue', (
+    tester,
+  ) async {
+    await _pumpEditor(
+      tester,
+      cubit: cubit,
+      slot: _capicolaSlot(folderString: 'Multisamples/K_HMU_Soft'),
+      parameterNumber: 0,
+    );
+
+    expect(find.text('Multisamples/K_HMU_Soft'), findsOneWidget);
+
+    await tester.tap(find.text('Browse'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Folder catalogue order does not match the NT at value 1. '
+        'Refresh to retry.',
+      ),
+      findsWidgets,
+    );
+    expect(find.text('Breaks/Lion'), findsNothing);
   });
 
   testWidgets('Chimera editors share one recursive sample directory scan', (
@@ -94,16 +159,18 @@ void main() {
     expect(find.text('Fresh'), findsNothing);
 
     sampleTree['/samples'] = DirectoryListing(
-      entries: [_dir('Drums'), _dir('Breaks'), _dir('Fresh')],
+      entries: [_dir('Breaks'), _dir('Fresh')],
     );
-    sampleTree['/samples/Fresh'] = DirectoryListing(
+    sampleTree['/samples/Fresh'] = DirectoryListing(entries: [_dir('Nested')]);
+    sampleTree['/samples/Fresh/Nested'] = DirectoryListing(
       entries: [_file('new.wav')],
     );
 
     await tester.tap(find.text('Refresh'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Fresh'), findsOneWidget);
+    expect(find.text('Fresh/Nested'), findsOneWidget);
+    verify(() => cubit.refreshSlot(0)).called(1);
     verify(() => manager.requestDirectoryListing('/samples')).called(2);
     verify(() => manager.requestDirectoryListing('/samples/Breaks')).called(2);
   });
@@ -256,11 +323,11 @@ Future<void> _pumpEditors(
 }
 
 Slot _chimeraSlot({
-  int lionFolderValue = 3,
+  int lionFolderValue = 1,
   int lionSampleValue = 0,
   int goatFolderValue = 2,
   int goatSampleValue = 0,
-  int beefFolderValue = 4,
+  int beefFolderValue = 0,
   int kickSampleValue = 0,
 }) {
   final parameterValues = [
@@ -281,7 +348,7 @@ Slot _chimeraSlot({
         algorithmIndex: 0,
         parameterNumber: 0,
         min: 0,
-        max: 100,
+        max: 2,
         defaultValue: 0,
         unit: ParameterUnits.modernHasStrings,
         name: 'Lion folder',
@@ -301,7 +368,7 @@ Slot _chimeraSlot({
         algorithmIndex: 0,
         parameterNumber: 2,
         min: 0,
-        max: 100,
+        max: 2,
         defaultValue: 0,
         unit: ParameterUnits.modernHasStrings,
         name: 'Goat folder',
@@ -321,7 +388,7 @@ Slot _chimeraSlot({
         algorithmIndex: 0,
         parameterNumber: 4,
         min: 0,
-        max: 100,
+        max: 2,
         defaultValue: 0,
         unit: ParameterUnits.modernHasStrings,
         name: 'Beef folder',
@@ -370,5 +437,62 @@ Slot _chimeraSlot({
         value: '',
       ),
     ),
+  );
+}
+
+Slot _capicolaSlot({String? folderString}) {
+  return Slot(
+    algorithm: Algorithm(algorithmIndex: 0, guid: 'ThCa', name: 'Capicola'),
+    routing: RoutingInfo(algorithmIndex: 0, routingInfo: List.filled(6, 0)),
+    pages: ParameterPages(algorithmIndex: 0, pages: []),
+    parameters: [
+      ParameterInfo(
+        algorithmIndex: 0,
+        parameterNumber: 0,
+        min: 0,
+        max: 2,
+        defaultValue: 0,
+        unit: ParameterUnits.modernHasStrings,
+        name: 'Folder',
+        powerOfTen: 0,
+      ),
+      ParameterInfo(
+        algorithmIndex: 0,
+        parameterNumber: 1,
+        min: 0,
+        max: 1,
+        defaultValue: 0,
+        unit: ParameterUnits.modernConfirm,
+        name: 'Sample',
+        powerOfTen: 0,
+      ),
+    ],
+    values: [
+      ParameterValue(algorithmIndex: 0, parameterNumber: 0, value: 1),
+      ParameterValue(algorithmIndex: 0, parameterNumber: 1, value: 0),
+    ],
+    enums: [ParameterEnumStrings.filler(), ParameterEnumStrings.filler()],
+    mappings: [
+      Mapping(
+        algorithmIndex: 0,
+        parameterNumber: 0,
+        packedMappingData: PackedMappingData.filler(),
+      ),
+      Mapping(
+        algorithmIndex: 0,
+        parameterNumber: 1,
+        packedMappingData: PackedMappingData.filler(),
+      ),
+    ],
+    valueStrings: [
+      folderString == null
+          ? ParameterValueString.filler()
+          : ParameterValueString(
+              algorithmIndex: 0,
+              parameterNumber: 0,
+              value: folderString,
+            ),
+      ParameterValueString.filler(),
+    ],
   );
 }

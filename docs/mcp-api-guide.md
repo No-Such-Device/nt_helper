@@ -330,6 +330,22 @@ flags are included only when true.
 
 ---
 
+#### refresh_slot
+
+Force one slot to be re-read from the connected NT, update nt_helper's slot
+state, and return a compact refreshed slot view. Use this synchronization step
+before comparing a numeric parameter with `show_screen` or an SD catalogue
+reconstructed through `list_sd_directory`.
+
+**Parameters**:
+- `slot_index` (required, integer): Slot index (0-39).
+
+```json
+{"tool": "refresh_slot", "arguments": {"slot_index": 1}}
+```
+
+---
+
 #### show_slot_metadata
 
 Show the complete raw metadata shape currently reported by the physical device
@@ -380,6 +396,29 @@ Capture and return the current device screen as a base64 JPEG image.
 ```json
 {"tool": "show_screen", "arguments": {"display_mode": "overview"}}
 ```
+
+---
+
+#### list_sd_directory
+
+Read one directory directly from the connected NT SD card. Entries retain the
+exact order returned by the device; the tool does not apply the File Browser's
+alphabetical or date sorting. Use `ordinal` when comparing directory traversal
+against a numeric folder parameter, and recurse by calling the tool again for
+entries where `is_directory` is true.
+
+**Parameters**:
+- `path` (required, string): Absolute NT SD card directory path.
+- `offset` (optional, integer): Zero-based entry offset. Default: 0.
+- `limit` (optional, integer): Entries to return (1-512). Default: 128.
+
+```json
+{"tool": "list_sd_directory", "arguments": {"path": "/samples/Multisamples"}}
+```
+
+The response echoes `path`, reports `order: "device_response"`, and includes an
+exact `next` call when more entries remain. This is a diagnostic view of the
+device response, not the folder numbering algorithm itself.
 
 ---
 

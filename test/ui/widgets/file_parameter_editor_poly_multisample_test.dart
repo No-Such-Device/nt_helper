@@ -38,30 +38,30 @@ void main() {
 
   group('FileParameterEditor Poly Multisample folder/sample helpers', () {
     testWidgets(
-      'pymu Folder value 0 resolves to first NT breadth-first folder',
+      'pymu Folder value 0 resolves to first folder in NT response order',
       (tester) async {
         final slot = _polySlot(guid: 'pymu', folderMin: 0, folderValue: 0);
 
         await _pumpEditor(tester, cubit: cubit, slot: slot, parameterNumber: 0);
 
-        expect(find.text('Multisample'), findsOneWidget);
+        expect(find.text('ZTop'), findsOneWidget);
         expect(find.text('Multisample/BoC Alpha'), findsNothing);
       },
     );
 
     testWidgets(
-      'pyms Folder value 1 resolves to first NT breadth-first folder',
+      'pyms Folder value 1 resolves to first folder in NT response order',
       (tester) async {
         final slot = _polySlot(guid: 'pyms', folderMin: 1, folderValue: 1);
 
         await _pumpEditor(tester, cubit: cubit, slot: slot, parameterNumber: 0);
 
-        expect(find.text('Multisample'), findsOneWidget);
+        expect(find.text('ZTop'), findsOneWidget);
       },
     );
 
     testWidgets(
-      'nested folders follow NT breadth-first order and write matching value',
+      'nested playable folders follow NT breadth-first order and write matching value',
       (tester) async {
         final writtenValues = <int>[];
         final slot = _polySlot(guid: 'pymu', folderMin: 0, folderValue: 2);
@@ -79,7 +79,7 @@ void main() {
         await tester.tap(find.text('Browse'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Multisample'), findsWidgets);
+        expect(find.text('Multisample'), findsNothing);
         expect(find.text('Multisample/BoC Alpha'), findsWidgets);
         expect(find.text('Multisample/BoC Beta'), findsOneWidget);
         expect(find.text('.Hidden'), findsNothing);
@@ -87,12 +87,12 @@ void main() {
         await tester.tap(find.text('Multisample/BoC Beta'));
         await tester.pumpAndSettle();
 
-        expect(writtenValues.single, 3);
+        expect(writtenValues.single, 1);
       },
     );
 
     testWidgets(
-      'folder enumeration keeps parent folders when child listing fails',
+      'folder enumeration blocks a partial catalogue when a child listing fails',
       (tester) async {
         when(
           () => manager.requestDirectoryListing('/samples/Multisample'),
@@ -101,14 +101,19 @@ void main() {
 
         await _pumpEditor(tester, cubit: cubit, slot: slot, parameterNumber: 0);
 
-        expect(find.text('Multisample'), findsOneWidget);
+        expect(find.text('Folder 1'), findsOneWidget);
 
         await tester.tap(find.text('Browse'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Multisample'), findsWidgets);
-        expect(find.text('ZTop'), findsOneWidget);
-        expect(find.text('No folders found in /samples'), findsNothing);
+        expect(find.text('Multisample'), findsNothing);
+        expect(find.text('ZTop'), findsNothing);
+        expect(
+          find.text(
+            'Folder catalogue incomplete: an NT directory listing failed. Refresh to retry.',
+          ),
+          findsWidgets,
+        );
       },
     );
 
@@ -126,8 +131,15 @@ void main() {
       );
       when(
         () => manager.requestDirectoryListing('/samples/Multisamples'),
-      ).thenAnswer((_) async => DirectoryListing(entries: const []));
-      final slot = _polySlot(guid: 'pymu', folderMin: 0, folderValue: 0);
+      ).thenAnswer(
+        (_) async => DirectoryListing(entries: [_file('Playable.wav')]),
+      );
+      final slot = _polySlot(
+        guid: 'pymu',
+        folderMin: 0,
+        folderValue: 0,
+        folderMax: 4,
+      );
 
       await _pumpEditor(tester, cubit: cubit, slot: slot, parameterNumber: 0);
 
@@ -154,7 +166,7 @@ void main() {
       final slot = _polySlot(
         guid: 'pymu',
         folderMin: 0,
-        folderValue: 2,
+        folderValue: 1,
         sampleValue: -1,
       );
 
@@ -207,8 +219,10 @@ void _stubSampleTree(_MockDistingMidiManager manager) {
         _file('.DS_Store'),
       ],
     ),
-    '/samples/Multisample/BoC Beta': DirectoryListing(entries: const []),
-    '/samples/ZTop': DirectoryListing(entries: const []),
+    '/samples/Multisample/BoC Beta': DirectoryListing(
+      entries: [_file('Gamma_C3.wav')],
+    ),
+    '/samples/ZTop': DirectoryListing(entries: [_file('Top.wav')]),
   };
 
   when(() => manager.requestDirectoryListing(any())).thenAnswer((invocation) {
@@ -250,6 +264,7 @@ Slot _polySlot({
   required String guid,
   required int folderMin,
   required int folderValue,
+  int? folderMax,
   int sampleValue = 0,
 }) {
   final algorithmName = guid == 'pyms'
@@ -264,7 +279,7 @@ Slot _polySlot({
         algorithmIndex: 0,
         parameterNumber: 0,
         min: folderMin,
-        max: 100,
+        max: folderMax ?? folderMin + 3,
         defaultValue: folderMin,
         unit: ParameterUnits.modernHasStrings,
         name: 'Folder',

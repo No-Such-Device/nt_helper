@@ -59,6 +59,8 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
   String? _selectedFolderName;
   String? _selectedFileName;
   int? _loadedSampleDirectoryCacheRevision;
+  String? _sampleCatalogueError;
+  bool _sampleCatalogueTraversalFailed = false;
 
   bool get _usesNtSampleFolderEnumeration =>
       widget.rule.ntSampleFolderEnumeration;
@@ -132,6 +134,23 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
     // Check if this is a Sample or MIDI Player file parameter and if the folder value changed
     if (_loadsFromSelectedFolder) {
       _checkForFolderChanges(oldWidget);
+    }
+
+    if (_usesNtSampleFolderEnumeration) {
+      final oldHardwareName = _parameterValueString(
+        oldWidget.slot,
+        oldWidget.parameterNumber,
+      );
+      final newHardwareName = _parameterValueString(
+        widget.slot,
+        widget.parameterNumber,
+      );
+      if (newHardwareName != null && oldHardwareName != newHardwareName) {
+        setState(() {
+          _setSelectedName(newHardwareName);
+          _updateDisplayValue();
+        });
+      }
     }
 
     // Check if value string changed for text parameters
@@ -242,6 +261,27 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
     }
   }
 
+  String? _parameterValueString(Slot slot, int parameterNumber) {
+    final value = slot.valueStrings.elementAtOrNull(parameterNumber)?.value;
+    if (value == null || value.trim().isEmpty) return null;
+    return value.trim();
+  }
+
+  void _setSelectedName(String name) {
+    switch (widget.rule.mode) {
+      case FileSelectionMode.folderOnly:
+        _selectedFolderName = _cleanDisplayName(name, isFolder: true);
+        break;
+      case FileSelectionMode.fileOnly:
+      case FileSelectionMode.directFile:
+      case FileSelectionMode.folderThenFile:
+        _selectedFileName = _cleanDisplayName(name, isFolder: false);
+        break;
+      case FileSelectionMode.textInput:
+        break;
+    }
+  }
+
   String? _getDisplayValueForCurrentValue() {
     final currentVal = widget.currentValue;
     if (_hasZeroValueSentinel && currentVal <= 0) {
@@ -251,13 +291,18 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
     final displayVal = widget.parameterInfo.min == 0
         ? currentVal + 1
         : currentVal;
+    final hardwareName = _usesNtSampleFolderEnumeration
+        ? _parameterValueString(widget.slot, widget.parameterNumber)
+        : null;
     // Return actual resolved names if available, otherwise show loading or fallback
     switch (widget.rule.mode) {
       case FileSelectionMode.folderOnly:
         return _selectedFolderName ??
+            hardwareName ??
             (_isLoadingFiles ? 'Loading...' : 'Folder $displayVal');
       case FileSelectionMode.fileOnly:
         return _selectedFileName ??
+            hardwareName ??
             (_isLoadingFiles ? 'Loading...' : 'File $displayVal');
       case FileSelectionMode.directFile:
         return _selectedFileName ??
@@ -285,22 +330,35 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
 
     if (index >= 0 && index < _availableFiles.length) {
       final entry = _availableFiles[index];
+      final hardwareName = _parameterValueString(
+        widget.slot,
+        widget.parameterNumber,
+      );
+      if (_usesNtSampleFolderEnumeration &&
+          widget.rule.mode == FileSelectionMode.folderOnly &&
+          hardwareName != null &&
+          !_folderNamesMatch(entry.name, hardwareName)) {
+        setState(() {
+          _sampleCatalogueError =
+              'Folder catalogue order does not match the NT at value '
+              '${widget.currentValue}. Refresh to retry.';
+          _availableFiles = [];
+          _setSelectedName(hardwareName);
+          _updateDisplayValue();
+        });
+        return;
+      }
       setState(() {
-        switch (widget.rule.mode) {
-          case FileSelectionMode.folderOnly:
-            _selectedFolderName = _cleanDisplayName(entry.name, isFolder: true);
-            break;
-          case FileSelectionMode.fileOnly:
-          case FileSelectionMode.directFile:
-          case FileSelectionMode.folderThenFile:
-            _selectedFileName = _cleanDisplayName(entry.name, isFolder: false);
-            break;
-          case FileSelectionMode.textInput:
-            break; // Not applicable
-        }
+        _setSelectedName(entry.name);
         _updateDisplayValue();
       });
     }
+  }
+
+  bool _folderNamesMatch(String listedName, String hardwareName) {
+    String normalize(String value) =>
+        value.replaceAll(RegExp(r'^/+|/+$'), '').toLowerCase();
+    return normalize(listedName) == normalize(hardwareName);
   }
 
   void _incrementValue() {
@@ -392,7 +450,11 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
     final disting = cubit.disting();
     if (disting == null) return;
 
-    setState(() => _isLoadingFiles = true);
+    setState(() {
+      _isLoadingFiles = true;
+      _sampleCatalogueError = null;
+      _sampleCatalogueTraversalFailed = false;
+    });
     final sampleCacheRevision = _usesNtSampleFolderEnumeration
         ? SampleDirectoryListingCache.shared.revisionFor(disting)
         : null;
@@ -484,6 +546,23 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
           if (_hasZeroValueSentinel) {
             availableFiles.insert(0, _zeroValueSentinelEntry());
           }
+          if (_usesNtSampleFolderEnumeration &&
+              widget.rule.mode == FileSelectionMode.folderOnly) {
+            if (_sampleCatalogueTraversalFailed) {
+              _sampleCatalogueError =
+                  'Folder catalogue incomplete: an NT directory listing '
+                  'failed. Refresh to retry.';
+              availableFiles.clear();
+            } else if (widget.rule.ntSampleFolderCountFromRange) {
+              final expected = _folderValueCount(widget.parameterInfo);
+              if (availableFiles.length != expected) {
+                _sampleCatalogueError =
+                    'Folder catalogue incomplete: found '
+                    '${availableFiles.length} of $expected. Refresh to retry.';
+                availableFiles.clear();
+              }
+            }
+          }
           _availableFiles = availableFiles;
           _isLoadingFiles = false;
           _loadedSampleDirectoryCacheRevision = sampleCacheRevision;
@@ -527,6 +606,23 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
 
       // Convert folder parameter value to array index using min value
       final folderParam = widget.slot.parameters[folderParamIndex];
+      if (_usesNtSampleFolderEnumeration) {
+        if (_sampleCatalogueTraversalFailed) {
+          _sampleCatalogueError =
+              'Folder catalogue incomplete: an NT directory listing failed. '
+              'Refresh to retry.';
+          return null;
+        }
+        if (widget.rule.ntSampleFolderCountFromRange) {
+          final expected = _folderValueCount(folderParam);
+          if (folders.length != expected) {
+            _sampleCatalogueError =
+                'Folder catalogue incomplete: found ${folders.length} of '
+                '$expected. Refresh to retry.';
+            return null;
+          }
+        }
+      }
       final folderIndex = folderValue - folderParam.min;
 
       if (folderIndex >= 0 && folderIndex < folders.length) {
@@ -535,13 +631,16 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
           '',
         );
         return '$_currentDirectory/$selectedFolder';
-      } else {}
+      }
     } catch (e) {
-      // Intentionally empty
+      return null;
     }
 
-    return _currentDirectory;
+    return null;
   }
+
+  int _folderValueCount(ParameterInfo parameter) =>
+      parameter.max - parameter.min + 1;
 
   Future<void> _showFileSelectionDialog() async {
     await _reloadInvalidatedSampleDirectoryCache();
@@ -569,6 +668,12 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
       return; // Don't show dialog while loading
     }
 
+    if (_sampleCatalogueError != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_sampleCatalogueError!)));
+    }
+
     while (mounted) {
       final result = await showDialog<Object?>(
         context: context,
@@ -579,6 +684,7 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
           parameterInfo: widget.parameterInfo,
           rule: widget.rule,
           canRefresh: _usesNtSampleFolderEnumeration,
+          emptyMessage: _sampleCatalogueError,
           cleanDisplayName: _cleanDisplayName,
           getFileIcon: _getFileIcon,
           formatFileSize: _formatFileSize,
@@ -618,10 +724,12 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
   }
 
   Future<void> _refreshSampleDirectoryCache() async {
-    final disting = context.read<DistingCubit>().disting();
+    final cubit = context.read<DistingCubit>();
+    final disting = cubit.disting();
     final rootPath = widget.rule.baseDirectory ?? _currentDirectory;
     if (disting == null || rootPath == null) return;
 
+    await cubit.refreshSlot(widget.slot.algorithm.algorithmIndex);
     SampleDirectoryListingCache.shared.invalidateTree(disting, rootPath);
     await _loadDirectoryContents();
     if (!mounted) return;
@@ -726,62 +834,78 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
 
     Future<DirectoryListing?> listingFor(String path) async {
       try {
-        return await _requestDirectoryListing(disting, path);
+        final listing = await _requestDirectoryListing(disting, path);
+        if (listing == null) _sampleCatalogueTraversalFailed = true;
+        return listing;
       } catch (_) {
+        _sampleCatalogueTraversalFailed = true;
         return null;
       }
     }
 
     List<DirectoryEntry> directoriesFor(DirectoryListing listing) {
-      final directories =
-          listing.entries.where((entry) {
-            final name = _directoryEntryName(entry);
-            if (name.isEmpty || name.startsWith('.')) return false;
-            if (_looksLikeFileName(name)) return false;
-            return !widget.rule.excludeDirs.contains(name);
-          }).toList()..sort(
-            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-          );
-      return directories;
+      return listing.entries.where((entry) {
+        final name = _directoryEntryName(entry);
+        if (name.isEmpty || name.startsWith('.')) return false;
+        if (_looksLikeFileName(name)) return false;
+        return !widget.rule.excludeDirs.contains(name);
+      }).toList();
+    }
+
+    bool containsPlayableSample(DirectoryListing listing) {
+      const supportedExtensions = ['.wav', '.aif', '.aiff'];
+      return listing.entries.any((entry) {
+        final name = _directoryEntryName(entry);
+        if (name.isEmpty || name.startsWith('.')) return false;
+        if (_isDirectoryEntry(entry)) return false;
+        final lowerName = name.toLowerCase();
+        return supportedExtensions.any(lowerName.endsWith);
+      });
     }
 
     final rootListing = await listingFor(basePath);
     if (rootListing == null) return results;
 
-    // The NT numbers every alphabetical folder at one depth before descending.
-    var currentLevel = <(String, String, DirectoryListing)>[
-      (basePath, '', rootListing),
-    ];
+    // The NT walks folders breadth-first. It numbers every playable folder at
+    // the current depth before considering directories at the next depth, and
+    // preserves the directory response's sibling order.
+    final pending =
+        <({String currentPath, String relativePath, DirectoryListing listing})>[
+          (currentPath: basePath, relativePath: '', listing: rootListing),
+        ];
 
-    while (currentLevel.isNotEmpty) {
-      final nextLevel = <(String, String, DirectoryListing)>[];
-
-      for (final (currentPath, relativePath, listing) in currentLevel) {
-        for (final directory in directoriesFor(listing)) {
-          final name = _directoryEntryName(directory);
-          final childRelativePath = relativePath.isEmpty
-              ? name
-              : '$relativePath/$name';
-          final childPath = '$currentPath/$name';
-          results.add(
-            DirectoryEntry(
-              name: childRelativePath,
-              attributes: directory.attributes | 0x10,
-              date: directory.date,
-              time: directory.time,
-              size: directory.size,
-            ),
-          );
-          final childListing = await listingFor(childPath);
-          if (childListing != null) {
-            nextLevel.add((childPath, childRelativePath, childListing));
+    for (var cursor = 0; cursor < pending.length; cursor++) {
+      final current = pending[cursor];
+      for (final directory in directoriesFor(current.listing)) {
+        final name = _directoryEntryName(directory);
+        final childRelativePath = current.relativePath.isEmpty
+            ? name
+            : '${current.relativePath}/$name';
+        final childPath = '${current.currentPath}/$name';
+        final childListing = await listingFor(childPath);
+        if (childListing != null) {
+          // The firmware only assigns folder numbers to directories that
+          // directly contain playable samples. Container-only directories are
+          // still traversed but do not consume a catalogue value.
+          if (containsPlayableSample(childListing)) {
+            results.add(
+              DirectoryEntry(
+                name: childRelativePath,
+                attributes: directory.attributes | 0x10,
+                date: directory.date,
+                time: directory.time,
+                size: directory.size,
+              ),
+            );
           }
+          pending.add((
+            currentPath: childPath,
+            relativePath: childRelativePath,
+            listing: childListing,
+          ));
         }
       }
-
-      currentLevel = nextLevel;
     }
-
     return results;
   }
 
@@ -1451,6 +1575,7 @@ class _FileSelectionDialog extends StatefulWidget {
   final ParameterInfo parameterInfo;
   final ParameterEditorRule rule;
   final bool canRefresh;
+  final String? emptyMessage;
   final String Function(String, {required bool isFolder}) cleanDisplayName;
   final IconData Function(String) getFileIcon;
   final String Function(int) formatFileSize;
@@ -1462,6 +1587,7 @@ class _FileSelectionDialog extends StatefulWidget {
     required this.parameterInfo,
     required this.rule,
     required this.canRefresh,
+    required this.emptyMessage,
     required this.cleanDisplayName,
     required this.getFileIcon,
     required this.formatFileSize,
@@ -1568,7 +1694,8 @@ class _FileSelectionDialogState extends State<_FileSelectionDialog> {
                   ? Center(
                       child: Text(
                         _searchQuery.isEmpty
-                            ? 'No ${isFolder ? 'folders' : 'files'} found'
+                            ? widget.emptyMessage ??
+                                  'No ${isFolder ? 'folders' : 'files'} found'
                             : 'No matching ${isFolder ? 'folders' : 'files'}',
                       ),
                     )

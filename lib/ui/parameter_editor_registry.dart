@@ -133,6 +133,12 @@ class ParameterEditorRule {
   /// Match the NT's recursive /samples folder numbering.
   final bool ntSampleFolderEnumeration;
 
+  /// Whether the parameter range is the exact live folder catalogue size.
+  /// Some built-in algorithms expose a fixed dynamic ceiling (for example
+  /// 0-999), so range validation must only be enabled for contracts that
+  /// report the discovered catalogue count.
+  final bool ntSampleFolderCountFromRange;
+
   /// Optional label for a value-0 sentinel before real file entries.
   final String? zeroValueSentinelLabel;
 
@@ -148,6 +154,7 @@ class ParameterEditorRule {
     this.recursive = false,
     this.defaultFolder,
     this.ntSampleFolderEnumeration = false,
+    this.ntSampleFolderCountFromRange = false,
     this.zeroValueSentinelLabel,
   });
 
@@ -225,6 +232,27 @@ class ParameterEditorRegistry {
     ParameterUnits.legacyTextInput,
     ParameterUnits.modernTextInput,
   ];
+
+  static const _ntSampleCatalogueFolderRule = ParameterEditorRule(
+    parameterNamePattern: r'^Folder$',
+    units: [ParameterUnits.modernHasStrings],
+    baseDirectory: '/samples',
+    mode: FileSelectionMode.folderOnly,
+    description: 'NT sample catalogue folder selection',
+    ntSampleFolderEnumeration: true,
+    ntSampleFolderCountFromRange: true,
+  );
+
+  static const _ntSampleCatalogueSampleRule = ParameterEditorRule(
+    parameterNamePattern: r'^Sample$',
+    units: [ParameterUnits.modernConfirm],
+    baseDirectory: '/samples',
+    mode: FileSelectionMode.fileOnly,
+    allowedExtensions: ['.wav', '.aif', '.aiff'],
+    description: 'NT sample catalogue file selection',
+    ntSampleFolderEnumeration: true,
+    ntSampleFolderCountFromRange: true,
+  );
 
   /// Unified rules for all firmware versions
   static final List<ParameterEditorRule> _rules = [
@@ -508,6 +536,24 @@ class ParameterEditorRegistry {
     final parameterName = parameterInfo.name;
     final unit = parameterInfo.unit;
 
+    // An exact Folder/HasStrings + Sample/Confirm pair is the NT sample
+    // catalogue contract used by current sample-based algorithms. The pair is
+    // important: either unit alone is also used for unrelated strings/actions.
+    final pairedCatalogueRule = _pairedNtSampleCatalogueRule(
+      slot,
+      parameterInfo,
+    );
+    if (pairedCatalogueRule != null) {
+      return FileParameterEditor(
+        slot: slot,
+        parameterInfo: parameterInfo,
+        parameterNumber: parameterNumber,
+        currentValue: currentValue,
+        onValueChanged: onValueChanged,
+        rule: pairedCatalogueRule,
+      );
+    }
+
     // Find first matching rule
     for (final rule in _rules) {
       if (rule.matches(
@@ -528,6 +574,33 @@ class ParameterEditorRegistry {
     }
 
     return null; // No special editor needed
+  }
+
+  static ParameterEditorRule? _pairedNtSampleCatalogueRule(
+    Slot slot,
+    ParameterInfo parameterInfo,
+  ) {
+    final hasFolder = slot.parameters.any(
+      (parameter) =>
+          parameter.name == 'Folder' &&
+          parameter.unit == ParameterUnits.modernHasStrings,
+    );
+    final hasSample = slot.parameters.any(
+      (parameter) =>
+          parameter.name == 'Sample' &&
+          parameter.unit == ParameterUnits.modernConfirm,
+    );
+    if (!hasFolder || !hasSample) return null;
+
+    if (parameterInfo.name == 'Folder' &&
+        parameterInfo.unit == ParameterUnits.modernHasStrings) {
+      return _ntSampleCatalogueFolderRule;
+    }
+    if (parameterInfo.name == 'Sample' &&
+        parameterInfo.unit == ParameterUnits.modernConfirm) {
+      return _ntSampleCatalogueSampleRule;
+    }
+    return null;
   }
 
   /// Check if a unit is a string-type unit that should hide the unit display
