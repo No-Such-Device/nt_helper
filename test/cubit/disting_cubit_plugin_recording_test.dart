@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
+import 'package:nt_helper/domain/sd_card_operation.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/models/sd_card_file_system.dart';
@@ -93,6 +94,113 @@ void main() {
   }
 
   group('DistingCubit plugin recording', () {
+    test('installs into an existing empty plugin directory', () async {
+      cubit.emit(createSynchronizedState());
+      final testData = Uint8List.fromList([0x01, 0x02, 0x03]);
+
+      when(
+        () => mockDisting.requestDirectoryListing('/programs/plug-ins'),
+      ).thenAnswer((_) async => DirectoryListing(entries: []));
+      when(
+        () => mockDisting.requestDirectoryCreate('/programs/plug-ins'),
+      ).thenThrow(
+        const SdCardOperationException(
+          operation: SdCardOperation.directoryCreate,
+          message: 'Unable to create folder',
+        ),
+      );
+
+      await cubit.installPlugin('shoal.o', testData);
+
+      verifyNever(
+        () => mockDisting.requestDirectoryCreate('/programs/plug-ins'),
+      );
+      verify(
+        () => mockDisting.requestFileUploadChunk(
+          '/programs/plug-ins/shoal.o',
+          testData,
+          0,
+          createAlways: true,
+        ),
+      ).called(1);
+    });
+
+    test('creates a missing plugin directory before installation', () async {
+      cubit.emit(createSynchronizedState());
+      final testData = Uint8List.fromList([0x01, 0x02, 0x03]);
+
+      when(
+        () => mockDisting.requestDirectoryListing('/programs/plug-ins'),
+      ).thenThrow(
+        const SdCardOperationException(
+          operation: SdCardOperation.directoryListing,
+          message: 'Unable to open folder',
+        ),
+      );
+
+      await cubit.installPlugin('shoal.o', testData);
+
+      verify(
+        () => mockDisting.requestDirectoryCreate('/programs/plug-ins'),
+      ).called(1);
+      verify(
+        () => mockDisting.requestFileUploadChunk(
+          '/programs/plug-ins/shoal.o',
+          testData,
+          0,
+          createAlways: true,
+        ),
+      ).called(1);
+    });
+
+    test('fails when a missing plugin directory cannot be created', () async {
+      cubit.emit(createSynchronizedState());
+      final testData = Uint8List.fromList([0x01, 0x02, 0x03]);
+
+      when(
+        () => mockDisting.requestDirectoryListing('/programs/plug-ins'),
+      ).thenThrow(
+        const SdCardOperationException(
+          operation: SdCardOperation.directoryListing,
+          message: 'Unable to open folder',
+        ),
+      );
+      when(
+        () => mockDisting.requestDirectoryCreate('/programs/plug-ins'),
+      ).thenThrow(
+        const SdCardOperationException(
+          operation: SdCardOperation.directoryCreate,
+          message: 'SD card is read-only',
+        ),
+      );
+
+      await expectLater(
+        cubit.installPlugin('shoal.o', testData),
+        throwsA(
+          isA<SdCardOperationException>()
+              .having(
+                (error) => error.operation,
+                'operation',
+                SdCardOperation.directoryCreate,
+              )
+              .having(
+                (error) => error.message,
+                'message',
+                'SD card is read-only',
+              ),
+        ),
+      );
+
+      verifyNever(
+        () => mockDisting.requestFileUploadChunk(
+          any(),
+          any(),
+          any(),
+          createAlways: any(named: 'createAlways'),
+        ),
+      );
+    });
+
     test('records lua plugin installation to database', () async {
       // Arrange
       cubit.emit(createSynchronizedState());

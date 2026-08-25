@@ -370,20 +370,18 @@ class _PluginDelegate {
     String directoryPath,
     IDistingMidiManager disting,
   ) async {
-    // Check if directory already exists
-    final listing = await disting.requestDirectoryListing(directoryPath);
+    try {
+      final listing = await disting.requestDirectoryListing(directoryPath);
 
-    // If we got a non-null listing with entries, or an empty listing that could be
-    // a valid empty directory, we need to distinguish from error responses.
-    // The DirectoryListingResponse parser returns an empty DirectoryListing when
-    // status != 0x00 (error case). Since we can't distinguish between an empty
-    // directory and an error response from the listing alone, we treat empty
-    // listings as "directory doesn't exist" to handle first-time installations.
-    // This is safe because:
-    // 1. If directory exists but is empty, creating it again is a no-op (handled by device)
-    // 2. If directory doesn't exist (error response), we correctly create it
-    if (listing != null && listing.entries.isNotEmpty) {
-      return;
+      // A successful listing means the directory exists, even when it is empty.
+      // The NT rejects attempts to create an existing empty directory.
+      if (listing != null) {
+        return;
+      }
+    } on SdCardOperationException catch (error) {
+      if (error.operation != SdCardOperation.directoryListing) {
+        rethrow;
+      }
     }
 
     // Directory doesn't exist - need to create it
