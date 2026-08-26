@@ -22,7 +22,7 @@ permissions:
 jobs:
   setup:
     name: Setup Build Info
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     outputs:
       version: ${{ steps.get_version.outputs.version }}
       tag: ${{ steps.get_version.outputs.tag }}
@@ -49,7 +49,7 @@ jobs:
 
   create-release:
     name: Create Release
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     needs: setup
     # Only create release on tag push
     if: github.event_name == 'push'
@@ -75,7 +75,7 @@ jobs:
 
   android:
     name: Build and Sign Android APK
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     needs: [setup, create-release]
     if: |
       always() &&
@@ -166,7 +166,7 @@ jobs:
 
   android_aab_play_store:
     name: Build Android AAB and Upload to Play Store
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     needs: [setup, create-release]
     if: |
       always() &&
@@ -399,7 +399,7 @@ jobs:
 
   linux:
     name: Build Linux App
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     needs: [setup, create-release]
     if: |
       always() &&
@@ -462,7 +462,7 @@ jobs:
 
   macos:
     name: Build macOS App
-    runs-on: macos-latest
+    runs-on: [self-hosted, macOS, ARM64]
     needs: [setup, create-release]
     if: |
       always() &&
@@ -583,7 +583,7 @@ jobs:
 
   macos_testflight:
     name: Build macOS App and Upload to TestFlight
-    runs-on: macos-latest
+    runs-on: [self-hosted, macOS, ARM64]
     needs: [setup, create-release]
     if: |
       always() &&
@@ -808,7 +808,7 @@ jobs:
 
   ios:
     name: Build & Sign iOS
-    runs-on: macos-latest
+    runs-on: [self-hosted, macOS, ARM64]
     needs: [setup, create-release]
     if: |
       always() &&
