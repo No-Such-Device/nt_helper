@@ -26,9 +26,24 @@ void main() {
       expect(await service.resolve(), '0.149.0');
     });
 
+    test(
+      'uses the latest known version when metadata is unavailable',
+      () async {
+        final service = CodexClientVersionService(
+          versionFilePath: '/missing/codex/version.json',
+        );
+
+        expect(
+          await service.resolve(),
+          CodexClientVersionService.latestKnownVersion,
+        );
+      },
+    );
+
     test('reports when version metadata is unavailable', () async {
       final service = CodexClientVersionService(
         versionFilePath: '/missing/codex/version.json',
+        fallbackVersion: null,
       );
 
       await expectLater(
@@ -52,6 +67,7 @@ void main() {
       await versionFile.writeAsString(jsonEncode({'latest_version': 'latest'}));
       final service = CodexClientVersionService(
         versionFilePath: versionFile.path,
+        fallbackVersion: null,
       );
 
       await expectLater(

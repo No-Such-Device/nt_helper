@@ -36,6 +36,12 @@ build=$((build + 1))
 # New version string
 new_version="${major}.${minor}.${patch}+${build}"
 
+# Refresh the committed fallback used when Codex runtime metadata is absent.
+if ! dart run tool/embed_codex_client_version.dart; then
+  echo "Unable to refresh the embedded Codex client version"
+  exit 1
+fi
+
 # Update pubspec.yaml (compatible with both Linux and macOS)
 if [[ "$OSTYPE" == "darwin"* ]]; then
   sed -i "" "s/^version: .*/version: ${new_version}/" pubspec.yaml
@@ -44,7 +50,7 @@ else
 fi
 
 # Commit changes
-git add pubspec.yaml
+git add pubspec.yaml lib/chat/services/codex_client_version.g.dart
 git commit -m "Bump version to ${new_version}"
 git tag "v${major}.${minor}.${patch}"
 

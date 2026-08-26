@@ -2,24 +2,31 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:nt_helper/chat/services/codex_auth_service.dart';
+import 'package:nt_helper/chat/services/codex_client_version.g.dart';
 import 'package:path/path.dart' as p;
 
 /// Resolves the Codex protocol version that nt_helper should advertise.
 ///
-/// Codex writes its current available client version to version.json beside
-/// auth.json. Reading that value prevents a duplicated version string in
-/// nt_helper from drifting out of date.
+/// Codex may write its current available client version to version.json beside
+/// auth.json. When that cache is unavailable, nt_helper uses the latest client
+/// version known at build time so a platform-specific cache layout cannot
+/// prevent subscription requests.
 class CodexClientVersionService {
+  static const latestKnownVersion = embeddedCodexClientVersion;
+
   static final _validVersion = RegExp(
     r'^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$',
   );
 
   final String versionFilePath;
+  final String? fallbackVersion;
 
-  CodexClientVersionService({String? versionFilePath})
-    : versionFilePath =
-          versionFilePath ??
-          versionFilePathForAuthFile(CodexAuthService.defaultAuthFilePath());
+  CodexClientVersionService({
+    String? versionFilePath,
+    this.fallbackVersion = latestKnownVersion,
+  }) : versionFilePath =
+           versionFilePath ??
+           versionFilePathForAuthFile(CodexAuthService.defaultAuthFilePath());
 
   factory CodexClientVersionService.forAuthFile(String authFilePath) {
     return CodexClientVersionService(
@@ -60,19 +67,31 @@ class CodexClientVersionService {
         );
       }
       return version;
-    } on CodexClientVersionException {
-      rethrow;
+    } on CodexClientVersionException catch (error) {
+      return _fallbackOrThrow(error);
     } on FormatException catch (error) {
-      throw CodexClientVersionException(
-        'Codex version metadata at $versionFilePath is not valid JSON: '
-        '${error.message}',
+      return _fallbackOrThrow(
+        CodexClientVersionException(
+          'Codex version metadata at $versionFilePath is not valid JSON: '
+          '${error.message}',
+        ),
       );
     } on FileSystemException catch (error) {
-      throw CodexClientVersionException(
-        'Could not read Codex version metadata at $versionFilePath: '
-        '${error.message}',
+      return _fallbackOrThrow(
+        CodexClientVersionException(
+          'Could not read Codex version metadata at $versionFilePath: '
+          '${error.message}',
+        ),
       );
     }
+  }
+
+  String _fallbackOrThrow(CodexClientVersionException error) {
+    final fallback = fallbackVersion?.trim();
+    if (fallback != null && _validVersion.hasMatch(fallback)) {
+      return fallback;
+    }
+    throw error;
   }
 }
 

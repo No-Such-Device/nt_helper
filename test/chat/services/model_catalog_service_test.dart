@@ -89,6 +89,52 @@ void main() {
       expect(captured.headers['version'], '9.8.7');
     });
 
+    test(
+      'sends the latest known version when metadata is unavailable',
+      () async {
+        late http.Request captured;
+        final client = MockClient((request) async {
+          captured = request;
+          return http.Response(
+            jsonEncode({
+              'models': [
+                {'slug': 'gpt-subscription'},
+              ],
+            }),
+            200,
+          );
+        });
+        final auth = _FakeAuthService(
+          const CodexAuthSnapshot(
+            accessToken: 'access-token',
+            refreshToken: 'refresh-token',
+            accountId: 'account-id',
+          ),
+        );
+        final catalog = OpenAISubscriptionModelCatalog(
+          authService: auth,
+          clientVersionService: CodexClientVersionService(
+            versionFilePath: '/missing/version.json',
+          ),
+          client: client,
+          modelsUri: Uri.parse('https://example.test/backend-api/codex/models'),
+        );
+        addTearDown(catalog.dispose);
+
+        final models = await catalog.fetchModels(allowAuthRefresh: false);
+
+        expect(models.single.id, 'gpt-subscription');
+        expect(
+          captured.url.queryParameters['client_version'],
+          CodexClientVersionService.latestKnownVersion,
+        );
+        expect(
+          captured.headers['version'],
+          CodexClientVersionService.latestKnownVersion,
+        );
+      },
+    );
+
     test('reports unavailable Codex version metadata', () async {
       final auth = _FakeAuthService(
         const CodexAuthSnapshot(
@@ -101,6 +147,7 @@ void main() {
         authService: auth,
         clientVersionService: CodexClientVersionService(
           versionFilePath: '/missing/version.json',
+          fallbackVersion: null,
         ),
       );
       addTearDown(catalog.dispose);
