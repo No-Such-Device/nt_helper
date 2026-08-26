@@ -28,7 +28,7 @@ jobs:
       tag: ${{ steps.get_version.outputs.tag }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # Fetch all history and tags
 
@@ -55,7 +55,7 @@ jobs:
     if: github.event_name == 'push'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # Fetch all history and tags for release notes
 
@@ -89,7 +89,7 @@ jobs:
       )
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Set Version
         run: echo "VERSION=${{ needs.setup.outputs.version }}" >> $GITHUB_ENV
@@ -180,7 +180,7 @@ jobs:
       )
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Set Version
         run: echo "VERSION=${{ needs.setup.outputs.version }}" >> $GITHUB_ENV
@@ -277,7 +277,7 @@ jobs:
       )
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Set Version
         shell: pwsh
@@ -413,7 +413,7 @@ jobs:
       )
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Set Version
         run: echo "VERSION=${{ needs.setup.outputs.version }}" >> $GITHUB_ENV
@@ -476,7 +476,7 @@ jobs:
       )
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Set Version
         run: echo "VERSION=${{ needs.setup.outputs.version }}" >> $GITHUB_ENV
@@ -597,7 +597,7 @@ jobs:
       )
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Set Version
         run: echo "VERSION=${{ needs.setup.outputs.version }}" >> $GITHUB_ENV
@@ -822,7 +822,7 @@ jobs:
       )
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Select Xcode 26
         uses: maxim-lobanov/setup-xcode@v1
