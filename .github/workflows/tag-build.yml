@@ -521,14 +521,18 @@ jobs:
         env:
           KEYCHAIN_PATH: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}.keychain
         run: |
-          curl --fail --location --silent --show-error \
-            https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
-            --output "$RUNNER_TEMP/AppleWWDRCAG3.cer"
-          curl --fail --location --silent --show-error \
-            https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
-            --output "$RUNNER_TEMP/DeveloperIDG2CA.cer"
-          security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH"
-          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH"
+          if ! security find-certificate -c "Apple Worldwide Developer Relations Certification Authority" "$KEYCHAIN_PATH" >/dev/null; then
+            curl --fail --location --silent --show-error \
+              https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
+              --output "$RUNNER_TEMP/AppleWWDRCAG3.cer"
+            security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH"
+          fi
+          if ! security find-certificate -c "Developer ID Certification Authority" "$KEYCHAIN_PATH" >/dev/null; then
+            curl --fail --location --silent --show-error \
+              https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+              --output "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+            security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH"
+          fi
 
       - name: Verify Developer ID signing identity
         env:
@@ -639,14 +643,18 @@ jobs:
         env:
           KEYCHAIN_PATH: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}.keychain
         run: |
-          curl --fail --location --silent --show-error \
-            https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
-            --output "$RUNNER_TEMP/AppleWWDRCAG3.cer"
-          curl --fail --location --silent --show-error \
-            https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
-            --output "$RUNNER_TEMP/DeveloperIDG2CA.cer"
-          security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH"
-          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH"
+          if ! security find-certificate -c "Apple Worldwide Developer Relations Certification Authority" "$KEYCHAIN_PATH" >/dev/null; then
+            curl --fail --location --silent --show-error \
+              https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
+              --output "$RUNNER_TEMP/AppleWWDRCAG3.cer"
+            security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH"
+          fi
+          if ! security find-certificate -c "Developer ID Certification Authority" "$KEYCHAIN_PATH" >/dev/null; then
+            curl --fail --location --silent --show-error \
+              https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+              --output "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+            security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH"
+          fi
 
       - name: Verify App Store signing identities
         env:
@@ -877,14 +885,18 @@ jobs:
         env:
           KEYCHAIN_PATH: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}.keychain
         run: |
-          curl --fail --location --silent --show-error \
-            https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
-            --output "$RUNNER_TEMP/AppleWWDRCAG3.cer"
-          curl --fail --location --silent --show-error \
-            https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
-            --output "$RUNNER_TEMP/DeveloperIDG2CA.cer"
-          security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH"
-          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH"
+          if ! security find-certificate -c "Apple Worldwide Developer Relations Certification Authority" "$KEYCHAIN_PATH" >/dev/null; then
+            curl --fail --location --silent --show-error \
+              https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
+              --output "$RUNNER_TEMP/AppleWWDRCAG3.cer"
+            security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH"
+          fi
+          if ! security find-certificate -c "Developer ID Certification Authority" "$KEYCHAIN_PATH" >/dev/null; then
+            curl --fail --location --silent --show-error \
+              https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+              --output "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+            security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH"
+          fi
 
       - name: Verify iOS signing identity
         env:
