@@ -148,8 +148,14 @@ void main() {
     );
   });
 
-  Widget createTestWidget() {
+  Widget createTestWidget({bool disableAnimations = false}) {
     return MaterialApp(
+      builder: disableAnimations
+          ? (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
+              child: child!,
+            )
+          : null,
       home: BlocProvider<DistingCubit>.value(
         value: mockCubit,
         child: const AddAlgorithmScreen(),
@@ -977,7 +983,21 @@ void main() {
               .onPressed,
           isNull,
         );
-        expect(tester.widget<ElevatedButton>(addAnother).onPressed, isNull);
+        expect(find.text('Adding...'), findsOneWidget);
+        final addingButton = find.ancestor(
+          of: find.text('Adding...'),
+          matching: find.byType(ElevatedButton),
+        );
+        expect(tester.widget<ElevatedButton>(addingButton).onPressed, isNull);
+        expect(
+          find.byKey(const ValueKey('add_another_progress_indicator')),
+          findsOneWidget,
+        );
+        final progressSemantics = tester.widget<Semantics>(
+          find.byKey(const ValueKey('add_another_progress_semantics')),
+        );
+        expect(progressSemantics.properties.liveRegion, isTrue);
+        expect(progressSemantics.properties.label, 'Adding algorithm');
 
         addCompleter.complete();
         await tester.pumpAndSettle();
@@ -986,6 +1006,72 @@ void main() {
         expect(find.text('Select Algorithm'), findsOneWidget);
       },
     );
+
+    testWidgets('bottom actions use a brief state transition', (tester) async {
+      when(
+        () => mockCubit.state,
+      ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
+      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      final switcher = tester.widget<AnimatedSwitcher>(
+        find.byKey(const ValueKey('algorithm_action_switcher')),
+      );
+      expect(switcher.duration, const Duration(milliseconds: 180));
+      expect(switcher.reverseDuration, const Duration(milliseconds: 120));
+
+      await tester.tap(find.text('Clock'));
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('add_algorithm_actions')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('bottom actions respect reduced motion', (tester) async {
+      final addCompleter = Completer<void>();
+      addTearDown(() {
+        if (!addCompleter.isCompleted) addCompleter.complete();
+      });
+      when(
+        () => mockCubit.state,
+      ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
+      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
+      when(
+        () => mockCubit.onAlgorithmSelected(
+          any(),
+          any(),
+          addBypassed: any(named: 'addBypassed'),
+        ),
+      ).thenAnswer((_) => addCompleter.future);
+
+      await tester.pumpWidget(createTestWidget(disableAnimations: true));
+      await tester.pumpAndSettle();
+
+      final switcher = tester.widget<AnimatedSwitcher>(
+        find.byKey(const ValueKey('algorithm_action_switcher')),
+      );
+      expect(switcher.duration, Duration.zero);
+      expect(switcher.reverseDuration, Duration.zero);
+
+      await tester.tap(find.text('Clock'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Add Another'));
+      await tester.pump();
+
+      expect(find.text('Adding...'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('add_another_progress_indicator')),
+        findsNothing,
+      );
+      expect(find.byIcon(Icons.hourglass_top), findsOneWidget);
+
+      addCompleter.complete();
+      await tester.pumpAndSettle();
+    });
 
     testWidgets('Shift changes add button labels while held', (tester) async {
       addTearDown(() async {

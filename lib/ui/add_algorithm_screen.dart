@@ -33,6 +33,8 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
       'add_algo_show_fav_only'; // Key for toggle state
   static const _pluginTypeKey = 'add_algo_plugin_type';
   static const _viewModeKey = 'add_algorithm_view_mode';
+  static const _actionTransitionDuration = Duration(milliseconds: 180);
+  static const _actionTransitionReverseDuration = Duration(milliseconds: 120);
 
   // Plugin type options
   static const String _pluginTypeAll = 'all';
@@ -75,6 +77,7 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
   List<int>? specValues;
   bool _shiftHeld = false;
   bool _isAddingAndStayingOpen = false;
+  bool _isSubmittingAddAndStayOpen = false;
 
   @override
   void initState() {
@@ -441,6 +444,14 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
       DistingStateSynchronized(offline: final o) => o,
       _ => false,
     };
+    final animationsDisabled =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final actionTransitionDuration = animationsDisabled
+        ? Duration.zero
+        : _actionTransitionDuration;
+    final actionTransitionReverseDuration = animationsDisabled
+        ? Duration.zero
+        : _actionTransitionReverseDuration;
 
     // Update allAlgorithms if the state changes (e.g., going online/offline)
     if (distingState case DistingStateSynchronized(
@@ -732,14 +743,34 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
                       children: [
                         // --- Action Buttons (fixed at the bottom) ---
                         AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
+                          duration: actionTransitionDuration,
+                          curve: Curves.easeOutCubic,
                           padding: EdgeInsets.only(
                             top: 16.0,
                             // Add extra padding when FAB is visible to prevent overlap
                             right: _isHelpAvailableForSelected ? 72.0 : 0.0,
                           ),
-                          child: _buildActionButton(isOffline),
+                          child: AnimatedSwitcher(
+                            key: const ValueKey('algorithm_action_switcher'),
+                            duration: actionTransitionDuration,
+                            reverseDuration: actionTransitionReverseDuration,
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeInCubic,
+                            transitionBuilder: (child, animation) {
+                              final offset = Tween<Offset>(
+                                begin: const Offset(0, 0.06),
+                                end: Offset.zero,
+                              ).animate(animation);
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: offset,
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: _buildActionButton(isOffline),
+                          ),
                         ),
                       ],
                     ),
@@ -1338,6 +1369,7 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
   Widget _buildActionButton(bool isOffline) {
     if (_currentAlgoInfo == null) {
       return ElevatedButton(
+        key: const ValueKey('select_algorithm_action'),
         onPressed: null,
         child: const Text('Select Algorithm'),
       );
@@ -1348,6 +1380,7 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
     // Show Load button for unloaded plugins
     if (_needsLoading(algorithm) && !isOffline) {
       return ElevatedButton(
+        key: const ValueKey('load_plugin_action'),
         onPressed: () => _loadPlugin(algorithm.guid),
         child: const Text('Load Plugin'),
       );
@@ -1363,10 +1396,14 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
     );
 
     if (!canAdd || !_canStayOpen()) {
-      return addButton;
+      return KeyedSubtree(
+        key: const ValueKey('add_algorithm_action'),
+        child: addButton,
+      );
     }
 
     return Row(
+      key: const ValueKey('add_algorithm_actions'),
       children: [
         Expanded(child: addButton),
         const SizedBox(width: 8),
@@ -1375,10 +1412,46 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
             onPressed: _isAddingAndStayingOpen
                 ? null
                 : () => _addAndStayOpen(addBypassed: _isAddBypassedRequested),
-            child: Text(addBypassed ? 'Add Another Bypassed' : 'Add Another'),
+            child: _buildAddAnotherContent(addBypassed: addBypassed),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAddAnotherContent({required bool addBypassed}) {
+    if (!_isSubmittingAddAndStayOpen) {
+      return Text(addBypassed ? 'Add Another Bypassed' : 'Add Another');
+    }
+
+    final animationsDisabled =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    return Semantics(
+      key: const ValueKey('add_another_progress_semantics'),
+      container: true,
+      liveRegion: true,
+      label: 'Adding algorithm',
+      child: ExcludeSemantics(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (animationsDisabled)
+              const Icon(Icons.hourglass_top, size: 16)
+            else
+              SizedBox(
+                key: const ValueKey('add_another_progress_indicator'),
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            const SizedBox(width: 8),
+            const Text('Adding...'),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1442,6 +1515,10 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
       final specs = await _resolveSpecificationValues(algorithm);
       if (specs == null || !mounted) return;
 
+      setState(() {
+        _isSubmittingAddAndStayOpen = true;
+      });
+
       final messenger = ScaffoldMessenger.of(context);
       final name = algorithm.name;
       try {
@@ -1494,7 +1571,11 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
       if (mounted) {
         setState(() {
           _isAddingAndStayingOpen = false;
+          _isSubmittingAddAndStayOpen = false;
         });
+      } else {
+        _isAddingAndStayingOpen = false;
+        _isSubmittingAddAndStayOpen = false;
       }
     }
   }
