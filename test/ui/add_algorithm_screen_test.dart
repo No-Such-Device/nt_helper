@@ -982,7 +982,7 @@ void main() {
         addCompleter.complete();
         await tester.pumpAndSettle();
 
-        expect(find.text('Clock added'), findsOneWidget);
+        expect(find.text('Clock added'), findsNothing);
         expect(find.text('Select Algorithm'), findsOneWidget);
       },
     );
@@ -1064,7 +1064,7 @@ void main() {
     });
 
     testWidgets('Add Another adds, clears selection, '
-        'shows SnackBar, and stays open', (tester) async {
+        'and stays open without a success SnackBar', (tester) async {
       when(
         () => mockCubit.state,
       ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
@@ -1107,8 +1107,8 @@ void main() {
       );
       expect(find.text('Select Algorithm'), findsOneWidget);
 
-      // SnackBar confirms the add
-      expect(find.text('Clock added'), findsOneWidget);
+      // Success feedback does not cover the picker controls.
+      expect(find.text('Clock added'), findsNothing);
 
       // Picker is still open (AppBar title still visible)
       expect(find.text('Add Algorithm'), findsOneWidget);
@@ -1158,7 +1158,7 @@ void main() {
           addBypassed: false,
         ),
       ).called(1);
-      expect(find.text('Test Plugin added'), findsOneWidget);
+      expect(find.text('Test Plugin added'), findsNothing);
       expect(find.text('Select Algorithm'), findsOneWidget);
     });
 

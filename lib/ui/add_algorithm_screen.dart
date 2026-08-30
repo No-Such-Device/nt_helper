@@ -1484,13 +1484,6 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
       }
 
       if (!mounted) return;
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('$name added'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
       SemanticsService.sendAnnouncement(
         View.of(context),
         '$name added',
