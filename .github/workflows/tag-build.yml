@@ -127,10 +127,13 @@ jobs:
 
       - name: Clone and Build UVCCamera Native Library
         run: |
-          cd /tmp
-          git clone https://github.com/DigifinityLtd/UVCCamera.git
-          cd UVCCamera
-          git checkout feature/16kb-page-size-compliance
+          UVCCAMERA_DIR="$(mktemp -d "$RUNNER_TEMP/UVCCamera.XXXXXX")"
+          git clone \
+            --branch feature/16kb-page-size-compliance \
+            --single-branch \
+            https://github.com/DigifinityLtd/UVCCamera.git \
+            "$UVCCAMERA_DIR"
+          cd "$UVCCAMERA_DIR"
           ./gradlew :lib:assembleRelease
           ./gradlew :lib:publishToMavenLocal
 
@@ -139,11 +142,11 @@ jobs:
 
       - name: Decode and Save Keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release-key.jks
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/release-key.jks"
 
       - name: Build Android APK
         env:
-          KEYSTORE_PATH: release-key.jks
+          KEYSTORE_PATH: ${{ runner.temp }}/release-key.jks
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -218,10 +221,13 @@ jobs:
 
       - name: Clone and Build UVCCamera Native Library
         run: |
-          cd /tmp
-          git clone https://github.com/DigifinityLtd/UVCCamera.git
-          cd UVCCamera
-          git checkout feature/16kb-page-size-compliance
+          UVCCAMERA_DIR="$(mktemp -d "$RUNNER_TEMP/UVCCamera.XXXXXX")"
+          git clone \
+            --branch feature/16kb-page-size-compliance \
+            --single-branch \
+            https://github.com/DigifinityLtd/UVCCamera.git \
+            "$UVCCAMERA_DIR"
+          cd "$UVCCAMERA_DIR"
           ./gradlew :lib:assembleRelease
           ./gradlew :lib:publishToMavenLocal
 
@@ -230,11 +236,11 @@ jobs:
 
       - name: Decode and Save Keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release-key.jks
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/release-key.jks"
 
       - name: Build Android App Bundle
         env:
-          KEYSTORE_PATH: release-key.jks # Relative to android/app
+          KEYSTORE_PATH: ${{ runner.temp }}/release-key.jks
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -267,10 +273,10 @@ jobs:
     needs: [setup, create-release]
     if: |
       always() &&
+      github.event_name == 'workflow_dispatch' &&
       needs.setup.result == 'success' &&
       (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') &&
       (
-        github.event_name == 'push' ||
         contains(github.event.inputs.platforms, 'windows') ||
         github.event.inputs.platforms == 'all' ||
         github.event.inputs.platforms == ''
@@ -424,10 +430,22 @@ jobs:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - name: Install dependencies
+      - name: Verify runner dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+          for command in clang cmake ninja pkg-config zip; do
+            if ! command -v "$command" >/dev/null; then
+              echo "Missing required command on the self-hosted runner: $command" >&2
+              exit 1
+            fi
+          done
+
+          for package in gtk+-3.0 liblzma gstreamer-1.0 gstreamer-app-1.0; do
+            if ! pkg-config --exists "$package"; then
+              echo "Missing required pkg-config package on the self-hosted runner: $package" >&2
+              exit 1
+            fi
+          done
+
           flutter pub get
 
       - name: Build Linux
@@ -492,41 +510,33 @@ jobs:
           flutter clean
           flutter pub get
 
-      - name: Decode certificate from Base64
-        run: echo "${{ secrets.APPLE_CERTIFICATES }}" | base64 --decode > apple_certificates.p12
+      - name: Import Apple signing certificates
+        uses: apple-actions/import-codesign-certs@v7
+        with:
+          keychain: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATES }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATES_PASSWORD }}
 
-      - name: Create & unlock keychain
+      - name: Install Apple signing intermediates
+        env:
+          KEYCHAIN_PATH: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}.keychain
         run: |
-          KEYCHAIN_NAME="build.keychain"
-          KEYCHAIN_PASSWORD=""
+          curl --fail --location --silent --show-error \
+            https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
+            --output "$RUNNER_TEMP/AppleWWDRCAG3.cer"
+          curl --fail --location --silent --show-error \
+            https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+            --output "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+          security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH"
 
-          echo "Creating keychain..."
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
-
-          echo "Unlocking keychain..."
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-
-          echo "Setting $KEYCHAIN_NAME as default..."
-          security default-keychain -s "$KEYCHAIN_NAME"
-
-          echo "List of keychains now:"
-          security list-keychains
-        shell: bash
-
-      - name: Import certificate
+      - name: Verify Developer ID signing identity
+        env:
+          KEYCHAIN_PATH: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}.keychain
         run: |
-          KEYCHAIN_NAME="build.keychain"
-
-          security import apple_certificates.p12 \
-            -k "$KEYCHAIN_NAME" \
-            -P "${{ secrets.APPLE_CERTIFICATES_PASSWORD }}" \
-            -T /usr/bin/codesign
-
-          security set-key-partition-list -S apple-tool:,apple: -k "" "$KEYCHAIN_NAME"
-
-          echo "Identities in keychain:"
-          security find-identity -v -p codesigning "$KEYCHAIN_NAME" || true
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" |
+            grep -Fq "Developer ID Application: Neal Sanche (KN424RZG26)"
 
       - name: Build macOS
         run: flutter build macos
@@ -576,11 +586,6 @@ jobs:
           omitBodyDuringUpdate: true
           artifacts: "**/nt_helper-${{ env.VERSION }}-macos.zip"
 
-      - name: Delete temporary keychain
-        if: always()
-        run: |
-          security delete-keychain build.keychain
-
   macos_testflight:
     name: Build macOS App and Upload to TestFlight
     runs-on: [self-hosted, macOS, ARM64]
@@ -613,57 +618,58 @@ jobs:
           flutter clean
           flutter pub get
 
-      - name: Decode certificate from Base64
-        run: echo "${{ secrets.APPLE_CERTIFICATES }}" | base64 --decode > apple_certificates.p12
-
       - name: Decode macOS provisioning profile from Base64
-        run: echo "${{ secrets.MAC_APP_STORE_PROVISIONPROFILE }}" | base64 --decode > mac_appstore.provisionprofile
+        env:
+          PROFILE_BASE64: ${{ secrets.MAC_APP_STORE_PROVISIONPROFILE }}
+        run: echo "$PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/mac_appstore.provisionprofile"
 
       - name: Decode nt-flash provisioning profile from Base64
-        run: echo "${{ secrets.NT_FLASH_PROVISIONPROFILE }}" | base64 --decode > nt_flash.provisionprofile
+        env:
+          PROFILE_BASE64: ${{ secrets.NT_FLASH_PROVISIONPROFILE }}
+        run: echo "$PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/nt_flash.provisionprofile"
 
-      - name: Create & unlock keychain
+      - name: Import Apple signing certificates
+        uses: apple-actions/import-codesign-certs@v7
+        with:
+          keychain: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATES }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATES_PASSWORD }}
+
+      - name: Install Apple signing intermediates
+        env:
+          KEYCHAIN_PATH: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}.keychain
         run: |
-          KEYCHAIN_NAME="build.keychain"
-          KEYCHAIN_PASSWORD=""
+          curl --fail --location --silent --show-error \
+            https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
+            --output "$RUNNER_TEMP/AppleWWDRCAG3.cer"
+          curl --fail --location --silent --show-error \
+            https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+            --output "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+          security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH"
 
-          echo "Creating keychain..."
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
-
-          echo "Unlocking keychain..."
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-
-          echo "Setting $KEYCHAIN_NAME as default..."
-          security default-keychain -s "$KEYCHAIN_NAME"
-
-          echo "List of keychains now:"
-          security list-keychains
-        shell: bash
-
-      - name: Import certificate
+      - name: Verify App Store signing identities
+        env:
+          KEYCHAIN_PATH: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}.keychain
         run: |
-          KEYCHAIN_NAME="build.keychain"
-
-          security import apple_certificates.p12 \
-            -k "$KEYCHAIN_NAME" \
-            -P "${{ secrets.APPLE_CERTIFICATES_PASSWORD }}" \
-            -T /usr/bin/codesign \
-            -T /usr/bin/productsign \
-            -T /usr/bin/productbuild
-
-          security set-key-partition-list -S apple-tool:,apple: -k "" "$KEYCHAIN_NAME"
-
-          echo "Identities in keychain:"
-          security find-identity -v -p codesigning "$KEYCHAIN_NAME" || true
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" |
+            grep -Fq "Apple Distribution: Neal Sanche (KN424RZG26)"
+          security find-identity -v -p basic "$KEYCHAIN_PATH" |
+            grep -Fq "3rd Party Mac Developer Installer: Neal Sanche (KN424RZG26)"
 
       - name: Install provisioning profiles
         run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp mac_appstore.provisionprofile ~/Library/MobileDevice/Provisioning\ Profiles/
-          cp nt_flash.provisionprofile ~/Library/MobileDevice/Provisioning\ Profiles/
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          MAC_PROFILE_PATH="$PROFILE_DIR/nt-helper-${GITHUB_RUN_ID}-${GITHUB_JOB}.provisionprofile"
+          NT_FLASH_PROFILE_PATH="$PROFILE_DIR/nt-flash-${GITHUB_RUN_ID}-${GITHUB_JOB}.provisionprofile"
+          mkdir -p "$PROFILE_DIR"
+          cp "$RUNNER_TEMP/mac_appstore.provisionprofile" "$MAC_PROFILE_PATH"
+          cp "$RUNNER_TEMP/nt_flash.provisionprofile" "$NT_FLASH_PROFILE_PATH"
+          echo "MAC_PROFILE_PATH=$MAC_PROFILE_PATH" >> "$GITHUB_ENV"
+          echo "NT_FLASH_PROFILE_PATH=$NT_FLASH_PROFILE_PATH" >> "$GITHUB_ENV"
           echo "Provisioning profiles in that folder:"
-          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+          ls -la "$PROFILE_DIR"
 
       - name: Build macOS
         run: flutter build macos
@@ -694,11 +700,13 @@ jobs:
           echo "Bundling nt-flash $NT_FLASH_VERSION"
           
           # Download macOS release
-          gh release download "$NT_FLASH_VERSION" --repo thorinside/nt-flash --pattern "*-macos.zip" --output /tmp/nt-flash.zip
+          NT_FLASH_ARCHIVE="$RUNNER_TEMP/nt-flash-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.zip"
+          NT_FLASH_EXTRACT_DIR="$(mktemp -d "$RUNNER_TEMP/nt-flash-extract.XXXXXX")"
+          gh release download "$NT_FLASH_VERSION" --repo thorinside/nt-flash --pattern "*-macos.zip" --output "$NT_FLASH_ARCHIVE"
           
           # Extract and place in app bundle's MacOS directory
-          unzip -o /tmp/nt-flash.zip -d /tmp/nt-flash-extract
-          NT_FLASH_BIN=$(find /tmp/nt-flash-extract -name "nt-flash" -type f | head -1)
+          unzip -o "$NT_FLASH_ARCHIVE" -d "$NT_FLASH_EXTRACT_DIR"
+          NT_FLASH_BIN=$(find "$NT_FLASH_EXTRACT_DIR" -name "nt-flash" -type f | head -1)
           
           # Copy to app bundle
           cp "$NT_FLASH_BIN" build/macos/Build/Products/Release/nt_helper.app/Contents/MacOS/nt-flash
@@ -709,7 +717,7 @@ jobs:
 
       - name: Embed provisioning profile in app bundle
         run: |
-          cp mac_appstore.provisionprofile build/macos/Build/Products/Release/nt_helper.app/Contents/embedded.provisionprofile
+          cp "$RUNNER_TEMP/mac_appstore.provisionprofile" build/macos/Build/Products/Release/nt_helper.app/Contents/embedded.provisionprofile
 
       - name: Prepare nt-flash as embedded helper
         run: |
@@ -722,7 +730,7 @@ jobs:
           mv build/macos/Build/Products/Release/nt_helper.app/Contents/MacOS/nt-flash "$HELPER_DIR/MacOS/nt-flash"
           
           # Embed provisioning profile
-          cp nt_flash.provisionprofile "$HELPER_DIR/embedded.provisionprofile"
+          cp "$RUNNER_TEMP/nt_flash.provisionprofile" "$HELPER_DIR/embedded.provisionprofile"
           
           # Create minimal Info.plist for the helper using plutil (avoids heredoc whitespace issues)
           /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string dev.nosuch.ntHelper.nt-flash" "$HELPER_DIR/Info.plist"
@@ -801,10 +809,15 @@ jobs:
             --password "${{ secrets.APP_SPECIFIC_PASSWORD }}" \
             --verbose
 
-      - name: Delete temporary keychain
+      - name: Delete installed provisioning profiles
         if: always()
         run: |
-          security delete-keychain build.keychain
+          if [ -n "${MAC_PROFILE_PATH:-}" ]; then
+            rm -f "$MAC_PROFILE_PATH"
+          fi
+          if [ -n "${NT_FLASH_PROFILE_PATH:-}" ]; then
+            rm -f "$NT_FLASH_PROFILE_PATH"
+          fi
 
   ios:
     name: Build & Sign iOS
@@ -848,51 +861,48 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      - name: Decode iOS certificate from Base64
-        run: echo "${{ secrets.APPLE_CERTIFICATES }}" | base64 --decode > apple_certificates.p12
-
       - name: Decode provisioning profile from Base64
-        run: echo "${{ secrets.APP_STORE_MOBILEPROVISION }}" | base64 --decode > distribution.mobileprovision
+        env:
+          PROFILE_BASE64: ${{ secrets.APP_STORE_MOBILEPROVISION }}
+        run: echo "$PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/distribution.mobileprovision"
 
-      - name: Create & unlock keychain
+      - name: Import Apple signing certificates
+        uses: apple-actions/import-codesign-certs@v7
+        with:
+          keychain: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATES }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATES_PASSWORD }}
+
+      - name: Install Apple signing intermediates
+        env:
+          KEYCHAIN_PATH: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}.keychain
         run: |
-          KEYCHAIN_NAME="build.keychain"
-          KEYCHAIN_PASSWORD=""
+          curl --fail --location --silent --show-error \
+            https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer \
+            --output "$RUNNER_TEMP/AppleWWDRCAG3.cer"
+          curl --fail --location --silent --show-error \
+            https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+            --output "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+          security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH"
 
-          echo "Creating keychain..."
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_NAME"
-
-          echo "Unlocking keychain..."
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
-
-          echo "Setting $KEYCHAIN_NAME as default..."
-          security default-keychain -s "$KEYCHAIN_NAME"
-
-          echo "List of keychains now:"
-          security list-keychains
-        shell: bash
-
-      - name: Import certificate
+      - name: Verify iOS signing identity
+        env:
+          KEYCHAIN_PATH: ${{ runner.temp }}/nt-helper-${{ github.run_id }}-${{ github.job }}.keychain
         run: |
-          KEYCHAIN_NAME="build.keychain"
-
-          security import apple_certificates.p12 \
-            -k "$KEYCHAIN_NAME" \
-            -P "${{ secrets.APPLE_CERTIFICATES_PASSWORD }}" \
-            -T /usr/bin/codesign
-
-          security set-key-partition-list -S apple-tool:,apple: -k "" "$KEYCHAIN_NAME"
-
-          echo "Identities in keychain:"
-          security find-identity -v -p codesigning "$KEYCHAIN_NAME" || true
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" |
+            grep -Fq "Apple Distribution: Neal Sanche (KN424RZG26)"
 
       - name: Install provisioning profile
         run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp distribution.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          IOS_PROFILE_PATH="$PROFILE_DIR/nt-helper-${GITHUB_RUN_ID}-${GITHUB_JOB}.mobileprovision"
+          mkdir -p "$PROFILE_DIR"
+          cp "$RUNNER_TEMP/distribution.mobileprovision" "$IOS_PROFILE_PATH"
+          echo "IOS_PROFILE_PATH=$IOS_PROFILE_PATH" >> "$GITHUB_ENV"
           echo "Provisioning profiles in that folder:"
-          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+          ls -la "$PROFILE_DIR"
 
       - name: Install iOS Simulator Runtime
         run: |
@@ -922,7 +932,9 @@ jobs:
             --password "${{ secrets.APP_SPECIFIC_PASSWORD }}" \
             --verbose
 
-      - name: Delete temporary keychain
+      - name: Delete installed provisioning profile
         if: always()
         run: |
-          security delete-keychain build.keychain
+          if [ -n "${IOS_PROFILE_PATH:-}" ]; then
+            rm -f "$IOS_PROFILE_PATH"
+          fi
