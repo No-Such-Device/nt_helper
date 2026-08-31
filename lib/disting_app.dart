@@ -472,10 +472,6 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
   String? _lastProbedOutputId;
   final GlobalKey _splitButtonKey = GlobalKey();
 
-  bool get _distingDetected =>
-      selectedInputDevice?.name.toLowerCase().contains('disting') == true &&
-      selectedOutputDevice?.name.toLowerCase().contains('disting') == true;
-
   @override
   void initState() {
     selectFirstDisting();
@@ -610,28 +606,13 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
     final size = renderBox.size;
 
     final items = <PopupMenuEntry<String>>[];
-    if (_distingDetected) {
-      if (widget.canWorkOffline) {
-        items.add(
-          PopupMenuItem<String>(
-            value: 'offline',
-            child: ListTile(
-              leading: const Icon(Icons.cloud_off),
-              title: const Text('Offline'),
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        );
-      }
-    } else {
+    if (_devicesSelected && widget.canWorkOffline) {
       items.add(
         PopupMenuItem<String>(
-          value: 'connect',
-          enabled: _devicesSelected,
+          value: 'offline',
           child: ListTile(
-            leading: const Icon(Icons.link),
-            title: const Text('Connect'),
+            leading: const Icon(Icons.cloud_off),
+            title: const Text('Offline'),
             dense: true,
             contentPadding: EdgeInsets.zero,
           ),
@@ -653,16 +634,11 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
     ).then((value) {
       if (value == 'offline') {
         widget.onOfflinePressed();
-      } else if (value == 'connect' && _devicesSelected) {
-        _onConnect();
       }
     });
   }
 
-  bool get _hasAlternateAction {
-    if (_distingDetected) return widget.canWorkOffline;
-    return _devicesSelected;
-  }
+  bool get _hasAlternateAction => _devicesSelected && widget.canWorkOffline;
 
   @override
   Widget build(BuildContext context) {
@@ -670,7 +646,7 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
     final colorScheme = theme.colorScheme;
 
     // Determine primary action
-    final bool primaryIsConnect = _distingDetected;
+    final bool primaryIsConnect = _devicesSelected;
     final String primaryLabel = primaryIsConnect ? 'Connect' : 'Offline';
     final IconData primaryIcon = primaryIsConnect
         ? Icons.link
@@ -719,6 +695,7 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
                 Row(
                   children: [
                     DropdownMenu<MidiDevice>(
+                      key: const ValueKey('input-midi-device-dropdown'),
                       width: 250,
                       initialSelection: selectedInputDevice,
                       enabled: true,
@@ -749,6 +726,7 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
                 ),
                 const SizedBox(height: 16),
                 DropdownMenu<MidiDevice>(
+                  key: const ValueKey('output-midi-device-dropdown'),
                   width: 250,
                   initialSelection: selectedOutputDevice,
                   enabled: true,
