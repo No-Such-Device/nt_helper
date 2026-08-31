@@ -290,6 +290,15 @@ jobs:
         run: |
           "VERSION=${{ needs.setup.outputs.version }}" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+      - name: Add Git Bash to PATH
+        shell: pwsh
+        run: |
+          $gitBin = Join-Path $env:ProgramFiles "Git\bin"
+          if (-not (Test-Path (Join-Path $gitBin "bash.exe"))) {
+            throw "Git Bash is not installed at $gitBin"
+          }
+          $gitBin | Out-File -FilePath $env:GITHUB_PATH -Append
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
