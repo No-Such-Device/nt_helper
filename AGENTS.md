@@ -119,10 +119,95 @@ before `flutter analyze` or `flutter test`.
 
 ## Release
 
+Use the `nt-helper-release` skill and the existing
+`.github/workflows/tag-build.yml` workflow. A tag or release page is not the
+finish line: every required distribution job and public asset must be verified.
+
+Before creating a tag:
+
+1. Confirm `main` is clean and synchronized with `origin/main`.
+2. Run `flutter analyze` and the full `flutter test` suite on the exact commit
+   being released.
+3. Start and verify the self-hosted Windows runner as described below. Do not
+   push the tag while that runner is offline.
+4. Choose `patch` for fixes/maintenance, `minor` for any user-visible feature,
+   and `major` only for an intentional breaking release.
+5. Run `./version <patch|minor|major>`, inspect the generated version commit and
+   exact `vX.Y.Z` tag, then push `main` followed by that exact tag. Do not use a
+   broad `git push --tags`.
+
+Monitor the tag-triggered release with:
+
+```bash
+bash /Users/nealsanche/.codex/skills/nt-helper-release/scripts/wait-for-release.sh \
+  vX.Y.Z
 ```
-./version && git push && git push --tags           # Quick
-./version patch && git push && git push --tags     # Patch
-./version major && git push && git push --tags     # Major
+
+A release is complete only when these seven jobs succeed: Android APK, Android
+AAB/Play upload, Windows, Linux, macOS, macOS/TestFlight, and iOS. The public,
+non-draft GitHub release must contain five non-empty assets: APK, Linux ZIP,
+macOS ZIP, Windows ZIP, and Windows installer. Download and inspect any affected
+package when the release changes packaging, signing, native libraries, or the
+installer. Finish with a clean worktree whose `HEAD` matches `origin/main`.
+
+### Windows self-hosted release runner
+
+The Windows job targets `[self-hosted, Windows, ARM64]`. It runs in the UTM VM
+named `Windows 11 Flutter Runner` on this Mac, registered with GitHub as
+`MacBookPro-Windows`. The VM is intentionally off between releases and does not
+start automatically at Mac login.
+
+Start it hidden before tagging:
+
+```bash
+/Applications/UTM.app/Contents/MacOS/utmctl start --hide \
+  47DEC67B-0AD4-424C-A7F7-AA538D93B970
+```
+
+Wait for GitHub to report the runner online and idle:
+
+```bash
+gh api orgs/No-Such-Device/actions/runners \
+  --jq '.runners[] | select(.name=="MacBookPro-Windows") | {name,status,busy}'
+```
+
+Starting the VM is sufficient: Windows starts the
+`actions.runner.No-Such-Device.MacBookPro-Windows` service automatically and it
+reconnects to GitHub. Do not switch the job back to GitHub-hosted Windows as a
+fallback when hosted minutes are unavailable; fix a missing runner prerequisite
+instead.
+
+The guest is Windows 11 ARM64, but Flutter has no Windows ARM64 SDK archive, so
+the workflow must keep `architecture: x64` and the existing x64 build/output
+paths. These guest prerequisites are already provisioned and are part of the
+runner contract:
+
+- Visual Studio Build Tools at `C:\BuildTools`, including
+  `Microsoft.VisualStudio.Workload.VCTools` and
+  `Microsoft.VisualStudio.Component.VC.ATL` (`atlbase.h` is required by the USB
+  video plugin).
+- Windows Developer Mode enabled machine-wide so Flutter plugins can create
+  symlinks.
+- Machine-wide PowerShell 7 at
+  `C:\Program Files\PowerShell\7\pwsh.exe`.
+- Git Bash at `C:\Program Files\Git\bin\bash.exe`.
+- `jq.exe` at `C:\ProgramData\nt-helper-runner\bin\jq.exe`.
+- Machine-wide Inno Setup 6 at
+  `C:\Program Files (x86)\Inno Setup 6\ISCC.exe`.
+- Git and GitHub CLI available to the runner service.
+
+The workflow's `Add runner tools to PATH` and `Verify Inno Setup` steps are
+intentional portability checks; do not replace them with assumptions inherited
+from GitHub-hosted images. If a Windows build fails, inspect the exact failed
+step, repair the persistent guest prerequisite, and rerun the failed job. Do not
+move/delete the release tag or create another version merely to retry it.
+
+After the full release and assets are verified, confirm the runner is not busy
+and no Windows job is queued, then shut down the VM:
+
+```bash
+/Applications/UTM.app/Contents/MacOS/utmctl stop \
+  47DEC67B-0AD4-424C-A7F7-AA538D93B970
 ```
 
 ## MCP Docs
