@@ -573,7 +573,7 @@ jobs:
       - name: Zip the macOS App for Notarization
         run: |
           cd build/macos/Build/Products/Release
-          ditto -c -k --keepParent nt_helper.app nt_helper.zip
+          ditto -c -k --sequesterRsrc --keepParent nt_helper.app nt_helper.zip
 
       - name: Notarize the macOS App
         env:
@@ -594,7 +594,18 @@ jobs:
       - name: Zip macOS App
         run: |
           cd build/macos/Build/Products/Release
-          ditto -c -k --keepParent nt_helper.app nt_helper-${VERSION}-macos.zip
+          ditto -c -k --sequesterRsrc --keepParent nt_helper.app "nt_helper-${VERSION}-macos.zip"
+
+      - name: Verify macOS release archive
+        run: |
+          ARCHIVE="build/macos/Build/Products/Release/nt_helper-${VERSION}-macos.zip"
+          VERIFY_DIR="$(mktemp -d "$RUNNER_TEMP/nt-helper-macos-archive.XXXXXX")"
+          unzip -q "$ARCHIVE" -d "$VERIFY_DIR"
+          if find "$VERIFY_DIR/nt_helper.app" -name '._*' -print -quit | grep -q .; then
+            echo "::error::macOS release archive materialized AppleDouble files inside the signed app"
+            exit 1
+          fi
+          codesign --verify --deep --strict --verbose=2 "$VERIFY_DIR/nt_helper.app"
 
       - name: List build output (debug)
         run: ls -R build/macos/Build/Products/Release
