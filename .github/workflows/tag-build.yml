@@ -269,14 +269,14 @@ jobs:
 
   windows:
     name: Build Windows App
-    runs-on: windows-latest
+    runs-on: [self-hosted, Windows, ARM64]
     needs: [setup, create-release]
     if: |
       always() &&
-      github.event_name == 'workflow_dispatch' &&
       needs.setup.result == 'success' &&
       (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') &&
       (
+        github.event_name == 'push' ||
         contains(github.event.inputs.platforms, 'windows') ||
         github.event.inputs.platforms == 'all' ||
         github.event.inputs.platforms == ''
@@ -295,6 +295,7 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          architecture: x64
 
       - name: Install dependencies
         run: flutter pub get
@@ -372,9 +373,13 @@ jobs:
             }
           }
 
-      - name: Install Inno Setup
+      - name: Verify Inno Setup
         shell: pwsh
-        run: choco install innosetup --no-progress -y
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $compiler)) {
+            throw "Inno Setup is not installed at $compiler"
+          }
 
       - name: Build Windows Installer
         shell: pwsh
