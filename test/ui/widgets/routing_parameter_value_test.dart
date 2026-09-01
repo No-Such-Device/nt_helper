@@ -8,6 +8,11 @@ Widget _wrap(Widget child) => MaterialApp(
   home: Scaffold(body: Center(child: child)),
 );
 
+Future<void> _pumpDialogOpen(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+}
+
 void main() {
   group('RoutingParameterValue', () {
     testWidgets('renders current bus label and semantics', (tester) async {
@@ -64,7 +69,7 @@ void main() {
 
         // Open the picker by tapping the chip.
         await tester.tap(find.byIcon(Icons.route_rounded), warnIfMissed: false);
-        await tester.pumpAndSettle();
+        await _pumpDialogOpen(tester);
         expect(find.byType(BusPickerDialog), findsOneWidget);
 
         // Select bus 14 (O2).
@@ -91,7 +96,7 @@ void main() {
       );
 
       await tester.tap(find.byIcon(Icons.route_rounded), warnIfMissed: false);
-      await tester.pumpAndSettle();
+      await _pumpDialogOpen(tester);
 
       expect(find.byType(BusPickerDialog), findsOneWidget);
       expect(find.text('Outputs'), findsOneWidget);
@@ -119,7 +124,7 @@ void main() {
       );
 
       await tester.tap(find.byIcon(Icons.route_rounded), warnIfMissed: false);
-      await tester.pumpAndSettle();
+      await _pumpDialogOpen(tester);
 
       expect(find.byType(BusPickerDialog), findsNothing);
       expect(selected, isNull);
@@ -139,7 +144,7 @@ void main() {
       );
 
       await tester.tap(find.byIcon(Icons.route_rounded), warnIfMissed: false);
-      await tester.pumpAndSettle();
+      await _pumpDialogOpen(tester);
 
       expect(find.text('ES-5'), findsOneWidget);
       expect(find.text('ES-5 L'), findsOneWidget);
@@ -159,7 +164,7 @@ void main() {
       );
 
       await tester.tap(find.byIcon(Icons.route_rounded), warnIfMissed: false);
-      await tester.pumpAndSettle();
+      await _pumpDialogOpen(tester);
 
       expect(find.text('Aux'), findsOneWidget);
       expect(find.text('A1'), findsOneWidget);
@@ -263,7 +268,7 @@ void main() {
       );
 
       await tester.tap(find.byIcon(Icons.route_rounded), warnIfMissed: false);
-      await tester.pumpAndSettle();
+      await _pumpDialogOpen(tester);
 
       // Two "None" texts: section header + tile.
       expect(find.text('None'), findsNWidgets(2));
@@ -287,7 +292,7 @@ void main() {
       );
 
       await tester.tap(find.byIcon(Icons.route_rounded), warnIfMissed: false);
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('None'), findsNothing);
     });
@@ -311,7 +316,7 @@ void main() {
       );
 
       await tester.tap(find.byIcon(Icons.route_rounded), warnIfMissed: false);
-      await tester.pumpAndSettle();
+      await _pumpDialogOpen(tester);
 
       // Tap the None tile (the one inside the Wrap, not the header).
       final noneTiles = find.text('None');

@@ -278,7 +278,8 @@ void main() {
       // Visible buses are 13 and 14. The second output bead is on bus 14
       // at column 2, row 1. Dropping it one rail to the right lands on plus.
       await tester.dragFrom(const Offset(277, 99), const Offset(42, 0));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.bySemanticsLabel('Current bus O2'), findsOneWidget);
       expect(find.text('O1'), findsOneWidget);

@@ -21,10 +21,15 @@ class BusPickerDialog extends StatefulWidget {
   /// Fully classified choices and current-value validity.
   final BusSelectionModel model;
 
+  /// Caller-owned selection animation. When null, the dialog creates and
+  /// runs its own endlessly repeating fade.
+  final Animation<double>? selectionAnimation;
+
   const BusPickerDialog({
     super.key,
     required this.portLabel,
     required this.model,
+    this.selectionAnimation,
   });
 
   @override
@@ -76,39 +81,43 @@ class _BusPickerDialogState extends State<BusPickerDialog> {
     final theme = Theme.of(context);
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440),
+      child: SizedBox(
+        key: const Key('bus-picker-dialog-surface'),
+        width: 488,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          padding: const EdgeInsets.fromLTRB(20, 20, 4, 16),
           child: Semantics(
             namesRoute: true,
             label: 'Bus picker',
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Semantics(
-                  header: true,
-                  child: Row(
-                    children: [
-                      ExcludeSemantics(
-                        child: Icon(
-                          Icons.route_rounded,
-                          size: 20,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Route ${widget.portLabel}',
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: Semantics(
+                    header: true,
+                    child: Row(
+                      children: [
+                        ExcludeSemantics(
+                          child: Icon(
+                            Icons.route_rounded,
+                            size: 20,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Route ${widget.portLabel}',
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -120,35 +129,45 @@ class _BusPickerDialogState extends State<BusPickerDialog> {
                         420.0,
                       ),
                     ),
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (widget.model.allowNone)
-                            _NoneSection(
-                              selected: widget.model.currentValue == 0,
-                              onTap: widget.model.currentValue == 0
-                                  ? null
-                                  : () => Navigator.of(context).pop(0),
+                    child: ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(
+                        context,
+                      ).copyWith(scrollbars: false),
+                      child: Scrollbar(
+                        controller: _scrollController,
+                        thickness: 6,
+                        radius: const Radius.circular(3),
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (widget.model.allowNone)
+                                  _NoneSection(
+                                    selected: widget.model.currentValue == 0,
+                                    selectionAnimation:
+                                        widget.selectionAnimation,
+                                    onTap: widget.model.currentValue == 0
+                                        ? null
+                                        : () => Navigator.of(context).pop(0),
+                                  ),
+                                if (_inputs.isNotEmpty)
+                                  _section('Inputs', _inputs, theme),
+                                if (_outputs.isNotEmpty)
+                                  _section('Outputs', _outputs, theme),
+                                if (_aux.isNotEmpty)
+                                  _section('Aux', _aux, theme),
+                                if (_es5.isNotEmpty)
+                                  _section('ES-5', _es5, theme),
+                              ],
                             ),
-                          if (_inputs.isNotEmpty)
-                            _section('Inputs', _inputs, theme),
-                          if (_outputs.isNotEmpty)
-                            _section('Outputs', _outputs, theme),
-                          if (_aux.isNotEmpty) _section('Aux', _aux, theme),
-                          if (_es5.isNotEmpty) _section('ES-5', _es5, theme),
-                        ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Currently: ${widget.model.labelFor(widget.model.currentValue)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -195,6 +214,7 @@ class _BusPickerDialogState extends State<BusPickerDialog> {
                   label: choice.label,
                   deviceIoProfile: widget.model.deviceIoProfile,
                   selected: choice.value == widget.model.currentValue,
+                  selectionAnimation: widget.selectionAnimation,
                   onTap: choice.value == widget.model.currentValue
                       ? null
                       : () => Navigator.of(context).pop(choice.value),
@@ -212,6 +232,7 @@ class _BusTile extends StatefulWidget {
   final String label;
   final DeviceIoProfile deviceIoProfile;
   final bool selected;
+  final Animation<double>? selectionAnimation;
   final VoidCallback? onTap;
   const _BusTile({
     super.key,
@@ -219,6 +240,7 @@ class _BusTile extends StatefulWidget {
     required this.label,
     required this.deviceIoProfile,
     required this.selected,
+    required this.selectionAnimation,
     required this.onTap,
   });
 
@@ -228,19 +250,17 @@ class _BusTile extends StatefulWidget {
 
 class _NoneSection extends StatelessWidget {
   final bool selected;
+  final Animation<double>? selectionAnimation;
   final VoidCallback? onTap;
-  const _NoneSection({required this.selected, required this.onTap});
+  const _NoneSection({
+    required this.selected,
+    required this.selectionAnimation,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final borderColor = selected
-        ? theme.colorScheme.primary
-        : theme.colorScheme.outline;
-    final borderWidth = selected ? 3.0 : 1.5;
-    final fillColor = selected
-        ? theme.colorScheme.primary.withValues(alpha: 0.18)
-        : theme.colorScheme.surfaceContainerHighest;
     final foreground = theme.colorScheme.onSurface;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -264,44 +284,59 @@ class _NoneSection extends StatelessWidget {
             spacing: 8,
             runSpacing: 6,
             children: [
-              Semantics(
-                label: selected ? 'Current bus None' : 'Route to None',
-                button: true,
+              _SelectedBusFade(
                 selected: selected,
-                enabled: onTap != null,
-                excludeSemantics: true,
-                child: Focus(
-                  autofocus: selected,
-                  canRequestFocus: selected,
-                  child: Material(
-                    color: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      side: BorderSide(color: borderColor, width: borderWidth),
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(6),
-                      onTap: onTap,
-                      child: Container(
-                        width: 48,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: fillColor,
+                animation: selectionAnimation,
+                builder: (context, emphasis) {
+                  final selectionColor = selected
+                      ? Color.lerp(
+                          theme.colorScheme.primary.withValues(alpha: 0),
+                          theme.colorScheme.primary,
+                          emphasis,
+                        )!
+                      : theme.colorScheme.outline;
+                  final fillColor = selected
+                      ? theme.colorScheme.primary.withValues(alpha: 0.18)
+                      : theme.colorScheme.surfaceContainerHighest;
+                  return Semantics(
+                    label: selected ? 'Current bus None' : 'Route to None',
+                    button: true,
+                    selected: selected,
+                    enabled: onTap != null,
+                    excludeSemantics: true,
+                    child: Focus(
+                      autofocus: selected,
+                      canRequestFocus: selected,
+                      child: _BusOutlineStack(
+                        baseColor: theme.colorScheme.outline,
+                        baseWidth: 1.5,
+                        selectionColor: selectionColor,
+                        showSelection: selected,
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(6),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'None',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                            color: foreground,
+                          onTap: onTap,
+                          child: Container(
+                            width: 48,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: fillColor,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'None',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                                color: foreground,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ],
           ),
@@ -323,50 +358,180 @@ class _BusTileState extends State<_BusTile> {
       isDark: isDark,
       deviceIoProfile: widget.deviceIoProfile,
     );
-    final borderColor = widget.selected ? theme.colorScheme.primary : baseColor;
-    final borderWidth = widget.selected ? 3.0 : (_hovered ? 2.0 : 1.5);
-    final fillAlpha = widget.selected ? 0.45 : (_hovered ? 0.35 : 0.18);
-    return Semantics(
-      label: widget.selected
-          ? 'Current bus ${widget.label}'
-          : 'Route to ${widget.label}',
-      button: true,
+    final baseBorderWidth = _hovered ? 2.0 : 1.5;
+    return _SelectedBusFade(
       selected: widget.selected,
-      enabled: widget.onTap != null,
-      excludeSemantics: true,
-      child: Focus(
-        autofocus: widget.selected,
-        canRequestFocus: widget.selected,
-        child: Material(
-          color: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
-            side: BorderSide(color: borderColor, width: borderWidth),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(6),
-            onTap: widget.onTap,
-            onHover: (h) {
-              if (h != _hovered) setState(() => _hovered = h);
-            },
-            child: Container(
-              width: 48,
-              height: 34,
-              decoration: BoxDecoration(
-                color: baseColor.withValues(alpha: fillAlpha),
+      animation: widget.selectionAnimation,
+      builder: (context, emphasis) {
+        final selectionColor = widget.selected
+            ? Color.lerp(
+                theme.colorScheme.primary.withValues(alpha: 0),
+                theme.colorScheme.primary,
+                emphasis,
+              )!
+            : baseColor;
+        final fillAlpha = widget.selected ? 0.45 : (_hovered ? 0.35 : 0.18);
+        return Semantics(
+          label: widget.selected
+              ? 'Current bus ${widget.label}'
+              : 'Route to ${widget.label}',
+          button: true,
+          selected: widget.selected,
+          enabled: widget.onTap != null,
+          excludeSemantics: true,
+          child: Focus(
+            autofocus: widget.selected,
+            canRequestFocus: widget.selected,
+            child: _BusOutlineStack(
+              baseColor: baseColor,
+              baseWidth: baseBorderWidth,
+              selectionColor: selectionColor,
+              showSelection: widget.selected,
+              child: InkWell(
                 borderRadius: BorderRadius.circular(6),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                widget.label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
+                onTap: widget.onTap,
+                onHover: (h) {
+                  if (h != _hovered) setState(() => _hovered = h);
+                },
+                child: Container(
+                  width: 48,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: baseColor.withValues(alpha: fillAlpha),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    widget.label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+}
+
+class _BusOutlineStack extends StatelessWidget {
+  final Color baseColor;
+  final double baseWidth;
+  final Color selectionColor;
+  final bool showSelection;
+  final Widget child;
+
+  const _BusOutlineStack({
+    required this.baseColor,
+    required this.baseWidth,
+    required this.selectionColor,
+    required this.showSelection,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        Material(
+          color: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+            side: BorderSide(color: baseColor, width: baseWidth),
+          ),
+          child: child,
         ),
+        if (showSelection)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                key: const Key('selected-bus-outline'),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: selectionColor, width: 3),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SelectedBusFade extends StatefulWidget {
+  final bool selected;
+  final Animation<double>? animation;
+  final Widget Function(BuildContext context, double emphasis) builder;
+
+  const _SelectedBusFade({
+    required this.selected,
+    required this.animation,
+    required this.builder,
+  });
+
+  @override
+  State<_SelectedBusFade> createState() => _SelectedBusFadeState();
+}
+
+class _SelectedBusFadeState extends State<_SelectedBusFade>
+    with SingleTickerProviderStateMixin {
+  AnimationController? _controller;
+
+  AnimationController get _internalController =>
+      _controller ??= AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 1400),
+      );
+
+  @override
+  void initState() {
+    super.initState();
+    _configureAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SelectedBusFade oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selected != widget.selected ||
+        oldWidget.animation != widget.animation) {
+      _configureAnimation();
+    }
+  }
+
+  void _configureAnimation() {
+    if (widget.animation != null) {
+      _controller?.stop();
+      return;
+    }
+    final controller = _internalController;
+    controller.stop();
+    if (!widget.selected) {
+      controller.value = 0;
+      return;
+    }
+    controller.value = 1;
+    controller.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final animation = widget.animation ?? _internalController;
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) => widget.builder(
+        context,
+        widget.selected ? Curves.easeInOut.transform(animation.value) : 0,
       ),
     );
   }
