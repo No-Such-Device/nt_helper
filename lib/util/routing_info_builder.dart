@@ -24,11 +24,15 @@ List<RoutingInformation> buildRoutingInfoFromEditor(
     int inputMask = 0;
     int outputMask = 0;
     int replaceMask = 0;
+    final inputBuses = <int>{};
+    final outputBuses = <int>{};
+    final replaceBuses = <int>{};
 
     for (final port in algo.inputPorts) {
       final bus = port.busValue;
       if (bus != null && deviceIoProfile.contains(bus)) {
-        inputMask |= (1 << bus);
+        inputBuses.add(bus);
+        if (bus < 64) inputMask |= (1 << bus);
       }
     }
 
@@ -38,10 +42,12 @@ List<RoutingInformation> buildRoutingInfoFromEditor(
           algo.algorithm.guid == 'usbf' &&
           deviceIoProfile.contextualEs5Buses.contains(bus);
       if (bus != null && (deviceIoProfile.contains(bus) || isContextualEs5)) {
-        outputMask |= (1 << bus);
+        outputBuses.add(bus);
+        if (bus < 64) outputMask |= (1 << bus);
         final mode = portOutputModes[port.id] ?? port.outputMode;
         if (mode == OutputMode.replace) {
-          replaceMask |= (1 << bus);
+          replaceBuses.add(bus);
+          if (bus < 64) replaceMask |= (1 << bus);
         }
       }
     }
@@ -50,6 +56,10 @@ List<RoutingInformation> buildRoutingInfoFromEditor(
       algorithmIndex: algo.index,
       routingInfo: [inputMask, outputMask, replaceMask, 0, 0, 0],
       algorithmName: algo.algorithm.name,
+      inputBuses: inputBuses,
+      outputBuses: outputBuses,
+      replaceBuses: replaceBuses,
+      mappingBuses: const {},
     );
   }).toList();
 }

@@ -116,17 +116,16 @@ class BusMapping {
   }
 
   /// Detect whether a parameter is a bus assignment parameter.
-  /// Bus params have unit==1 (enum), min of 0 or 1, and a max value
-  /// matching known bus ceilings.
+  /// I/O flags identify algorithm bus inputs and outputs. The advertised
+  /// range limits the choices later; it does not define the device topology.
   static bool isBusParameter(
     ParameterInfo param, {
     DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
   }) {
     return param.unit == 1 &&
-        (param.min == 0 || param.min == 1) &&
-        param.max >= deviceIoProfile.inputBusCount.clamp(1, 127) &&
-        param.max <= DeviceIoProfile.maximumBusNumber &&
-        deviceIoProfile.busesWithin(param.min, param.max).isNotEmpty;
+        (param.isInput || param.isOutput) &&
+        param.min <= param.max &&
+        param.max >= 0;
   }
 
   static DeviceIoProfile _profile(

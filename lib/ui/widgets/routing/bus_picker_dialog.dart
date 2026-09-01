@@ -270,29 +270,33 @@ class _NoneSection extends StatelessWidget {
                 selected: selected,
                 enabled: onTap != null,
                 excludeSemantics: true,
-                child: Material(
-                  color: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    side: BorderSide(color: borderColor, width: borderWidth),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(6),
-                    onTap: onTap,
-                    child: Container(
-                      width: 48,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: fillColor,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'None',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                          color: foreground,
+                child: Focus(
+                  autofocus: selected,
+                  canRequestFocus: selected,
+                  child: Material(
+                    color: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      side: BorderSide(color: borderColor, width: borderWidth),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: onTap,
+                      child: Container(
+                        width: 48,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: fillColor,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'None',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            color: foreground,
+                          ),
                         ),
                       ),
                     ),
@@ -330,29 +334,36 @@ class _BusTileState extends State<_BusTile> {
       selected: widget.selected,
       enabled: widget.onTap != null,
       excludeSemantics: true,
-      child: Material(
-        color: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
-          side: BorderSide(color: borderColor, width: borderWidth),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(6),
-          onTap: widget.onTap,
-          onHover: (h) {
-            if (h != _hovered) setState(() => _hovered = h);
-          },
-          child: Container(
-            width: 48,
-            height: 34,
-            decoration: BoxDecoration(
-              color: baseColor.withValues(alpha: fillAlpha),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              widget.label,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+      child: Focus(
+        autofocus: widget.selected,
+        canRequestFocus: widget.selected,
+        child: Material(
+          color: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+            side: BorderSide(color: borderColor, width: borderWidth),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(6),
+            onTap: widget.onTap,
+            onHover: (h) {
+              if (h != _hovered) setState(() => _hovered = h);
+            },
+            child: Container(
+              width: 48,
+              height: 34,
+              decoration: BoxDecoration(
+                color: baseColor.withValues(alpha: fillAlpha),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                widget.label,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
             ),
           ),
         ),

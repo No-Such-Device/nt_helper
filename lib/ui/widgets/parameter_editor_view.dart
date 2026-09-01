@@ -96,7 +96,9 @@ class ParameterEditorView extends StatelessWidget {
           enumStrings.values[0] == "Off" &&
           enumStrings.values[1] == "On"),
       initialValue:
-          (value.value >= parameterInfo.min && value.value <= parameterInfo.max)
+          isRoutingParameter ||
+              (value.value >= parameterInfo.min &&
+                  value.value <= parameterInfo.max)
           ? value.value
           : parameterInfo.defaultValue,
       unit: shouldShowUnit ? unit : null,

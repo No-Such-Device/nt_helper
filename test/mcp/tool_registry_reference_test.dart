@@ -111,5 +111,15 @@ void main() {
       expect(name['minLength'], 1);
       expect(name['maxLength'], 31);
     });
+
+    test('edit_parameter advertises profile-aware CV mapping buses', () {
+      final registry = ToolRegistry(MockDistingCubit());
+      final tool = registry.findByName('edit_parameter');
+      expect(tool, isNotNull);
+      final properties =
+          tool!.inputSchema['properties'] as Map<String, dynamic>;
+      expect(properties.toString(), isNot(contains('cv_input (0-12)')));
+      expect(properties.toString(), contains('available device bus'));
+    });
   });
 }

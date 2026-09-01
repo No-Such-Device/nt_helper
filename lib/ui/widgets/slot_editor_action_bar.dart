@@ -83,7 +83,7 @@ class SlotEditorActionBar extends StatelessWidget {
                   if (distingState is! DistingStateSynchronized) return;
                   final outputParameters = slot.parameters.where(
                     (parameter) =>
-                        parameter.name.toLowerCase().contains('output') &&
+                        parameter.isOutput &&
                         parameter.unit == 1 &&
                         parameter.min == 0,
                   );

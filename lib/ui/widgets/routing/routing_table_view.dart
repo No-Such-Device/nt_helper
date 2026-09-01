@@ -175,11 +175,6 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       final info = routing[s];
       final rowBefore = signals[s];
       final rowAfter = signals[s + 1];
-      final inMask = analyzer.getNetInputMask(info);
-      final outMask = info.routingInfo[1];
-      final replaceMask = info.routingInfo[2];
-      final usedMask =
-          info.routingInfo[0] | info.routingInfo[1] | info.routingInfo[5];
 
       // Signal-above row
       pinnedRows.add(TableRow(children: [SizedBox(height: _cellHeight)]));
@@ -187,7 +182,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
         TableRow(
           children: [
             for (int ch = 1; ch <= numBuses; ch++)
-              _signalAboveCell(ch, rowBefore, inMask, colours, scheme.error),
+              _signalAboveCell(ch, rowBefore, info, colours, scheme.error),
           ],
         ),
       );
@@ -219,7 +214,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
               _slotCell(
                 ch,
                 signalsBefore: rowBefore,
-                usedMask: usedMask,
+                info: info,
                 colours: colours,
                 usedBg: usedBg,
                 unusedBg: unusedBg,
@@ -236,14 +231,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
         TableRow(
           children: [
             for (int ch = 1; ch <= numBuses; ch++)
-              _signalBelowCell(
-                ch,
-                rowAfter,
-                outMask,
-                replaceMask,
-                colours,
-                symbolStyle,
-              ),
+              _signalBelowCell(ch, rowAfter, info, colours, symbolStyle),
           ],
         ),
       );
@@ -334,11 +322,11 @@ class _RoutingTableViewState extends State<RoutingTableView> {
   Widget _signalAboveCell(
     int ch,
     List<int> rowBefore,
-    int inMask,
+    RoutingInformation info,
     List<Color> colours,
     Color errorColor,
   ) {
-    final usesChannel = (inMask & (1 << ch)) != 0;
+    final usesChannel = info.readsBus(ch, signals: true, mappings: false);
     final signalLevel = ch < rowBefore.length ? rowBefore[ch] : 0;
     final bgColor = colours[signalLevel + 3 * (ch & 1)];
 
@@ -365,7 +353,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
   Widget _slotCell(
     int ch, {
     required List<int> signalsBefore,
-    required int usedMask,
+    required RoutingInformation info,
     required List<Color> colours,
     required Color usedBg,
     required Color unusedBg,
@@ -373,7 +361,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     required DeviceIoProfile deviceIoProfile,
   }) {
     final levelBefore = ch < signalsBefore.length ? signalsBefore[ch] : 0;
-    final isUsed = (usedMask & (1 << ch)) != 0;
+    final isUsed = info.usesBus(ch);
 
     final Color bgColor;
     if (isUsed) {
@@ -402,19 +390,18 @@ class _RoutingTableViewState extends State<RoutingTableView> {
   Widget _signalBelowCell(
     int ch,
     List<int> rowAfter,
-    int outMask,
-    int replaceMask,
+    RoutingInformation info,
     List<Color> colours,
     TextStyle? symbolStyle,
   ) {
     final signalLevel = ch < rowAfter.length ? rowAfter[ch] : 0;
     final bgColor = colours[signalLevel + 3 * (ch & 1)];
-    final hasOutput = (outMask & (1 << ch)) != 0;
+    final hasOutput = info.writesBus(ch);
 
     if (!hasOutput) {
       return Container(width: _cellWidth, height: _cellHeight, color: bgColor);
     }
-    final replaced = (replaceMask & (1 << ch)) != 0;
+    final replaced = info.replacesBus(ch);
     return Container(
       width: _cellWidth,
       height: _cellHeight,
@@ -439,10 +426,8 @@ class _RoutingTableViewState extends State<RoutingTableView> {
         ? inputBuses.last
         : 0;
     for (final info in routing) {
-      final usedMask =
-          info.routingInfo[0] | info.routingInfo[1] | info.routingInfo[5];
       for (int ch = maxBus; ch > highestUsed; ch--) {
-        if ((usedMask & (1 << ch)) != 0) {
+        if (info.usesBus(ch)) {
           highestUsed = ch;
           break;
         }

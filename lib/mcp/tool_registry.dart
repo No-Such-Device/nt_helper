@@ -731,7 +731,8 @@ class ToolRegistry {
                 'cv': {
                   'type': 'object',
                   'description':
-                      'CV mapping: source, cv_input (0-12), is_unipolar, is_gate, volts, delta',
+                      'CV mapping: source, cv_input (None or an available device bus), '
+                      'is_unipolar, is_gate, volts, delta',
                 },
                 'midi': {
                   'type': 'object',

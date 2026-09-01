@@ -108,4 +108,40 @@ void main() {
 
     expect(selected, 14);
   });
+
+  testWidgets('keyboard traversal starts at the current bus', (tester) async {
+    int? selected;
+    final model = BusSelectionModel.fromProfile(
+      deviceIoProfile: DeviceIoProfile.distingExtended,
+      currentValue: 50,
+      minimum: 1,
+      maximum: 64,
+      allowNone: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              selected = await showDialog<int>(
+                context: context,
+                builder: (context) =>
+                    BusPickerDialog(portLabel: 'Output', model: model),
+              );
+            },
+            child: const Text('Open'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(selected, 51);
+  });
 }

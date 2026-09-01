@@ -4498,12 +4498,21 @@ class DistingTools {
       final cv = mappingData['cv'] as Map<String, dynamic>?;
       if (cv != null) {
         if (cv.containsKey('cv_input')) {
-          final input = cv['cv_input'] as int?;
-          if (input != null && (input < 0 || input > 12)) {
+          final input = cv['cv_input'];
+          final resolved = input == null
+              ? null
+              : BusMapping.parseBus(
+                  input,
+                  deviceIoProfile: _deviceIoProfile,
+                  includeEs5: false,
+                );
+          if (input != null && resolved == null) {
             return MCPUtils.buildError(
-              'CV input must be 0-12, got $input at slot $slotIndex parameter $paramNumber',
+              'CV input must be None or an available device bus, got $input '
+              'at slot $slotIndex parameter $paramNumber',
             );
           }
+          if (resolved != null) cv['cv_input'] = resolved;
         }
       }
     }

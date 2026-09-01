@@ -78,7 +78,7 @@ class _ParameterViewRowState extends State<ParameterViewRow> {
   void initState() {
     super.initState();
     // Guard against invalid min > max (can happen with malformed parameter data)
-    currentValue = widget.min <= widget.max
+    currentValue = !widget.isRoutingParameter && widget.min <= widget.max
         ? widget.initialValue.clamp(widget.min, widget.max)
         : widget.initialValue;
     isChecked = widget.isOnOff && currentValue == 1;
@@ -94,7 +94,7 @@ class _ParameterViewRowState extends State<ParameterViewRow> {
         widget.max != oldWidget.max) {
       setState(() {
         // Guard against invalid min > max (can happen with malformed parameter data)
-        currentValue = widget.min <= widget.max
+        currentValue = !widget.isRoutingParameter && widget.min <= widget.max
             ? widget.initialValue.clamp(widget.min, widget.max)
             : widget.initialValue;
         isChecked = widget.isOnOff && currentValue == 1;
@@ -372,7 +372,9 @@ class _ParameterViewRowState extends State<ParameterViewRow> {
                                           )
                                         : null,
                                     child: Slider(
-                                      value: currentValue.toDouble(),
+                                      value: currentValue
+                                          .clamp(widget.min, widget.max)
+                                          .toDouble(),
                                       min: widget.min.toDouble(),
                                       max: widget.max.toDouble(),
                                       divisions: (widget.max - widget.min > 0)

@@ -9,6 +9,7 @@ class RoutingAnalyzer {
   final bool _showMappings;
   final int _slotCount;
   final DeviceIoProfile deviceIoProfile;
+  late final int _maximumBus;
 
   late List<List<int>> _processedSignals;
   late List<List<bool>> _processedUsageNeeded;
@@ -26,6 +27,13 @@ class RoutingAnalyzer {
   }
 
   void _initializeAnalysis() {
+    var maximumBus = deviceIoProfile.maxBus;
+    for (final info in _routing) {
+      for (final bus in info.explicitBuses) {
+        if (bus > maximumBus) maximumBus = bus;
+      }
+    }
+    _maximumBus = maximumBus;
     _processedSignals = _buildForwardSignals();
     _applyStripSignals(_processedSignals);
     _processedUsageNeeded = _buildUsageNeeded();
@@ -41,7 +49,7 @@ class RoutingAnalyzer {
     // Initial signal state: index 0 unused, physical inputs have signal (1),
     // all others (outputs, aux, ES-5) start at 0.
     final initialSignals = List<int>.generate(
-      DeviceIoProfile.maximumBusNumber + 1,
+      _maximumBus + 1,
       (i) => deviceIoProfile.isInput(i) ? 1 : 0,
     );
     final List<List<int>> signalsList = [initialSignals];
@@ -51,13 +59,10 @@ class RoutingAnalyzer {
       final rowBefore = signalsList.last;
       final rowAfter = List<int>.from(rowBefore);
 
-      final outMask = info.routingInfo[1];
-      final replaceMask = info.routingInfo[2];
-
-      for (int ch = 1; ch <= DeviceIoProfile.maximumBusNumber; ch++) {
+      for (int ch = 1; ch <= _maximumBus; ch++) {
         int v = rowBefore[ch];
-        final hasOutput = (outMask & (1 << ch)) != 0;
-        final replaced = (replaceMask & (1 << ch)) != 0;
+        final hasOutput = info.writesBus(ch);
+        final replaced = info.replacesBus(ch);
 
         if (hasOutput) {
           if (replaced) {
@@ -77,22 +82,23 @@ class RoutingAnalyzer {
   // Modifies the signals by removing signals that are not actually used by any subsequent input.
   // Works bottom-up.
   void _applyStripSignals(List<List<int>> signalsToModify) {
-    for (int ch = 1; ch <= DeviceIoProfile.maximumBusNumber; ch++) {
+    for (int ch = 1; ch <= _maximumBus; ch++) {
       if (_showSignals && deviceIoProfile.isOutput(ch)) continue;
 
       bool hasInputBelow = false;
       for (int s = _slotCount; s >= 0; s--) {
         if (s < _slotCount) {
           final info = _routing[s];
-          final inMaskForThisSlot = getNetInputMask(info);
-          final replaceMaskForThisSlot = info.routingInfo[2];
-
           // If this slot replaces the channel, any input requirement from below is cut off here.
-          if ((replaceMaskForThisSlot & (1 << ch)) != 0) {
+          if (info.replacesBus(ch)) {
             hasInputBelow = false;
           }
           // If this slot uses the channel as input, then it's needed.
-          if ((inMaskForThisSlot & (1 << ch)) != 0) {
+          if (info.readsBus(
+            ch,
+            signals: _showSignals,
+            mappings: _showMappings,
+          )) {
             hasInputBelow = true;
           }
         }
@@ -109,16 +115,18 @@ class RoutingAnalyzer {
   List<List<bool>> _buildUsageNeeded() {
     final List<List<bool>> usageList = List.generate(
       _slotCount + 1,
-      (_) => List<bool>.filled(DeviceIoProfile.maximumBusNumber + 1, false),
+      (_) => List<bool>.filled(_maximumBus + 1, false),
     );
     for (int s = _slotCount - 1; s >= 0; s--) {
       final info = _routing[s];
-      final inMaskForThisSlot = getNetInputMask(info);
-      final replaceMaskForThisSlot = info.routingInfo[2];
-      for (int ch = 1; ch <= DeviceIoProfile.maximumBusNumber; ch++) {
+      for (int ch = 1; ch <= _maximumBus; ch++) {
         final neededBySlotsBelow = usageList[s + 1][ch];
-        final replacedByThisSlot = (replaceMaskForThisSlot & (1 << ch)) != 0;
-        final thisSlotNeedsChannel = (inMaskForThisSlot & (1 << ch)) != 0;
+        final replacedByThisSlot = info.replacesBus(ch);
+        final thisSlotNeedsChannel = info.readsBus(
+          ch,
+          signals: _showSignals,
+          mappings: _showMappings,
+        );
 
         usageList[s][ch] =
             thisSlotNeedsChannel || (neededBySlotsBelow && !replacedByThisSlot);
@@ -145,14 +153,11 @@ class RoutingAnalyzer {
       final List<int> inputBuses = [];
       final List<int> outputBuses = [];
 
-      final currentNetInputMask = getNetInputMask(info);
-      final currentOutMask = info.routingInfo[1]; // Direct output mask
-
-      for (int ch = 1; ch <= DeviceIoProfile.maximumBusNumber; ch++) {
-        if ((currentNetInputMask & (1 << ch)) != 0) {
+      for (int ch = 1; ch <= _maximumBus; ch++) {
+        if (info.readsBus(ch, signals: _showSignals, mappings: _showMappings)) {
           inputBuses.add(ch);
         }
-        if ((currentOutMask & (1 << ch)) != 0) {
+        if (info.writesBus(ch)) {
           outputBuses.add(ch);
         }
       }

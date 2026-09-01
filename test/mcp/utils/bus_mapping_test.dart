@@ -213,6 +213,7 @@ void main() {
         required int unit,
         required int min,
         required int max,
+        int ioFlags = 0,
       }) {
         return ParameterInfo(
           algorithmIndex: 0,
@@ -223,29 +224,37 @@ void main() {
           unit: unit,
           name: 'test',
           powerOfTen: 0,
-          ioFlags: 0,
+          ioFlags: ioFlags,
         );
       }
 
       test('returns true for bus parameters', () {
         // unit=1, min=0, max=28 (pre-1.15 aux max)
         expect(
-          BusMapping.isBusParameter(makeParam(unit: 1, min: 0, max: 28)),
+          BusMapping.isBusParameter(
+            makeParam(unit: 1, min: 0, max: 28, ioFlags: 1),
+          ),
           isTrue,
         );
         // unit=1, min=0, max=30 (pre-1.15 with ES-5)
         expect(
-          BusMapping.isBusParameter(makeParam(unit: 1, min: 0, max: 30)),
+          BusMapping.isBusParameter(
+            makeParam(unit: 1, min: 0, max: 30, ioFlags: 2),
+          ),
           isTrue,
         );
         // unit=1, min=1, max=66 (extended)
         expect(
-          BusMapping.isBusParameter(makeParam(unit: 1, min: 1, max: 66)),
+          BusMapping.isBusParameter(
+            makeParam(unit: 1, min: 1, max: 66, ioFlags: 2),
+          ),
           isTrue,
         );
         // unit=1, min=0, max=64 (extended aux only)
         expect(
-          BusMapping.isBusParameter(makeParam(unit: 1, min: 0, max: 64)),
+          BusMapping.isBusParameter(
+            makeParam(unit: 1, min: 0, max: 64, ioFlags: 1),
+          ),
           isTrue,
         );
       });
@@ -266,9 +275,12 @@ void main() {
           BusMapping.isBusParameter(makeParam(unit: 1, min: 5, max: 28)),
           isFalse,
         );
-        // A broader advertised range is still intersected with the profile.
+        // A broader advertised range is still a bus parameter when I/O flags
+        // identify its direction; the selectable values are intersected later.
         expect(
-          BusMapping.isBusParameter(makeParam(unit: 1, min: 0, max: 100)),
+          BusMapping.isBusParameter(
+            makeParam(unit: 1, min: 0, max: 100, ioFlags: 1),
+          ),
           isTrue,
         );
       });

@@ -32,6 +32,26 @@ void main() {
       expect(profile.auxBuses, isEmpty);
     });
 
+    test('caps general buses at 64 and keeps ES-5 contextual', () {
+      final profile = DeviceIoProfile.tryCreate(
+        inputBusCount: 12,
+        outputBusCount: 8,
+        auxBusCount: 44,
+      )!;
+
+      expect(DeviceIoProfile.maximumBusNumber, 64);
+      expect(profile.maxBus, 64);
+      expect(profile.contextualEs5Buses, [65, 66]);
+      expect(
+        DeviceIoProfile.tryCreate(
+          inputBusCount: 12,
+          outputBusCount: 8,
+          auxBusCount: 45,
+        ),
+        isNull,
+      );
+    });
+
     test('rejects negative, oversized, and overflowing counts', () {
       expect(
         DeviceIoProfile.tryCreate(

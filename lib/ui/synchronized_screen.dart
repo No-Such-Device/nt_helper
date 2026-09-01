@@ -1434,6 +1434,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                             ) {
                               final flowSolution = BusFlowSolver.fromAlgorithms(
                                 algorithms,
+                                deviceIoProfile: deviceIoProfile,
                               ).solve();
                               if (effectiveRoutingViewMode !=
                                       RoutingEditorViewMode.busLanes ||

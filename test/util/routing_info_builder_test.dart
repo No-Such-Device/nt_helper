@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/cubit/routing_editor_state.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
+import 'package:nt_helper/util/routing_analyzer.dart';
 import 'package:nt_helper/util/routing_info_builder.dart';
 
 RoutingAlgorithm _algo({
@@ -79,16 +81,17 @@ void main() {
     });
 
     test('portOutputModes overrides the port outputMode', () {
-      final info = buildRoutingInfoFromEditor([
-        _algo(
-          id: 'a',
-          index: 0,
-          name: 'A',
-          outputs: [(bus: 21, mode: OutputMode.add)],
-        ),
-      ], {
-        'a_out_0': OutputMode.replace,
-      });
+      final info = buildRoutingInfoFromEditor(
+        [
+          _algo(
+            id: 'a',
+            index: 0,
+            name: 'A',
+            outputs: [(bus: 21, mode: OutputMode.add)],
+          ),
+        ],
+        {'a_out_0': OutputMode.replace},
+      );
 
       expect(info[0].routingInfo[2], 1 << 21, reason: 'override -> replace');
     });
@@ -116,6 +119,50 @@ void main() {
       ], {});
 
       expect(info.map((e) => e.algorithmName).toList(), ['A', 'C', 'B']);
+    });
+
+    test('preserves bus 64 for routing analysis', () {
+      final info = buildRoutingInfoFromEditor(
+        [
+          _algo(
+            id: 'a',
+            index: 0,
+            name: 'A',
+            outputs: [(bus: 64, mode: OutputMode.add)],
+          ),
+        ],
+        {},
+        deviceIoProfile: DeviceIoProfile.distingExtended,
+      );
+
+      final usage = RoutingAnalyzer(
+        routing: info,
+        deviceIoProfile: DeviceIoProfile.distingExtended,
+      ).generateSlotBusUsageJson();
+
+      expect(usage, contains('"outputBuses":[64]'));
+    });
+
+    test('preserves contextual USB From Host buses for routing analysis', () {
+      final info = buildRoutingInfoFromEditor(
+        [
+          _algo(
+            id: 'usbf',
+            index: 0,
+            name: 'USB From Host',
+            outputs: [(bus: 65, mode: OutputMode.add)],
+          ),
+        ],
+        {},
+        deviceIoProfile: DeviceIoProfile.distingExtended,
+      );
+
+      final usage = RoutingAnalyzer(
+        routing: info,
+        deviceIoProfile: DeviceIoProfile.distingExtended,
+      ).generateSlotBusUsageJson();
+
+      expect(usage, contains('"outputBuses":[65]'));
     });
   });
 }

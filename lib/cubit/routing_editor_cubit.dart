@@ -645,13 +645,18 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         algorithmInputPort.id,
       );
       if (algorithmIndex != null) {
+        final clampedBusNumber = _clampBusAssignment(
+          algorithmIndex: algorithmIndex,
+          parameterNumber: algorithmInputPort.parameterNumber!,
+          busValue: busNumber,
+        );
         await _distingCubit!.updateParameterValue(
           algorithmIndex: algorithmIndex,
           parameterNumber: algorithmInputPort.parameterNumber!,
-          value: busNumber,
+          value: clampedBusNumber,
           userIsChangingTheValue: false,
         );
-        return busNumber;
+        return clampedBusNumber;
       }
     }
 
@@ -684,13 +689,18 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         algorithmOutputPort.id,
       );
       if (algorithmIndex != null) {
+        final clampedBusNumber = _clampBusAssignment(
+          algorithmIndex: algorithmIndex,
+          parameterNumber: algorithmOutputPort.parameterNumber!,
+          busValue: busNumber,
+        );
         await _distingCubit!.updateParameterValue(
           algorithmIndex: algorithmIndex,
           parameterNumber: algorithmOutputPort.parameterNumber!,
-          value: busNumber,
+          value: clampedBusNumber,
           userIsChangingTheValue: false,
         );
-        return busNumber;
+        return clampedBusNumber;
       }
     }
 
@@ -732,13 +742,18 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         algorithmInputPort.id,
       );
       if (algorithmIndex != null) {
+        final clampedBusNumber = _clampBusAssignment(
+          algorithmIndex: algorithmIndex,
+          parameterNumber: algorithmInputPort.parameterNumber!,
+          busValue: busNumber,
+        );
         await _distingCubit!.updateParameterValue(
           algorithmIndex: algorithmIndex,
           parameterNumber: algorithmInputPort.parameterNumber!,
-          value: busNumber,
+          value: clampedBusNumber,
           userIsChangingTheValue: false,
         );
-        return busNumber;
+        return clampedBusNumber;
       }
     }
 
@@ -822,13 +837,20 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         algorithmOutputPort.id,
       );
       if (algorithmIndex != null) {
+        final assignedBusNumber = hardwareOutputPortId.startsWith('hw_out_')
+            ? _clampBusAssignment(
+                algorithmIndex: algorithmIndex,
+                parameterNumber: algorithmOutputPort.parameterNumber!,
+                busValue: busNumber,
+              )
+            : busNumber;
         await _distingCubit!.updateParameterValue(
           algorithmIndex: algorithmIndex,
           parameterNumber: algorithmOutputPort.parameterNumber!,
-          value: busNumber,
+          value: assignedBusNumber,
           userIsChangingTheValue: false,
         );
-        return busNumber;
+        return assignedBusNumber;
       }
     }
 
@@ -1551,15 +1573,11 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       }
 
       final slot = distingState.slots[algorithmIndex];
-      final deviceIoProfile = distingState.deviceIoProfile;
       var resetCount = 0;
 
       for (final param in slot.parameters) {
         final isBusParameter =
-            param.unit == 1 &&
-            (param.min == 0 || param.min == 1) &&
-            param.max >= deviceIoProfile.inputStart &&
-            deviceIoProfile.busesWithin(param.min, param.max).isNotEmpty;
+            (param.isInput || param.isOutput) && param.unit == 1;
 
         if (!isBusParameter) continue;
         if (param.min > 0) continue;
@@ -1593,45 +1611,60 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     return runBatched(() async {
       final distingState = _distingCubit?.state;
       if (distingState is! DistingStateSynchronized) return -1;
+      final profile = distingState.deviceIoProfile;
+      if (!profile.isAux(sourceBus)) return -1;
 
-      // Guard: destination must be empty
+      final references = <({int slotIndex, ParameterInfo parameter})>[];
+      var commonMinimum = profile.auxStart;
+      var commonMaximum = profile.maxBus;
+
+      for (int slotIdx = 0; slotIdx < distingState.slots.length; slotIdx++) {
+        final slot = distingState.slots[slotIdx];
+        for (final param in slot.parameters) {
+          if ((!param.isInput && !param.isOutput) || param.unit != 1) continue;
+          final currentValue = slot.values
+              .where((v) => v.parameterNumber == param.parameterNumber)
+              .firstOrNull
+              ?.value;
+          if (currentValue != sourceBus) continue;
+          references.add((slotIndex: slotIdx, parameter: param));
+          if (param.min > commonMinimum) commonMinimum = param.min;
+          if (param.max < commonMaximum) commonMaximum = param.max;
+        }
+      }
+
+      if (references.isEmpty) return 0;
+      final assignedDestination = profile.clampBusToRange(
+        destinationBus,
+        minimum: commonMinimum,
+        maximum: commonMaximum,
+        allowNone: false,
+      );
+      if (assignedDestination == null ||
+          !profile.isAux(assignedDestination) ||
+          assignedDestination == sourceBus) {
+        return 0;
+      }
+
+      // Guard: the actual clamped destination must be empty.
       final currentState = state;
       if (currentState is RoutingEditorStateLoaded) {
-        final destInfo = currentState.auxBusUsage[destinationBus];
+        final destInfo = currentState.auxBusUsage[assignedDestination];
         if (destInfo != null && destInfo.sessionCount > 0) return -1;
       }
 
       const paceDelay = Duration(milliseconds: 150);
       var writeCount = 0;
 
-      for (int slotIdx = 0; slotIdx < distingState.slots.length; slotIdx++) {
-        final slot = distingState.slots[slotIdx];
-
-        for (final param in slot.parameters) {
-          final isBusParameter =
-              param.unit == 1 &&
-              (param.min == 0 || param.min == 1) &&
-              param.max >= distingState.deviceIoProfile.inputStart &&
-              distingState.deviceIoProfile
-                  .busesWithin(param.min, param.max)
-                  .isNotEmpty;
-          if (!isBusParameter) continue;
-
-          final currentValue = slot.values
-              .where((v) => v.parameterNumber == param.parameterNumber)
-              .firstOrNull
-              ?.value;
-          if (currentValue != sourceBus) continue;
-
-          await _distingCubit!.updateParameterValue(
-            algorithmIndex: slotIdx,
-            parameterNumber: param.parameterNumber,
-            value: destinationBus,
-            userIsChangingTheValue: false,
-          );
-          writeCount++;
-          await Future.delayed(paceDelay);
-        }
+      for (final reference in references) {
+        await _distingCubit!.updateParameterValue(
+          algorithmIndex: reference.slotIndex,
+          parameterNumber: reference.parameter.parameterNumber,
+          value: assignedDestination,
+          userIsChangingTheValue: false,
+        );
+        writeCount++;
+        await Future.delayed(paceDelay);
       }
 
       if (writeCount > 0) {
@@ -2361,11 +2394,16 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     required int previousBusValue,
     required int busValue,
   }) async {
+    final clampedBusValue = _clampBusAssignment(
+      algorithmIndex: algorithmIndex,
+      parameterNumber: parameterNumber,
+      busValue: busValue,
+    );
     final normalized = _normalizeConditionalInPlaceAssignment(
       algorithmIndex: algorithmIndex,
       parameterNumber: parameterNumber,
       previousBusValue: previousBusValue,
-      busValue: busValue,
+      busValue: clampedBusValue,
     );
 
     await setPortBus(
@@ -2381,6 +2419,37 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       newBusValue: normalized.busValue,
       reorder: null,
     );
+  }
+
+  int _clampBusAssignment({
+    required int algorithmIndex,
+    required int parameterNumber,
+    required int busValue,
+  }) {
+    final state = _distingCubit?.state;
+    if (state is! DistingStateSynchronized) return busValue;
+    final range = busParameterRange(
+      algorithmIndex: algorithmIndex,
+      parameterNumber: parameterNumber,
+    );
+    if (range == null) return busValue;
+    final isUsbFromHost =
+        algorithmIndex >= 0 &&
+        algorithmIndex < state.slots.length &&
+        state.slots[algorithmIndex].algorithm.guid == 'usbf';
+    final clamped = state.deviceIoProfile.clampBusToRange(
+      busValue,
+      minimum: range.min,
+      maximum: range.max,
+      allowNone: range.min <= 0,
+      includeContextualEs5: isUsbFromHost,
+    );
+    if (clamped == null) {
+      throw StateError(
+        'Parameter $parameterNumber in slot $algorithmIndex has no selectable buses',
+      );
+    }
+    return clamped;
   }
 
   /// Reverts a previous [assignBusAndSolve]: restores the bus value, then the

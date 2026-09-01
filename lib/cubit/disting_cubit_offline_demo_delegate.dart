@@ -61,6 +61,7 @@ class _OfflineDemoDelegate {
     MidiDevice? currentInputDevice;
     MidiDevice? currentOutputDevice;
     IDistingMidiManager? currentManager = _cubit.disting();
+    DeviceIoProfile? currentDeviceIoProfile;
 
     if (currentState is DistingStateConnected) {
       currentInputDevice = currentState.inputDevice;
@@ -68,6 +69,7 @@ class _OfflineDemoDelegate {
     } else if (currentState is DistingStateSynchronized) {
       currentInputDevice = currentState.inputDevice;
       currentOutputDevice = currentState.outputDevice;
+      currentDeviceIoProfile = currentState.deviceIoProfile;
     }
 
     _cubit._emitState(
@@ -112,7 +114,9 @@ class _OfflineDemoDelegate {
           disting: _cubit._offlineManager!,
           distingVersion: version,
           firmwareVersion: firmwareVersion,
-          deviceIoProfile: DeviceIoProfile.distingForFirmware(firmwareVersion),
+          deviceIoProfile:
+              currentDeviceIoProfile ??
+              DeviceIoProfile.distingForFirmware(firmwareVersion),
           presetName: presetName,
           algorithms: availableAlgorithmsInfo,
           slots: initialSlots,

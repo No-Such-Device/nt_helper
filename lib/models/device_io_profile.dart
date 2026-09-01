@@ -11,7 +11,7 @@ enum DeviceBusGroup { input, output, aux }
 /// ES-5 is intentionally not part of this profile because it is contextual to
 /// USB From Host and dedicated ES-5 routing algorithms.
 class DeviceIoProfile {
-  static const int maximumBusNumber = 127;
+  static const int maximumBusNumber = 64;
 
   static const DeviceIoProfile distingLegacy = DeviceIoProfile._(
     inputBusCount: 12,
@@ -88,9 +88,8 @@ class DeviceIoProfile {
   ///
   /// These are not generally valid profile buses. USB From Host may expose
   /// them when its parameter range includes them.
-  List<int> get contextualEs5Buses => maxBus <= maximumBusNumber - 2
-      ? UnmodifiableListView<int>([maxBus + 1, maxBus + 2])
-      : const [];
+  List<int> get contextualEs5Buses =>
+      UnmodifiableListView<int>([maxBus + 1, maxBus + 2]);
 
   bool isInput(int bus) => _contains(inputStart, inputBusCount, bus);
   bool isOutput(int bus) => _contains(outputStart, outputBusCount, bus);
@@ -138,6 +137,32 @@ class DeviceIoProfile {
     if (minimum > maximum) return const [];
     return UnmodifiableListView<int>(
       buses.where((bus) => bus >= minimum && bus <= maximum),
+    );
+  }
+
+  int? clampBusToRange(
+    int bus, {
+    required int minimum,
+    required int maximum,
+    required bool allowNone,
+    bool includeContextualEs5 = false,
+  }) {
+    final es5 = contextualEs5Buses;
+    final available = <int>[
+      if (allowNone && minimum <= 0 && maximum >= 0) 0,
+      ...busesWithin(minimum, maximum),
+      if (includeContextualEs5 &&
+          es5.every((value) => value >= minimum && value <= maximum))
+        ...es5,
+    ];
+    if (available.isEmpty) return null;
+    if (available.contains(bus)) return bus;
+    if (bus <= available.first) return available.first;
+    if (bus >= available.last) return available.last;
+
+    return available.reduce(
+      (closest, candidate) =>
+          (candidate - bus).abs() < (closest - bus).abs() ? candidate : closest,
     );
   }
 

@@ -67,16 +67,16 @@ class BusSelectionModel {
 
     if (includeEs5) {
       final es5 = deviceIoProfile.contextualEs5Buses;
-      for (var index = 0; index < es5.length; index++) {
-        final bus = es5[index];
-        if (bus < low || bus > high) continue;
-        choices.add(
-          BusSelectionChoice(
-            value: bus,
-            label: index == 0 ? 'ES-5 L' : 'ES-5 R',
-            group: BusSelectionGroup.es5,
-          ),
-        );
+      if (es5.every((bus) => bus >= low && bus <= high)) {
+        for (var index = 0; index < es5.length; index++) {
+          choices.add(
+            BusSelectionChoice(
+              value: es5[index],
+              label: index == 0 ? 'ES-5 L' : 'ES-5 R',
+              group: BusSelectionGroup.es5,
+            ),
+          );
+        }
       }
     }
 

@@ -89,6 +89,19 @@ void main() {
     );
   });
 
+  test('does not expose half of the contextual ES-5 pair', () {
+    final model = BusSelectionModel.fromProfile(
+      deviceIoProfile: profile,
+      currentValue: 1,
+      minimum: 0,
+      maximum: 13,
+      allowNone: true,
+      includeEs5: true,
+    );
+
+    expect(model.choicesFor(BusSelectionGroup.es5), isEmpty);
+  });
+
   test('omits zero-count groups', () {
     final sparseProfile = DeviceIoProfile.tryCreate(
       inputBusCount: 0,

@@ -9,6 +9,7 @@ import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:drift/native.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -19,12 +20,16 @@ import '../../test_helpers/mock_midi_command.dart';
 
 class MockDistingMidiManager extends Mock implements IDistingMidiManager {}
 
-void _emitSynchronizedClckSlot(DistingCubit cubit) {
+void _emitSynchronizedClckSlot(
+  DistingCubit cubit, {
+  DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+}) {
   cubit.emit(
     DistingState.synchronized(
       disting: MockDistingMidiManager(),
       distingVersion: '1.17.0-beta',
       firmwareVersion: FirmwareVersion('1.17.0-beta'),
+      deviceIoProfile: deviceIoProfile,
       presetName: 'Test',
       algorithms: [
         AlgorithmInfo(
@@ -308,6 +313,36 @@ void main() {
     });
 
     group('editSlot - mapping validation', () {
+      test('uses the resolved profile for CV mapping buses', () async {
+        _emitSynchronizedClckSlot(
+          distingCubit,
+          deviceIoProfile: DeviceIoProfile.tryCreate(
+            inputBusCount: 4,
+            outputBusCount: 3,
+            auxBusCount: 10,
+          )!,
+        );
+
+        final result = await tools.editSlot({
+          'slot_index': 0,
+          'data': {
+            'parameters': [
+              {
+                'parameter_number': 0,
+                'mapping': {
+                  'cv': {'cv_input': 13},
+                  'i2c': {'i2c_cc': 256},
+                },
+              },
+            ],
+          },
+        });
+
+        final decoded = jsonDecode(result);
+        expect(decoded['success'], isFalse);
+        expect(decoded['error'], contains('i2c CC'));
+      });
+
       test(
         'should return error when MIDI mapping omits is_midi_enabled',
         () async {

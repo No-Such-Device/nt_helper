@@ -161,7 +161,7 @@ class _SlotMaintenanceDelegate {
     slot.parameters
         .where(
           (p) =>
-              p.name.toLowerCase().contains("output") &&
+              p.isOutput &&
               p.unit == 1 &&
               p.min == 0 &&
               profile.busesWithin(p.min, p.max).isNotEmpty &&
