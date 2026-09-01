@@ -118,10 +118,7 @@ class BusMapping {
   /// Detect whether a parameter is a bus assignment parameter.
   /// I/O flags identify algorithm bus inputs and outputs. The advertised
   /// range limits the choices later; it does not define the device topology.
-  static bool isBusParameter(
-    ParameterInfo param, {
-    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
-  }) {
+  static bool isBusParameter(ParameterInfo param) {
     return param.unit == 1 &&
         (param.isInput || param.isOutput) &&
         param.min <= param.max &&

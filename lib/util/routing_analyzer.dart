@@ -135,16 +135,6 @@ class RoutingAnalyzer {
     return usageList;
   }
 
-  // Calculates the effective input mask for a slot, considering signal/mapping visibility.
-  int getNetInputMask(RoutingInformation r) {
-    final inputMask = r.routingInfo[0];
-    final mappingMask = r.routingInfo[5];
-    if (_showSignals && _showMappings) return inputMask | mappingMask;
-    if (_showSignals) return inputMask;
-    if (_showMappings) return mappingMask;
-    return 0;
-  }
-
   // Generates a JSON string representing input and output bus usage per slot.
   String generateSlotBusUsageJson() {
     final List<Map<String, dynamic>> slotDataList = [];

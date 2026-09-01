@@ -259,20 +259,37 @@ void main() {
         );
       });
 
-      test('returns false for non-bus parameters', () {
-        // Wrong unit
+      test('uses unit, I/O flags, and a valid advertised range', () {
+        // I/O flags do not make a parameter with the wrong unit a bus field.
         expect(
-          BusMapping.isBusParameter(makeParam(unit: 0, min: 0, max: 28)),
+          BusMapping.isBusParameter(
+            makeParam(unit: 0, min: 0, max: 28, ioFlags: 1),
+          ),
           isFalse,
         );
-        // unit=1 but max too small (regular enum)
+        // A unit-1 parameter without I/O flags is an ordinary enum.
         expect(
           BusMapping.isBusParameter(makeParam(unit: 1, min: 0, max: 5)),
           isFalse,
         );
-        // unit=1 but min too high
+        // I/O flags classify even a small advertised range as a bus field.
         expect(
-          BusMapping.isBusParameter(makeParam(unit: 1, min: 5, max: 28)),
+          BusMapping.isBusParameter(
+            makeParam(unit: 1, min: 0, max: 5, ioFlags: 2),
+          ),
+          isTrue,
+        );
+        // Invalid or entirely negative advertised ranges are not bus fields.
+        expect(
+          BusMapping.isBusParameter(
+            makeParam(unit: 1, min: 5, max: 4, ioFlags: 1),
+          ),
+          isFalse,
+        );
+        expect(
+          BusMapping.isBusParameter(
+            makeParam(unit: 1, min: -5, max: -1, ioFlags: 1),
+          ),
           isFalse,
         );
         // A broader advertised range is still a bus parameter when I/O flags
