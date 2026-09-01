@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -304,9 +303,16 @@ class _DistingPageState extends State<DistingPage> {
               return _DeviceSelectionView(
                 inputDevices: state.inputDevices,
                 outputDevices: state.outputDevices,
-                initialInputDevice: state.selectedInputDevice,
-                initialOutputDevice: state.selectedOutputDevice,
-                initialSysExId: state.selectedSysExId,
+                selectedInputDevice: state.selectedInputDevice,
+                selectedOutputDevice: state.selectedOutputDevice,
+                selectedSysExId: state.selectedSysExId,
+                onSelectionChanged: (inputDevice, outputDevice, sysExId) {
+                  context.read<DistingCubit>().updateDeviceSelection(
+                    inputDevice: inputDevice,
+                    outputDevice: outputDevice,
+                    sysExId: sysExId,
+                  );
+                },
                 onDeviceSelected: (inputDevice, outputDevice, sysExId) {
                   context.read<DistingCubit>().connectToDevices(
                     inputDevice,
@@ -432,17 +438,18 @@ class _DistingPageState extends State<DistingPage> {
   }
 }
 
-class _DeviceSelectionView extends StatefulWidget {
+class _DeviceSelectionView extends StatelessWidget {
   final List<MidiDevice> inputDevices;
   final List<MidiDevice> outputDevices;
-  final MidiDevice? initialInputDevice;
-  final MidiDevice? initialOutputDevice;
-  final int initialSysExId;
-  final Function(MidiDevice, MidiDevice, int) onDeviceSelected;
-  final Function() onRefresh;
-  final Function() onSettingsPressed;
-  final Function() onDemoPressed;
-  final Function() onOfflinePressed;
+  final MidiDevice? selectedInputDevice;
+  final MidiDevice? selectedOutputDevice;
+  final int selectedSysExId;
+  final void Function(MidiDevice?, MidiDevice?, int) onSelectionChanged;
+  final void Function(MidiDevice, MidiDevice, int) onDeviceSelected;
+  final VoidCallback onRefresh;
+  final VoidCallback onSettingsPressed;
+  final VoidCallback onDemoPressed;
+  final VoidCallback onOfflinePressed;
   final void Function(
     String? probedVersion,
     MidiDevice? inputDevice,
@@ -455,9 +462,10 @@ class _DeviceSelectionView extends StatefulWidget {
   const _DeviceSelectionView({
     required this.inputDevices,
     required this.outputDevices,
-    this.initialInputDevice,
-    this.initialOutputDevice,
-    this.initialSysExId = 0,
+    required this.selectedInputDevice,
+    required this.selectedOutputDevice,
+    required this.selectedSysExId,
+    required this.onSelectionChanged,
     required this.onDeviceSelected,
     required this.onRefresh,
     required this.onSettingsPressed,
@@ -467,181 +475,24 @@ class _DeviceSelectionView extends StatefulWidget {
     required this.canWorkOffline,
   });
 
-  @override
-  State<_DeviceSelectionView> createState() => _DeviceSelectionViewState();
-}
-
-class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
-  MidiDevice? selectedInputDevice;
-  MidiDevice? selectedOutputDevice;
-  int selectedSysExId = 0;
-  String? _probedFirmwareVersion;
-  bool _probing = false;
-  String? _lastProbedInputId;
-  String? _lastProbedOutputId;
-  final GlobalKey _splitButtonKey = GlobalKey();
-
-  @override
-  void initState() {
-    super.initState();
-    selectedInputDevice = widget.initialInputDevice;
-    selectedOutputDevice = widget.initialOutputDevice;
-    selectedSysExId = widget.initialSysExId;
-  }
-
-  /// Preserve each current device selection independently if it is still
-  /// available in the updated list. A discovery refresh can arrive between
-  /// choosing the input and output, so an unset endpoint must not clear the
-  /// endpoint the user already chose.
-  void _preserveOrClearDevices() {
-    final preservedInput = selectedInputDevice != null
-        ? widget.inputDevices
-              .where((d) => d.name == selectedInputDevice!.name)
-              .firstOrNull
-        : null;
-    final preservedOutput = selectedOutputDevice != null
-        ? widget.outputDevices
-              .where((d) => d.name == selectedOutputDevice!.name)
-              .firstOrNull
-        : null;
-
-    selectedInputDevice = preservedInput;
-    selectedOutputDevice = preservedOutput;
-  }
-
-  @override
-  void didUpdateWidget(covariant _DeviceSelectionView oldWidget) {
-    if (oldWidget.inputDevices != widget.inputDevices ||
-        oldWidget.outputDevices != widget.outputDevices) {
-      _preserveOrClearDevices();
-      _maybeProbe();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          final inputCount = widget.inputDevices.length;
-          final outputCount = widget.outputDevices.length;
-          SemanticsService.sendAnnouncement(
-            View.of(context),
-            'Device list updated. $inputCount input and $outputCount output devices found.',
-            TextDirection.ltr,
-          );
-        }
-      });
-    }
-    super.didUpdateWidget(oldWidget);
-  }
-
-  bool get _devicesSelected =>
-      selectedInputDevice != null && selectedOutputDevice != null;
-
-  void _maybeProbe() {
-    if (!_devicesSelected || _probing || widget.onFirmwarePressed == null) {
-      if (!_devicesSelected && (_probedFirmwareVersion != null || _probing)) {
-        setState(() {
-          _probedFirmwareVersion = null;
-          _probing = false;
-          _lastProbedInputId = null;
-          _lastProbedOutputId = null;
-        });
-      }
-      return;
-    }
-    // Don't re-probe the same device pair.
-    if (_lastProbedInputId == selectedInputDevice!.id &&
-        _lastProbedOutputId == selectedOutputDevice!.id) {
-      return;
-    }
-    _probing = true;
-    _probedFirmwareVersion = null;
-    final input = selectedInputDevice!;
-    final output = selectedOutputDevice!;
-    final sysExId = selectedSysExId;
-    _lastProbedInputId = input.id;
-    _lastProbedOutputId = output.id;
-    context.read<DistingCubit>().probeFirmwareVersion(input, output, sysExId).then((
-      version,
-    ) {
-      if (mounted) {
-        setState(() {
-          _probedFirmwareVersion = version;
-          _probing = false;
-        });
-        if (version != null) {
-          SemanticsService.sendAnnouncement(
-            View.of(context),
-            'Firmware version $version detected. Firmware update button now available.',
-            TextDirection.ltr,
-          );
-        }
-      }
-    });
-  }
-
-  void _onConnect() {
-    widget.onDeviceSelected(
-      selectedInputDevice!,
-      selectedOutputDevice!,
-      selectedSysExId,
-    );
-  }
-
-  void _showSplitMenu() {
-    final renderBox =
-        _splitButtonKey.currentContext!.findRenderObject()! as RenderBox;
-    final offset = renderBox.localToGlobal(Offset.zero);
-    final size = renderBox.size;
-
-    final items = <PopupMenuEntry<String>>[];
-    if (_devicesSelected && widget.canWorkOffline) {
-      items.add(
-        PopupMenuItem<String>(
-          value: 'offline',
-          child: ListTile(
-            leading: const Icon(Icons.cloud_off),
-            title: const Text('Offline'),
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-      );
-    }
-
-    if (items.isEmpty) return;
-
-    showMenu<String>(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        offset.dx,
-        offset.dy + size.height,
-        offset.dx + size.width,
-        offset.dy + size.height,
-      ),
-      items: items,
-    ).then((value) {
-      if (value == 'offline') {
-        widget.onOfflinePressed();
-      }
-    });
-  }
-
-  bool get _hasAlternateAction => _devicesSelected && widget.canWorkOffline;
+  MidiDevice? _deviceWithId(List<MidiDevice> devices, String? id) => id == null
+      ? null
+      : devices.where((device) => device.id == id).firstOrNull;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-
-    // Determine primary action
-    final bool primaryIsConnect = _devicesSelected;
-    final String primaryLabel = primaryIsConnect ? 'Connect' : 'Offline';
-    final IconData primaryIcon = primaryIsConnect
-        ? Icons.link
-        : Icons.cloud_off;
-    final bool primaryEnabled = primaryIsConnect
-        ? _devicesSelected
-        : widget.canWorkOffline;
-    final VoidCallback? primaryOnPressed = primaryEnabled
-        ? (primaryIsConnect ? _onConnect : widget.onOfflinePressed)
-        : null;
+    final currentInputDevice = _deviceWithId(
+      inputDevices,
+      selectedInputDevice?.id,
+    );
+    final currentOutputDevice = _deviceWithId(
+      outputDevices,
+      selectedOutputDevice?.id,
+    );
+    final canConnect =
+        currentInputDevice != null && currentOutputDevice != null;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -661,7 +512,7 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
                       child: Semantics(
                         header: true,
                         child: Text(
-                          "Select your Disting NT from the midi device list, or hit refresh to look for devices again.",
+                          'Select MIDI input and output ports, then connect.',
                           style: theme.textTheme.headlineSmall,
                         ),
                       ),
@@ -672,30 +523,31 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
                         semanticLabel: 'Settings',
                       ),
                       tooltip: 'Settings',
-                      onPressed: widget.onSettingsPressed,
+                      onPressed: onSettingsPressed,
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
                 Row(
                   children: [
-                    DropdownMenu<MidiDevice>(
+                    DropdownMenu<String>(
                       key: const ValueKey('input-midi-device-dropdown'),
                       width: 250,
-                      initialSelection: selectedInputDevice,
+                      initialSelection: currentInputDevice?.id,
                       enabled: true,
-                      label: const Text("Input MIDI Device"),
-                      dropdownMenuEntries: widget.inputDevices.map((device) {
-                        return DropdownMenuEntry<MidiDevice>(
-                          value: device,
+                      label: const Text('Input MIDI Device'),
+                      dropdownMenuEntries: inputDevices.map((device) {
+                        return DropdownMenuEntry<String>(
+                          value: device.id,
                           label: device.name,
                         );
                       }).toList(),
-                      onSelected: (device) {
-                        setState(() {
-                          selectedInputDevice = device;
-                        });
-                        _maybeProbe();
+                      onSelected: (id) {
+                        onSelectionChanged(
+                          _deviceWithId(inputDevices, id),
+                          currentOutputDevice,
+                          selectedSysExId,
+                        );
                       },
                     ),
                     const SizedBox(width: 8),
@@ -705,28 +557,29 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
                         semanticLabel: 'Refresh devices',
                       ),
                       tooltip: 'Refresh devices',
-                      onPressed: widget.onRefresh,
+                      onPressed: onRefresh,
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                DropdownMenu<MidiDevice>(
+                DropdownMenu<String>(
                   key: const ValueKey('output-midi-device-dropdown'),
                   width: 250,
-                  initialSelection: selectedOutputDevice,
+                  initialSelection: currentOutputDevice?.id,
                   enabled: true,
-                  label: const Text("Output MIDI Device"),
-                  dropdownMenuEntries: widget.outputDevices.map((device) {
-                    return DropdownMenuEntry<MidiDevice>(
-                      value: device,
+                  label: const Text('Output MIDI Device'),
+                  dropdownMenuEntries: outputDevices.map((device) {
+                    return DropdownMenuEntry<String>(
+                      value: device.id,
                       label: device.name,
                     );
                   }).toList(),
-                  onSelected: (device) {
-                    setState(() {
-                      selectedOutputDevice = device;
-                    });
-                    _maybeProbe();
+                  onSelected: (id) {
+                    onSelectionChanged(
+                      currentInputDevice,
+                      _deviceWithId(outputDevices, id),
+                      selectedSysExId,
+                    );
                   },
                 ),
                 const SizedBox(height: 16),
@@ -742,92 +595,48 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
                   }),
                   onSelected: (id) {
                     if (id == null) return;
-                    setState(() {
-                      selectedSysExId = id;
-                    });
-                    _maybeProbe();
+                    onSelectionChanged(
+                      currentInputDevice,
+                      currentOutputDevice,
+                      id,
+                    );
                   },
                 ),
                 const SizedBox(height: 32),
-                SizedBox(
-                  height: 48,
-                  child: Row(
-                    key: _splitButtonKey,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      FilledButton.icon(
-                        icon: Icon(primaryIcon),
-                        label: Text(primaryLabel),
-                        onPressed: primaryOnPressed,
-                        style: _hasAlternateAction
-                            ? FilledButton.styleFrom(
-                                shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(20),
-                                    bottomLeft: Radius.circular(20),
-                                  ),
-                                ),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    FilledButton.icon(
+                      icon: const Icon(Icons.link),
+                      label: const Text('Connect'),
+                      onPressed: canConnect
+                          ? () => onDeviceSelected(
+                              currentInputDevice,
+                              currentOutputDevice,
+                              selectedSysExId,
+                            )
+                          : null,
+                    ),
+                    if (onFirmwarePressed != null)
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.system_update),
+                        label: const Text('Firmware'),
+                        onPressed: canConnect
+                            ? () => onFirmwarePressed?.call(
+                                null,
+                                currentInputDevice,
+                                currentOutputDevice,
+                                selectedSysExId,
                               )
                             : null,
                       ),
-                      if (_hasAlternateAction) ...[
-                        ExcludeSemantics(
-                          child: SizedBox(
-                            width: 1,
-                            height: 40,
-                            child: ColoredBox(
-                              color: primaryEnabled
-                                  ? colorScheme.onPrimary.withAlpha(80)
-                                  : colorScheme.onSurface.withAlpha(30),
-                            ),
-                          ),
-                        ),
-                        Tooltip(
-                          message: 'More connection options',
-                          child: FilledButton(
-                            onPressed: primaryEnabled ? _showSplitMenu : null,
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                              ),
-                              minimumSize: const Size(40, 40),
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.only(
-                                  topRight: Radius.circular(20),
-                                  bottomRight: Radius.circular(20),
-                                ),
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.arrow_drop_down,
-                              semanticLabel: 'More connection options',
-                            ),
-                          ),
-                        ),
-                      ],
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        child:
-                            widget.onFirmwarePressed != null && _devicesSelected
-                            ? Padding(
-                                padding: const EdgeInsets.only(left: 12),
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(Icons.system_update),
-                                  label: const Text("Firmware"),
-                                  onPressed: () =>
-                                      widget.onFirmwarePressed?.call(
-                                        _probedFirmwareVersion,
-                                        selectedInputDevice,
-                                        selectedOutputDevice,
-                                        selectedSysExId,
-                                      ),
-                                ),
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    ],
-                  ),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.cloud_off),
+                      label: const Text('Offline'),
+                      onPressed: canWorkOffline ? onOfflinePressed : null,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
                 const Divider(),
@@ -847,8 +656,8 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
                       'Try the app with simulated algorithms, no hardware needed',
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.play_arrow),
-                    onPressed: widget.onDemoPressed,
-                    label: const Text("Demo Mode"),
+                    onPressed: onDemoPressed,
+                    label: const Text('Demo Mode'),
                   ),
                 ),
               ],

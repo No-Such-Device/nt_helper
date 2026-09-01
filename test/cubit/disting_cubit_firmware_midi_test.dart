@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:flutter_midi_command_platform_interface/midi_port.dart';
@@ -208,6 +210,97 @@ void main() {
       );
     },
   );
+
+  test('manual MIDI selection survives an explicit device refresh', () async {
+    final input = device('input', 'Forever', MidiPortType.IN);
+    final output = device('output', 'Forever', MidiPortType.OUT);
+    final refreshedInput = device('input', 'Forever', MidiPortType.IN);
+    final refreshedOutput = device('output', 'Forever', MidiPortType.OUT);
+    var snapshot = 0;
+    when(() => midiCommand.devices).thenAnswer((_) async {
+      snapshot++;
+      return snapshot == 1
+          ? [input, output]
+          : [refreshedInput, refreshedOutput];
+    });
+    when(() => midiCommand.onMidiSetupChanged).thenReturn(null);
+
+    await cubit.initialize();
+    cubit.updateDeviceSelection(
+      inputDevice: input,
+      outputDevice: output,
+      sysExId: 7,
+    );
+
+    await cubit.loadDevices();
+
+    final state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, same(refreshedInput));
+    expect(state.selectedOutputDevice, same(refreshedOutput));
+    expect(state.selectedSysExId, 7);
+    verifyNever(() => midiCommand.connectToDevice(input));
+    verifyNever(() => midiCommand.connectToDevice(output));
+    verifyNever(() => midiCommand.connectToDevice(refreshedInput));
+    verifyNever(() => midiCommand.connectToDevice(refreshedOutput));
+  });
+
+  test('selection made during refresh survives its completion', () async {
+    final input = device('input', 'Forever', MidiPortType.IN);
+    final output = device('output', 'Forever', MidiPortType.OUT);
+    final refreshedInput = device('input', 'Forever', MidiPortType.IN);
+    final refreshedOutput = device('output', 'Forever', MidiPortType.OUT);
+    final refreshSnapshot = Completer<List<MidiDevice>?>();
+    var snapshot = 0;
+    when(() => midiCommand.devices).thenAnswer((_) {
+      snapshot++;
+      return snapshot == 1
+          ? Future.value([input, output])
+          : refreshSnapshot.future;
+    });
+    when(() => midiCommand.onMidiSetupChanged).thenReturn(null);
+
+    await cubit.initialize();
+    final refresh = cubit.loadDevices();
+    cubit.updateDeviceSelection(
+      inputDevice: input,
+      outputDevice: output,
+      sysExId: 12,
+    );
+    refreshSnapshot.complete([refreshedInput, refreshedOutput]);
+
+    await refresh;
+
+    final state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, same(refreshedInput));
+    expect(state.selectedOutputDevice, same(refreshedOutput));
+    expect(state.selectedSysExId, 12);
+  });
+
+  test('failed refresh keeps the existing manual selection', () async {
+    final input = device('input', 'Forever', MidiPortType.IN);
+    final output = device('output', 'Forever', MidiPortType.OUT);
+    var snapshot = 0;
+    when(() => midiCommand.devices).thenAnswer((_) async {
+      snapshot++;
+      if (snapshot > 1) throw StateError('MIDI discovery failed');
+      return [input, output];
+    });
+    when(() => midiCommand.onMidiSetupChanged).thenReturn(null);
+
+    await cubit.initialize();
+    cubit.updateDeviceSelection(
+      inputDevice: input,
+      outputDevice: output,
+      sysExId: 7,
+    );
+
+    await cubit.loadDevices();
+
+    final state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, same(input));
+    expect(state.selectedOutputDevice, same(output));
+    expect(state.selectedSysExId, 7);
+  });
 
   test(
     'initialize shows all MIDI devices without reconnecting saved ports',

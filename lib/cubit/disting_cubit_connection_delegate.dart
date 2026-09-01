@@ -39,6 +39,35 @@ class _ConnectionDelegate {
   final DistingCubit _cubit;
   int _syncGeneration = 0;
 
+  MidiDevice? _resolveSelection(
+    List<MidiDevice> devices,
+    MidiDevice? previousSelection,
+  ) {
+    if (previousSelection == null) return null;
+    return devices
+            .where((device) => device.id == previousSelection.id)
+            .firstOrNull ??
+        devices
+            .where((device) => device.name == previousSelection.name)
+            .firstOrNull;
+  }
+
+  void updateDeviceSelection({
+    required MidiDevice? inputDevice,
+    required MidiDevice? outputDevice,
+    required int sysExId,
+  }) {
+    final currentState = _cubit.state;
+    if (currentState is! DistingStateSelectDevice) return;
+    _cubit._emitState(
+      currentState.copyWith(
+        selectedInputDevice: inputDevice,
+        selectedOutputDevice: outputDevice,
+        selectedSysExId: sysExId,
+      ),
+    );
+  }
+
   Future<void> initialize() async {
     StartupLogService.log(
       'DistingCubit.initialize: starting MIDI discovery. '
@@ -104,8 +133,9 @@ class _ConnectionDelegate {
     StartupLogService.log(
       'DistingCubit.loadDevices: refreshing MIDI device list',
     );
+    final previousState = _cubit.state;
     try {
-      if (_cubit.state is! DistingStateSelectDevice) {
+      if (previousState is! DistingStateSelectDevice) {
         _cubit._emitState(const DistingState.initial());
       }
 
@@ -116,12 +146,42 @@ class _ConnectionDelegate {
       final bool canWorkOffline = await _cubit._metadataDao
           .hasCachedAlgorithms();
 
-      // Transition to the select device state
+      final inputDevices = devices['input'] ?? [];
+      final outputDevices = devices['output'] ?? [];
+      final currentState = _cubit.state;
+      if (previousState is DistingStateSelectDevice &&
+          currentState is! DistingStateSelectDevice) {
+        return;
+      }
+      if (previousState is! DistingStateSelectDevice &&
+          currentState is! DistingStateInitial) {
+        return;
+      }
+      final selectionState = currentState is DistingStateSelectDevice
+          ? currentState
+          : previousState is DistingStateSelectDevice
+          ? previousState
+          : null;
+      final selectedInputDevice = selectionState == null
+          ? null
+          : _resolveSelection(inputDevices, selectionState.selectedInputDevice);
+      final selectedOutputDevice = selectionState == null
+          ? null
+          : _resolveSelection(
+              outputDevices,
+              selectionState.selectedOutputDevice,
+            );
+
+      // Transition to the select device state, retaining each still-valid
+      // manual choice across explicit and MIDI-triggered refreshes.
       _cubit._emitState(
         DistingState.selectDevice(
-          inputDevices: devices['input'] ?? [],
-          outputDevices: devices['output'] ?? [],
-          canWorkOffline: canWorkOffline, // Pass the flag here
+          inputDevices: inputDevices,
+          outputDevices: outputDevices,
+          canWorkOffline: canWorkOffline,
+          selectedInputDevice: selectedInputDevice,
+          selectedOutputDevice: selectedOutputDevice,
+          selectedSysExId: selectionState?.selectedSysExId ?? 0,
         ),
       );
       StartupLogService.log(
@@ -140,7 +200,16 @@ class _ConnectionDelegate {
         stackTrace,
       );
       debugPrintStack(stackTrace: stackTrace);
-      // Emit default state on error
+      final currentState = _cubit.state;
+      if (previousState is DistingStateSelectDevice) {
+        if (currentState is DistingStateSelectDevice) {
+          startMidiSetupListener();
+        }
+        return;
+      }
+      if (currentState is! DistingStateInitial) {
+        return;
+      }
       _cubit._emitState(
         const DistingState.selectDevice(
           inputDevices: [],

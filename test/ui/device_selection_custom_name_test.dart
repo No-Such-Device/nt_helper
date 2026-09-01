@@ -13,302 +13,247 @@ import 'package:nt_helper/disting_app.dart';
 class _MockDistingCubit extends MockCubit<DistingState>
     implements DistingCubit {}
 
+class _SelectionHarness {
+  _SelectionHarness(DistingStateSelectDevice initialState)
+    : state = initialState {
+    whenListen(cubit, states.stream, initialState: state);
+    when(
+      () => cubit.updateDeviceSelection(
+        inputDevice: any(named: 'inputDevice'),
+        outputDevice: any(named: 'outputDevice'),
+        sysExId: any(named: 'sysExId'),
+      ),
+    ).thenAnswer((invocation) {
+      emit(
+        state.copyWith(
+          selectedInputDevice:
+              invocation.namedArguments[#inputDevice] as MidiDevice?,
+          selectedOutputDevice:
+              invocation.namedArguments[#outputDevice] as MidiDevice?,
+          selectedSysExId: invocation.namedArguments[#sysExId] as int,
+        ),
+      );
+    });
+  }
+
+  final cubit = _MockDistingCubit();
+  final states = StreamController<DistingState>();
+  DistingStateSelectDevice state;
+
+  void emit(DistingStateSelectDevice nextState) {
+    state = nextState;
+    states.add(nextState);
+  }
+
+  Future<void> close() => states.close();
+}
+
+MidiDevice _input(String id, String name) =>
+    MidiDevice(id, name, MidiDeviceType.serial, true)
+      ..inputPorts.add(MidiPort(0, MidiPortType.IN));
+
+MidiDevice _output(String id, String name) =>
+    MidiDevice(id, name, MidiDeviceType.serial, true)
+      ..outputPorts.add(MidiPort(0, MidiPortType.OUT));
+
+Future<void> _pumpPage(WidgetTester tester, _SelectionHarness harness) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(1200, 900);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(harness.close);
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: BlocProvider<DistingCubit>.value(
+        value: harness.cubit,
+        child: const DistingPage(),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _choose(WidgetTester tester, Key dropdownKey, String label) async {
+  final dropdown = find.byKey(dropdownKey);
+  await tester.tapAt(tester.getTopLeft(dropdown) + const Offset(20, 20));
+  await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(MenuItemButton, label).hitTestable());
+  await tester.pumpAndSettle();
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('custom MIDI ports enable Connect without version reply', (
-    tester,
-  ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(1200, 900);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
+  testWidgets(
+    'Connect is always shown and enables for any selected input and output',
+    (tester) async {
+      final inputDevice = _input('custom-input', 'Custom Input');
+      final outputDevice = _output('custom-output', 'Custom Output');
+      final harness = _SelectionHarness(
+        DistingState.selectDevice(
+              inputDevices: [inputDevice],
+              outputDevices: [outputDevice],
+              canWorkOffline: true,
+            )
+            as DistingStateSelectDevice,
+      );
+      when(
+        () => harness.cubit.connectToDevices(inputDevice, outputDevice, 0),
+      ).thenAnswer((_) async {});
 
-    final inputDevice = MidiDevice(
-      'custom-input',
-      'Custom MIDI Port',
-      MidiDeviceType.serial,
-      true,
-    )..inputPorts.add(MidiPort(0, MidiPortType.IN));
-    final outputDevice = MidiDevice(
-      'custom-output',
-      'Custom MIDI Port',
-      MidiDeviceType.serial,
-      true,
-    )..outputPorts.add(MidiPort(0, MidiPortType.OUT));
-    final state = DistingState.selectDevice(
-      inputDevices: [inputDevice],
-      outputDevices: [outputDevice],
-      canWorkOffline: true,
-    );
-    final cubit = _MockDistingCubit();
-    whenListen(cubit, const Stream<DistingState>.empty(), initialState: state);
-    when(
-      () => cubit.probeFirmwareVersion(inputDevice, outputDevice, 0),
-    ).thenAnswer((_) async => null);
-    when(
-      () => cubit.connectToDevices(inputDevice, outputDevice, 0),
-    ).thenAnswer((_) async {});
+      await _pumpPage(tester, harness);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: BlocProvider<DistingCubit>.value(
-          value: cubit,
-          child: const DistingPage(),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      var connect = find.widgetWithText(FilledButton, 'Connect');
+      expect(connect, findsOneWidget);
+      expect(tester.widget<FilledButton>(connect).onPressed, isNull);
+      expect(find.widgetWithText(OutlinedButton, 'Firmware'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Offline'), findsOneWidget);
 
-    expect(find.widgetWithText(FilledButton, 'Offline'), findsOneWidget);
+      await _choose(
+        tester,
+        const ValueKey('input-midi-device-dropdown'),
+        'Custom Input',
+      );
+      await _choose(
+        tester,
+        const ValueKey('output-midi-device-dropdown'),
+        'Custom Output',
+      );
 
-    final inputDropdown = find.byKey(
-      const ValueKey('input-midi-device-dropdown'),
-    );
-    await tester.tapAt(tester.getTopLeft(inputDropdown) + const Offset(20, 20));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.widgetWithText(MenuItemButton, 'Custom MIDI Port').hitTestable(),
-    );
-    await tester.pumpAndSettle();
+      connect = find.widgetWithText(FilledButton, 'Connect');
+      expect(tester.widget<FilledButton>(connect).onPressed, isNotNull);
+      verifyNever(
+        () => harness.cubit.probeFirmwareVersion(inputDevice, outputDevice, 0),
+      );
 
-    final outputDropdown = find.byKey(
-      const ValueKey('output-midi-device-dropdown'),
-    );
-    await tester.tapAt(
-      tester.getTopLeft(outputDropdown) + const Offset(20, 20),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.widgetWithText(MenuItemButton, 'Custom MIDI Port').hitTestable(),
-    );
-    await tester.pumpAndSettle();
+      await tester.tap(connect);
+      await tester.pump();
 
-    final connectButton = find.widgetWithText(FilledButton, 'Connect');
-    expect(connectButton, findsOneWidget);
-    expect(tester.widget<FilledButton>(connectButton).onPressed, isNotNull);
-
-    await tester.tap(connectButton);
-    await tester.pump();
-
-    verify(
-      () => cubit.connectToDevices(inputDevice, outputDevice, 0),
-    ).called(1);
-  });
+      verify(
+        () => harness.cubit.connectToDevices(inputDevice, outputDevice, 0),
+      ).called(1);
+    },
+  );
 
   testWidgets('saved Disting selection can change to Forever before Connect', (
     tester,
   ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(1200, 900);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
-
-    final distingInput = MidiDevice(
-      'disting-input',
-      'Disting NT',
-      MidiDeviceType.serial,
-      true,
-    )..inputPorts.add(MidiPort(0, MidiPortType.IN));
-    final distingOutput = MidiDevice(
-      'disting-output',
-      'Disting NT',
-      MidiDeviceType.serial,
-      true,
-    )..outputPorts.add(MidiPort(0, MidiPortType.OUT));
-    final foreverInput = MidiDevice(
-      'forever-input',
-      'Forever',
-      MidiDeviceType.serial,
-      true,
-    )..inputPorts.add(MidiPort(0, MidiPortType.IN));
-    final foreverOutput = MidiDevice(
-      'forever-output',
-      'Forever',
-      MidiDeviceType.serial,
-      true,
-    )..outputPorts.add(MidiPort(0, MidiPortType.OUT));
-    final state = DistingState.selectDevice(
-      inputDevices: [distingInput, foreverInput],
-      outputDevices: [distingOutput, foreverOutput],
-      canWorkOffline: true,
-      selectedInputDevice: distingInput,
-      selectedOutputDevice: distingOutput,
+    final distingInput = _input('disting-input', 'Disting NT');
+    final distingOutput = _output('disting-output', 'Disting NT');
+    final foreverInput = _input('forever-input', 'Forever');
+    final foreverOutput = _output('forever-output', 'Forever');
+    final harness = _SelectionHarness(
+      DistingState.selectDevice(
+            inputDevices: [distingInput, foreverInput],
+            outputDevices: [distingOutput, foreverOutput],
+            canWorkOffline: true,
+            selectedInputDevice: distingInput,
+            selectedOutputDevice: distingOutput,
+          )
+          as DistingStateSelectDevice,
     );
-    final cubit = _MockDistingCubit();
-    whenListen(cubit, const Stream<DistingState>.empty(), initialState: state);
     when(
-      () => cubit.probeFirmwareVersion(distingInput, distingOutput, 0),
-    ).thenAnswer((_) async => '1.18.0');
-    when(
-      () => cubit.probeFirmwareVersion(foreverInput, distingOutput, 0),
-    ).thenAnswer((_) async => null);
-    when(
-      () => cubit.probeFirmwareVersion(foreverInput, foreverOutput, 0),
-    ).thenAnswer((_) async => 'Forever 1.0');
-    when(
-      () => cubit.connectToDevices(foreverInput, foreverOutput, 0),
+      () => harness.cubit.connectToDevices(foreverInput, foreverOutput, 0),
     ).thenAnswer((_) async {});
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: BlocProvider<DistingCubit>.value(
-          value: cubit,
-          child: const DistingPage(),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await _pumpPage(tester, harness);
 
-    final inputDropdown = find.byKey(
+    expect(
+      tester
+          .widget<DropdownMenu<String>>(
+            find.byKey(const ValueKey('input-midi-device-dropdown')),
+          )
+          .initialSelection,
+      distingInput.id,
+    );
+    expect(
+      tester
+          .widget<DropdownMenu<String>>(
+            find.byKey(const ValueKey('output-midi-device-dropdown')),
+          )
+          .initialSelection,
+      distingOutput.id,
+    );
+    verifyNever(
+      () => harness.cubit.connectToDevices(distingInput, distingOutput, 0),
+    );
+
+    await _choose(
+      tester,
       const ValueKey('input-midi-device-dropdown'),
+      'Forever',
     );
-    final outputDropdown = find.byKey(
+    await _choose(
+      tester,
       const ValueKey('output-midi-device-dropdown'),
+      'Forever',
     );
-    expect(
-      tester.widget<DropdownMenu<MidiDevice>>(inputDropdown).initialSelection,
-      distingInput,
-    );
-    expect(
-      tester.widget<DropdownMenu<MidiDevice>>(outputDropdown).initialSelection,
-      distingOutput,
-    );
-    expect(find.widgetWithText(FilledButton, 'Connect'), findsOneWidget);
-    verifyNever(() => cubit.connectToDevices(distingInput, distingOutput, 0));
-
-    await tester.tapAt(tester.getTopLeft(inputDropdown) + const Offset(20, 20));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.widgetWithText(MenuItemButton, 'Forever').hitTestable(),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tapAt(
-      tester.getTopLeft(outputDropdown) + const Offset(20, 20),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.widgetWithText(MenuItemButton, 'Forever').hitTestable(),
-    );
-    await tester.pumpAndSettle();
-
-    final connectButton = find.widgetWithText(FilledButton, 'Connect');
-    expect(connectButton, findsOneWidget);
-    expect(tester.widget<FilledButton>(connectButton).onPressed, isNotNull);
-
-    await tester.tap(connectButton);
+    await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
     await tester.pump();
 
     verify(
-      () => cubit.connectToDevices(foreverInput, foreverOutput, 0),
+      () => harness.cubit.connectToDevices(foreverInput, foreverOutput, 0),
     ).called(1);
-    verifyNever(() => cubit.connectToDevices(distingInput, distingOutput, 0));
+    verifyNever(
+      () => harness.cubit.probeFirmwareVersion(foreverInput, foreverOutput, 0),
+    );
   });
 
-  testWidgets(
-    'device refresh between port choices preserves the partial selection',
-    (tester) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(1200, 900);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      addTearDown(tester.view.resetPhysicalSize);
-
-      MidiDevice input(String id, String name) =>
-          MidiDevice(id, name, MidiDeviceType.serial, true)
-            ..inputPorts.add(MidiPort(0, MidiPortType.IN));
-      MidiDevice output(String id, String name) =>
-          MidiDevice(id, name, MidiDeviceType.serial, true)
-            ..outputPorts.add(MidiPort(0, MidiPortType.OUT));
-
-      final distingInput = input('disting-input', 'Disting NT');
-      final distingOutput = output('disting-output', 'Disting NT');
-      final foreverInput = input('forever-input', 'Forever');
-      final foreverOutput = output('forever-output', 'Forever');
-      final refreshedDistingInput = input('disting-input', 'Disting NT');
-      final refreshedDistingOutput = output('disting-output', 'Disting NT');
-      final refreshedForeverInput = input('forever-input', 'Forever');
-      final refreshedForeverOutput = output('forever-output', 'Forever');
-      final initialState = DistingState.selectDevice(
-        inputDevices: [distingInput, foreverInput],
-        outputDevices: [distingOutput, foreverOutput],
-        canWorkOffline: true,
+  testWidgets('Refresh retains a complete valid selection and Connect', (
+    tester,
+  ) async {
+    final inputDevice = _input('forever-input', 'Forever');
+    final outputDevice = _output('forever-output', 'Forever');
+    final refreshedInput = _input('forever-input', 'Forever');
+    final refreshedOutput = _output('forever-output', 'Forever');
+    final harness = _SelectionHarness(
+      DistingState.selectDevice(
+            inputDevices: [inputDevice],
+            outputDevices: [outputDevice],
+            canWorkOffline: true,
+            selectedInputDevice: inputDevice,
+            selectedOutputDevice: outputDevice,
+            selectedSysExId: 7,
+          )
+          as DistingStateSelectDevice,
+    );
+    when(() => harness.cubit.loadDevices()).thenAnswer((_) async {
+      harness.emit(
+        DistingState.selectDevice(
+              inputDevices: [refreshedInput],
+              outputDevices: [refreshedOutput],
+              canWorkOffline: true,
+              selectedInputDevice: refreshedInput,
+              selectedOutputDevice: refreshedOutput,
+              selectedSysExId: 7,
+            )
+            as DistingStateSelectDevice,
       );
-      final refreshedState = DistingState.selectDevice(
-        inputDevices: [refreshedDistingInput, refreshedForeverInput],
-        outputDevices: [refreshedDistingOutput, refreshedForeverOutput],
-        canWorkOffline: true,
-      );
-      final stateController = StreamController<DistingState>();
-      addTearDown(stateController.close);
-      final cubit = _MockDistingCubit();
-      whenListen(cubit, stateController.stream, initialState: initialState);
-      when(
-        () => cubit.probeFirmwareVersion(
-          refreshedForeverInput,
-          refreshedForeverOutput,
-          0,
-        ),
-      ).thenAnswer((_) async => 'Forever 1.0');
-      when(
-        () => cubit.connectToDevices(
-          refreshedForeverInput,
-          refreshedForeverOutput,
-          0,
-        ),
-      ).thenAnswer((_) async {});
+    });
+    when(
+      () => harness.cubit.connectToDevices(refreshedInput, refreshedOutput, 7),
+    ).thenAnswer((_) async {});
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: BlocProvider<DistingCubit>.value(
-            value: cubit,
-            child: const DistingPage(),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+    await _pumpPage(tester, harness);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Connect'))
+          .onPressed,
+      isNotNull,
+    );
 
-      final inputDropdown = find.byKey(
-        const ValueKey('input-midi-device-dropdown'),
-      );
-      await tester.tapAt(
-        tester.getTopLeft(inputDropdown) + const Offset(20, 20),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.widgetWithText(MenuItemButton, 'Forever').hitTestable(),
-      );
-      await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Refresh devices'));
+    await tester.pumpAndSettle();
 
-      stateController.add(refreshedState);
-      await tester.pumpAndSettle();
+    final connect = find.widgetWithText(FilledButton, 'Connect');
+    expect(connect, findsOneWidget);
+    expect(tester.widget<FilledButton>(connect).onPressed, isNotNull);
+    await tester.tap(connect);
+    await tester.pump();
 
-      final outputDropdown = find.byKey(
-        const ValueKey('output-midi-device-dropdown'),
-      );
-      await tester.tapAt(
-        tester.getTopLeft(outputDropdown) + const Offset(20, 20),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.widgetWithText(MenuItemButton, 'Forever').hitTestable(),
-      );
-      await tester.pumpAndSettle();
-
-      final connectButton = find.widgetWithText(FilledButton, 'Connect');
-      expect(connectButton, findsOneWidget);
-      expect(tester.widget<FilledButton>(connectButton).onPressed, isNotNull);
-
-      await tester.tap(connectButton);
-      await tester.pump();
-
-      verify(
-        () => cubit.connectToDevices(
-          refreshedForeverInput,
-          refreshedForeverOutput,
-          0,
-        ),
-      ).called(1);
-    },
-  );
+    verify(
+      () => harness.cubit.connectToDevices(refreshedInput, refreshedOutput, 7),
+    ).called(1);
+  });
 }

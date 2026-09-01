@@ -266,6 +266,18 @@ class DistingCubit extends _DistingCubitBase
     return _connectionDelegate.loadDevices();
   }
 
+  void updateDeviceSelection({
+    required MidiDevice? inputDevice,
+    required MidiDevice? outputDevice,
+    required int sysExId,
+  }) {
+    _connectionDelegate.updateDeviceSelection(
+      inputDevice: inputDevice,
+      outputDevice: outputDevice,
+      sysExId: sysExId,
+    );
+  }
+
   void _stopMidiSetupListener() {
     _connectionDelegate.stopMidiSetupListener();
   }
