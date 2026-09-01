@@ -41,7 +41,7 @@ class _ConnectionDelegate {
 
   Future<void> initialize() async {
     StartupLogService.log(
-      'DistingCubit.initialize: starting MIDI discovery/autoconnect. '
+      'DistingCubit.initialize: starting MIDI discovery. '
       'The app can start without a Disting NT connected; missing hardware '
       'should leave the app on device selection or offline mode.',
     );
@@ -63,87 +63,19 @@ class _ConnectionDelegate {
       // Proceed with canWorkOffline as false
     }
 
-    final prefs = await _cubit._prefs;
-    final savedInputDeviceName = prefs.getString('selectedInputMidiDevice');
-    final savedOutputDeviceName = prefs.getString('selectedOutputMidiDevice');
-    final savedSysExId = prefs.getInt('selectedSysExId');
-
-    if (savedOutputDeviceName != null &&
-        savedInputDeviceName != null &&
-        savedSysExId != null) {
-      StartupLogService.log(
-        'DistingCubit.initialize: saved MIDI prefs found: '
-        'input="$savedInputDeviceName", output="$savedOutputDeviceName", '
-        'sysExId=$savedSysExId',
-      );
-
-      // Try to connect to the saved device
-      final devices = await _cubit._midiCommand.devices;
-      StartupLogService.log(
-        'DistingCubit.initialize: MIDI devices visible for autoconnect: '
-        '${_describeDevices(devices)}',
-      );
-      final savedInputDevice = devices
-          ?.where(
-            (device) =>
-                device.name == savedInputDeviceName &&
-                device.inputPorts.isNotEmpty,
-          )
-          .firstOrNull;
-      final savedOutputDevice = devices
-          ?.where(
-            (device) =>
-                device.name == savedOutputDeviceName &&
-                device.outputPorts.isNotEmpty,
-          )
-          .firstOrNull;
-
-      if (savedInputDevice != null && savedOutputDevice != null) {
-        StartupLogService.log(
-          'DistingCubit.initialize: saved MIDI devices found; attempting autoconnect',
-        );
-        await connectToDevices(
-          savedInputDevice,
-          savedOutputDevice,
-          savedSysExId,
-        );
-      } else {
-        StartupLogService.log(
-          'DistingCubit.initialize: saved MIDI devices are not currently visible. '
-          'This usually means the Disting NT is not connected/enumerated, the OS '
-          'has not exposed its MIDI ports, or the port names changed.',
-        );
-        // Saved prefs exist, but devices not found now.
-        final devices = await _fetchDeviceLists(); // Use helper
-        _cubit._emitState(
-          DistingState.selectDevice(
-            inputDevices: devices['input'] ?? [],
-            outputDevices: devices['output'] ?? [],
-            canWorkOffline: canWorkOffline, // Pass the flag
-          ),
-        );
-        StartupLogService.log(
-          'DistingCubit.initialize: showing device selection after missing saved devices',
-        );
-        // Start listening for MIDI device connection changes
-        startMidiSetupListener();
-      }
-    } else {
-      StartupLogService.log(
-        'DistingCubit.initialize: no saved MIDI device settings; showing device selection',
-      );
-      // No saved settings found, load devices and show selection
-      final devices = await _fetchDeviceLists(); // Use helper
-      _cubit._emitState(
-        DistingState.selectDevice(
-          inputDevices: devices['input'] ?? [],
-          outputDevices: devices['output'] ?? [],
-          canWorkOffline: canWorkOffline, // Pass the flag
-        ),
-      );
-      // Start listening for MIDI device connection changes
-      startMidiSetupListener();
-    }
+    final devices = await _fetchDeviceLists();
+    _cubit._emitState(
+      DistingState.selectDevice(
+        inputDevices: devices['input'] ?? [],
+        outputDevices: devices['output'] ?? [],
+        canWorkOffline: canWorkOffline,
+      ),
+    );
+    StartupLogService.log(
+      'DistingCubit.initialize: showing device selection; '
+      'manual MIDI connection required',
+    );
+    startMidiSetupListener();
   }
 
   Future<void> loadDevices() async {

@@ -44,7 +44,7 @@ class DistingApp extends StatefulWidget {
               if (videoPopupService.isSupported) {
                 unawaited(videoPopupService.registerMainCubit(cubit));
               }
-              cubit.initialize(); // Load settings and auto-connect if possible
+              cubit.initialize(); // Load available devices for manual selection
               return cubit;
             },
           ),
@@ -472,37 +472,10 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
   String? _lastProbedOutputId;
   final GlobalKey _splitButtonKey = GlobalKey();
 
-  @override
-  void initState() {
-    selectFirstDisting();
-    if (selectedInputDevice != null && selectedOutputDevice != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          SemanticsService.sendAnnouncement(
-            View.of(context),
-            'Disting NT detected. Input and output devices auto-selected.',
-            TextDirection.ltr,
-          );
-        }
-      });
-    }
-    _maybeProbe();
-    super.initState();
-  }
-
-  void selectFirstDisting() {
-    selectedInputDevice = widget.inputDevices
-        .where((element) => element.name.toLowerCase().contains('disting'))
-        .firstOrNull;
-    selectedOutputDevice = widget.outputDevices
-        .where((element) => element.name.toLowerCase().contains('disting'))
-        .firstOrNull;
-  }
-
   /// Preserve the user's current device selection if the devices are still
-  /// available in the updated list. Falls back to auto-selecting the first
-  /// disting device only if the current selection is no longer present.
-  void _preserveOrReselectDevices() {
+  /// available in the updated list. Clear the pair if either selected endpoint
+  /// disappears so a refresh never chooses a different module for the user.
+  void _preserveOrClearDevices() {
     final preservedInput = selectedInputDevice != null
         ? widget.inputDevices
               .where((d) => d.name == selectedInputDevice!.name)
@@ -518,7 +491,8 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
       selectedInputDevice = preservedInput;
       selectedOutputDevice = preservedOutput;
     } else {
-      selectFirstDisting();
+      selectedInputDevice = null;
+      selectedOutputDevice = null;
     }
   }
 
@@ -526,7 +500,7 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
   void didUpdateWidget(covariant _DeviceSelectionView oldWidget) {
     if (oldWidget.inputDevices != widget.inputDevices ||
         oldWidget.outputDevices != widget.outputDevices) {
-      _preserveOrReselectDevices();
+      _preserveOrClearDevices();
       _maybeProbe();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {

@@ -208,4 +208,45 @@ void main() {
       );
     },
   );
+
+  test(
+    'initialize shows all MIDI devices without reconnecting saved ports',
+    () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('selectedInputMidiDevice', 'Disting NT');
+      await prefs.setString('selectedOutputMidiDevice', 'Disting NT');
+      await prefs.setInt('selectedSysExId', 0);
+      final distingInput = device(
+        'disting-input',
+        'Disting NT',
+        MidiPortType.IN,
+      );
+      final distingOutput = device(
+        'disting-output',
+        'Disting NT',
+        MidiPortType.OUT,
+      );
+      final foreverInput = device('forever-input', 'Forever', MidiPortType.IN);
+      final foreverOutput = device(
+        'forever-output',
+        'Forever',
+        MidiPortType.OUT,
+      );
+      when(() => midiCommand.devices).thenAnswer(
+        (_) async => [distingInput, distingOutput, foreverInput, foreverOutput],
+      );
+      when(() => midiCommand.onMidiSetupChanged).thenReturn(null);
+      when(
+        () => midiCommand.connectToDevice(distingInput),
+      ).thenThrow(StateError('saved-device autoconnect attempted'));
+
+      await cubit.initialize();
+
+      final state = cubit.state as DistingStateSelectDevice;
+      expect(state.inputDevices, containsAll([distingInput, foreverInput]));
+      expect(state.outputDevices, containsAll([distingOutput, foreverOutput]));
+      verifyNever(() => midiCommand.connectToDevice(distingInput));
+      verifyNever(() => midiCommand.connectToDevice(distingOutput));
+    },
+  );
 }
