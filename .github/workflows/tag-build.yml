@@ -269,7 +269,7 @@ jobs:
 
   windows:
     name: Build Windows App
-    runs-on: [self-hosted, Windows, ARM64]
+    runs-on: [self-hosted, Windows, X64]
     needs: [setup, create-release]
     if: |
       always() &&

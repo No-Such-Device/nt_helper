@@ -152,35 +152,38 @@ installer. Finish with a clean worktree whose `HEAD` matches `origin/main`.
 
 ### Windows self-hosted release runner
 
-The Windows job targets `[self-hosted, Windows, ARM64]`. It runs in the UTM VM
-named `Windows 11 Flutter Runner` on this Mac, registered with GitHub as
-`MacBookPro-Windows`. The VM is intentionally off between releases and does not
-start automatically at Mac login.
+The Windows job targets `[self-hosted, Windows, X64]`. It runs in the VirtualBox
+VM named `nt-helper-windows-x64` on
+`neal@dev.allosaurus-newton.ts.net`, registered with GitHub as `dev-Windows`.
+The VM and its 100 GB dynamically allocated disk live under
+`/mnt/LINDATA/nt-helper-windows-runner` on that host.
 
-Start it hidden before tagging:
+Before tagging, check the VM state and start it headlessly when necessary:
 
 ```bash
-/Applications/UTM.app/Contents/MacOS/utmctl start --hide \
-  47DEC67B-0AD4-424C-A7F7-AA538D93B970
+ssh neal@dev.allosaurus-newton.ts.net \
+  'VBoxManage showvminfo "nt-helper-windows-x64" --machinereadable | grep "^VMState="'
+ssh neal@dev.allosaurus-newton.ts.net \
+  'VBoxManage startvm "nt-helper-windows-x64" --type headless'
 ```
 
 Wait for GitHub to report the runner online and idle:
 
 ```bash
 gh api orgs/No-Such-Device/actions/runners \
-  --jq '.runners[] | select(.name=="MacBookPro-Windows") | {name,status,busy}'
+  --jq '.runners[] | select(.name=="dev-Windows") | {name,status,busy}'
 ```
 
 Starting the VM is sufficient: Windows starts the
-`actions.runner.No-Such-Device.MacBookPro-Windows` service automatically and it
+`actions.runner.No-Such-Device.dev-Windows` service automatically and it
 reconnects to GitHub. Do not switch the job back to GitHub-hosted Windows as a
 fallback when hosted minutes are unavailable; fix a missing runner prerequisite
 instead.
 
-The guest is Windows 11 ARM64, but Flutter has no Windows ARM64 SDK archive, so
-the workflow must keep `architecture: x64` and the existing x64 build/output
-paths. These guest prerequisites are already provisioned and are part of the
-runner contract:
+The guest is Windows 11 Home x64 with 8 virtual CPUs, 16 GB RAM, VirtualBox
+Guest Additions, and Windows Developer Mode. Keep the Flutter action's
+`architecture: x64` and the existing x64 build/output paths. These guest
+prerequisites are already provisioned and are part of the runner contract:
 
 - Visual Studio Build Tools at `C:\BuildTools`, including
   `Microsoft.VisualStudio.Workload.VCTools` and
@@ -202,12 +205,13 @@ from GitHub-hosted images. If a Windows build fails, inspect the exact failed
 step, repair the persistent guest prerequisite, and rerun the failed job. Do not
 move/delete the release tag or create another version merely to retry it.
 
-After the full release and assets are verified, confirm the runner is not busy
-and no Windows job is queued, then shut down the VM:
+The VM may remain running as the persistent nt_helper runner. If it must be
+stopped to reclaim host resources, first confirm the runner is not busy and no
+Windows job is queued, then request a graceful guest shutdown:
 
 ```bash
-/Applications/UTM.app/Contents/MacOS/utmctl stop \
-  47DEC67B-0AD4-424C-A7F7-AA538D93B970
+ssh neal@dev.allosaurus-newton.ts.net \
+  'VBoxManage controlvm "nt-helper-windows-x64" acpipowerbutton'
 ```
 
 ## MCP Docs
