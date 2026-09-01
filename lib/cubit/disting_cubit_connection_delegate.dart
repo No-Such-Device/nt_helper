@@ -64,16 +64,38 @@ class _ConnectionDelegate {
     }
 
     final devices = await _fetchDeviceLists();
+    final prefs = await _cubit._prefs;
+    final savedInputName = prefs.getString('selectedInputMidiDevice');
+    final savedOutputName = prefs.getString('selectedOutputMidiDevice');
+    final savedSysExId = prefs.getInt('selectedSysExId');
+    final savedInputDevice = savedInputName == null
+        ? null
+        : devices['input']
+              ?.where((device) => device.name == savedInputName)
+              .firstOrNull;
+    final savedOutputDevice = savedOutputName == null
+        ? null
+        : devices['output']
+              ?.where((device) => device.name == savedOutputName)
+              .firstOrNull;
+    final savedPairAvailable =
+        savedInputDevice != null &&
+        savedOutputDevice != null &&
+        savedSysExId != null;
     _cubit._emitState(
       DistingState.selectDevice(
         inputDevices: devices['input'] ?? [],
         outputDevices: devices['output'] ?? [],
         canWorkOffline: canWorkOffline,
+        selectedInputDevice: savedPairAvailable ? savedInputDevice : null,
+        selectedOutputDevice: savedPairAvailable ? savedOutputDevice : null,
+        selectedSysExId: savedPairAvailable ? savedSysExId : 0,
       ),
     );
     StartupLogService.log(
       'DistingCubit.initialize: showing device selection; '
-      'manual MIDI connection required',
+      'manual MIDI connection required; '
+      'saved pair available=$savedPairAvailable',
     );
     startMidiSetupListener();
   }

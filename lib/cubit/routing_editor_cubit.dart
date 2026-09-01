@@ -140,8 +140,15 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
   void _processDistingState(DistingState distingState) {
     distingState.when(
       initial: () => emit(const RoutingEditorState.initial()),
-      selectDevice: (inputDevices, outputDevices, canWorkOffline) =>
-          emit(const RoutingEditorState.disconnected()),
+      selectDevice:
+          (
+            inputDevices,
+            outputDevices,
+            canWorkOffline,
+            selectedInputDevice,
+            selectedOutputDevice,
+            selectedSysExId,
+          ) => emit(const RoutingEditorState.disconnected()),
       connected:
           (
             disting,

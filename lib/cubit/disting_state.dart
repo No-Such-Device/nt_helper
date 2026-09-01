@@ -38,6 +38,9 @@ sealed class DistingState with _$DistingState {
     required List<MidiDevice> inputDevices,
     required List<MidiDevice> outputDevices,
     required bool canWorkOffline,
+    @Default(null) MidiDevice? selectedInputDevice,
+    @Default(null) MidiDevice? selectedOutputDevice,
+    @Default(0) int selectedSysExId,
   }) = DistingStateSelectDevice;
 
   const factory DistingState.connected({

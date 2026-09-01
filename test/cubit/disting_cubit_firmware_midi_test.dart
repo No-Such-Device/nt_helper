@@ -245,6 +245,9 @@ void main() {
       final state = cubit.state as DistingStateSelectDevice;
       expect(state.inputDevices, containsAll([distingInput, foreverInput]));
       expect(state.outputDevices, containsAll([distingOutput, foreverOutput]));
+      expect(state.selectedInputDevice, distingInput);
+      expect(state.selectedOutputDevice, distingOutput);
+      expect(state.selectedSysExId, 0);
       verifyNever(() => midiCommand.connectToDevice(distingInput));
       verifyNever(() => midiCommand.connectToDevice(distingOutput));
     },

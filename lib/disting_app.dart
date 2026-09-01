@@ -304,6 +304,9 @@ class _DistingPageState extends State<DistingPage> {
               return _DeviceSelectionView(
                 inputDevices: state.inputDevices,
                 outputDevices: state.outputDevices,
+                initialInputDevice: state.selectedInputDevice,
+                initialOutputDevice: state.selectedOutputDevice,
+                initialSysExId: state.selectedSysExId,
                 onDeviceSelected: (inputDevice, outputDevice, sysExId) {
                   context.read<DistingCubit>().connectToDevices(
                     inputDevice,
@@ -432,6 +435,9 @@ class _DistingPageState extends State<DistingPage> {
 class _DeviceSelectionView extends StatefulWidget {
   final List<MidiDevice> inputDevices;
   final List<MidiDevice> outputDevices;
+  final MidiDevice? initialInputDevice;
+  final MidiDevice? initialOutputDevice;
+  final int initialSysExId;
   final Function(MidiDevice, MidiDevice, int) onDeviceSelected;
   final Function() onRefresh;
   final Function() onSettingsPressed;
@@ -449,6 +455,9 @@ class _DeviceSelectionView extends StatefulWidget {
   const _DeviceSelectionView({
     required this.inputDevices,
     required this.outputDevices,
+    this.initialInputDevice,
+    this.initialOutputDevice,
+    this.initialSysExId = 0,
     required this.onDeviceSelected,
     required this.onRefresh,
     required this.onSettingsPressed,
@@ -471,6 +480,14 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
   String? _lastProbedInputId;
   String? _lastProbedOutputId;
   final GlobalKey _splitButtonKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    selectedInputDevice = widget.initialInputDevice;
+    selectedOutputDevice = widget.initialOutputDevice;
+    selectedSysExId = widget.initialSysExId;
+  }
 
   /// Preserve the user's current device selection if the devices are still
   /// available in the updated list. Clear the pair if either selected endpoint

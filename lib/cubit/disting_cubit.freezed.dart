@@ -738,11 +738,11 @@ return synchronized(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  initial,TResult Function( List<MidiDevice> inputDevices,  List<MidiDevice> outputDevices,  bool canWorkOffline)?  selectDevice,TResult Function( IDistingMidiManager disting,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool offline,  bool loading,  String? syncStatus,  double? syncProgress)?  connected,TResult Function( IDistingMidiManager disting,  String distingVersion,  FirmwareVersion firmwareVersion,  String presetName,  List<AlgorithmInfo> algorithms,  List<Slot> slots,  List<String> unitStrings,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool loading,  bool offline,  Uint8List? screenshot,  bool demo,  VideoStreamState? videoStream,  FirmwareRelease? availableFirmwareUpdate,  List<PerformancePageItem> perfPageItems,  bool isDirty,  String? renameConfirmationName)?  synchronized,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  initial,TResult Function( List<MidiDevice> inputDevices,  List<MidiDevice> outputDevices,  bool canWorkOffline,  MidiDevice? selectedInputDevice,  MidiDevice? selectedOutputDevice,  int selectedSysExId)?  selectDevice,TResult Function( IDistingMidiManager disting,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool offline,  bool loading,  String? syncStatus,  double? syncProgress)?  connected,TResult Function( IDistingMidiManager disting,  String distingVersion,  FirmwareVersion firmwareVersion,  String presetName,  List<AlgorithmInfo> algorithms,  List<Slot> slots,  List<String> unitStrings,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool loading,  bool offline,  Uint8List? screenshot,  bool demo,  VideoStreamState? videoStream,  FirmwareRelease? availableFirmwareUpdate,  List<PerformancePageItem> perfPageItems,  bool isDirty,  String? renameConfirmationName)?  synchronized,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case DistingStateInitial() when initial != null:
 return initial();case DistingStateSelectDevice() when selectDevice != null:
-return selectDevice(_that.inputDevices,_that.outputDevices,_that.canWorkOffline);case DistingStateConnected() when connected != null:
+return selectDevice(_that.inputDevices,_that.outputDevices,_that.canWorkOffline,_that.selectedInputDevice,_that.selectedOutputDevice,_that.selectedSysExId);case DistingStateConnected() when connected != null:
 return connected(_that.disting,_that.inputDevice,_that.outputDevice,_that.offline,_that.loading,_that.syncStatus,_that.syncProgress);case DistingStateSynchronized() when synchronized != null:
 return synchronized(_that.disting,_that.distingVersion,_that.firmwareVersion,_that.presetName,_that.algorithms,_that.slots,_that.unitStrings,_that.inputDevice,_that.outputDevice,_that.loading,_that.offline,_that.screenshot,_that.demo,_that.videoStream,_that.availableFirmwareUpdate,_that.perfPageItems,_that.isDirty,_that.renameConfirmationName);case _:
   return orElse();
@@ -762,11 +762,11 @@ return synchronized(_that.disting,_that.distingVersion,_that.firmwareVersion,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  initial,required TResult Function( List<MidiDevice> inputDevices,  List<MidiDevice> outputDevices,  bool canWorkOffline)  selectDevice,required TResult Function( IDistingMidiManager disting,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool offline,  bool loading,  String? syncStatus,  double? syncProgress)  connected,required TResult Function( IDistingMidiManager disting,  String distingVersion,  FirmwareVersion firmwareVersion,  String presetName,  List<AlgorithmInfo> algorithms,  List<Slot> slots,  List<String> unitStrings,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool loading,  bool offline,  Uint8List? screenshot,  bool demo,  VideoStreamState? videoStream,  FirmwareRelease? availableFirmwareUpdate,  List<PerformancePageItem> perfPageItems,  bool isDirty,  String? renameConfirmationName)  synchronized,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  initial,required TResult Function( List<MidiDevice> inputDevices,  List<MidiDevice> outputDevices,  bool canWorkOffline,  MidiDevice? selectedInputDevice,  MidiDevice? selectedOutputDevice,  int selectedSysExId)  selectDevice,required TResult Function( IDistingMidiManager disting,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool offline,  bool loading,  String? syncStatus,  double? syncProgress)  connected,required TResult Function( IDistingMidiManager disting,  String distingVersion,  FirmwareVersion firmwareVersion,  String presetName,  List<AlgorithmInfo> algorithms,  List<Slot> slots,  List<String> unitStrings,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool loading,  bool offline,  Uint8List? screenshot,  bool demo,  VideoStreamState? videoStream,  FirmwareRelease? availableFirmwareUpdate,  List<PerformancePageItem> perfPageItems,  bool isDirty,  String? renameConfirmationName)  synchronized,}) {final _that = this;
 switch (_that) {
 case DistingStateInitial():
 return initial();case DistingStateSelectDevice():
-return selectDevice(_that.inputDevices,_that.outputDevices,_that.canWorkOffline);case DistingStateConnected():
+return selectDevice(_that.inputDevices,_that.outputDevices,_that.canWorkOffline,_that.selectedInputDevice,_that.selectedOutputDevice,_that.selectedSysExId);case DistingStateConnected():
 return connected(_that.disting,_that.inputDevice,_that.outputDevice,_that.offline,_that.loading,_that.syncStatus,_that.syncProgress);case DistingStateSynchronized():
 return synchronized(_that.disting,_that.distingVersion,_that.firmwareVersion,_that.presetName,_that.algorithms,_that.slots,_that.unitStrings,_that.inputDevice,_that.outputDevice,_that.loading,_that.offline,_that.screenshot,_that.demo,_that.videoStream,_that.availableFirmwareUpdate,_that.perfPageItems,_that.isDirty,_that.renameConfirmationName);}
 }
@@ -782,11 +782,11 @@ return synchronized(_that.disting,_that.distingVersion,_that.firmwareVersion,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  initial,TResult? Function( List<MidiDevice> inputDevices,  List<MidiDevice> outputDevices,  bool canWorkOffline)?  selectDevice,TResult? Function( IDistingMidiManager disting,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool offline,  bool loading,  String? syncStatus,  double? syncProgress)?  connected,TResult? Function( IDistingMidiManager disting,  String distingVersion,  FirmwareVersion firmwareVersion,  String presetName,  List<AlgorithmInfo> algorithms,  List<Slot> slots,  List<String> unitStrings,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool loading,  bool offline,  Uint8List? screenshot,  bool demo,  VideoStreamState? videoStream,  FirmwareRelease? availableFirmwareUpdate,  List<PerformancePageItem> perfPageItems,  bool isDirty,  String? renameConfirmationName)?  synchronized,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  initial,TResult? Function( List<MidiDevice> inputDevices,  List<MidiDevice> outputDevices,  bool canWorkOffline,  MidiDevice? selectedInputDevice,  MidiDevice? selectedOutputDevice,  int selectedSysExId)?  selectDevice,TResult? Function( IDistingMidiManager disting,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool offline,  bool loading,  String? syncStatus,  double? syncProgress)?  connected,TResult? Function( IDistingMidiManager disting,  String distingVersion,  FirmwareVersion firmwareVersion,  String presetName,  List<AlgorithmInfo> algorithms,  List<Slot> slots,  List<String> unitStrings,  MidiDevice? inputDevice,  MidiDevice? outputDevice,  bool loading,  bool offline,  Uint8List? screenshot,  bool demo,  VideoStreamState? videoStream,  FirmwareRelease? availableFirmwareUpdate,  List<PerformancePageItem> perfPageItems,  bool isDirty,  String? renameConfirmationName)?  synchronized,}) {final _that = this;
 switch (_that) {
 case DistingStateInitial() when initial != null:
 return initial();case DistingStateSelectDevice() when selectDevice != null:
-return selectDevice(_that.inputDevices,_that.outputDevices,_that.canWorkOffline);case DistingStateConnected() when connected != null:
+return selectDevice(_that.inputDevices,_that.outputDevices,_that.canWorkOffline,_that.selectedInputDevice,_that.selectedOutputDevice,_that.selectedSysExId);case DistingStateConnected() when connected != null:
 return connected(_that.disting,_that.inputDevice,_that.outputDevice,_that.offline,_that.loading,_that.syncStatus,_that.syncProgress);case DistingStateSynchronized() when synchronized != null:
 return synchronized(_that.disting,_that.distingVersion,_that.firmwareVersion,_that.presetName,_that.algorithms,_that.slots,_that.unitStrings,_that.inputDevice,_that.outputDevice,_that.loading,_that.offline,_that.screenshot,_that.demo,_that.videoStream,_that.availableFirmwareUpdate,_that.perfPageItems,_that.isDirty,_that.renameConfirmationName);case _:
   return null;
@@ -838,7 +838,7 @@ String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
 
 
 class DistingStateSelectDevice with DiagnosticableTreeMixin implements DistingState {
-  const DistingStateSelectDevice({required final  List<MidiDevice> inputDevices, required final  List<MidiDevice> outputDevices, required this.canWorkOffline}): _inputDevices = inputDevices,_outputDevices = outputDevices;
+  const DistingStateSelectDevice({required final  List<MidiDevice> inputDevices, required final  List<MidiDevice> outputDevices, required this.canWorkOffline, this.selectedInputDevice = null, this.selectedOutputDevice = null, this.selectedSysExId = 0}): _inputDevices = inputDevices,_outputDevices = outputDevices;
   
 
  final  List<MidiDevice> _inputDevices;
@@ -856,6 +856,9 @@ class DistingStateSelectDevice with DiagnosticableTreeMixin implements DistingSt
 }
 
  final  bool canWorkOffline;
+@JsonKey() final  MidiDevice? selectedInputDevice;
+@JsonKey() final  MidiDevice? selectedOutputDevice;
+@JsonKey() final  int selectedSysExId;
 
 /// Create a copy of DistingState
 /// with the given fields replaced by the non-null parameter values.
@@ -868,21 +871,21 @@ $DistingStateSelectDeviceCopyWith<DistingStateSelectDevice> get copyWith => _$Di
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
   properties
     ..add(DiagnosticsProperty('type', 'DistingState.selectDevice'))
-    ..add(DiagnosticsProperty('inputDevices', inputDevices))..add(DiagnosticsProperty('outputDevices', outputDevices))..add(DiagnosticsProperty('canWorkOffline', canWorkOffline));
+    ..add(DiagnosticsProperty('inputDevices', inputDevices))..add(DiagnosticsProperty('outputDevices', outputDevices))..add(DiagnosticsProperty('canWorkOffline', canWorkOffline))..add(DiagnosticsProperty('selectedInputDevice', selectedInputDevice))..add(DiagnosticsProperty('selectedOutputDevice', selectedOutputDevice))..add(DiagnosticsProperty('selectedSysExId', selectedSysExId));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingStateSelectDevice&&const DeepCollectionEquality().equals(other._inputDevices, _inputDevices)&&const DeepCollectionEquality().equals(other._outputDevices, _outputDevices)&&(identical(other.canWorkOffline, canWorkOffline) || other.canWorkOffline == canWorkOffline));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingStateSelectDevice&&const DeepCollectionEquality().equals(other._inputDevices, _inputDevices)&&const DeepCollectionEquality().equals(other._outputDevices, _outputDevices)&&(identical(other.canWorkOffline, canWorkOffline) || other.canWorkOffline == canWorkOffline)&&(identical(other.selectedInputDevice, selectedInputDevice) || other.selectedInputDevice == selectedInputDevice)&&(identical(other.selectedOutputDevice, selectedOutputDevice) || other.selectedOutputDevice == selectedOutputDevice)&&(identical(other.selectedSysExId, selectedSysExId) || other.selectedSysExId == selectedSysExId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_inputDevices),const DeepCollectionEquality().hash(_outputDevices),canWorkOffline);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_inputDevices),const DeepCollectionEquality().hash(_outputDevices),canWorkOffline,selectedInputDevice,selectedOutputDevice,selectedSysExId);
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'DistingState.selectDevice(inputDevices: $inputDevices, outputDevices: $outputDevices, canWorkOffline: $canWorkOffline)';
+  return 'DistingState.selectDevice(inputDevices: $inputDevices, outputDevices: $outputDevices, canWorkOffline: $canWorkOffline, selectedInputDevice: $selectedInputDevice, selectedOutputDevice: $selectedOutputDevice, selectedSysExId: $selectedSysExId)';
 }
 
 
@@ -893,7 +896,7 @@ abstract mixin class $DistingStateSelectDeviceCopyWith<$Res> implements $Disting
   factory $DistingStateSelectDeviceCopyWith(DistingStateSelectDevice value, $Res Function(DistingStateSelectDevice) _then) = _$DistingStateSelectDeviceCopyWithImpl;
 @useResult
 $Res call({
- List<MidiDevice> inputDevices, List<MidiDevice> outputDevices, bool canWorkOffline
+ List<MidiDevice> inputDevices, List<MidiDevice> outputDevices, bool canWorkOffline, MidiDevice? selectedInputDevice, MidiDevice? selectedOutputDevice, int selectedSysExId
 });
 
 
@@ -910,12 +913,15 @@ class _$DistingStateSelectDeviceCopyWithImpl<$Res>
 
 /// Create a copy of DistingState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? inputDevices = null,Object? outputDevices = null,Object? canWorkOffline = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? inputDevices = null,Object? outputDevices = null,Object? canWorkOffline = null,Object? selectedInputDevice = freezed,Object? selectedOutputDevice = freezed,Object? selectedSysExId = null,}) {
   return _then(DistingStateSelectDevice(
 inputDevices: null == inputDevices ? _self._inputDevices : inputDevices // ignore: cast_nullable_to_non_nullable
 as List<MidiDevice>,outputDevices: null == outputDevices ? _self._outputDevices : outputDevices // ignore: cast_nullable_to_non_nullable
 as List<MidiDevice>,canWorkOffline: null == canWorkOffline ? _self.canWorkOffline : canWorkOffline // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,selectedInputDevice: freezed == selectedInputDevice ? _self.selectedInputDevice : selectedInputDevice // ignore: cast_nullable_to_non_nullable
+as MidiDevice?,selectedOutputDevice: freezed == selectedOutputDevice ? _self.selectedOutputDevice : selectedOutputDevice // ignore: cast_nullable_to_non_nullable
+as MidiDevice?,selectedSysExId: null == selectedSysExId ? _self.selectedSysExId : selectedSysExId // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
