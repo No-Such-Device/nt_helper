@@ -474,7 +474,7 @@ class _DeviceSelectionView extends StatefulWidget {
 class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
   MidiDevice? selectedInputDevice;
   MidiDevice? selectedOutputDevice;
-  int? selectedSysExId = 0;
+  int selectedSysExId = 0;
   String? _probedFirmwareVersion;
   bool _probing = false;
   String? _lastProbedInputId;
@@ -489,9 +489,10 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
     selectedSysExId = widget.initialSysExId;
   }
 
-  /// Preserve the user's current device selection if the devices are still
-  /// available in the updated list. Clear the pair if either selected endpoint
-  /// disappears so a refresh never chooses a different module for the user.
+  /// Preserve each current device selection independently if it is still
+  /// available in the updated list. A discovery refresh can arrive between
+  /// choosing the input and output, so an unset endpoint must not clear the
+  /// endpoint the user already chose.
   void _preserveOrClearDevices() {
     final preservedInput = selectedInputDevice != null
         ? widget.inputDevices
@@ -504,13 +505,8 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
               .firstOrNull
         : null;
 
-    if (preservedInput != null && preservedOutput != null) {
-      selectedInputDevice = preservedInput;
-      selectedOutputDevice = preservedOutput;
-    } else {
-      selectedInputDevice = null;
-      selectedOutputDevice = null;
-    }
+    selectedInputDevice = preservedInput;
+    selectedOutputDevice = preservedOutput;
   }
 
   @override
@@ -535,9 +531,7 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
   }
 
   bool get _devicesSelected =>
-      selectedInputDevice != null &&
-      selectedOutputDevice != null &&
-      selectedSysExId != null;
+      selectedInputDevice != null && selectedOutputDevice != null;
 
   void _maybeProbe() {
     if (!_devicesSelected || _probing || widget.onFirmwarePressed == null) {
@@ -560,7 +554,7 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
     _probedFirmwareVersion = null;
     final input = selectedInputDevice!;
     final output = selectedOutputDevice!;
-    final sysExId = selectedSysExId!;
+    final sysExId = selectedSysExId;
     _lastProbedInputId = input.id;
     _lastProbedOutputId = output.id;
     context.read<DistingCubit>().probeFirmwareVersion(input, output, sysExId).then((
@@ -586,7 +580,7 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
     widget.onDeviceSelected(
       selectedInputDevice!,
       selectedOutputDevice!,
-      selectedSysExId!,
+      selectedSysExId,
     );
   }
 
@@ -747,6 +741,7 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
                     );
                   }),
                   onSelected: (id) {
+                    if (id == null) return;
                     setState(() {
                       selectedSysExId = id;
                     });
