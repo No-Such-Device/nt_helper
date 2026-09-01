@@ -183,7 +183,7 @@ extension SlotCountInfoRequest on IDistingMidiManager {
   }) async {
     final manager = this;
     if (manager is SlotCountInfoProvider) {
-      return manager.requestSlotCountInfo(
+      return (manager as SlotCountInfoProvider).requestSlotCountInfo(
         timeout: timeout,
         maxRetries: maxRetries,
       );
