@@ -71,10 +71,11 @@ import 'package:nt_helper/domain/sysex/requests/request_cpu_usage.dart';
 import 'package:nt_helper/models/cpu_usage.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/models/sd_card_file_system.dart';
+import 'package:nt_helper/models/slot_count_info.dart';
 
 /// Abstract interface for Disting MIDI communication.
 
-class DistingMidiManager implements IDistingMidiManager {
+class DistingMidiManager implements IDistingMidiManager, SlotCountInfoProvider {
   // Implement interface
   final DistingMessageScheduler _scheduler;
   final int sysExId;
@@ -207,13 +208,25 @@ class DistingMidiManager implements IDistingMidiManager {
     Duration? timeout,
     int? maxRetries,
   }) async {
+    final info = await requestSlotCountInfo(
+      timeout: timeout,
+      maxRetries: maxRetries,
+    );
+    return info?.slotCount;
+  }
+
+  @override
+  Future<SlotCountInfo?> requestSlotCountInfo({
+    Duration? timeout,
+    int? maxRetries,
+  }) async {
     final message = RequestNumAlgorithmsInPresetMessage(sysExId: sysExId);
     final packet = message.encode();
     final key = RequestKey(
       sysExId: sysExId,
       messageType: DistingNTRespMessageType.respNumAlgorithmsInPreset,
     );
-    return await _scheduler.sendRequest<int>(
+    return await _scheduler.sendRequest<SlotCountInfo>(
       packet,
       key,
       responseExpectation: ResponseExpectation.required,

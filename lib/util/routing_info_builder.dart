@@ -1,7 +1,7 @@
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/cubit/routing_editor_state.dart';
 import 'package:nt_helper/models/routing_information.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Builds [RoutingInformation] entries (one per algorithm, sorted by slot
 /// index) from routing-editor algorithm/port data.
@@ -11,14 +11,12 @@ import 'package:nt_helper/models/routing_information.dart';
 /// in Replace mode, [3..5] reserved (0). This mirrors the packing the OG
 /// signal-flow table and [RoutingAnalyzer] consume.
 ///
-/// Bus identity is encoded as `1 << busNumber`, so buses above 63 are not
-/// representable here — a pre-existing limitation shared with the table and
-/// RoutingAnalyzer. Logic that must handle the full extended range (up to
-/// [BusSpec.extendedMax]) should work with bus numbers directly instead.
+/// Bus identity is encoded as `1 << busNumber`.
 List<RoutingInformation> buildRoutingInfoFromEditor(
   List<RoutingAlgorithm> algorithms,
-  Map<String, OutputMode> portOutputModes,
-) {
+  Map<String, OutputMode> portOutputModes, {
+  DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+}) {
   final sorted = List<RoutingAlgorithm>.from(algorithms)
     ..sort((a, b) => a.index.compareTo(b.index));
 
@@ -29,14 +27,17 @@ List<RoutingInformation> buildRoutingInfoFromEditor(
 
     for (final port in algo.inputPorts) {
       final bus = port.busValue;
-      if (bus != null && bus > 0 && bus <= BusSpec.extendedMax) {
+      if (bus != null && deviceIoProfile.contains(bus)) {
         inputMask |= (1 << bus);
       }
     }
 
     for (final port in algo.outputPorts) {
       final bus = port.busValue;
-      if (bus != null && bus > 0 && bus <= BusSpec.extendedMax) {
+      final isContextualEs5 =
+          algo.algorithm.guid == 'usbf' &&
+          deviceIoProfile.contextualEs5Buses.contains(bus);
+      if (bus != null && (deviceIoProfile.contains(bus) || isContextualEs5)) {
         outputMask |= (1 << bus);
         final mode = portOutputModes[port.id] ?? port.outputMode;
         if (mode == OutputMode.replace) {

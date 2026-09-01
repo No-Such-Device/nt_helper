@@ -244,14 +244,14 @@ class MCPAlgorithmTools {
     final routings = <AlgorithmRouting>[];
 
     for (final slot in slots) {
-      routings.add(AlgorithmRouting.fromSlot(slot));
+      routings.add(
+        AlgorithmRouting.fromSlot(slot, deviceIoProfile: state.deviceIoProfile),
+      );
     }
 
     // Discover connections (not needed for bus lists, but validates the data)
     // We extract bus usage directly from ports
     final slotDataList = <Map<String, dynamic>>[];
-
-    final hasExtended = state.firmwareVersion.hasExtendedAuxBuses;
 
     for (int i = 0; i < slots.length; i++) {
       final slot = slots[i];
@@ -282,12 +282,18 @@ class MCPAlgorithmTools {
         'algorithmName': slot.algorithm.name,
         'inputBuses': sortedInputs
             .map(
-              (b) => BusMapping.busToName(b, hasExtendedAuxBuses: hasExtended),
+              (b) => BusMapping.busToName(
+                b,
+                deviceIoProfile: state.deviceIoProfile,
+              ),
             )
             .toList(),
         'outputBuses': sortedOutputs
             .map(
-              (b) => BusMapping.busToName(b, hasExtendedAuxBuses: hasExtended),
+              (b) => BusMapping.busToName(
+                b,
+                deviceIoProfile: state.deviceIoProfile,
+              ),
             )
             .toList(),
       });

@@ -18,10 +18,10 @@ import 'package:nt_helper/core/routing/node_layout_algorithm.dart';
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nt_helper/core/routing/models/es5_hardware_node.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/core/routing/bus_flow_solver.dart';
 import 'package:nt_helper/core/routing/slot_reorder_planner.dart';
 import 'package:nt_helper/core/routing/aux_bus_consolidation.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 import 'routing_editor_state.dart';
 
@@ -77,8 +77,10 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
   StreamSubscription<DistingState>? _distingStateSubscription;
   NodeLayoutAlgorithm? _layoutAlgorithm;
   List<Slot>? _lastProcessedSlots;
+  DeviceIoProfile? _lastProcessedProfile;
   int _batchDepth = 0;
   List<Slot>? _deferredSlots;
+  DeviceIoProfile? _deferredProfile;
 
   RoutingEditorCubit(
     this._distingCubit, {
@@ -164,6 +166,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
             disting,
             distingVersion,
             firmwareVersion,
+            deviceIoProfile,
             presetName,
             algorithms,
             slots,
@@ -180,7 +183,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
             isDirty,
             renameConfirmationName,
           ) {
-            _processSynchronizedState(slots);
+            _processSynchronizedState(slots, deviceIoProfile);
           },
     );
   }
@@ -195,8 +198,13 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       _batchDepth--;
       if (_batchDepth == 0 && _deferredSlots != null && !isClosed) {
         final slots = _deferredSlots!;
+        final profile =
+            _deferredProfile ??
+            _lastProcessedProfile ??
+            DeviceIoProfile.distingExtended;
         _deferredSlots = null;
-        _processSynchronizedState(slots);
+        _deferredProfile = null;
+        _processSynchronizedState(slots, profile);
       }
     }
   }
@@ -228,17 +236,25 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
   /// (meaning a non-slot field changed, like loading or screenshot). Otherwise,
   /// always recalculates — Bloc's emit() deduplicates via Freezed equality,
   /// so unchanged routing results won't trigger UI rebuilds.
-  void _processSynchronizedState(List<Slot> slots) {
-    // Identical reference means non-slot fields changed (loading, screenshot, etc.)
-    if (identical(slots, _lastProcessedSlots)) return;
+  void _processSynchronizedState(
+    List<Slot> slots,
+    DeviceIoProfile deviceIoProfile,
+  ) {
+    // Identical slots and profile means only unrelated state changed.
+    if (identical(slots, _lastProcessedSlots) &&
+        deviceIoProfile == _lastProcessedProfile) {
+      return;
+    }
 
     // During batch operations, stash the latest slots and skip rebuild
     if (_batchDepth > 0) {
       _deferredSlots = slots;
+      _deferredProfile = deviceIoProfile;
       return;
     }
 
     _lastProcessedSlots = slots;
+    _lastProcessedProfile = deviceIoProfile;
 
     try {
       // Compute firmware capability early — needed for ES-5 ports and connection discovery
@@ -248,12 +264,12 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
           distingState.firmwareVersion.hasExtendedAuxBuses;
 
       // Create physical hardware ports
-      final physicalInputs = _createPhysicalInputPorts();
-      final physicalOutputs = _createPhysicalOutputPorts();
+      final physicalInputs = _createPhysicalInputPorts(deviceIoProfile);
+      final physicalOutputs = _createPhysicalOutputPorts(deviceIoProfile);
 
       // Conditionally create ES-5 ports based on algorithm presence
       final es5Inputs = shouldShowEs5Node(slots)
-          ? ES5HardwareNode.createInputPorts(hasExtendedAuxBuses: hasExtended)
+          ? ES5HardwareNode.createInputPorts(deviceIoProfile: deviceIoProfile)
           : <Port>[];
 
       // Build algorithm representations with ports determined by AlgorithmRouting
@@ -270,6 +286,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         // Create routing using the AlgorithmRouting factory method
         final routing = core_routing.AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: deviceIoProfile,
           algorithmUuid: algorithmUuid,
         );
 
@@ -330,6 +347,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       final discoveredConnections =
           ConnectionDiscoveryService.discoverConnections(
             routings,
+            deviceIoProfile: deviceIoProfile,
             hasExtendedAuxBuses: hasExtended,
           );
 
@@ -347,10 +365,15 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       final panOffset = currentState is RoutingEditorStateLoaded
           ? currentState.panOffset
           : Offset.zero;
-      final auxBusUsage = _computeAuxBusUsage(algorithms, slots, hasExtended);
+      final auxBusUsage = _computeAuxBusUsage(
+        algorithms,
+        slots,
+        deviceIoProfile,
+      );
 
       emit(
         RoutingEditorState.loaded(
+          deviceIoProfile: deviceIoProfile,
           physicalInputs: physicalInputs,
           physicalOutputs: physicalOutputs,
           es5Inputs: es5Inputs,
@@ -389,9 +412,9 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     }
   }
 
-  /// Create the 12 physical input ports of the Disting NT
-  List<Port> _createPhysicalInputPorts() {
-    return List.generate(12, (i) {
+  /// Create the firmware-reported physical input ports.
+  List<Port> _createPhysicalInputPorts(DeviceIoProfile profile) {
+    return List.generate(profile.inputBusCount, (i) {
       final n = i + 1;
       return Port(
         id: 'hw_in_$n',
@@ -404,9 +427,9 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     });
   }
 
-  /// Create the 8 physical output ports of the Disting NT
-  List<Port> _createPhysicalOutputPorts() {
-    return List.generate(8, (i) {
+  /// Create the firmware-reported physical output ports.
+  List<Port> _createPhysicalOutputPorts(DeviceIoProfile profile) {
+    return List.generate(profile.outputBusCount, (i) {
       final n = i + 1;
       return Port(
         id: 'hw_out_$n',
@@ -596,13 +619,13 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     Port algorithmInputPort,
     RoutingEditorStateLoaded state,
   ) async {
-    // Hardware inputs use buses 1-12
+    // Hardware input ids are local to the current firmware profile.
     final hardwareInputNumber = int.tryParse(
       hardwareInputPortId.replaceAll('hw_in_', ''),
     );
     if (hardwareInputNumber == null ||
         hardwareInputNumber < 1 ||
-        hardwareInputNumber > 12) {
+        hardwareInputNumber > state.deviceIoProfile.inputBusCount) {
       return null;
     }
 
@@ -637,7 +660,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
   /// Assign bus for ghost connection (algorithm output -> physical input)
   ///
-  /// Ghost connections route an algorithm's output to a physical input bus (1-12),
+  /// Ghost connections route an algorithm's output to a physical input bus,
   /// making the signal available to other algorithms reading from that input.
   Future<int?> _assignBusForGhostConnection(
     Port algorithmOutputPort,
@@ -649,7 +672,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     );
     if (hardwareInputNumber == null ||
         hardwareInputNumber < 1 ||
-        hardwareInputNumber > 12) {
+        hardwareInputNumber > state.deviceIoProfile.inputBusCount) {
       return null;
     }
 
@@ -676,7 +699,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
   /// Assign bus for physical output -> algorithm input connection
   ///
-  /// The algorithm input reads from the output bus (13-20).
+  /// The algorithm input reads from the selected physical output bus.
   Future<int?> _assignBusForPhysicalOutputToAlgorithmInput(
     String hardwareOutputPortId,
     Port algorithmInputPort,
@@ -687,11 +710,14 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     );
     if (hardwareOutputNumber == null ||
         hardwareOutputNumber < 1 ||
-        hardwareOutputNumber > 8) {
+        hardwareOutputNumber > state.deviceIoProfile.outputBusCount) {
       return null;
     }
 
-    final busNumber = 12 + hardwareOutputNumber; // Bus 13 for hw_out_1, etc.
+    final busNumber = state.deviceIoProfile.busForLocalNumber(
+      DeviceBusGroup.output,
+      hardwareOutputNumber,
+    )!;
 
     // Virtual ports (negative parameterNumber) have firmware-implicit bus values
     // that can't be reassigned to an output bus.
@@ -740,12 +766,11 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       final guid = distingState.slots[algorithmIndex].algorithm.guid;
       if (guid != 'usbf') return null;
 
-      final isExtended = distingState.firmwareVersion.hasExtendedAuxBuses;
-      if (hardwareOutputPortId == 'es5_L') {
-        busNumber = isExtended ? BusSpec.es5MinExtended : BusSpec.es5Min;
-      } else {
-        busNumber = isExtended ? BusSpec.es5MaxExtended : BusSpec.es5Max;
-      }
+      final es5Buses = state.deviceIoProfile.contextualEs5Buses;
+      if (es5Buses.length != 2) return null;
+      busNumber = hardwareOutputPortId == 'es5_L'
+          ? es5Buses.first
+          : es5Buses.last;
     } else if (hardwareOutputPortId.startsWith('es5_') &&
         hardwareOutputPortId.length == 5) {
       // ES-5 direct output ports (es5_1 through es5_8)
@@ -773,18 +798,22 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       }
       return null;
     } else {
-      // Hardware outputs use buses 13-20
       final hardwareOutputNumber = int.tryParse(
         hardwareOutputPortId.replaceAll('hw_out_', ''),
       );
       if (hardwareOutputNumber == null ||
           hardwareOutputNumber < 1 ||
-          hardwareOutputNumber > 8) {
+          hardwareOutputNumber > state.deviceIoProfile.outputBusCount) {
         return null;
       }
 
-      busNumber = 12 + hardwareOutputNumber; // Bus 13 for hw_out_1, etc.
+      busNumber = state.deviceIoProfile.busForLocalNumber(
+        DeviceBusGroup.output,
+        hardwareOutputNumber,
+      );
     }
+
+    if (busNumber == null) return null;
 
     // Find the algorithm that owns this output port and update its parameter
     if (algorithmOutputPort.parameterNumber != null) {
@@ -1045,15 +1074,11 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     }
 
     int busToUse;
-    final hasExtended = distingState.firmwareVersion.hasExtendedAuxBuses;
     if (targetIsVirtual && targetBusValue != null) {
       // Virtual port's bus is fixed by firmware — route source to match it.
       busToUse = targetBusValue;
     } else if (sourceBusValue != null &&
-        BusSpec.isAuxForFirmware(
-          sourceBusValue,
-          hasExtendedAuxBuses: hasExtended,
-        )) {
+        state.deviceIoProfile.isAux(sourceBusValue)) {
       // Source already on an AUX bus — reuse for fan-out
       busToUse = sourceBusValue;
     } else {
@@ -1166,11 +1191,8 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
   Map<int, AuxBusUsageInfo> _computeAuxBusUsage(
     List<RoutingAlgorithm> algorithms,
     List<Slot> slots,
-    bool hasExtended,
+    DeviceIoProfile deviceIoProfile,
   ) {
-    final auxCeiling = BusSpec.auxMaxForFirmware(
-      hasExtendedAuxBuses: hasExtended,
-    );
     final result = <int, AuxBusUsageInfo>{};
 
     for (final algorithm in algorithms) {
@@ -1181,13 +1203,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       for (final port in algorithm.outputPorts) {
         final busValue = _resolvePortBusValue(port, slot);
         if (busValue == null) continue;
-        if (busValue < BusSpec.auxMin || busValue > auxCeiling) continue;
-        if (!BusSpec.isAuxForFirmware(
-          busValue,
-          hasExtendedAuxBuses: hasExtended,
-        )) {
-          continue;
-        }
+        if (!deviceIoProfile.isAux(busValue)) continue;
         final info = result.putIfAbsent(
           busValue,
           () => AuxBusUsageInfo(busNumber: busValue),
@@ -1199,13 +1215,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       for (final port in algorithm.inputPorts) {
         final busValue = _resolvePortBusValue(port, slot);
         if (busValue == null) continue;
-        if (busValue < BusSpec.auxMin || busValue > auxCeiling) continue;
-        if (!BusSpec.isAuxForFirmware(
-          busValue,
-          hasExtendedAuxBuses: hasExtended,
-        )) {
-          continue;
-        }
+        if (!deviceIoProfile.isAux(busValue)) continue;
         final info = result.putIfAbsent(
           busValue,
           () => AuxBusUsageInfo(busNumber: busValue),
@@ -1254,7 +1264,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     }
   }
 
-  /// Find an available AUX bus (21-28) for an algorithm connection.
+  /// Find an available AUX bus for an algorithm connection.
   ///
   /// A bus is available if it's completely unused, or if all algorithms
   /// currently using it are at slot numbers lower than [sourceSlot]
@@ -1269,10 +1279,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     final distingState = _distingCubit?.state;
     if (distingState is! DistingStateSynchronized) return null;
 
-    final hasExtended = distingState.firmwareVersion.hasExtendedAuxBuses;
-    final auxCeiling = BusSpec.auxMaxForFirmware(
-      hasExtendedAuxBuses: hasExtended,
-    );
+    final deviceIoProfile = state.deviceIoProfile;
 
     // Map each AUX bus to the highest slot number that uses it
     final maxSlotPerBus = <int, int>{};
@@ -1285,10 +1292,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
             final paramValue = slot.values
                 .firstWhere((v) => v.parameterNumber == port.parameterNumber!)
                 .value;
-            if (BusSpec.isAuxForFirmware(
-              paramValue,
-              hasExtendedAuxBuses: hasExtended,
-            )) {
+            if (deviceIoProfile.isAux(paramValue)) {
               final current = maxSlotPerBus[paramValue];
               if (current == null || algorithm.index > current) {
                 maxSlotPerBus[paramValue] = algorithm.index;
@@ -1300,13 +1304,14 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     }
 
     // Stereo L ports need b+1 to also be a valid aux bus
-    final effectiveCeiling = needsStereoPartner ? auxCeiling - 1 : auxCeiling;
+    final candidates = needsStereoPartner
+        ? deviceIoProfile.auxBuses.where(
+            (bus) => deviceIoProfile.isAux(bus + 1),
+          )
+        : deviceIoProfile.auxBuses;
 
     // Prefer a completely unused AUX bus first
-    for (int b = BusSpec.auxMin; b <= effectiveCeiling; b++) {
-      if (!BusSpec.isAuxForFirmware(b, hasExtendedAuxBuses: hasExtended)) {
-        continue;
-      }
+    for (final b in candidates) {
       if (!maxSlotPerBus.containsKey(b)) {
         return _AvailableAuxBus(bus: b, isReused: false);
       }
@@ -1314,11 +1319,9 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
     // Fall back to a reusable AUX bus whose users are all at lower slots
     if (allowReuse) {
-      for (int b = BusSpec.auxMin; b <= effectiveCeiling; b++) {
-        if (!BusSpec.isAuxForFirmware(b, hasExtendedAuxBuses: hasExtended)) {
-          continue;
-        }
-        if (maxSlotPerBus[b]! < sourceSlot) {
+      for (final b in candidates) {
+        final maxSlot = maxSlotPerBus[b];
+        if (maxSlot != null && maxSlot < sourceSlot) {
           return _AvailableAuxBus(bus: b, isReused: true);
         }
       }
@@ -1337,9 +1340,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     final distingState = _distingCubit?.state;
     if (distingState is! DistingStateSynchronized) return null;
 
-    final auxCeiling = BusSpec.auxMaxForFirmware(
-      hasExtendedAuxBuses: distingState.firmwareVersion.hasExtendedAuxBuses,
-    );
+    final deviceIoProfile = currentState.deviceIoProfile;
 
     int? valueOf(Slot slot, int? parameterNumber) {
       if (parameterNumber == null) return null;
@@ -1356,7 +1357,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
       for (final port in algorithm.outputPorts) {
         final bus = valueOf(slot, port.parameterNumber);
-        if (bus == null || bus < BusSpec.auxMin || bus > auxCeiling) continue;
+        if (bus == null || !deviceIoProfile.isAux(bus)) continue;
         final modeParam = port.modeParameterNumber;
         (portsByBus[bus] ??= []).add(
           AuxBusPort(
@@ -1372,7 +1373,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
       for (final port in algorithm.inputPorts) {
         final bus = valueOf(slot, port.parameterNumber);
-        if (bus == null || bus < BusSpec.auxMin || bus > auxCeiling) continue;
+        if (bus == null || !deviceIoProfile.isAux(bus)) continue;
         (portsByBus[bus] ??= []).add(
           AuxBusPort(
             slot: algorithm.index,
@@ -1401,8 +1402,8 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
           keepBus: merge.keepBus,
           freeBus: merge.freeBus,
           description:
-              'Merge AUX ${BusSpec.toLocalNumber(merge.freeBus) ?? merge.freeBus}'
-              ' into AUX ${BusSpec.toLocalNumber(merge.keepBus) ?? merge.keepBus}',
+              'Merge AUX ${deviceIoProfile.localNumber(merge.freeBus) ?? merge.freeBus}'
+              ' into AUX ${deviceIoProfile.localNumber(merge.keepBus) ?? merge.keepBus}',
           steps: [
             for (final move in merge.moves)
               ConsolidationStep(
@@ -1550,13 +1551,15 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       }
 
       final slot = distingState.slots[algorithmIndex];
+      final deviceIoProfile = distingState.deviceIoProfile;
       var resetCount = 0;
 
       for (final param in slot.parameters) {
         final isBusParameter =
             param.unit == 1 &&
             (param.min == 0 || param.min == 1) &&
-            BusSpec.isBusParameterMaxValue(param.max);
+            param.max >= deviceIoProfile.inputStart &&
+            deviceIoProfile.busesWithin(param.min, param.max).isNotEmpty;
 
         if (!isBusParameter) continue;
         if (param.min > 0) continue;
@@ -1608,7 +1611,10 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
           final isBusParameter =
               param.unit == 1 &&
               (param.min == 0 || param.min == 1) &&
-              BusSpec.isBusParameterMaxValue(param.max);
+              param.max >= distingState.deviceIoProfile.inputStart &&
+              distingState.deviceIoProfile
+                  .busesWithin(param.min, param.max)
+                  .isNotEmpty;
           if (!isBusParameter) continue;
 
           final currentValue = slot.values
@@ -2236,7 +2242,10 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
   Future<ReorderResult?> autoSolveFlow() async {
     final st = state;
     if (st is! RoutingEditorStateLoaded) return null;
-    final solution = BusFlowSolver.fromAlgorithms(st.algorithms).solve();
+    final solution = BusFlowSolver.fromAlgorithms(
+      st.algorithms,
+      deviceIoProfile: st.deviceIoProfile,
+    ).solve();
     if (!solution.reorderNeeded) return null;
     final result = await applyReorder(solution.order);
     return result.changed ? result : null;
@@ -2985,7 +2994,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     return true;
   }
 
-  ({int min, int max})? _getBusParameterRange({
+  ({int min, int max})? busParameterRange({
     required int algorithmIndex,
     required int parameterNumber,
   }) {
@@ -3011,7 +3020,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     required int parameterNumber,
     bool needsStereoPartner = false,
   }) async {
-    final range = _getBusParameterRange(
+    final range = busParameterRange(
       algorithmIndex: algorithmIndex,
       parameterNumber: parameterNumber,
     );
@@ -3062,26 +3071,22 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     }
 
     bool inRange(int b) => b >= range.min && b <= range.max;
-    bool isPhysicalOutputBus(int b) => b >= 13 && b <= 20;
+    final deviceIoProfile = state.deviceIoProfile;
 
-    // Stereo L ports need b+1 to also be valid — avoid the last aux bus
-    final auxCeiling = needsStereoPartner
-        ? BusSpec.auxMaxExtended - 1
-        : BusSpec.auxMaxExtended;
-
-    // Prefer auxiliary buses (21–64), then fall back to input buses (1–12),
-    // always avoiding physical output buses (13–20).
-    for (int b = BusSpec.auxMin; b <= auxCeiling; b++) {
+    // Prefer auxiliary buses, then fall back to input buses, always avoiding
+    // physical output buses.
+    for (final b in deviceIoProfile.auxBuses) {
+      if (needsStereoPartner && !deviceIoProfile.isAux(b + 1)) continue;
       if (inRange(b) && !usedBuses.contains(b)) return b;
     }
-    for (int b = 1; b <= 12; b++) {
+    for (final b in deviceIoProfile.inputBuses) {
       if (inRange(b) && !usedBuses.contains(b)) return b;
     }
 
     // As a last resort, scan the parameter's allowed range for any unused bus
     // that isn't a physical output bus.
     for (int b = range.min; b <= range.max; b++) {
-      if (isPhysicalOutputBus(b)) continue;
+      if (!deviceIoProfile.contains(b) || deviceIoProfile.isOutput(b)) continue;
       if (!usedBuses.contains(b)) return b;
     }
 

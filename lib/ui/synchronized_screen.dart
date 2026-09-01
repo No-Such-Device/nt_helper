@@ -1259,6 +1259,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                         onPressed: state.maybeWhen(
                           loaded:
                               (
+                                deviceIoProfile,
                                 physicalInputs,
                                 physicalOutputs,
                                 es5Inputs,
@@ -1293,6 +1294,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                         state.maybeWhen(
                           loaded:
                               (
+                                deviceIoProfile,
                                 physicalInputs,
                                 physicalOutputs,
                                 es5Inputs,
@@ -1351,6 +1353,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                       state.maybeWhen(
                         loaded:
                             (
+                              deviceIoProfile,
                               physicalInputs,
                               physicalOutputs,
                               es5Inputs,
@@ -1407,6 +1410,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                       state.maybeWhen(
                         loaded:
                             (
+                              deviceIoProfile,
                               physicalInputs,
                               physicalOutputs,
                               es5Inputs,

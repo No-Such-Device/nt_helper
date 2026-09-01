@@ -3,6 +3,7 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'multi_channel_algorithm_routing.dart';
 import 'models/port.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Base class for algorithms that support ES-5 direct output routing.
 ///
@@ -410,6 +411,7 @@ abstract class Es5DirectOutputAlgorithmRouting
   })
   createConfigFromSlot(
     Slot slot, {
+    required DeviceIoProfile deviceIoProfile,
     required Map<String, int> ioParameters,
     Map<String, int>? modeParameters,
     Map<String, ({int parameterNumber, int value})>? modeParametersWithNumbers,
@@ -431,6 +433,7 @@ abstract class Es5DirectOutputAlgorithmRouting
     // Use base class to process normal inputs (non-channel-prefixed parameters)
     final baseRouting = MultiChannelAlgorithmRouting.createFromSlot(
       slot,
+      deviceIoProfile: deviceIoProfile,
       ioParameters: ioParameters,
       modeParameters: modeParameters,
       modeParametersWithNumbers: modeParametersWithNumbers,
@@ -464,6 +467,7 @@ abstract class Es5DirectOutputAlgorithmRouting
   @protected
   static T createFromSlotWithConfig<T extends Es5DirectOutputAlgorithmRouting>(
     Slot slot, {
+    required DeviceIoProfile deviceIoProfile,
     required Map<String, int> ioParameters,
     Map<String, int>? modeParameters,
     Map<String, ({int parameterNumber, int value})>? modeParametersWithNumbers,
@@ -473,6 +477,7 @@ abstract class Es5DirectOutputAlgorithmRouting
   }) {
     final configData = createConfigFromSlot(
       slot,
+      deviceIoProfile: deviceIoProfile,
       ioParameters: ioParameters,
       modeParameters: modeParameters,
       modeParametersWithNumbers: modeParametersWithNumbers,
@@ -480,6 +485,8 @@ abstract class Es5DirectOutputAlgorithmRouting
       debugName: debugName,
     );
 
-    return builder(slot, configData.config);
+    final routing = builder(slot, configData.config);
+    routing.deviceIoProfile = deviceIoProfile;
+    return routing;
   }
 }

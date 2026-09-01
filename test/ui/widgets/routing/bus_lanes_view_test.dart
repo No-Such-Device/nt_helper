@@ -268,6 +268,9 @@ void main() {
     'bus picker opened from plus lane shows current and used lower buses',
     (tester) async {
       when(cubit.state).thenReturn(loadedWith([dualOutputsOnAdjacentBuses()]));
+      when(
+        cubit.busParameterRange(algorithmIndex: 0, parameterNumber: 4),
+      ).thenReturn((min: 0, max: 64));
 
       await tester.pumpWidget(host());
       await tester.pump();

@@ -1,5 +1,5 @@
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/cubit/routing_editor_state.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Minimal description of how one algorithm slot uses buses, for flow solving.
 class SlotBusUsage {
@@ -87,13 +87,19 @@ class BusFlowSolution {
 class BusFlowSolver {
   /// Slots sorted by current index (ascending).
   final List<SlotBusUsage> _slots;
+  final DeviceIoProfile deviceIoProfile;
 
-  BusFlowSolver(List<SlotBusUsage> slots)
-    : _slots = List<SlotBusUsage>.from(slots)
-        ..sort((a, b) => a.index.compareTo(b.index));
+  BusFlowSolver(
+    List<SlotBusUsage> slots, {
+    this.deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) : _slots = List<SlotBusUsage>.from(slots)
+         ..sort((a, b) => a.index.compareTo(b.index));
 
   /// Builds a solver from routing-editor algorithm data.
-  factory BusFlowSolver.fromAlgorithms(List<RoutingAlgorithm> algorithms) {
+  factory BusFlowSolver.fromAlgorithms(
+    List<RoutingAlgorithm> algorithms, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) {
     final slots = algorithms.map((a) {
       final reads = <int>{};
       for (final p in a.inputPorts) {
@@ -113,12 +119,15 @@ class BusFlowSolver {
         writes: writes,
       );
     }).toList();
-    return BusFlowSolver(slots);
+    return BusFlowSolver(slots, deviceIoProfile: deviceIoProfile);
   }
 
   /// Whether reads of [bus] impose a slot-ordering constraint. Physical input
   /// buses (1-12) are hardware-seeded and never do.
-  static bool busOrdersReads(int bus) => bus > BusSpec.inputMax;
+  static bool busOrdersReads(
+    int bus, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) => deviceIoProfile.contains(bus) && !deviceIoProfile.isInput(bus);
 
   BusFlowSolution solve() {
     final currentOrder = _slots.map((s) => s.id).toList();
@@ -139,7 +148,9 @@ class BusFlowSolver {
         (writersByBus[b] ??= []).add(s.id);
       }
       for (final b in s.reads) {
-        if (busOrdersReads(b)) (readersByBus[b] ??= []).add(s.id);
+        if (busOrdersReads(b, deviceIoProfile: deviceIoProfile)) {
+          (readersByBus[b] ??= []).add(s.id);
+        }
       }
     }
 

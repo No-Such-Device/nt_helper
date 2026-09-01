@@ -79,9 +79,27 @@ class SlotEditorActionBar extends StatelessWidget {
               PopupMenuItem(
                 value: 'Reset Outputs',
                 onTap: () {
+                  final distingState = context.read<DistingCubit>().state;
+                  if (distingState is! DistingStateSynchronized) return;
+                  final outputParameters = slot.parameters.where(
+                    (parameter) =>
+                        parameter.name.toLowerCase().contains('output') &&
+                        parameter.unit == 1 &&
+                        parameter.min == 0,
+                  );
+                  final maximum = outputParameters.isEmpty
+                      ? 0
+                      : outputParameters
+                            .map((parameter) => parameter.max)
+                            .reduce(
+                              (left, right) => left < right ? left : right,
+                            );
                   showResetOutputsDialog(
                     context: context,
                     initialCvInput: 0,
+                    deviceIoProfile: distingState.deviceIoProfile,
+                    minimum: 0,
+                    maximum: maximum,
                     onReset: (outputIndex) {
                       context.read<DistingCubit>().resetOutputs(
                         slot,

@@ -296,6 +296,7 @@ void main() {
       // Create routing from slot
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'mixer_test_1',
       );
 
@@ -408,6 +409,7 @@ void main() {
       // Create routing from slot
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'mixer_test_2',
       );
 
@@ -441,6 +443,7 @@ void main() {
       );
       final monoRouting = AlgorithmRouting.fromSlot(
         monoSlot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'mixer_test_3',
       );
       final monoSendOutputs = monoRouting.outputPorts
@@ -460,6 +463,7 @@ void main() {
       );
       final stereoRouting = AlgorithmRouting.fromSlot(
         stereoSlot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'mixer_test_4',
       );
       final stereoSendOutputs = stereoRouting.outputPorts
@@ -481,6 +485,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'mixer_test_5',
       );
       final sendOutputs = routing.outputPorts

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/cubit/routing_editor_cubit.dart';
 import 'package:nt_helper/cubit/routing_editor_state.dart';
 import 'package:nt_helper/models/routing_information.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/util/routing_analyzer.dart';
 import 'package:nt_helper/util/routing_info_builder.dart';
 
@@ -36,7 +36,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
         return prev.algorithms != curr.algorithms ||
             prev.connections != curr.connections ||
             prev.portOutputModes != curr.portOutputModes ||
-            prev.hasExtendedAuxBuses != curr.hasExtendedAuxBuses;
+            prev.deviceIoProfile != curr.deviceIoProfile;
       },
       builder: (context, state) {
         return state.when(
@@ -44,6 +44,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
           disconnected: () => const Center(child: Text('Disconnected')),
           loaded:
               (
+                deviceIoProfile,
                 physicalInputs,
                 physicalOutputs,
                 es5Inputs,
@@ -68,7 +69,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
                 context,
                 algorithms: algorithms,
                 portOutputModes: portOutputModes,
-                hasExtendedAuxBuses: hasExtendedAuxBuses,
+                deviceIoProfile: deviceIoProfile,
               ),
         );
       },
@@ -79,9 +80,13 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     BuildContext context, {
     required List<RoutingAlgorithm> algorithms,
     required Map<String, OutputMode> portOutputModes,
-    required bool hasExtendedAuxBuses,
+    required DeviceIoProfile deviceIoProfile,
   }) {
-    final routing = buildRoutingInfoFromEditor(algorithms, portOutputModes);
+    final routing = buildRoutingInfoFromEditor(
+      algorithms,
+      portOutputModes,
+      deviceIoProfile: deviceIoProfile,
+    );
     if (routing.isEmpty) {
       return Center(
         child: Text(
@@ -93,13 +98,16 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       );
     }
 
-    final analyzer = RoutingAnalyzer(routing: routing);
+    final analyzer = RoutingAnalyzer(
+      routing: routing,
+      deviceIoProfile: deviceIoProfile,
+    );
     final slotCount = routing.length;
     final signals = analyzer.signals;
     final numBuses = _computeVisibleBusCount(
       signals,
       routing,
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
+      deviceIoProfile: deviceIoProfile,
     );
 
     final theme = Theme.of(context);
@@ -153,8 +161,11 @@ class _RoutingTableViewState extends State<RoutingTableView> {
               width: _cellWidth,
               height: _cellHeight,
               alignment: Alignment.center,
-              color: _headerBg(ch, scheme),
-              child: Text(_columnLabel(ch), style: headerStyle),
+              color: _headerBg(ch, scheme, deviceIoProfile),
+              child: Text(
+                _columnLabel(ch, deviceIoProfile),
+                style: headerStyle,
+              ),
             ),
         ],
       ),
@@ -213,6 +224,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
                 usedBg: usedBg,
                 unusedBg: unusedBg,
                 cellStyle: cellStyle,
+                deviceIoProfile: deviceIoProfile,
               ),
           ],
         ),
@@ -260,8 +272,11 @@ class _RoutingTableViewState extends State<RoutingTableView> {
               width: _cellWidth,
               height: _cellHeight,
               alignment: Alignment.center,
-              color: _headerBg(ch, scheme),
-              child: Text(_columnLabel(ch), style: headerStyle),
+              color: _headerBg(ch, scheme, deviceIoProfile),
+              child: Text(
+                _columnLabel(ch, deviceIoProfile),
+                style: headerStyle,
+              ),
             ),
         ],
       ),
@@ -355,6 +370,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     required Color usedBg,
     required Color unusedBg,
     required TextStyle? cellStyle,
+    required DeviceIoProfile deviceIoProfile,
   }) {
     final levelBefore = ch < signalsBefore.length ? signalsBefore[ch] : 0;
     final isUsed = (usedMask & (1 << ch)) != 0;
@@ -376,7 +392,10 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       height: _cellHeight,
       alignment: Alignment.center,
       color: bgColor,
-      child: Text(_condensedChannelLabel(ch), style: cellStyle),
+      child: Text(
+        _condensedChannelLabel(ch, deviceIoProfile),
+        style: cellStyle,
+      ),
     );
   }
 
@@ -408,10 +427,17 @@ class _RoutingTableViewState extends State<RoutingTableView> {
   int _computeVisibleBusCount(
     List<List<int>> signals,
     List<RoutingInformation> routing, {
-    required bool hasExtendedAuxBuses,
+    required DeviceIoProfile deviceIoProfile,
   }) {
-    final maxBus = hasExtendedAuxBuses ? BusSpec.extendedMax : BusSpec.max;
-    int highestUsed = BusSpec.outputMax;
+    final es5Buses = deviceIoProfile.contextualEs5Buses;
+    final maxBus = es5Buses.isEmpty ? deviceIoProfile.maxBus : es5Buses.last;
+    final outputBuses = deviceIoProfile.outputBuses;
+    final inputBuses = deviceIoProfile.inputBuses;
+    int highestUsed = outputBuses.isNotEmpty
+        ? outputBuses.last
+        : inputBuses.isNotEmpty
+        ? inputBuses.last
+        : 0;
     for (final info in routing) {
       final usedMask =
           info.routingInfo[0] | info.routingInfo[1] | info.routingInfo[5];
@@ -432,30 +458,35 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     return highestUsed;
   }
 
-  Color _headerBg(int ch, ColorScheme colorScheme) {
-    if (ch <= BusSpec.inputMax) {
+  Color _headerBg(
+    int ch,
+    ColorScheme colorScheme,
+    DeviceIoProfile deviceIoProfile,
+  ) {
+    if (deviceIoProfile.isInput(ch)) {
       return colorScheme.surfaceContainerHighest;
     }
-    if (ch <= BusSpec.outputMax) {
+    if (deviceIoProfile.isOutput(ch)) {
       return colorScheme.secondaryContainer;
     }
     return colorScheme.tertiaryContainer;
   }
 
-  String _columnLabel(int ch) {
-    if (ch <= BusSpec.inputMax) return 'I$ch';
-    if (ch <= BusSpec.outputMax) return 'O${ch - BusSpec.inputMax}';
-    return 'A${ch - BusSpec.outputMax}';
+  String _columnLabel(int ch, DeviceIoProfile deviceIoProfile) {
+    final local = deviceIoProfile.localNumber(ch);
+    return switch (deviceIoProfile.groupOf(ch)) {
+      DeviceBusGroup.input => 'I$local',
+      DeviceBusGroup.output => 'O$local',
+      DeviceBusGroup.aux => 'A$local',
+      null =>
+        deviceIoProfile.contextualEs5Buses.indexOf(ch) == 0
+            ? 'ES-L'
+            : deviceIoProfile.contextualEs5Buses.indexOf(ch) == 1
+            ? 'ES-R'
+            : '$ch',
+    };
   }
 
-  String _condensedChannelLabel(int ch) {
-    int c = ch;
-    if (c > BusSpec.inputMax) {
-      c -= BusSpec.inputMax;
-      if (c > (BusSpec.outputMax - BusSpec.inputMax)) {
-        c -= (BusSpec.outputMax - BusSpec.inputMax);
-      }
-    }
-    return '$c';
-  }
+  String _condensedChannelLabel(int ch, DeviceIoProfile deviceIoProfile) =>
+      '${deviceIoProfile.localNumber(ch) ?? ch}';
 }

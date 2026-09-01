@@ -344,6 +344,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'usb_test',
         );
         final connections = ConnectionDiscoveryService.discoverConnections([
@@ -395,6 +396,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'clock_test',
         );
         final connections = ConnectionDiscoveryService.discoverConnections([
@@ -443,6 +445,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'euclidean_test',
         );
         final connections = ConnectionDiscoveryService.discoverConnections([
@@ -484,6 +487,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'es5e_test',
         );
         final connections = ConnectionDiscoveryService.discoverConnections([
@@ -620,13 +624,26 @@ void main() {
 
         final slots = [usbSlot, clockSlot, euclideanSlot, es5EncoderSlot];
         final routings = [
-          AlgorithmRouting.fromSlot(usbSlot, algorithmUuid: 'usb_test'),
-          AlgorithmRouting.fromSlot(clockSlot, algorithmUuid: 'clock_test'),
+          AlgorithmRouting.fromSlot(
+            usbSlot,
+            deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+            algorithmUuid: 'usb_test',
+          ),
+          AlgorithmRouting.fromSlot(
+            clockSlot,
+            deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+            algorithmUuid: 'clock_test',
+          ),
           AlgorithmRouting.fromSlot(
             euclideanSlot,
+            deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
             algorithmUuid: 'euclidean_test',
           ),
-          AlgorithmRouting.fromSlot(es5EncoderSlot, algorithmUuid: 'es5e_test'),
+          AlgorithmRouting.fromSlot(
+            es5EncoderSlot,
+            deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+            algorithmUuid: 'es5e_test',
+          ),
         ];
         final connections = ConnectionDiscoveryService.discoverConnections(
           routings,

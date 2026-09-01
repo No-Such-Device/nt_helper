@@ -1,5 +1,6 @@
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'es5_direct_output_algorithm_routing.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Specialized routing implementation for the Euclidean algorithm.
 ///
@@ -30,6 +31,7 @@ class EuclideanAlgorithmRouting extends Es5DirectOutputAlgorithmRouting {
   /// the base routing extraction, but customizes output generation for ES-5 support.
   static EuclideanAlgorithmRouting createFromSlot(
     Slot slot, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
     required Map<String, int> ioParameters,
     Map<String, int>? modeParameters,
     Map<String, ({int parameterNumber, int value})>? modeParametersWithNumbers,
@@ -37,6 +39,7 @@ class EuclideanAlgorithmRouting extends Es5DirectOutputAlgorithmRouting {
   }) {
     return Es5DirectOutputAlgorithmRouting.createFromSlotWithConfig(
       slot,
+      deviceIoProfile: deviceIoProfile,
       ioParameters: ioParameters,
       modeParameters: modeParameters,
       modeParametersWithNumbers: modeParametersWithNumbers,

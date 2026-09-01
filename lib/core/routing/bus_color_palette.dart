@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Deterministic colors for bus "wires" in the Bus Lanes view.
 ///
@@ -19,25 +19,29 @@ class BusColorPalette {
   /// (1-12), physical outputs (13-20) and aux/ES-5 (21+) trending toward
   /// different parts of the wheel while the golden-angle term keeps individual
   /// buses distinct.
-  static double _hue(int bus) {
-    final groupOffset = bus <= BusSpec.inputMax
+  static double _hue(int bus, DeviceIoProfile profile) {
+    final groupOffset = profile.isInput(bus)
         ? 90.0 // greens
-        : bus <= BusSpec.outputMax
+        : profile.isOutput(bus)
         ? 0.0 // reds/oranges
         : 210.0; // blues/purples
     return (groupOffset + bus * _goldenAngle) % 360.0;
   }
 
-  static HSLColor _baseHsl(int bus, bool isDark) => HSLColor.fromAHSL(
-    1.0,
-    _hue(bus),
-    isDark ? 0.55 : 0.65,
-    isDark ? 0.62 : 0.45,
-  );
+  static HSLColor _baseHsl(int bus, bool isDark, DeviceIoProfile profile) =>
+      HSLColor.fromAHSL(
+        1.0,
+        _hue(bus, profile),
+        isDark ? 0.55 : 0.65,
+        isDark ? 0.62 : 0.45,
+      );
 
   /// The bus's representative color (for legends/labels and the first session).
-  static Color baseColor(int bus, {bool isDark = false}) =>
-      _baseHsl(bus, isDark).toColor();
+  static Color baseColor(
+    int bus, {
+    bool isDark = false,
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) => _baseHsl(bus, isDark, deviceIoProfile).toColor();
 
   /// Color for a signal, keyed by its origination order (which output started
   /// it) rather than the bus it travels on. Spread via the golden angle so
@@ -59,8 +63,13 @@ class BusColorPalette {
   /// Color for a contiguous driven segment ("session"). Each Replace increments
   /// [sessionIndex], shifting the tone noticeably so the cap + restart is
   /// obvious while the wire stays recognizably the same bus.
-  static Color sessionColor(int bus, int sessionIndex, {bool isDark = false}) {
-    final h = _baseHsl(bus, isDark);
+  static Color sessionColor(
+    int bus,
+    int sessionIndex, {
+    bool isDark = false,
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) {
+    final h = _baseHsl(bus, isDark, deviceIoProfile);
     final hueShift = sessionIndex * 48.0;
     final lightBump = sessionIndex.isOdd ? (isDark ? 0.12 : -0.10) : 0.0;
     return h

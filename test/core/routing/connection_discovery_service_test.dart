@@ -4,6 +4,7 @@ import 'package:nt_helper/core/routing/connection_discovery_service.dart';
 import 'package:nt_helper/core/routing/models/connection.dart';
 import 'package:nt_helper/core/routing/models/port.dart' as core;
 import 'package:nt_helper/core/routing/models/routing_state.dart';
+import 'package:nt_helper/core/routing/usb_from_algorithm_routing.dart';
 
 /// Minimal fake routing for testing discovery; provides only ports/state.
 class _FakeRouting extends AlgorithmRouting {
@@ -43,6 +44,22 @@ class _FakeRouting extends AlgorithmRouting {
 
   @override
   void updateState(RoutingState newState) => _state = newState;
+}
+
+/// USB From Host test double. ES-5 is intentionally contextual to this routing
+/// implementation rather than being a general-purpose bus range.
+class _FakeUsbFromRouting extends UsbFromAlgorithmRouting {
+  final List<core.Port> _outputs;
+
+  _FakeUsbFromRouting({required String id, required List<core.Port> outputs})
+    : _outputs = outputs,
+      super(properties: const {}, algorithmUuid: id);
+
+  @override
+  List<core.Port> get outputPorts => _outputs;
+
+  @override
+  List<core.Port> generateOutputPorts() => _outputs;
 }
 
 core.Port _inPort(
@@ -202,7 +219,7 @@ void main() {
     });
 
     test('ES-5 bus 29 creates connection to es5_L port', () {
-      final a = _FakeRouting(
+      final a = _FakeUsbFromRouting(
         id: 'algo_A',
         outputs: [_outPort('A_out_b29', 29)],
       );
@@ -223,7 +240,7 @@ void main() {
     });
 
     test('ES-5 bus 30 creates connection to es5_R port', () {
-      final a = _FakeRouting(
+      final a = _FakeUsbFromRouting(
         id: 'algo_A',
         outputs: [_outPort('A_out_b30', 30)],
       );
@@ -246,7 +263,7 @@ void main() {
     test(
       'mixed USB outputs (ES-5 and standard) create correct connections',
       () {
-        final usbFromHost = _FakeRouting(
+        final usbFromHost = _FakeUsbFromRouting(
           id: 'usb_from_host',
           outputs: [
             _outPort('usb_ch1', 13), // Standard output 1
@@ -309,7 +326,7 @@ void main() {
     );
 
     test('firmware 1.15+: bus 65 creates ES-5 L, bus 29 becomes aux', () {
-      final usbFromHost = _FakeRouting(
+      final usbFromHost = _FakeUsbFromRouting(
         id: 'usb_from_host',
         outputs: [
           _outPort('usb_ch1', 65), // ES-5 L on 1.15+
@@ -369,7 +386,7 @@ void main() {
     });
 
     test('legacy firmware: bus 29 creates ES-5 L, bus 65 is not ES-5', () {
-      final a = _FakeRouting(
+      final a = _FakeUsbFromRouting(
         id: 'algo_A',
         outputs: [_outPort('A_out_b29', 29)],
       );

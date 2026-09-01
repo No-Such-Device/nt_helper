@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:nt_helper/core/routing/algorithm_routing.dart' as core_routing;
 import 'package:nt_helper/core/routing/bus_color_palette.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/cubit/routing_editor_cubit.dart';
@@ -14,6 +13,8 @@ import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_lanes_painter.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_picker_dialog.dart';
+import 'package:nt_helper/ui/widgets/routing/bus_selection_model.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Graphical, bus-centric routing view. Buses are vertical colored lanes
 /// (tubes). Each algorithm is a block whose individual inputs (top rows) and
@@ -52,7 +53,7 @@ class _BusLanesViewState extends State<BusLanesView> {
 
   BusLanesMetrics? _lastMetrics;
   List<int> _lastVisibleBuses = const [];
-  bool _lastHasExtended = false;
+  DeviceIoProfile _lastProfile = DeviceIoProfile.distingExtended;
 
   /// Reorder responds to mouse/touch press-drag only. Trackpad two-finger
   /// swipes are reserved for scrolling, so they're excluded here — otherwise
@@ -151,6 +152,7 @@ class _BusLanesViewState extends State<BusLanesView> {
             return prev.algorithms != curr.algorithms ||
                 prev.connections != curr.connections ||
                 prev.portOutputModes != curr.portOutputModes ||
+                prev.deviceIoProfile != curr.deviceIoProfile ||
                 prev.hasExtendedAuxBuses != curr.hasExtendedAuxBuses;
           },
           builder: (context, state) {
@@ -170,7 +172,7 @@ class _BusLanesViewState extends State<BusLanesView> {
             final data = _buildData(
               state.algorithms,
               state.portOutputModes,
-              state.hasExtendedAuxBuses,
+              state.deviceIoProfile,
               isDark,
             );
             if (data == null) {
@@ -712,7 +714,8 @@ class _BusLanesViewState extends State<BusLanesView> {
     // Determine if the algorithm is USB Audio (from Host) — only usbf outputs
     // may target the ES-5 expansion buses.
     bool isUsbf = false;
-    final state = context.read<RoutingEditorCubit>().state;
+    final cubit = context.read<RoutingEditorCubit>();
+    final state = cubit.state;
     if (state is RoutingEditorStateLoaded) {
       for (final algo in state.algorithms) {
         if (algo.index == ref.algorithmIndex) {
@@ -722,32 +725,25 @@ class _BusLanesViewState extends State<BusLanesView> {
       }
     }
 
-    final auxMax = _lastHasExtended ? BusSpec.auxMaxExtended : BusSpec.auxMax;
-    final es5Min = _lastHasExtended ? BusSpec.es5MinExtended : BusSpec.es5Min;
-    final es5Max = _lastHasExtended ? BusSpec.es5MaxExtended : BusSpec.es5Max;
+    final range = cubit.busParameterRange(
+      algorithmIndex: ref.algorithmIndex,
+      parameterNumber: ref.parameterNumber,
+    );
+    if (range == null) return;
 
-    final buses = <int>[];
-    void addRange(int from, int to) {
-      for (var b = from; b <= to; b++) {
-        if (!buses.contains(b)) buses.add(b);
-      }
-    }
-
-    addRange(BusSpec.inputMin, BusSpec.inputMax);
-    addRange(BusSpec.outputMin, BusSpec.outputMax);
-    addRange(BusSpec.auxMin, auxMax);
-    if (isUsbf) addRange(es5Min, es5Max);
-    if (buses.isEmpty) return;
+    final model = BusSelectionModel.fromProfile(
+      deviceIoProfile: _lastProfile,
+      currentValue: ref.previousBus,
+      minimum: range.min,
+      maximum: range.max,
+      allowNone: range.min <= 0,
+      includeEs5: isUsbf,
+    );
+    if (!model.hasSelectableValue) return;
 
     final choice = await showDialog<int>(
       context: context,
-      builder: (ctx) => BusPickerDialog(
-        portLabel: ref.label,
-        currentBus: ref.previousBus,
-        availableBuses: buses,
-        showEs5: isUsbf,
-        busLabel: _busLabel,
-      ),
+      builder: (ctx) => BusPickerDialog(portLabel: ref.label, model: model),
     );
     if (choice == null || !mounted || !context.mounted) return;
     if (choice == ref.previousBus) return;
@@ -793,17 +789,18 @@ class _BusLanesViewState extends State<BusLanesView> {
 
   String _busLabel(int bus) {
     if (bus <= 0) return 'None';
-    if (bus <= BusSpec.inputMax) return 'I$bus';
-    if (bus <= BusSpec.outputMax) return 'O${bus - BusSpec.inputMax}';
-    final auxMax = _lastHasExtended ? BusSpec.auxMaxExtended : BusSpec.auxMax;
-    if (bus <= auxMax) return 'A${bus - BusSpec.outputMax}';
-    return 'ES${bus - auxMax}';
+    final local = _lastProfile.localNumber(bus);
+    if (_lastProfile.isInput(bus)) return 'I$local';
+    if (_lastProfile.isOutput(bus)) return 'O$local';
+    if (_lastProfile.isAux(bus)) return 'A$local';
+    final es5Index = _lastProfile.contextualEs5Buses.indexOf(bus);
+    return es5Index >= 0 ? 'ES${es5Index + 1}' : 'Bus $bus';
   }
 
   _BusLanesData? _buildData(
     List<RoutingAlgorithm> algorithms,
     Map<String, OutputMode> portOutputModes,
-    bool hasExtendedAuxBuses,
+    DeviceIoProfile deviceIoProfile,
     bool isDark,
   ) {
     final slots = List<RoutingAlgorithm>.from(algorithms)
@@ -826,14 +823,18 @@ class _BusLanesViewState extends State<BusLanesView> {
     // first lane; as buses get used they appear in order; when the last user of
     // a bus is removed it collapses out of the diagram. Any bus is reachable by
     // dropping a bead on "＋".
-    final maxBus = hasExtendedAuxBuses
-        ? BusSpec.es5MaxExtended
-        : BusSpec.es5Max;
-    final visible = usedBuses.where((b) => b >= 1 && b <= maxBus).toList()
-      ..sort();
+    final visible =
+        usedBuses
+            .where(
+              (bus) =>
+                  deviceIoProfile.contains(bus) ||
+                  deviceIoProfile.contextualEs5Buses.contains(bus),
+            )
+            .toList()
+          ..sort();
     final railIndex = {for (var i = 0; i < visible.length; i++) visible[i]: i};
     _lastVisibleBuses = visible;
-    _lastHasExtended = hasExtendedAuxBuses;
+    _lastProfile = deviceIoProfile;
 
     final cardHeights = [
       for (final a in slots)
@@ -875,7 +876,7 @@ class _BusLanesViewState extends State<BusLanesView> {
         final b = p.busValue;
         // Output-originated signal ids start past inputMax so they never
         // collide with physical-input ids (which use the bus number, 1-12).
-        final origin = BusSpec.inputMax + 1 + outputOrdinal;
+        final origin = deviceIoProfile.inputBusCount + 1 + outputOrdinal;
         outputOrdinal++;
         if (b != null && b > 0 && railIndex.containsKey(b)) {
           (writeYsByBus[b] ??= []).add((
@@ -901,7 +902,7 @@ class _BusLanesViewState extends State<BusLanesView> {
         <int, List<({double y, Color color, bool driven, bool cap})>>{};
     final rails = <BusRailRender>[];
     for (final b in visible) {
-      final isInput = BusSpec.isPhysicalInput(b);
+      final isInput = deviceIoProfile.isInput(b);
       final writes = writeYsByBus[b] ?? const [];
 
       final changes = <({double y, Color color, bool driven, bool cap})>[];

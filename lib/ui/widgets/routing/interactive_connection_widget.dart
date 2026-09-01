@@ -6,6 +6,7 @@ import 'package:nt_helper/core/routing/models/connection.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/cubit/routing_editor_cubit.dart';
 import 'package:nt_helper/cubit/routing_editor_state.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/ui/widgets/routing/connection_painter.dart'
     as painter;
 
@@ -384,6 +385,9 @@ class _InteractiveConnectionWidgetState
       final hasExtended =
           editorState is RoutingEditorStateLoaded &&
           editorState.hasExtendedAuxBuses;
+      final deviceIoProfile = editorState is RoutingEditorStateLoaded
+          ? editorState.deviceIoProfile
+          : DeviceIoProfile.distingExtended;
 
       if (!_platformService.supportsHoverInteractions()) {
         // Mobile: just render the connection without hover
@@ -400,6 +404,7 @@ class _InteractiveConnectionWidgetState
               theme: Theme.of(context),
               showLabels: true,
               hasExtendedAuxBuses: hasExtended,
+              deviceIoProfile: deviceIoProfile,
             ),
           ),
         );
@@ -425,6 +430,7 @@ class _InteractiveConnectionWidgetState
                     ? widget.connectionData!.connection.id
                     : null,
                 hasExtendedAuxBuses: hasExtended,
+                deviceIoProfile: deviceIoProfile,
               ),
             ),
 

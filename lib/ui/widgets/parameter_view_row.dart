@@ -7,6 +7,7 @@ import 'package:haptic_feedback/haptic_feedback.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart' show DisplayMode;
 import 'package:nt_helper/models/packed_mapping_data.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:nt_helper/ui/bpm_editor_widget.dart';
 import 'package:nt_helper/ui/parameter_editor_registry.dart';
@@ -202,14 +203,14 @@ class _ParameterViewRowState extends State<ParameterViewRow> {
     // and a flat enum dropdown.
     final bool isRoutingParameter = widget.isRoutingParameter;
     final bool routingShowEs5 = widget.slot.algorithm.guid == 'usbf';
-    final bool routingHasExtendedAuxBuses = isRoutingParameter
+    final DeviceIoProfile routingDeviceIoProfile = isRoutingParameter
         ? () {
             final state = context.read<DistingCubit>().state;
             return state is DistingStateSynchronized
-                ? state.firmwareVersion.hasExtendedAuxBuses
-                : false;
+                ? state.deviceIoProfile
+                : DeviceIoProfile.distingLegacy;
           }()
-        : false;
+        : DeviceIoProfile.distingLegacy;
 
     final innerRow = Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 0.0),
@@ -427,7 +428,7 @@ class _ParameterViewRowState extends State<ParameterViewRow> {
                       parameterMin: widget.min,
                       parameterMax: widget.max,
                       showEs5: routingShowEs5,
-                      hasExtendedAuxBuses: routingHasExtendedAuxBuses,
+                      deviceIoProfile: routingDeviceIoProfile,
                       canDisconnect: widget.min <= 0 && widget.max >= 0,
                       enabled: widget.parameterValueEditingEnabled,
                       onValueChanged: (newValue) {

@@ -1,10 +1,11 @@
 import 'algorithm_routing.dart';
 import 'es5_encoder_algorithm_routing.dart';
+import 'usb_from_algorithm_routing.dart';
 import 'models/port.dart';
 import 'models/connection.dart';
-import 'bus_spec.dart';
 import 'bus_session_resolver.dart';
 import '../../ui/widgets/routing/bus_label_formatter.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Service for discovering connections between algorithms based on shared bus assignments.
 ///
@@ -21,8 +22,14 @@ class ConnectionDiscoveryService {
   /// Returns a list of Connection objects representing discovered connections
   static List<Connection> discoverConnections(
     List<AlgorithmRouting> routings, {
+    DeviceIoProfile? deviceIoProfile,
     bool hasExtendedAuxBuses = false,
   }) {
+    final profile =
+        deviceIoProfile ??
+        (hasExtendedAuxBuses
+            ? DeviceIoProfile.distingExtended
+            : DeviceIoProfile.distingLegacy);
     final connections = <Connection>[];
 
     // Build a bus registry mapping bus numbers to ports
@@ -40,6 +47,8 @@ class ConnectionDiscoveryService {
         i,
         PortRole.busReader,
         busRegistry,
+        profile,
+        allowContextualEs5: routing is UsbFromAlgorithmRouting,
       );
 
       // Register output ports (bus writers)
@@ -49,6 +58,8 @@ class ConnectionDiscoveryService {
         i,
         PortRole.busWriter,
         busRegistry,
+        profile,
+        allowContextualEs5: routing is UsbFromAlgorithmRouting,
       );
     }
 
@@ -81,13 +92,10 @@ class ConnectionDiscoveryService {
       }
       final resolver = builder.build(totalSlots: totalSlots);
 
-      final isHardwareInput = BusSpec.isPhysicalInput(busNumber);
+      final isHardwareInput = profile.isInput(busNumber);
       final isHardwareOutput =
-          BusSpec.isPhysicalOutput(busNumber) ||
-          BusSpec.isEs5ForFirmware(
-            busNumber,
-            hasExtendedAuxBuses: hasExtendedAuxBuses,
-          );
+          profile.isOutput(busNumber) ||
+          profile.contextualEs5Buses.contains(busNumber);
 
       // Algorithm-to-algorithm: connect only from contributing writers for each reader slot.
       // Skip when the bus is a physical bus (inputs 1-12 or outputs 13-20) AND there are
@@ -95,7 +103,7 @@ class ConnectionDiscoveryService {
       // (writer → hw node → reader). ES-5 and AUX buses use direct algo-to-algo.
       final isPhysicalBusWithOutputs =
           outputs.isNotEmpty &&
-          (BusSpec.isPhysicalOutput(busNumber) ||
+          (profile.isOutput(busNumber) ||
               (isHardwareInput && outputs.isNotEmpty));
       if (outputs.isNotEmpty &&
           inputs.isNotEmpty &&
@@ -177,7 +185,7 @@ class ConnectionDiscoveryService {
           );
           if (!contributes && outputs.isEmpty) continue;
           connections.addAll(
-            _createHardwareInputConnections(busNumber, [input]),
+            _createHardwareInputConnections(busNumber, [input], profile),
           );
           matchedPorts.add(input.portId);
         }
@@ -187,7 +195,7 @@ class ConnectionDiscoveryService {
       // This creates the writer → hw_in_N path (symmetric with output buses).
       if (isHardwareInput && outputs.isNotEmpty) {
         connections.addAll(
-          _createHardwareInputWriteConnections(busNumber, outputs),
+          _createHardwareInputWriteConnections(busNumber, outputs, profile),
         );
         for (final o in outputs) {
           matchedPorts.add(o.portId);
@@ -198,7 +206,9 @@ class ConnectionDiscoveryService {
       if (isHardwareOutput && inputs.isNotEmpty) {
         for (final input in inputs) {
           connections.addAll(
-            _createPhysicalOutputAsInputConnections(busNumber, [input]),
+            _createPhysicalOutputAsInputConnections(busNumber, [
+              input,
+            ], profile),
           );
           matchedPorts.add(input.portId);
         }
@@ -209,11 +219,7 @@ class ConnectionDiscoveryService {
       // (e.g., step sequencers that write on different clock cycles).
       if (isHardwareOutput && outputs.isNotEmpty) {
         connections.addAll(
-          _createHardwareOutputConnections(
-            busNumber,
-            outputs,
-            hasExtendedAuxBuses: hasExtendedAuxBuses,
-          ),
+          _createHardwareOutputConnections(busNumber, outputs, profile),
         );
         for (final o in outputs) {
           matchedPorts.add(o.portId);
@@ -237,7 +243,7 @@ class ConnectionDiscoveryService {
     final partialConnections = _createPartialConnections(
       busRegistry,
       matchedPorts,
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
+      profile,
     );
     connections.addAll(partialConnections);
 
@@ -253,10 +259,21 @@ class ConnectionDiscoveryService {
     int algorithmIndex,
     PortRole role,
     Map<int, List<_PortAssignment>> busRegistry,
-  ) {
+    DeviceIoProfile profile, {
+    required bool allowContextualEs5,
+  }) {
     for (final port in ports) {
+      if (port.busParam == 'es5_direct' ||
+          port.busParam == ES5EncoderAlgorithmRouting.mirrorBusParam) {
+        continue;
+      }
       final busValue = port.busValue;
-      if (busValue != null && busValue > 0) {
+      final isAvailable =
+          busValue != null &&
+          (profile.contains(busValue) ||
+              (allowContextualEs5 &&
+                  profile.contextualEs5Buses.contains(busValue)));
+      if (isAvailable) {
         busRegistry
             .putIfAbsent(busValue, () => [])
             .add(
@@ -281,9 +298,10 @@ class ConnectionDiscoveryService {
   static List<Connection> _createHardwareInputConnections(
     int busNumber,
     List<_PortAssignment> inputs,
+    DeviceIoProfile profile,
   ) {
     final connections = <Connection>[];
-    final hwPortId = 'hw_in_$busNumber';
+    final hwPortId = 'hw_in_${profile.localNumber(busNumber)}';
 
     for (final input in inputs) {
       connections.add(
@@ -312,9 +330,10 @@ class ConnectionDiscoveryService {
   static List<Connection> _createHardwareInputWriteConnections(
     int busNumber,
     List<_PortAssignment> outputs,
+    DeviceIoProfile profile,
   ) {
     final connections = <Connection>[];
-    final hwPortId = 'hw_in_$busNumber';
+    final hwPortId = 'hw_in_${profile.localNumber(busNumber)}';
 
     for (final output in outputs) {
       connections.add(
@@ -345,10 +364,10 @@ class ConnectionDiscoveryService {
   static List<Connection> _createPhysicalOutputAsInputConnections(
     int busNumber,
     List<_PortAssignment> inputs,
+    DeviceIoProfile profile,
   ) {
     final connections = <Connection>[];
-    // Bus 13 -> hw_out_1, Bus 14 -> hw_out_2, ..., Bus 20 -> hw_out_8
-    final hwPortId = 'hw_out_${busNumber - 12}';
+    final hwPortId = 'hw_out_${profile.localNumber(busNumber)}';
 
     for (final input in inputs) {
       connections.add(
@@ -372,20 +391,13 @@ class ConnectionDiscoveryService {
   /// Creates hardware output connections (algorithm outputs to physical hardware)
   static List<Connection> _createHardwareOutputConnections(
     int busNumber,
-    List<_PortAssignment> outputs, {
-    bool hasExtendedAuxBuses = false,
-  }) {
+    List<_PortAssignment> outputs,
+    DeviceIoProfile profile,
+  ) {
     final connections = <Connection>[];
 
-    // Check for ES-5 buses (29-30 on legacy, 65-66 on 1.15+)
-    if (BusSpec.isEs5ForFirmware(
-      busNumber,
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
-    )) {
-      final es5LocalNumber = BusSpec.toLocalNumberForFirmware(
-        busNumber,
-        hasExtendedAuxBuses: hasExtendedAuxBuses,
-      );
+    if (profile.contextualEs5Buses.contains(busNumber)) {
+      final es5LocalNumber = profile.contextualEs5Buses.indexOf(busNumber) + 1;
       final es5PortId = es5LocalNumber == 1 ? 'es5_L' : 'es5_R';
 
       for (final output in outputs) {
@@ -408,8 +420,7 @@ class ConnectionDiscoveryService {
       return connections;
     }
 
-    // Standard hardware output logic (buses 13-20)
-    final hwPortId = 'hw_out_${busNumber - 12}'; // Bus 13->hw_out_1, etc.
+    final hwPortId = 'hw_out_${profile.localNumber(busNumber)}';
 
     for (final output in outputs) {
       connections.add(
@@ -556,9 +567,9 @@ class ConnectionDiscoveryService {
   /// Creates partial connections for unmatched ports with non-zero bus values
   static List<Connection> _createPartialConnections(
     Map<int, List<_PortAssignment>> busRegistry,
-    Set<String> matchedPorts, {
-    bool hasExtendedAuxBuses = false,
-  }) {
+    Set<String> matchedPorts,
+    DeviceIoProfile profile,
+  ) {
     final partialConnections = <Connection>[];
 
     // Process each bus to find unmatched ports
@@ -581,12 +592,12 @@ class ConnectionDiscoveryService {
             ? (BusLabelFormatter.formatBusLabelWithMode(
                     busNumber,
                     port.outputMode,
-                    hasExtendedAuxBuses: hasExtendedAuxBuses,
+                    deviceIoProfile: profile,
                   ) ??
                   'Bus$busNumber')
             : (BusLabelFormatter.formatBusNumber(
                     busNumber,
-                    hasExtendedAuxBuses: hasExtendedAuxBuses,
+                    deviceIoProfile: profile,
                   ) ??
                   'Bus$busNumber');
 

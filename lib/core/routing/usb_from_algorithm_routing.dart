@@ -2,6 +2,7 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'algorithm_routing.dart';
 import 'models/port.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Routing implementation for USB Audio (From Host) algorithm.
 ///
@@ -117,6 +118,7 @@ class UsbFromAlgorithmRouting extends CachedAlgorithmRouting {
   /// - [algorithmUuid]: Optional UUID for the algorithm instance
   static UsbFromAlgorithmRouting createFromSlot(
     Slot slot, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
     required Map<String, int> ioParameters,
     Map<String, ({int parameterNumber, int value})>? modeParametersWithNumbers,
     String? algorithmUuid,
@@ -208,10 +210,12 @@ class UsbFromAlgorithmRouting extends CachedAlgorithmRouting {
       'outputs': outputPorts,
     };
 
-    return UsbFromAlgorithmRouting(
+    final routing = UsbFromAlgorithmRouting(
       properties: properties,
       algorithmUuid: algUuid,
     );
+    routing.deviceIoProfile = deviceIoProfile;
+    return routing;
   }
 
   static List<ParameterInfo> _findUsbToParams(Slot slot) {
@@ -261,8 +265,7 @@ class UsbFromAlgorithmRouting extends CachedAlgorithmRouting {
   /// Compute visible parameter numbers: page membership when available,
   /// or all parameters as fallback for test mocks / offline fixtures.
   static Set<int> _visibleParameterNumbers(Slot slot) {
-    final pageParams =
-        slot.pages.pages.expand((p) => p.parameters).toSet();
+    final pageParams = slot.pages.pages.expand((p) => p.parameters).toSet();
     if (pageParams.isNotEmpty) return pageParams;
     return slot.parameters.map((p) => p.parameterNumber).toSet();
   }

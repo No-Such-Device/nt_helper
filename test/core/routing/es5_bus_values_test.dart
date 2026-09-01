@@ -166,7 +166,7 @@ void main() {
         expect(es5Connection.busNumber, equals(30));
       });
 
-      test('should create connections between algorithms using ES-5 buses', () {
+      test('should not expose ES-5 as a general algorithm bus', () {
         // Create an algorithm outputting to ES-5 L
         final outputSlot = createSlot(
           algorithm: Algorithm(
@@ -243,14 +243,15 @@ void main() {
           inputRouting,
         ]);
 
-        // Should create algorithm-to-algorithm connection via ES-5 L bus
+        // ES-5 choices belong only to USB From Host. Other algorithms cannot
+        // use the values as a private algorithm-to-algorithm bus.
         final algoConnections = connections
             .where(
               (c) => c.connectionType == ConnectionType.algorithmToAlgorithm,
             )
             .toList();
 
-        expect(algoConnections, isNotEmpty);
+        expect(algoConnections, isEmpty);
       });
     });
 

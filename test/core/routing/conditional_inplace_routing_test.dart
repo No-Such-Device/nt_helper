@@ -14,7 +14,11 @@ void main() {
         outputBus: 0,
       );
 
-      final routing = AlgorithmRouting.fromSlot(slot, algorithmUuid: 'attn_t');
+      final routing = AlgorithmRouting.fromSlot(
+        slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+        algorithmUuid: 'attn_t',
+      );
 
       expect(
         routing.outputPorts.length,
@@ -37,7 +41,11 @@ void main() {
         outputBus: 7,
       );
 
-      final routing = AlgorithmRouting.fromSlot(slot, algorithmUuid: 'attn_t');
+      final routing = AlgorithmRouting.fromSlot(
+        slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+        algorithmUuid: 'attn_t',
+      );
 
       final out = routing.outputPorts.firstWhere((p) => p.parameterNumber == 1);
       expect(out.busValue, equals(7));
@@ -55,6 +63,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'attn_t',
         );
 
@@ -73,7 +82,11 @@ void main() {
         outputBus: 0,
       );
 
-      final routing = AlgorithmRouting.fromSlot(slot, algorithmUuid: 'vcam_t');
+      final routing = AlgorithmRouting.fromSlot(
+        slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+        algorithmUuid: 'vcam_t',
+      );
 
       expect(routing.outputPorts.length, equals(1));
       final out = routing.outputPorts.single;
@@ -96,6 +109,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'unkn_t',
         );
 

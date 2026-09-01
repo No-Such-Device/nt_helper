@@ -7,7 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/db/daos/metadata_dao.dart'; // Added
 import 'package:nt_helper/db/daos/presets_dao.dart'; // Added
 import 'package:nt_helper/db/database.dart'; // Added
@@ -21,6 +20,7 @@ import 'package:nt_helper/domain/offline_disting_midi_manager.dart';
 import 'package:nt_helper/domain/parameter_update_queue.dart';
 import 'package:nt_helper/domain/sd_card_operation.dart';
 import 'package:nt_helper/models/cpu_usage.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:nt_helper/models/package_file.dart';
 import 'package:nt_helper/models/plugin_info.dart';
@@ -28,6 +28,7 @@ import 'package:nt_helper/models/routing_information.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/models/firmware_release.dart';
 import 'package:nt_helper/models/performance_page_item.dart';
+import 'package:nt_helper/models/slot_count_info.dart';
 import 'package:nt_helper/services/firmware_version_service.dart';
 import 'package:nt_helper/ui/parameter_editor_registry.dart';
 import 'package:nt_helper/services/settings_service.dart';
@@ -196,6 +197,7 @@ class DistingCubit extends _DistingCubitBase
             disting,
             distingVersion,
             firmwareVersion,
+            deviceIoProfile,
             presetName,
             algorithms,
             slots,

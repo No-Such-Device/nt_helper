@@ -248,6 +248,7 @@ class _ParameterPageContent extends StatelessWidget {
                 disting,
                 distingVersion,
                 firmwareVersion,
+                deviceIoProfile,
                 presetName,
                 algorithms,
                 slots,

@@ -8,6 +8,15 @@ import 'package:nt_helper/models/performance_page_item.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/models/cpu_usage.dart';
 import 'package:nt_helper/models/sd_card_file_system.dart';
+import 'package:nt_helper/models/slot_count_info.dart';
+
+/// Optional extended 0x60 capability implemented by live MIDI managers.
+abstract interface class SlotCountInfoProvider {
+  Future<SlotCountInfo?> requestSlotCountInfo({
+    Duration? timeout,
+    int? maxRetries,
+  });
+}
 
 /// Abstract interface for Disting MIDI communication.
 /// Allows for mocking or different implementations.
@@ -161,4 +170,28 @@ abstract class IDistingMidiManager {
 
   /// Returns slow Algorithm Info requests by algorithm index (>50ms).
   Map<int, double>? getSlowAlgorithmInfo() => null;
+}
+
+/// Backwards-compatible extended slot-count request.
+///
+/// Existing manager adapters only need to implement the legacy count method;
+/// live managers implementing [SlotCountInfoProvider] expose bus topology too.
+extension SlotCountInfoRequest on IDistingMidiManager {
+  Future<SlotCountInfo?> requestSlotCountInfo({
+    Duration? timeout,
+    int? maxRetries,
+  }) async {
+    final manager = this;
+    if (manager is SlotCountInfoProvider) {
+      return manager.requestSlotCountInfo(
+        timeout: timeout,
+        maxRetries: maxRetries,
+      );
+    }
+    final slotCount = await requestNumAlgorithmsInPreset(
+      timeout: timeout,
+      maxRetries: maxRetries,
+    );
+    return slotCount == null ? null : SlotCountInfo(slotCount: slotCount);
+  }
 }

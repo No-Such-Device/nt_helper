@@ -1,36 +1,26 @@
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart' show ParameterInfo;
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Dynamic bus mapping utilities for MCP tools.
-/// Maps between bus numbers and human-friendly names using [BusSpec].
+/// Maps between bus numbers and human-friendly names using a device profile.
 class BusMapping {
   /// Convert bus number to human-friendly name.
   /// Returns "None" for 0, "Input 1"-"Input 12", "Output 1"-"Output 8",
   /// "Aux 1"-"Aux N", "ES-5 L"/"ES-5 R", or "Unknown (N)" for unrecognized.
-  static String busToName(int busNumber, {required bool hasExtendedAuxBuses}) {
+  static String busToName(
+    int busNumber, {
+    DeviceIoProfile? deviceIoProfile,
+    bool hasExtendedAuxBuses = false,
+    bool includeEs5 = true,
+  }) {
+    final profile = _profile(deviceIoProfile, hasExtendedAuxBuses);
     if (busNumber == 0) return 'None';
-    if (BusSpec.isPhysicalInput(busNumber)) {
-      return 'Input $busNumber';
-    }
-    if (BusSpec.isPhysicalOutput(busNumber)) {
-      return 'Output ${busNumber - (BusSpec.outputMin - 1)}';
-    }
-    if (BusSpec.isEs5ForFirmware(
-      busNumber,
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
-    )) {
-      final local = hasExtendedAuxBuses
-          ? busNumber - (BusSpec.es5MinExtended - 1)
-          : busNumber - (BusSpec.es5Min - 1);
+    final es5Index = profile.contextualEs5Buses.indexOf(busNumber);
+    if (includeEs5 && es5Index >= 0) {
+      final local = es5Index + 1;
       return local == 1 ? 'ES-5 L' : 'ES-5 R';
     }
-    if (BusSpec.isAuxForFirmware(
-      busNumber,
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
-    )) {
-      return 'Aux ${busNumber - (BusSpec.auxMin - 1)}';
-    }
-    return 'Unknown ($busNumber)';
+    return profile.labelForBus(busNumber) ?? 'Unknown ($busNumber)';
   }
 
   static final _namePattern = RegExp(
@@ -40,7 +30,13 @@ class BusMapping {
 
   /// Convert human-friendly name to bus number.
   /// Case-insensitive. Returns null for unrecognized names.
-  static int? nameToBus(String name, {required bool hasExtendedAuxBuses}) {
+  static int? nameToBus(
+    String name, {
+    DeviceIoProfile? deviceIoProfile,
+    bool hasExtendedAuxBuses = false,
+    bool includeEs5 = true,
+  }) {
+    final profile = _profile(deviceIoProfile, hasExtendedAuxBuses);
     final trimmed = name.trim();
     if (trimmed.isEmpty) return null;
 
@@ -56,31 +52,20 @@ class BusMapping {
       case 'input':
         if (suffix == null) return null;
         final n = int.tryParse(suffix);
-        if (n == null || n < 1 || n > BusSpec.inputMax) return null;
-        return n;
+        if (n == null) return null;
+        return profile.busForLocalNumber(DeviceBusGroup.input, n);
       case 'output':
         if (suffix == null) return null;
         final n = int.tryParse(suffix);
-        if (n == null || n < 1 || n > 8) return null;
-        return BusSpec.outputMin - 1 + n;
+        if (n == null) return null;
+        return profile.busForLocalNumber(DeviceBusGroup.output, n);
       case 'aux':
         if (suffix == null) return null;
         final n = int.tryParse(suffix);
-        if (n == null || n < 1) return null;
-        final bus = BusSpec.auxMin - 1 + n;
-        final auxMax = BusSpec.auxMaxForFirmware(
-          hasExtendedAuxBuses: hasExtendedAuxBuses,
-        );
-        // Skip over legacy ES-5 range on old firmware
-        if (!hasExtendedAuxBuses &&
-            bus >= BusSpec.es5Min &&
-            bus <= BusSpec.es5Max) {
-          return null;
-        }
-        if (bus > auxMax) return null;
-        return bus;
+        if (n == null) return null;
+        return profile.busForLocalNumber(DeviceBusGroup.aux, n);
       case 'es-5':
-        if (suffix == null) return null;
+        if (!includeEs5 || suffix == null) return null;
         final int local;
         if (suffix == 'l') {
           local = 1;
@@ -89,9 +74,8 @@ class BusMapping {
         } else {
           return null;
         }
-        return hasExtendedAuxBuses
-            ? BusSpec.es5MinExtended - 1 + local
-            : BusSpec.es5Min - 1 + local;
+        final buses = profile.contextualEs5Buses;
+        return buses.length == 2 ? buses[local - 1] : null;
       default:
         return null;
     }
@@ -99,19 +83,34 @@ class BusMapping {
 
   /// Parse bus from either a name string or raw integer.
   /// Accepts "Aux 1", "Input 5", "None", or integer bus numbers.
-  static int? parseBus(dynamic value, {required bool hasExtendedAuxBuses}) {
+  static int? parseBus(
+    dynamic value, {
+    DeviceIoProfile? deviceIoProfile,
+    bool hasExtendedAuxBuses = false,
+    bool includeEs5 = true,
+    bool allowNone = true,
+  }) {
+    final profile = _profile(deviceIoProfile, hasExtendedAuxBuses);
+    bool isAccepted(int bus) =>
+        (allowNone && bus == 0) ||
+        profile.contains(bus) ||
+        (includeEs5 && profile.contextualEs5Buses.contains(bus));
+
     if (value is int) {
-      if (value == 0) return 0;
-      return BusSpec.isValid(value) ? value : null;
+      return isAccepted(value) ? value : null;
     }
     if (value is String) {
       // Try as integer first
       final asInt = int.tryParse(value);
       if (asInt != null) {
-        if (asInt == 0) return 0;
-        return BusSpec.isValid(asInt) ? asInt : null;
+        return isAccepted(asInt) ? asInt : null;
       }
-      return nameToBus(value, hasExtendedAuxBuses: hasExtendedAuxBuses);
+      final bus = nameToBus(
+        value,
+        deviceIoProfile: profile,
+        includeEs5: includeEs5,
+      );
+      return bus != null && isAccepted(bus) ? bus : null;
     }
     return null;
   }
@@ -119,9 +118,23 @@ class BusMapping {
   /// Detect whether a parameter is a bus assignment parameter.
   /// Bus params have unit==1 (enum), min of 0 or 1, and a max value
   /// matching known bus ceilings.
-  static bool isBusParameter(ParameterInfo param) {
+  static bool isBusParameter(
+    ParameterInfo param, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) {
     return param.unit == 1 &&
         (param.min == 0 || param.min == 1) &&
-        BusSpec.isBusParameterMaxValue(param.max);
+        param.max >= deviceIoProfile.inputBusCount.clamp(1, 127) &&
+        param.max <= DeviceIoProfile.maximumBusNumber &&
+        deviceIoProfile.busesWithin(param.min, param.max).isNotEmpty;
   }
+
+  static DeviceIoProfile _profile(
+    DeviceIoProfile? profile,
+    bool hasExtendedAuxBuses,
+  ) =>
+      profile ??
+      (hasExtendedAuxBuses
+          ? DeviceIoProfile.distingExtended
+          : DeviceIoProfile.distingLegacy);
 }

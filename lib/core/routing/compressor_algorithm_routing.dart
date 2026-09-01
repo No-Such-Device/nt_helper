@@ -1,5 +1,6 @@
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'multi_channel_algorithm_routing.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Routing implementation for the Compressor algorithm (`comp`).
 ///
@@ -21,6 +22,7 @@ class CompressorAlgorithmRouting extends MultiChannelAlgorithmRouting {
 
   static CompressorAlgorithmRouting createFromSlot(
     Slot slot, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
     required Map<String, int> ioParameters,
     Map<String, int>? modeParameters,
     Map<String, ({int parameterNumber, int value})>? modeParametersWithNumbers,
@@ -28,6 +30,7 @@ class CompressorAlgorithmRouting extends MultiChannelAlgorithmRouting {
   }) {
     final base = MultiChannelAlgorithmRouting.createFromSlot(
       slot,
+      deviceIoProfile: deviceIoProfile,
       ioParameters: ioParameters,
       modeParameters: modeParameters,
       modeParametersWithNumbers: modeParametersWithNumbers,
@@ -49,7 +52,9 @@ class CompressorAlgorithmRouting extends MultiChannelAlgorithmRouting {
       },
     );
 
-    return CompressorAlgorithmRouting(slot: slot, config: newConfig);
+    final routing = CompressorAlgorithmRouting(slot: slot, config: newConfig);
+    routing.deviceIoProfile = deviceIoProfile;
+    return routing;
   }
 
   /// Returns a new outputs list that contains the original outputs plus a

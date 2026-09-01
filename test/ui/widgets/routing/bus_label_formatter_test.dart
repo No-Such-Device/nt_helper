@@ -19,9 +19,18 @@ void main() {
       });
 
       test('formats extended aux buses (31-64)', () {
-        expect(BusLabelFormatter.formatBusNumber(31), 'A11');
-        expect(BusLabelFormatter.formatBusNumber(42), 'A22');
-        expect(BusLabelFormatter.formatBusNumber(64), 'A44');
+        expect(
+          BusLabelFormatter.formatBusNumber(31, hasExtendedAuxBuses: true),
+          'A11',
+        );
+        expect(
+          BusLabelFormatter.formatBusNumber(42, hasExtendedAuxBuses: true),
+          'A22',
+        );
+        expect(
+          BusLabelFormatter.formatBusNumber(64, hasExtendedAuxBuses: true),
+          'A44',
+        );
       });
 
       test('formats extended ES-5 buses (65-66)', () {
@@ -61,8 +70,14 @@ void main() {
 
       test('classifies aux buses correctly', () {
         expect(BusLabelFormatter.getBusType(21), BusType.auxiliary);
-        expect(BusLabelFormatter.getBusType(31), BusType.auxiliary);
-        expect(BusLabelFormatter.getBusType(64), BusType.auxiliary);
+        expect(
+          BusLabelFormatter.getBusType(31, hasExtendedAuxBuses: true),
+          BusType.auxiliary,
+        );
+        expect(
+          BusLabelFormatter.getBusType(64, hasExtendedAuxBuses: true),
+          BusType.auxiliary,
+        );
       });
     });
 
@@ -84,9 +99,27 @@ void main() {
       });
 
       test('returns correct local number for extended aux', () {
-        expect(BusLabelFormatter.getLocalBusNumber(31), 11);
-        expect(BusLabelFormatter.getLocalBusNumber(42), 22);
-        expect(BusLabelFormatter.getLocalBusNumber(64), 44);
+        expect(
+          BusLabelFormatter.getLocalBusNumber(
+            31,
+            hasExtendedAuxBuses: true,
+          ),
+          11,
+        );
+        expect(
+          BusLabelFormatter.getLocalBusNumber(
+            42,
+            hasExtendedAuxBuses: true,
+          ),
+          22,
+        );
+        expect(
+          BusLabelFormatter.getLocalBusNumber(
+            64,
+            hasExtendedAuxBuses: true,
+          ),
+          44,
+        );
       });
     });
 
@@ -160,10 +193,34 @@ void main() {
 
     group('isValidBusNumber', () {
       test('accepts extended range up to 66', () {
-        expect(BusLabelFormatter.isValidBusNumber(64), isTrue);
-        expect(BusLabelFormatter.isValidBusNumber(65), isTrue);
-        expect(BusLabelFormatter.isValidBusNumber(66), isTrue);
-        expect(BusLabelFormatter.isValidBusNumber(67), isFalse);
+        expect(
+          BusLabelFormatter.isValidBusNumber(
+            64,
+            hasExtendedAuxBuses: true,
+          ),
+          isTrue,
+        );
+        expect(
+          BusLabelFormatter.isValidBusNumber(
+            65,
+            hasExtendedAuxBuses: true,
+          ),
+          isTrue,
+        );
+        expect(
+          BusLabelFormatter.isValidBusNumber(
+            66,
+            hasExtendedAuxBuses: true,
+          ),
+          isTrue,
+        );
+        expect(
+          BusLabelFormatter.isValidBusNumber(
+            67,
+            hasExtendedAuxBuses: true,
+          ),
+          isFalse,
+        );
       });
     });
   });

@@ -354,10 +354,11 @@ class _ConnectionDelegate {
         List<AlgorithmInfo> algorithms = [];
         int numInPreset = 0;
         int numAlgorithms = 0;
+        SlotCountInfo? slotCountInfo;
         try {
           numAlgorithms = await distingManager.requestNumberOfAlgorithms() ?? 0;
-          numInPreset =
-              await distingManager.requestNumAlgorithmsInPreset() ?? 0;
+          slotCountInfo = await distingManager.requestSlotCountInfo();
+          numInPreset = slotCountInfo?.slotCount ?? 0;
 
           // Try to load cached algorithms synchronously for fast startup
           if (numAlgorithms > 0) {
@@ -391,6 +392,10 @@ class _ConnectionDelegate {
         final firmwareVersion = FirmwareVersion(
           distingVersion,
           date: firmwareDate,
+        );
+        final deviceIoProfile = DeviceIoProfile.resolve(
+          slotCountInfo: slotCountInfo,
+          firmwareVersion: firmwareVersion,
         );
         _cubit._lastKnownFirmwareVersion = firmwareVersion;
         // Set the parameter unit scheme based on firmware version
@@ -468,6 +473,7 @@ class _ConnectionDelegate {
             disting: distingManager,
             distingVersion: distingVersion,
             firmwareVersion: firmwareVersion,
+            deviceIoProfile: deviceIoProfile,
             presetName: presetName,
             algorithms: algorithms,
             slots: slots,

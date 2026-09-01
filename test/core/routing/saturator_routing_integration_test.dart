@@ -18,6 +18,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'satu_integration',
         );
 
@@ -32,6 +33,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'satu_mono',
       );
 
@@ -67,6 +69,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'satu_width3',
       );
 
@@ -100,6 +103,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'satu_multi',
       );
 
@@ -129,6 +133,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'satu_phys_out',
         );
 
@@ -165,6 +170,7 @@ void main() {
       // Step 1: Create routing via factory
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'satu_e2e',
       );
 

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:nt_helper/core/routing/bus_spec.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/models/routing_information.dart';
 
 class RoutingAnalyzer {
@@ -8,6 +8,7 @@ class RoutingAnalyzer {
   final bool _showSignals;
   final bool _showMappings;
   final int _slotCount;
+  final DeviceIoProfile deviceIoProfile;
 
   late List<List<int>> _processedSignals;
   late List<List<bool>> _processedUsageNeeded;
@@ -16,6 +17,7 @@ class RoutingAnalyzer {
     required List<RoutingInformation> routing,
     bool showSignals = true,
     bool showMappings = false,
+    this.deviceIoProfile = DeviceIoProfile.distingExtended,
   }) : _routing = routing,
        _showSignals = showSignals,
        _showMappings = showMappings,
@@ -36,11 +38,11 @@ class RoutingAnalyzer {
   // Copied and adapted from RoutingTableWidget
   // Builds the initial signal propagation state based on outputs and replacements.
   List<List<int>> _buildForwardSignals() {
-    // Initial signal state: index 0 unused, inputs 1-12 have signal (1),
+    // Initial signal state: index 0 unused, physical inputs have signal (1),
     // all others (outputs, aux, ES-5) start at 0.
     final initialSignals = List<int>.generate(
-      BusSpec.extendedMax + 1,
-      (i) => (i >= BusSpec.inputMin && i <= BusSpec.inputMax) ? 1 : 0,
+      DeviceIoProfile.maximumBusNumber + 1,
+      (i) => deviceIoProfile.isInput(i) ? 1 : 0,
     );
     final List<List<int>> signalsList = [initialSignals];
 
@@ -52,7 +54,7 @@ class RoutingAnalyzer {
       final outMask = info.routingInfo[1];
       final replaceMask = info.routingInfo[2];
 
-      for (int ch = 1; ch <= BusSpec.extendedMax; ch++) {
+      for (int ch = 1; ch <= DeviceIoProfile.maximumBusNumber; ch++) {
         int v = rowBefore[ch];
         final hasOutput = (outMask & (1 << ch)) != 0;
         final replaced = (replaceMask & (1 << ch)) != 0;
@@ -75,12 +77,8 @@ class RoutingAnalyzer {
   // Modifies the signals by removing signals that are not actually used by any subsequent input.
   // Works bottom-up.
   void _applyStripSignals(List<List<int>> signalsToModify) {
-    for (int ch = 1; ch <= BusSpec.extendedMax; ch++) {
-      // This logic is a direct translation from the original widget:
-      // If showSignals is true, channels 13 through 20 are skipped for stripping.
-      if (_showSignals && (ch == 13)) {
-        ch = 21;
-      }
+    for (int ch = 1; ch <= DeviceIoProfile.maximumBusNumber; ch++) {
+      if (_showSignals && deviceIoProfile.isOutput(ch)) continue;
 
       bool hasInputBelow = false;
       for (int s = _slotCount; s >= 0; s--) {
@@ -111,13 +109,13 @@ class RoutingAnalyzer {
   List<List<bool>> _buildUsageNeeded() {
     final List<List<bool>> usageList = List.generate(
       _slotCount + 1,
-      (_) => List<bool>.filled(BusSpec.extendedMax + 1, false),
+      (_) => List<bool>.filled(DeviceIoProfile.maximumBusNumber + 1, false),
     );
     for (int s = _slotCount - 1; s >= 0; s--) {
       final info = _routing[s];
       final inMaskForThisSlot = getNetInputMask(info);
       final replaceMaskForThisSlot = info.routingInfo[2];
-      for (int ch = 1; ch <= BusSpec.extendedMax; ch++) {
+      for (int ch = 1; ch <= DeviceIoProfile.maximumBusNumber; ch++) {
         final neededBySlotsBelow = usageList[s + 1][ch];
         final replacedByThisSlot = (replaceMaskForThisSlot & (1 << ch)) != 0;
         final thisSlotNeedsChannel = (inMaskForThisSlot & (1 << ch)) != 0;
@@ -150,7 +148,7 @@ class RoutingAnalyzer {
       final currentNetInputMask = getNetInputMask(info);
       final currentOutMask = info.routingInfo[1]; // Direct output mask
 
-      for (int ch = 1; ch <= BusSpec.extendedMax; ch++) {
+      for (int ch = 1; ch <= DeviceIoProfile.maximumBusNumber; ch++) {
         if ((currentNetInputMask & (1 << ch)) != 0) {
           inputBuses.add(ch);
         }

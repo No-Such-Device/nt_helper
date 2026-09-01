@@ -11,6 +11,7 @@ import 'package:nt_helper/ui/midi_listener/midi_detector_widget.dart';
 import 'package:nt_helper/ui/midi_listener/midi_listener_cubit.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/packed_mapping_data_editor.dart';
+import 'package:nt_helper/ui/widgets/routing/bus_selection_field.dart';
 
 class MockDistingCubit extends Mock implements DistingCubit {}
 
@@ -492,7 +493,7 @@ void main() {
       expect(dropdown.initialSelection, slot40Source);
     });
 
-    testWidgets('CV Input dropdown triggers immediate save', (tester) async {
+    testWidgets('CV Input picker triggers immediate save', (tester) async {
       int saveCount = 0;
       PackedMappingData? lastSavedData;
 
@@ -508,14 +509,10 @@ void main() {
       await tester.tap(find.text('CV'));
       await tester.pumpAndSettle();
 
-      final dropdownFinder = find.byWidgetPredicate(
-        (widget) =>
-            widget is DropdownMenu<int> &&
-            widget.label.toString().contains('CV Input'),
+      final picker = tester.widget<BusSelectionField>(
+        find.byType(BusSelectionField),
       );
-      final dropdown = tester.widget<DropdownMenu<int>>(dropdownFinder);
-
-      dropdown.onSelected?.call(3);
+      picker.onChanged(3);
       await tester.pump();
 
       expect(saveCount, 1);
@@ -1050,21 +1047,17 @@ void main() {
       );
     });
 
-    testWidgets('Indicator shows when dropdown is changed', (tester) async {
+    testWidgets('Indicator shows when bus picker is changed', (tester) async {
       final save = pendingSave();
       await tester.pumpWidget(createTestWidget(onSave: (_) => save.future));
 
       await tester.tap(find.text('CV'));
       await tester.pumpAndSettle();
 
-      final dropdownFinder = find.byWidgetPredicate(
-        (widget) =>
-            widget is DropdownMenu<int> &&
-            widget.label.toString().contains('CV Input'),
+      final picker = tester.widget<BusSelectionField>(
+        find.byType(BusSelectionField),
       );
-      final dropdown = tester.widget<DropdownMenu<int>>(dropdownFinder);
-
-      dropdown.onSelected?.call(1);
+      picker.onChanged(1);
       await tester.pump();
 
       expect(

@@ -1,6 +1,7 @@
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'es5_direct_output_algorithm_routing.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Specialized routing implementation for the Clock Divider algorithm.
 ///
@@ -34,6 +35,7 @@ class ClockDividerAlgorithmRouting extends Es5DirectOutputAlgorithmRouting {
   /// and channel filtering.
   static ClockDividerAlgorithmRouting createFromSlot(
     Slot slot, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
     required Map<String, int> ioParameters,
     Map<String, int>? modeParameters,
     Map<String, ({int parameterNumber, int value})>? modeParametersWithNumbers,
@@ -41,6 +43,7 @@ class ClockDividerAlgorithmRouting extends Es5DirectOutputAlgorithmRouting {
   }) {
     return Es5DirectOutputAlgorithmRouting.createFromSlotWithConfig(
       slot,
+      deviceIoProfile: deviceIoProfile,
       ioParameters: ioParameters,
       modeParameters: modeParameters,
       modeParametersWithNumbers: modeParametersWithNumbers,

@@ -16,6 +16,7 @@ import 'euclidean_algorithm_routing.dart';
 import 'saturator_algorithm_routing.dart';
 import 'compressor_algorithm_routing.dart';
 import 'noise_gate_algorithm_routing.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Abstract base class for algorithm routing implementations.
 ///
@@ -43,6 +44,12 @@ import 'noise_gate_algorithm_routing.dart';
 /// }
 /// ```
 abstract class AlgorithmRouting {
+  static const DeviceIoProfile defaultDeviceIoProfile =
+      DeviceIoProfile.distingExtended;
+
+  /// Bus topology used to classify every routing value for this instance.
+  DeviceIoProfile deviceIoProfile;
+
   /// The port compatibility validator for this algorithm
   late final PortCompatibilityValidator _validator;
 
@@ -56,6 +63,7 @@ abstract class AlgorithmRouting {
   AlgorithmRouting({
     PortCompatibilityValidator? validator,
     this.algorithmUuid,
+    this.deviceIoProfile = DeviceIoProfile.distingExtended,
   }) {
     _validator = validator ?? PortCompatibilityValidator();
   }
@@ -383,19 +391,26 @@ abstract class AlgorithmRouting {
   /// - [algorithmUuid]: Optional UUID for the algorithm instance
   ///
   /// Returns an appropriate AlgorithmRouting implementation
-  static AlgorithmRouting fromSlot(Slot slot, {String? algorithmUuid}) {
+  static AlgorithmRouting fromSlot(
+    Slot slot, {
+    required DeviceIoProfile deviceIoProfile,
+    String? algorithmUuid,
+  }) {
     // Extract mode parameters once (used by all implementations)
     final modeParametersWithNumbers = extractModeParametersWithNumbers(slot);
 
     // Check for USB Audio (From Host) algorithm first and use its own IO extractor
     if (UsbFromAlgorithmRouting.canHandle(slot)) {
       final usbIoParameters = UsbFromAlgorithmRouting.extractIOParameters(slot);
-      return UsbFromAlgorithmRouting.createFromSlot(
+      final routing = UsbFromAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         ioParameters: usbIoParameters,
         modeParametersWithNumbers: modeParametersWithNumbers,
         algorithmUuid: algorithmUuid,
       );
+      routing.deviceIoProfile = deviceIoProfile;
+      return routing;
     }
 
     // For non-USB algorithms use the generic IO extractor
@@ -410,12 +425,14 @@ abstract class AlgorithmRouting {
       // ES-5 Encoder has special handling for conditional channel inputs
       instance = ES5EncoderAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         algorithmUuid: algorithmUuid,
       );
     } else if (ClockAlgorithmRouting.canHandle(slot)) {
       // Clock algorithm with ES-5 direct output support
       instance = ClockAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         ioParameters: ioParameters,
         modeParameters: modeParameters,
         modeParametersWithNumbers: modeParametersWithNumbers,
@@ -425,6 +442,7 @@ abstract class AlgorithmRouting {
       // Euclidean algorithm with ES-5 direct output support
       instance = EuclideanAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         ioParameters: ioParameters,
         modeParameters: modeParameters,
         modeParametersWithNumbers: modeParametersWithNumbers,
@@ -434,6 +452,7 @@ abstract class AlgorithmRouting {
       // Clock Multiplier algorithm with ES-5 direct output support
       instance = ClockMultiplierAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         ioParameters: ioParameters,
         modeParameters: modeParameters,
         modeParametersWithNumbers: modeParametersWithNumbers,
@@ -443,6 +462,7 @@ abstract class AlgorithmRouting {
       // Clock Divider algorithm with ES-5 direct output support
       instance = ClockDividerAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         ioParameters: ioParameters,
         modeParameters: modeParameters,
         modeParametersWithNumbers: modeParametersWithNumbers,
@@ -452,6 +472,7 @@ abstract class AlgorithmRouting {
       // Saturator algorithm with in-place processing (input bus = output bus)
       instance = SaturatorAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         ioParameters: ioParameters,
         modeParameters: modeParameters,
         modeParametersWithNumbers: modeParametersWithNumbers,
@@ -461,6 +482,7 @@ abstract class AlgorithmRouting {
       // Compressor with in-place processing (input bus = output bus, except sidechain)
       instance = CompressorAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         ioParameters: ioParameters,
         modeParameters: modeParameters,
         modeParametersWithNumbers: modeParametersWithNumbers,
@@ -470,6 +492,7 @@ abstract class AlgorithmRouting {
       // Noise gate with in-place processing (input bus = output bus, except sidechain)
       instance = NoiseGateAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         ioParameters: ioParameters,
         modeParameters: modeParameters,
         modeParametersWithNumbers: modeParametersWithNumbers,
@@ -480,6 +503,7 @@ abstract class AlgorithmRouting {
       // no Output mode parameter (e.g. Quantizer, Auto-calibrator).
       instance = MultiChannelAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         ioParameters: ioParameters,
         modeParameters: modeParameters,
         modeParametersWithNumbers: modeParametersWithNumbers,
@@ -489,6 +513,7 @@ abstract class AlgorithmRouting {
     } else if (PolyAlgorithmRouting.canHandle(slot)) {
       instance = PolyAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         ioParameters: ioParameters,
         modeParameters: modeParameters,
         modeParametersWithNumbers: modeParametersWithNumbers,
@@ -498,6 +523,7 @@ abstract class AlgorithmRouting {
       // MultiChannelAlgorithmRouting is the fallback for everything else
       instance = MultiChannelAlgorithmRouting.createFromSlot(
         slot,
+        deviceIoProfile: deviceIoProfile,
         ioParameters: ioParameters,
         modeParameters: modeParameters,
         modeParametersWithNumbers: modeParametersWithNumbers,
@@ -510,6 +536,7 @@ abstract class AlgorithmRouting {
 
     // Set the mode parameters in the base class
     instance.setModeParameters(modeParametersWithNumbers);
+    instance.deviceIoProfile = deviceIoProfile;
 
     return instance;
   }
@@ -523,8 +550,7 @@ abstract class AlgorithmRouting {
   /// without page metadata), falls back to all parameters so existing
   /// tests and callers remain compatible.
   static Set<int> _visibleParameterNumbers(Slot slot) {
-    final pageParams =
-        slot.pages.pages.expand((p) => p.parameters).toSet();
+    final pageParams = slot.pages.pages.expand((p) => p.parameters).toSet();
     if (pageParams.isNotEmpty) return pageParams;
     return slot.parameters.map((p) => p.parameterNumber).toSet();
   }

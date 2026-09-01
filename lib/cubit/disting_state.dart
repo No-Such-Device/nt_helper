@@ -57,6 +57,7 @@ sealed class DistingState with _$DistingState {
     required IDistingMidiManager disting,
     required String distingVersion,
     required FirmwareVersion firmwareVersion,
+    @Default(DeviceIoProfile.distingExtended) DeviceIoProfile deviceIoProfile,
     required String presetName,
     required List<AlgorithmInfo> algorithms,
     required List<Slot> slots,

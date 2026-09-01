@@ -10,6 +10,7 @@ import 'accessibility_colors.dart';
 import 'ghost_connection_tooltip.dart';
 import 'connection_theme.dart';
 import 'bus_label_formatter.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Represents connection data with bus and output mode information
 class ConnectionData {
@@ -90,6 +91,7 @@ class ConnectionPainter extends CustomPainter {
   /// Progress of fade-out animation (0.0 to 1.0) - white → transparent
   final double fadeOutProgress;
   final bool hasExtendedAuxBuses;
+  final DeviceIoProfile deviceIoProfile;
 
   /// Map storing label bounds for hit testing
   final Map<String, Rect> _labelBounds = {};
@@ -109,6 +111,7 @@ class ConnectionPainter extends CustomPainter {
     this.deleteAnimationProgress = 0.0,
     this.fadeOutProgress = 0.0,
     this.hasExtendedAuxBuses = false,
+    this.deviceIoProfile = DeviceIoProfile.distingExtended,
   });
 
   /// Classify a connection into the visual style bucket used for batching.
@@ -731,6 +734,7 @@ class ConnectionPainter extends CustomPainter {
       conn.busNumber,
       conn.outputMode,
       hasExtendedAuxBuses,
+      deviceIoProfile,
     );
     if (label.isEmpty) {
       return;
@@ -979,10 +983,12 @@ class ConnectionPainter extends CustomPainter {
   static String formatBusLabel(
     int? busNumber, [
     bool hasExtendedAuxBuses = false,
+    DeviceIoProfile? deviceIoProfile,
   ]) {
     return BusLabelFormatter.formatBusNumber(
           busNumber,
           hasExtendedAuxBuses: hasExtendedAuxBuses,
+          deviceIoProfile: deviceIoProfile,
         ) ??
         '';
   }
@@ -991,12 +997,14 @@ class ConnectionPainter extends CustomPainter {
   static String formatBusLabelWithMode(
     int? busNumber,
     OutputMode? outputMode,
-    bool hasExtendedAuxBuses,
-  ) {
+    bool hasExtendedAuxBuses, [
+    DeviceIoProfile? deviceIoProfile,
+  ]) {
     return BusLabelFormatter.formatBusLabelWithMode(
           busNumber,
           outputMode,
           hasExtendedAuxBuses: hasExtendedAuxBuses,
+          deviceIoProfile: deviceIoProfile,
         ) ??
         '';
   }
@@ -1090,6 +1098,7 @@ class ConnectionPainter extends CustomPainter {
         oldDelegate.deleteAnimationProgress != deleteAnimationProgress ||
         oldDelegate.fadeOutProgress != fadeOutProgress ||
         oldDelegate.hasExtendedAuxBuses != hasExtendedAuxBuses ||
+        oldDelegate.deviceIoProfile != deviceIoProfile ||
         !ListEquality().equals(oldDelegate.obstacles, obstacles);
   }
 }
@@ -1105,6 +1114,7 @@ class ConnectionCanvas extends StatefulWidget {
   final bool showLabels;
   final bool enableAnimations;
   final Function(ConnectionData)? onConnectionTapped;
+  final DeviceIoProfile deviceIoProfile;
 
   const ConnectionCanvas({
     super.key,
@@ -1114,6 +1124,7 @@ class ConnectionCanvas extends StatefulWidget {
     this.showLabels = true,
     this.enableAnimations = true,
     this.onConnectionTapped,
+    this.deviceIoProfile = DeviceIoProfile.distingExtended,
   });
 
   @override
@@ -1136,6 +1147,7 @@ class _ConnectionCanvasState extends State<ConnectionCanvas> {
             enableAntiOverlap: widget.enableAntiOverlap,
             showLabels: widget.showLabels,
             enableAnimations: false,
+            deviceIoProfile: widget.deviceIoProfile,
           ),
           child: Container(), // Provides hit test area
         ),

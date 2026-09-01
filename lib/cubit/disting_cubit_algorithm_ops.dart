@@ -511,6 +511,7 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
                 // Keep manager and other state
                 distingVersion: verificationState.distingVersion,
                 firmwareVersion: verificationState.firmwareVersion,
+                deviceIoProfile: verificationState.deviceIoProfile,
                 presetName: verificationState.presetName,
                 // Use existing preset name
                 algorithms: verificationState.algorithms,
@@ -642,6 +643,7 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
                 // Keep manager and other state
                 distingVersion: verificationState.distingVersion,
                 firmwareVersion: verificationState.firmwareVersion,
+                deviceIoProfile: verificationState.deviceIoProfile,
                 presetName: verificationState.presetName,
                 // Use existing preset name
                 algorithms: verificationState.algorithms,

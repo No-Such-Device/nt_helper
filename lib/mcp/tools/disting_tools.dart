@@ -24,6 +24,7 @@ import 'package:nt_helper/util/case_converter.dart';
 import 'package:nt_helper/mcp/mcp_constants.dart';
 import 'package:nt_helper/mcp/utils/bus_mapping.dart';
 import 'package:nt_helper/models/cpu_usage.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Defines MCP tools for interacting with the Disting state (presets, slots, parameters)
 /// via the DistingController.
@@ -38,12 +39,11 @@ class DistingTools {
 
   DistingTools(this._controller, this._distingCubit);
 
-  bool get _hasExtendedAuxBuses {
+  DeviceIoProfile get _deviceIoProfile {
     final state = _distingCubit.state;
-    if (state is DistingStateSynchronized) {
-      return state.firmwareVersion.hasExtendedAuxBuses;
-    }
-    return false;
+    return state is DistingStateSynchronized
+        ? state.deviceIoProfile
+        : DeviceIoProfile.distingLegacy;
   }
 
   bool get _hasExpressiveMidiMapping {
@@ -4140,21 +4140,14 @@ class DistingTools {
         final cvInput = value['cv_input'];
         if (cvInput != null) {
           int? resolved;
-          if (cvInput is int) {
-            resolved = (cvInput >= 0 && cvInput <= 12) ? cvInput : null;
-          } else if (cvInput is String) {
-            // Accept "None" → 0, "Input 1"-"Input 12" → 1-12
-            final parsed = BusMapping.parseBus(
-              cvInput,
-              hasExtendedAuxBuses: _hasExtendedAuxBuses,
-            );
-            if (parsed != null && parsed >= 0 && parsed <= 12) {
-              resolved = parsed;
-            }
-          }
+          resolved = BusMapping.parseBus(
+            cvInput,
+            deviceIoProfile: _deviceIoProfile,
+            includeEs5: false,
+          );
           if (resolved == null) {
             return MCPUtils.buildError(
-              'CV input must be 0-12, or "None"/"Input 1" through "Input 12", got $cvInput',
+              'CV input must be None or an available device bus, got $cvInput',
             );
           }
           value['cv_input'] = resolved;

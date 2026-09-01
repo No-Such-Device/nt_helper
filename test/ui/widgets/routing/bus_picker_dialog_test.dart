@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_picker_dialog.dart';
-
-String testBusLabel(int bus) {
-  if (bus <= 0) return 'None';
-  if (bus <= 12) return 'I$bus';
-  if (bus <= 20) return 'O${bus - 12}';
-  return 'A${bus - 20}';
-}
+import 'package:nt_helper/ui/widgets/routing/bus_selection_model.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 void main() {
   testWidgets(
@@ -21,10 +17,13 @@ void main() {
           home: Scaffold(
             body: BusPickerDialog(
               portLabel: 'Output',
-              currentBus: 13,
-              availableBuses: const [11, 12, 14],
-              showEs5: false,
-              busLabel: testBusLabel,
+              model: BusSelectionModel.fromProfile(
+                deviceIoProfile: DeviceIoProfile.distingLegacy,
+                currentValue: 13,
+                minimum: 11,
+                maximum: 14,
+                allowNone: false,
+              ),
             ),
           ),
         ),
@@ -55,10 +54,13 @@ void main() {
         home: Scaffold(
           body: BusPickerDialog(
             portLabel: 'Output',
-            currentBus: 50,
-            availableBuses: List<int>.generate(64, (index) => index + 1),
-            showEs5: false,
-            busLabel: testBusLabel,
+            model: BusSelectionModel.fromProfile(
+              deviceIoProfile: DeviceIoProfile.distingExtended,
+              currentValue: 50,
+              minimum: 1,
+              maximum: 64,
+              allowNone: false,
+            ),
           ),
         ),
       ),
@@ -69,5 +71,41 @@ void main() {
     final selectedY = tester.getCenter(find.text('A30')).dy;
     expect(selectedY, greaterThan(dialogRect.top + dialogRect.height * 0.30));
     expect(selectedY, lessThan(dialogRect.top + dialogRect.height * 0.80));
+  });
+
+  testWidgets('bus choices can be selected with Tab and Enter', (tester) async {
+    int? selected;
+    final model = BusSelectionModel.fromProfile(
+      deviceIoProfile: DeviceIoProfile.distingLegacy,
+      currentValue: 13,
+      minimum: 13,
+      maximum: 14,
+      allowNone: false,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              selected = await showDialog<int>(
+                context: context,
+                builder: (context) =>
+                    BusPickerDialog(portLabel: 'Output', model: model),
+              );
+            },
+            child: const Text('Open'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(selected, 14);
   });
 }

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/cubit/routing_editor_state.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_label_formatter.dart';
 
 class AuxBusUsageWidget extends StatelessWidget {
   final Map<int, AuxBusUsageInfo> auxBusUsage;
-  final bool hasExtendedAuxBuses;
+  final DeviceIoProfile deviceIoProfile;
   final int? focusedBusNumber;
   final ValueChanged<int> onBusTapped;
   final Future<void> Function(int sourceBus, int destinationBus)? onBusMoved;
@@ -14,7 +14,7 @@ class AuxBusUsageWidget extends StatelessWidget {
   const AuxBusUsageWidget({
     super.key,
     required this.auxBusUsage,
-    required this.hasExtendedAuxBuses,
+    required this.deviceIoProfile,
     required this.focusedBusNumber,
     required this.onBusTapped,
     this.onBusMoved,
@@ -23,23 +23,14 @@ class AuxBusUsageWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final auxCeiling = BusSpec.auxMaxForFirmware(
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
-    );
-
-    // Collect all valid AUX bus numbers
-    final busList = <int>[];
-    for (int b = BusSpec.auxMin; b <= auxCeiling; b++) {
-      if (BusSpec.isAuxForFirmware(
-        b,
-        hasExtendedAuxBuses: hasExtendedAuxBuses,
-      )) {
-        busList.add(b);
-      }
-    }
+    final busList = deviceIoProfile.auxBuses;
 
     // Layout: single row for 8, 4 rows of 11 for extended
-    final int columns = hasExtendedAuxBuses ? 11 : busList.length;
+    final int columns = busList.isEmpty
+        ? 1
+        : busList.length > 11
+        ? 11
+        : busList.length;
 
     return Container(
       padding: const EdgeInsets.all(6),
@@ -70,7 +61,7 @@ class AuxBusUsageWidget extends StatelessWidget {
                           'bus_${busList[row * columns + col]}_${(auxBusUsage[busList[row * columns + col]]?.sessionCount ?? 0) > 0}',
                         ),
                         busNumber: busList[row * columns + col],
-                        hasExtendedAuxBuses: hasExtendedAuxBuses,
+                        deviceIoProfile: deviceIoProfile,
                         info: auxBusUsage[busList[row * columns + col]],
                         isFocused:
                             focusedBusNumber == busList[row * columns + col],
@@ -90,7 +81,7 @@ class AuxBusUsageWidget extends StatelessWidget {
 
 class _BusSquare extends StatelessWidget {
   final int busNumber;
-  final bool hasExtendedAuxBuses;
+  final DeviceIoProfile deviceIoProfile;
   final AuxBusUsageInfo? info;
   final bool isFocused;
   final ColorScheme colorScheme;
@@ -100,7 +91,7 @@ class _BusSquare extends StatelessWidget {
   const _BusSquare({
     super.key,
     required this.busNumber,
-    required this.hasExtendedAuxBuses,
+    required this.deviceIoProfile,
     required this.info,
     required this.isFocused,
     required this.colorScheme,
@@ -131,7 +122,7 @@ class _BusSquare extends StatelessWidget {
 
     final label = BusLabelFormatter.formatBusValue(
       busNumber,
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
+      deviceIoProfile: deviceIoProfile,
     );
     final tooltip = _buildTooltip(label);
 

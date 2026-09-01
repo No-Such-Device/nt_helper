@@ -71,6 +71,7 @@ class _RandomizeSettingsDialogState extends State<RandomizeSettingsDialog> {
                 disting,
                 distingVersion,
                 firmwareVersion,
+                deviceIoProfile,
                 presetName,
                 algorithms,
                 slots,

@@ -1,5 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_label_formatter.dart';
 
 part 'algorithm_connection.freezed.dart';
@@ -169,31 +169,47 @@ extension AlgorithmConnectionHelpers on AlgorithmConnection {
   }
 
   /// Generate a bus label based on the bus number and connection type
-  String busLabelForFirmware({bool hasExtendedAuxBuses = false}) {
+  String busLabelForFirmware({
+    bool hasExtendedAuxBuses = false,
+    DeviceIoProfile? deviceIoProfile,
+  }) {
     return BusLabelFormatter.formatBusNumber(
           busNumber,
           hasExtendedAuxBuses: hasExtendedAuxBuses,
+          deviceIoProfile: deviceIoProfile,
         ) ??
         'Bus$busNumber';
   }
 
   /// Get the edge label for display on the connection line
-  String getEdgeLabel({bool hasExtendedAuxBuses = false}) {
+  String getEdgeLabel({
+    bool hasExtendedAuxBuses = false,
+    DeviceIoProfile? deviceIoProfile,
+  }) {
     return edgeLabel ??
-        busLabelForFirmware(hasExtendedAuxBuses: hasExtendedAuxBuses);
+        busLabelForFirmware(
+          hasExtendedAuxBuses: hasExtendedAuxBuses,
+          deviceIoProfile: deviceIoProfile,
+        );
   }
 
   /// Check if this connection uses an input/CV bus (1-12)
-  bool get usesInputBus => busNumber >= 1 && busNumber <= 12;
+  bool get usesInputBus => DeviceIoProfile.distingExtended.isInput(busNumber);
 
   /// Check if this connection uses an output bus (13-20)
-  bool get usesOutputBus => busNumber >= 13 && busNumber <= 20;
+  bool get usesOutputBus => DeviceIoProfile.distingExtended.isOutput(busNumber);
 
   /// Check if this connection uses an audio bus (21-64, excluding ES-5)
-  bool get usesAudioBus => BusSpec.isAux(busNumber);
+  bool get usesAudioBus => DeviceIoProfile.distingExtended.isAux(busNumber);
+
+  bool usesInputBusFor(DeviceIoProfile profile) => profile.isInput(busNumber);
+  bool usesOutputBusFor(DeviceIoProfile profile) => profile.isOutput(busNumber);
+  bool usesAudioBusFor(DeviceIoProfile profile) => profile.isAux(busNumber);
 
   /// Validate the connection and return validation result
-  AlgorithmConnectionValidation validate() {
+  AlgorithmConnectionValidation validate({
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) {
     final errors = <String>[];
     final warnings = <String>[];
 
@@ -203,10 +219,8 @@ extension AlgorithmConnectionHelpers on AlgorithmConnection {
     }
 
     // Check bus number validity
-    if (!BusSpec.isValid(busNumber)) {
-      errors.add(
-        'Bus number $busNumber is outside valid range (${BusSpec.min}-${BusSpec.extendedMax})',
-      );
+    if (!deviceIoProfile.contains(busNumber)) {
+      errors.add('Bus number $busNumber is not available on this device');
     }
 
     // Check algorithm index validity
@@ -215,7 +229,8 @@ extension AlgorithmConnectionHelpers on AlgorithmConnection {
         'Source algorithm index $sourceAlgorithmIndex is outside valid range (0-7)',
       );
     }
-    if (targetAlgorithmIndex < 0 || targetAlgorithmIndex > 7) {
+    if (targetAlgorithmIndex != -3 &&
+        (targetAlgorithmIndex < 0 || targetAlgorithmIndex > 7)) {
       errors.add(
         'Target algorithm index $targetAlgorithmIndex is outside valid range (0-7)',
       );

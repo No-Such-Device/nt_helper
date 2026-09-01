@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:flutter/foundation.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
@@ -573,6 +574,7 @@ class MultiChannelAlgorithmRouting extends CachedAlgorithmRouting {
   ///   bus. The real output parameter is preserved so the bus remains editable.
   static MultiChannelAlgorithmRouting createFromSlot(
     Slot slot, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
     required Map<String, int> ioParameters,
     Map<String, int>? modeParameters,
     Map<String, ({int parameterNumber, int value})>? modeParametersWithNumbers,
@@ -616,8 +618,7 @@ class MultiChannelAlgorithmRouting extends CachedAlgorithmRouting {
     // routing views — this matches the parameter editor's behaviour.
     // When pages are empty (test mocks, offline fixtures), fall back to all.
     Set<int> computeVisibleSet(Slot target) {
-      final pageParams =
-          target.pages.pages.expand((p) => p.parameters).toSet();
+      final pageParams = target.pages.pages.expand((p) => p.parameters).toSet();
       if (pageParams.isNotEmpty) return pageParams;
       return target.parameters.map((p) => p.parameterNumber).toSet();
     }
@@ -735,12 +736,11 @@ class MultiChannelAlgorithmRouting extends CachedAlgorithmRouting {
           (paramInfo?.isInput ?? false) ||
           AlgorithmRouting.isHardcodedInput(slot.algorithm.guid, paramName);
 
-      // Fallback logic for offline/mock mode (ioFlags = 0)
-      // When no flags are set, infer direction from bus range:
-      // Buses 1-12 are inputs, buses 13-20 are outputs
+      // Fallback logic for offline/mock mode (ioFlags = 0): infer direction
+      // from the current firmware's physical output range.
       final bool isOutput =
           isOutputFlag ||
-          (!isInputFlag && !isOutputFlag && busValue >= 13 && busValue <= 20);
+          (!isInputFlag && !isOutputFlag && deviceIoProfile.isOutput(busValue));
 
       // Infer port type from isAudio flag
       // Audio/CV distinction is cosmetic only - affects port color, not connectivity
@@ -1052,7 +1052,7 @@ class MultiChannelAlgorithmRouting extends CachedAlgorithmRouting {
       'isMultiChannel': isMultiChannel,
     };
 
-    return MultiChannelAlgorithmRouting(
+    final routing = MultiChannelAlgorithmRouting(
       config: MultiChannelAlgorithmConfig(
         channelCount: config.channelCount,
         supportsStereoChannels: config.supportsStereoChannels,
@@ -1063,5 +1063,7 @@ class MultiChannelAlgorithmRouting extends CachedAlgorithmRouting {
         algorithmProperties: properties,
       ),
     );
+    routing.deviceIoProfile = deviceIoProfile;
+    return routing;
   }
 }

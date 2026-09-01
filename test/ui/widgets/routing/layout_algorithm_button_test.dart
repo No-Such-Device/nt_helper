@@ -218,6 +218,7 @@ class _TestLayoutButtonWidget extends StatelessWidget {
         return state.maybeWhen(
           loaded:
               (
+                deviceIoProfile,
                 physicalInputs,
                 physicalOutputs,
                 es5Inputs,
@@ -290,6 +291,7 @@ class _TestButtonsRowWidget extends StatelessWidget {
             state.maybeWhen(
               loaded:
                   (
+                    deviceIoProfile,
                     physicalInputs,
                     physicalOutputs,
                     es5Inputs,

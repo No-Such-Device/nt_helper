@@ -12,6 +12,7 @@ import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:nt_helper/ui/midi_listener/midi_listener_cubit.dart';
 import 'package:nt_helper/ui/widgets/packed_mapping_data_editor.dart';
+import 'package:nt_helper/ui/widgets/routing/bus_selection_field.dart';
 
 class MockDistingCubit extends Mock implements DistingCubit {}
 
@@ -819,7 +820,7 @@ void main() {
       expect(saveCount, 0); // Tab switching alone should not trigger saves
     });
 
-    testWidgets('CV dropdown triggers optimistic save', (tester) async {
+    testWidgets('CV bus picker triggers optimistic save', (tester) async {
       int saveCount = 0;
       PackedMappingData? lastSavedData;
 
@@ -836,16 +837,13 @@ void main() {
       await tester.tap(find.text('CV'));
       await tester.pumpAndSettle();
 
-      // Find the CV Input dropdown - get the actual widget to call onSelected
-      final dropdownFinder = find.byWidgetPredicate(
-        (widget) =>
-            widget is DropdownMenu<int> &&
-            widget.label.toString().contains('CV Input'),
+      // Source remains a dropdown; CV Input is exclusively the shared picker.
+      expect(find.byType(DropdownMenu<int>), findsOneWidget);
+      expect(find.byType(BusSelectionField), findsOneWidget);
+      final picker = tester.widget<BusSelectionField>(
+        find.byType(BusSelectionField),
       );
-      final dropdown = tester.widget<DropdownMenu<int>>(dropdownFinder);
-
-      // Manually trigger onSelected callback (simulates user selection)
-      dropdown.onSelected?.call(1);
+      picker.onChanged(1);
       await tester.pump();
 
       expect(saveCount, 1);

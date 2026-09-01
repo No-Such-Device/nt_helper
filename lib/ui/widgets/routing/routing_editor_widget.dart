@@ -24,6 +24,7 @@ import 'package:nt_helper/core/routing/node_layout_algorithm.dart';
 import 'package:nt_helper/services/key_binding_service.dart';
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:nt_helper/services/zoom_hotkey_service.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 // Haptics can be reintroduced later if needed
 import 'package:nt_helper/ui/widgets/routing/accessible_routing_list_view.dart';
 import 'package:nt_helper/ui/widgets/routing/algorithm_node_widget.dart';
@@ -1229,7 +1230,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                       children: [
                         AuxBusUsageWidget(
                           auxBusUsage: state.auxBusUsage,
-                          hasExtendedAuxBuses: state.hasExtendedAuxBuses,
+                          deviceIoProfile: state.deviceIoProfile,
                           focusedBusNumber: _deriveFocusedBusNumber(state),
                           onBusTapped: (bus) => context
                               .read<RoutingEditorCubit>()
@@ -1735,6 +1736,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       disconnected: () => _buildEmptyState(context, 'Hardware disconnected'),
       loaded:
           (
+            deviceIoProfile,
             physicalInputs,
             physicalOutputs,
             es5Inputs,
@@ -3091,6 +3093,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     final hasExtended =
         editorState is RoutingEditorStateLoaded &&
         editorState.hasExtendedAuxBuses;
+    final deviceIoProfile = editorState is RoutingEditorStateLoaded
+        ? editorState.deviceIoProfile
+        : DeviceIoProfile.distingExtended;
 
     // Choose rendering approach based on platform capabilities
     if (_platformService.supportsHoverInteractions()) {
@@ -3116,6 +3121,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                   obstacles: _calculateNodeBounds(),
                   drawEndpointsOnly: true,
                   hasExtendedAuxBuses: hasExtended,
+                  deviceIoProfile: deviceIoProfile,
                   onBoundsUpdated: (bounds) {
                     if (!_areBoundsEqual(_connectionLabelBounds, bounds)) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -3151,6 +3157,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                 obstacles: _calculateNodeBounds(),
                 drawEndpointsOnly: false,
                 hasExtendedAuxBuses: hasExtended,
+                deviceIoProfile: deviceIoProfile,
                 onBoundsUpdated: (_) {},
                 deletingPortId: _deletingPortId,
                 deleteAnimationProgress: _deleteAnimation.value,
@@ -3178,6 +3185,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                 obstacles: _calculateNodeBounds(),
                 drawEndpointsOnly: drawEndpointsOnly,
                 hasExtendedAuxBuses: hasExtended,
+                deviceIoProfile: deviceIoProfile,
                 onBoundsUpdated: (bounds) {
                   // Only update bounds for the main pass
                   if (!drawEndpointsOnly &&
@@ -3504,10 +3512,14 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     final hasExtended =
         editorState is RoutingEditorStateLoaded &&
         editorState.hasExtendedAuxBuses;
+    final deviceIoProfile = editorState is RoutingEditorStateLoaded
+        ? editorState.deviceIoProfile
+        : DeviceIoProfile.distingExtended;
     final label = painter.ConnectionPainter.formatBusLabelWithMode(
       conn.busNumber,
       conn.outputMode,
       hasExtended,
+      deviceIoProfile,
     );
     if (label.isEmpty) return;
 
@@ -4782,6 +4794,7 @@ class _ConnectionPainterWithBounds extends CustomPainter {
   late final painter.ConnectionPainter _delegate;
 
   final bool hasExtendedAuxBuses;
+  final DeviceIoProfile deviceIoProfile;
 
   _ConnectionPainterWithBounds({
     required this.connections,
@@ -4796,6 +4809,7 @@ class _ConnectionPainterWithBounds extends CustomPainter {
     this.deleteAnimationProgress = 0.0,
     this.fadeOutProgress = 0.0,
     this.hasExtendedAuxBuses = false,
+    this.deviceIoProfile = DeviceIoProfile.distingExtended,
   }) {
     _delegate = painter.ConnectionPainter(
       connections: connections,
@@ -4809,6 +4823,7 @@ class _ConnectionPainterWithBounds extends CustomPainter {
       deleteAnimationProgress: deleteAnimationProgress,
       fadeOutProgress: fadeOutProgress,
       hasExtendedAuxBuses: hasExtendedAuxBuses,
+      deviceIoProfile: deviceIoProfile,
     );
   }
 

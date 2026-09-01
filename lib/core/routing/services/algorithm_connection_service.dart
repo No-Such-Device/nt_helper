@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/models/algorithm_connection.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Service for discovering connections between algorithm slots based on
 /// shared bus assignments.
@@ -16,9 +16,6 @@ import 'package:nt_helper/models/algorithm_connection.dart';
 /// slot data hasn't changed, and ensures deterministic ordering of results
 /// for consistent UI updates.
 class AlgorithmConnectionService {
-  static const int _maxBusNumber = BusSpec.extendedMax;
-  static const int _minBusNumber = 1;
-
   // Simple caching based on slots data hash
   String? _lastSlotsHash;
   List<AlgorithmConnection>? _cachedConnections;
@@ -31,9 +28,12 @@ class AlgorithmConnectionService {
   ///
   /// Returns a deterministically sorted list of [AlgorithmConnection] objects.
   /// Results are cached based on the slots data hash to improve performance.
-  List<AlgorithmConnection> discoverAlgorithmConnections(List<Slot> slots) {
+  List<AlgorithmConnection> discoverAlgorithmConnections(
+    List<Slot> slots, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) {
     // Generate hash of slots data for caching
-    final slotsHash = _generateSlotsHash(slots);
+    final slotsHash = _generateSlotsHash(slots, deviceIoProfile);
 
     // Return cached result if slots haven't changed
     if (_lastSlotsHash == slotsHash && _cachedConnections != null) {
@@ -42,7 +42,7 @@ class AlgorithmConnectionService {
 
     try {
       // Discover all connections
-      final connections = _performConnectionDiscovery(slots);
+      final connections = _performConnectionDiscovery(slots, deviceIoProfile);
 
       // Cache results
       _lastSlotsHash = slotsHash;
@@ -61,14 +61,17 @@ class AlgorithmConnectionService {
   }
 
   /// Performs the actual connection discovery logic.
-  List<AlgorithmConnection> _performConnectionDiscovery(List<Slot> slots) {
+  List<AlgorithmConnection> _performConnectionDiscovery(
+    List<Slot> slots,
+    DeviceIoProfile deviceIoProfile,
+  ) {
     final connections = <AlgorithmConnection>[];
 
     // Build bus assignment maps for each slot
     final List<_SlotBusInfo> slotBusInfos = [];
     for (int i = 0; i < slots.length; i++) {
       final slot = slots[i];
-      slotBusInfos.add(_extractBusInfo(slot, i));
+      slotBusInfos.add(_extractBusInfo(slot, i, deviceIoProfile));
     }
 
     // Find algorithm-to-algorithm connections by matching bus assignments
@@ -112,6 +115,7 @@ class AlgorithmConnectionService {
       for (final outputEntry in sourceBusInfo.outputBuses.entries) {
         final outputParamName = outputEntry.key;
         final busNumber = outputEntry.value;
+        if (!deviceIoProfile.isOutput(busNumber)) continue;
 
         // Create connection from algorithm output to physical output
         // Use special target algorithm index -3 to indicate physical output
@@ -133,14 +137,18 @@ class AlgorithmConnectionService {
 
     // Validate and sort connections deterministically
     final validConnections = connections
-        .where((connection) => _isValidConnection(connection))
+        .where((connection) => _isValidConnection(connection, deviceIoProfile))
         .toList();
 
     return _sortConnectionsDeterministically(validConnections);
   }
 
   /// Extracts bus assignment information from a slot.
-  _SlotBusInfo _extractBusInfo(Slot slot, int algorithmIndex) {
+  _SlotBusInfo _extractBusInfo(
+    Slot slot,
+    int algorithmIndex,
+    DeviceIoProfile deviceIoProfile,
+  ) {
     final valueByParam = <int, int>{
       for (final v in slot.values) v.parameterNumber: v.value,
     };
@@ -159,7 +167,7 @@ class AlgorithmConnectionService {
       }
 
       // Skip "None" bus assignments (typically 0)
-      if (busValue < _minBusNumber || busValue > _maxBusNumber) continue;
+      if (!deviceIoProfile.contains(busValue)) continue;
 
       // Use I/O flags to determine parameter direction
       // Only create bus assignments for parameters explicitly marked as I/O
@@ -230,21 +238,24 @@ class AlgorithmConnectionService {
   }
 
   /// Validates that a connection meets requirements.
-  bool _isValidConnection(AlgorithmConnection connection) {
+  bool _isValidConnection(
+    AlgorithmConnection connection,
+    DeviceIoProfile deviceIoProfile,
+  ) {
     // Check basic field validity
-    if (connection.busNumber < _minBusNumber ||
-        connection.busNumber > _maxBusNumber) {
+    if (!deviceIoProfile.contains(connection.busNumber)) {
       return false;
     }
 
     // Validate algorithm indices
     if (connection.sourceAlgorithmIndex < 0 ||
-        connection.targetAlgorithmIndex < 0) {
+        (connection.targetAlgorithmIndex < 0 &&
+            connection.targetAlgorithmIndex != -3)) {
       return false;
     }
 
     // Run full validation
-    final validation = connection.validate();
+    final validation = connection.validate(deviceIoProfile: deviceIoProfile);
     return validation.isValid;
   }
 
@@ -273,8 +284,9 @@ class AlgorithmConnectionService {
   }
 
   /// Generates a hash of the slots data for caching purposes.
-  String _generateSlotsHash(List<Slot> slots) {
+  String _generateSlotsHash(List<Slot> slots, DeviceIoProfile deviceIoProfile) {
     final buffer = StringBuffer();
+    buffer.write('$deviceIoProfile|');
 
     for (final slot in slots) {
       buffer.write('${slot.algorithm.algorithmIndex}:${slot.algorithm.name}|');

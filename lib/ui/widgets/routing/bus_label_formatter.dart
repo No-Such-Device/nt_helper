@@ -1,5 +1,6 @@
 import '../../../core/routing/models/port.dart';
 import '../../../core/routing/bus_spec.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Enum representing the type of bus
 enum BusType {
@@ -38,10 +39,12 @@ class BusLabelFormatter {
   static String formatBusValue(
     int busValue, {
     bool hasExtendedAuxBuses = false,
+    DeviceIoProfile? deviceIoProfile,
   }) {
     return formatBusNumber(
           busValue,
           hasExtendedAuxBuses: hasExtendedAuxBuses,
+          deviceIoProfile: deviceIoProfile,
         ) ??
         'Bus$busValue';
   }
@@ -58,20 +61,25 @@ class BusLabelFormatter {
   static String? formatBusNumber(
     int? busNumber, {
     bool hasExtendedAuxBuses = false,
+    DeviceIoProfile? deviceIoProfile,
   }) {
-    if (busNumber == null || !isValidBusNumber(busNumber)) {
+    final profile = _profile(deviceIoProfile, hasExtendedAuxBuses);
+    if (busNumber == null ||
+        !isValidBusNumber(busNumber, deviceIoProfile: profile)) {
       return null;
     }
 
     final localNumber = getLocalBusNumber(
       busNumber,
       hasExtendedAuxBuses: hasExtendedAuxBuses,
+      deviceIoProfile: profile,
     );
     if (localNumber == null) return null;
 
     final busType = getBusType(
       busNumber,
       hasExtendedAuxBuses: hasExtendedAuxBuses,
+      deviceIoProfile: profile,
     );
     switch (busType) {
       case BusType.input:
@@ -104,20 +112,25 @@ class BusLabelFormatter {
     int? busNumber,
     OutputMode? outputMode, {
     bool hasExtendedAuxBuses = false,
+    DeviceIoProfile? deviceIoProfile,
   }) {
-    if (busNumber == null || !isValidBusNumber(busNumber)) {
+    final profile = _profile(deviceIoProfile, hasExtendedAuxBuses);
+    if (busNumber == null ||
+        !isValidBusNumber(busNumber, deviceIoProfile: profile)) {
       return null;
     }
 
     final localNumber = getLocalBusNumber(
       busNumber,
       hasExtendedAuxBuses: hasExtendedAuxBuses,
+      deviceIoProfile: profile,
     );
     if (localNumber == null) return null;
 
     final busType = getBusType(
       busNumber,
       hasExtendedAuxBuses: hasExtendedAuxBuses,
+      deviceIoProfile: profile,
     );
     switch (busType) {
       case BusType.input:
@@ -141,21 +154,17 @@ class BusLabelFormatter {
   static BusType? getBusType(
     int? busNumber, {
     bool hasExtendedAuxBuses = false,
+    DeviceIoProfile? deviceIoProfile,
   }) {
     if (busNumber == null) return null;
-    if (BusSpec.isPhysicalInput(busNumber)) {
+    final profile = _profile(deviceIoProfile, hasExtendedAuxBuses);
+    if (profile.isInput(busNumber)) {
       return BusType.input;
-    } else if (BusSpec.isPhysicalOutput(busNumber)) {
+    } else if (profile.isOutput(busNumber)) {
       return BusType.output;
-    } else if (BusSpec.isAuxForFirmware(
-      busNumber,
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
-    )) {
+    } else if (profile.isAux(busNumber)) {
       return BusType.auxiliary;
-    } else if (BusSpec.isEs5ForFirmware(
-      busNumber,
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
-    )) {
+    } else if (profile.contextualEs5Buses.contains(busNumber)) {
       return BusType.es5;
     }
 
@@ -165,24 +174,36 @@ class BusLabelFormatter {
   /// Checks if a bus number is valid
   ///
   /// Valid bus numbers are 1-30 inclusive (includes ES-5)
-  static bool isValidBusNumber(int? busNumber) {
+  static bool isValidBusNumber(
+    int? busNumber, {
+    DeviceIoProfile? deviceIoProfile,
+    bool hasExtendedAuxBuses = false,
+  }) {
     if (busNumber == null) return false;
-    return BusSpec.isValid(busNumber);
+    final profile = _profile(deviceIoProfile, hasExtendedAuxBuses);
+    return profile.contains(busNumber) ||
+        profile.contextualEs5Buses.contains(busNumber);
   }
 
   /// Gets the range of bus numbers for a specific bus type
   ///
   /// Returns a list with [min, max] bus numbers for the type
-  static List<int> getBusRange(BusType busType) {
+  static List<int> getBusRange(
+    BusType busType, {
+    DeviceIoProfile? deviceIoProfile,
+    bool hasExtendedAuxBuses = false,
+  }) {
+    final profile = _profile(deviceIoProfile, hasExtendedAuxBuses);
     switch (busType) {
       case BusType.input:
-        return [BusSpec.inputMin, BusSpec.inputMax];
+        return [profile.inputStart, profile.outputStart - 1];
       case BusType.output:
-        return [BusSpec.outputMin, BusSpec.outputMax];
+        return [profile.outputStart, profile.auxStart - 1];
       case BusType.auxiliary:
-        return [BusSpec.auxMin, BusSpec.auxMaxExtended];
+        return [profile.auxStart, profile.maxBus];
       case BusType.es5:
-        return [BusSpec.es5Min, BusSpec.es5Max];
+        final es5 = profile.contextualEs5Buses;
+        return es5.isEmpty ? const [] : [es5.first, es5.last];
     }
   }
 
@@ -196,29 +217,39 @@ class BusLabelFormatter {
   static int? getLocalBusNumber(
     int? busNumber, {
     bool hasExtendedAuxBuses = false,
+    DeviceIoProfile? deviceIoProfile,
   }) {
-    if (busNumber == null || !isValidBusNumber(busNumber)) {
+    final profile = _profile(deviceIoProfile, hasExtendedAuxBuses);
+    if (busNumber == null ||
+        !isValidBusNumber(busNumber, deviceIoProfile: profile)) {
       return null;
     }
 
     final busType = getBusType(
       busNumber,
       hasExtendedAuxBuses: hasExtendedAuxBuses,
+      deviceIoProfile: profile,
     );
     switch (busType) {
       case BusType.input:
-        return busNumber; // Inputs are already 1-based
+        return profile.localNumber(busNumber);
       case BusType.output:
-        return busNumber - (BusSpec.outputMin - 1); // Convert 13-20 to 1-8
+        return profile.localNumber(busNumber);
       case BusType.auxiliary:
-        return busNumber - (BusSpec.auxMin - 1); // Convert 21-64 to 1-44
+        return profile.localNumber(busNumber);
       case BusType.es5:
-        return BusSpec.isEs5Extended(busNumber)
-            ? busNumber -
-                  (BusSpec.es5MinExtended - 1) // Convert 65-66 to 1-2
-            : busNumber - (BusSpec.es5Min - 1); // Convert 29-30 to 1-2
+        return profile.contextualEs5Buses.indexOf(busNumber) + 1;
       case null:
         return null;
     }
   }
+
+  static DeviceIoProfile _profile(
+    DeviceIoProfile? profile,
+    bool hasExtendedAuxBuses,
+  ) =>
+      profile ??
+      (hasExtendedAuxBuses
+          ? DeviceIoProfile.distingExtended
+          : DeviceIoProfile.distingLegacy);
 }

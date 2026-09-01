@@ -12,6 +12,7 @@ void main() {
       () {
         final routing = AlgorithmRouting.fromSlot(
           _createMixerSlotWithChannels(),
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         );
 
         expect(
@@ -39,6 +40,7 @@ void main() {
       () {
         final routing = AlgorithmRouting.fromSlot(
           _createMixerSlotWithChannels(),
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'mixer_1',
         );
 

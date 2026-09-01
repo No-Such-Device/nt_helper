@@ -3,16 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_limits.dart';
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:nt_helper/models/performance_page_item.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/ui/midi_listener/midi_detector_widget.dart';
 import 'package:nt_helper/ui/midi_listener/midi_listener_cubit.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 import 'package:nt_helper/ui/widgets/mapping_range_slider.dart';
+import 'package:nt_helper/ui/widgets/routing/bus_selection_field.dart';
+import 'package:nt_helper/ui/widgets/routing/bus_selection_model.dart';
 
 class PackedMappingDataEditor extends StatefulWidget {
   final PackedMappingData initialData;
@@ -364,17 +366,9 @@ class PackedMappingDataEditorState extends State<PackedMappingDataEditor>
   /// ---------------------
   Widget _buildCvEditor() {
     final state = context.read<DistingCubit>().state;
-    final hasExtendedAuxBuses = state is DistingStateSynchronized
-        ? state.firmwareVersion.hasExtendedAuxBuses
-        : false;
-    final auxMax = BusSpec.auxMaxForFirmware(
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
-    );
-
-    // Safely clamp the current CV input to valid range for display
-    final cvInputValue = (_data.cvInput >= 0 && _data.cvInput <= auxMax)
-        ? _data.cvInput
-        : 0;
+    final deviceIoProfile = state is DistingStateSynchronized
+        ? state.deviceIoProfile
+        : DeviceIoProfile.distingLegacy;
 
     // Safely clamp the source value for the dropdown
     final maxSourceValue = DistingLimits.maxPresetSlots + 1;
@@ -433,43 +427,24 @@ class PackedMappingDataEditorState extends State<PackedMappingDataEditor>
               ),
             ),
             const SizedBox(height: 12),
-            // Material 3 DropdownMenu for CV Input, filling width and removing redundant labels
+            // Shared grouped bus picker for CV Input.
             SizedBox(
               width: double.infinity,
-              child: DropdownMenu<int>(
-                initialSelection: cvInputValue,
-                requestFocusOnTap: false,
-                label: Text('CV Input'), // optional text if you want a hint
-                onSelected: (newValue) {
-                  if (newValue == null) return;
+              child: BusSelectionField(
+                label: 'CV Input',
+                model: BusSelectionModel.fromProfile(
+                  deviceIoProfile: deviceIoProfile,
+                  currentValue: _data.cvInput,
+                  minimum: 0,
+                  maximum: deviceIoProfile.maxBus,
+                  allowNone: true,
+                ),
+                onChanged: (newValue) {
                   setState(() {
                     _data = _data.copyWith(cvInput: newValue);
                   });
                   _triggerOptimisticSave();
                 },
-                dropdownMenuEntries: List.generate(auxMax + 1, (index) {
-                  if (index == 0) {
-                    return const DropdownMenuEntry<int>(
-                      value: 0,
-                      label: 'None',
-                    );
-                  } else if (index <= BusSpec.inputMax) {
-                    return DropdownMenuEntry<int>(
-                      value: index,
-                      label: 'Input $index',
-                    );
-                  } else if (index <= BusSpec.outputMax) {
-                    return DropdownMenuEntry<int>(
-                      value: index,
-                      label: 'Output ${index - BusSpec.inputMax}',
-                    );
-                  } else {
-                    return DropdownMenuEntry<int>(
-                      value: index,
-                      label: 'Aux ${index - BusSpec.outputMax}',
-                    );
-                  }
-                }),
               ),
             ),
             const SizedBox(height: 12),

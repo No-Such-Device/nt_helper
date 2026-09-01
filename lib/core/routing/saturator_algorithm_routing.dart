@@ -2,6 +2,7 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'models/port.dart';
 import 'multi_channel_algorithm_routing.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Routing implementation for Saturator algorithm.
 ///
@@ -26,6 +27,7 @@ class SaturatorAlgorithmRouting extends MultiChannelAlgorithmRouting {
   /// Creates a SaturatorAlgorithmRouting instance from a slot.
   static SaturatorAlgorithmRouting createFromSlot(
     Slot slot, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
     required Map<String, int> ioParameters,
     Map<String, int>? modeParameters,
     Map<String, ({int parameterNumber, int value})>? modeParametersWithNumbers,
@@ -157,6 +159,8 @@ class SaturatorAlgorithmRouting extends MultiChannelAlgorithmRouting {
       },
     );
 
-    return SaturatorAlgorithmRouting(slot: slot, config: config);
+    final routing = SaturatorAlgorithmRouting(slot: slot, config: config);
+    routing.deviceIoProfile = deviceIoProfile;
+    return routing;
   }
 }

@@ -123,6 +123,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
                   disting,
                   distingVersion,
                   firmwareVersion,
+                  deviceIoProfile,
                   presetName,
                   algorithms,
                   slots,

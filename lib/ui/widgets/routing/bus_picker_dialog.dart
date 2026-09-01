@@ -3,7 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'package:nt_helper/core/routing/bus_color_palette.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
+import 'package:nt_helper/ui/widgets/routing/bus_selection_model.dart';
 
 /// Compact, color-coded bus picker for the Bus Lanes view.
 ///
@@ -17,35 +18,13 @@ class BusPickerDialog extends StatefulWidget {
   /// Display name of the port being routed (e.g. "Input 1", "Clock Out").
   final String portLabel;
 
-  /// The port's current bus assignment (0 = None). Shown in the footer.
-  final int currentBus;
-
-  /// Complete bus list supplied for display.
-  ///
-  /// The dialog inserts [currentBus] when needed so the current assignment is
-  /// visible even if the caller omitted it from this list.
-  final List<int> availableBuses;
-
-  /// Whether ES-5 buses are valid targets for this port.
-  final bool showEs5;
-
-  /// Whether the parameter permits bus 0 (None/Off) as a valid value.
-  ///
-  /// When `true`, a neutral "None" tile is shown at the top of the picker;
-  /// tapping it pops the dialog with `0`.
-  final bool canDisconnect;
-
-  /// Label formatter matching the bus-lanes legend (I1, O3, A12, ES1…).
-  final String Function(int) busLabel;
+  /// Fully classified choices and current-value validity.
+  final BusSelectionModel model;
 
   const BusPickerDialog({
     super.key,
     required this.portLabel,
-    required this.currentBus,
-    required this.availableBuses,
-    required this.showEs5,
-    this.canDisconnect = false,
-    required this.busLabel,
+    required this.model,
   });
 
   @override
@@ -55,38 +34,28 @@ class BusPickerDialog extends StatefulWidget {
 class _BusPickerDialogState extends State<BusPickerDialog> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _currentBusKey = GlobalKey();
-  late final List<int> _inputs;
-  late final List<int> _outputs;
-  late final List<int> _aux;
-  late final List<int> _es5;
+  late final List<BusSelectionChoice> _inputs;
+  late final List<BusSelectionChoice> _outputs;
+  late final List<BusSelectionChoice> _aux;
+  late final List<BusSelectionChoice> _es5;
 
   @override
   void initState() {
     super.initState();
 
-    final displayBuses = widget.availableBuses.where((b) => b > 0).toSet();
-    if (widget.currentBus > 0) displayBuses.add(widget.currentBus);
-
-    final es5Set = widget.showEs5
-        ? displayBuses
-              .where((b) => BusSpec.isEs5(b) || BusSpec.isEs5Extended(b))
-              .toSet()
-        : <int>{};
-
-    _inputs = displayBuses.where(BusSpec.isPhysicalInput).toList()..sort();
-    _outputs = displayBuses.where(BusSpec.isPhysicalOutput).toList()..sort();
-    _es5 = es5Set.toList()..sort();
-    _aux =
-        displayBuses
-            .where((b) => b >= BusSpec.auxMin && !es5Set.contains(b))
-            .toList()
-          ..sort();
+    _inputs = widget.model.choicesFor(BusSelectionGroup.input);
+    _outputs = widget.model.choicesFor(BusSelectionGroup.output);
+    _aux = widget.model.choicesFor(BusSelectionGroup.aux);
+    _es5 = widget.model.choicesFor(BusSelectionGroup.es5);
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _centerCurrentBus());
   }
 
   void _centerCurrentBus() {
-    if (widget.currentBus <= 0) return;
+    if (!widget.model.isSelectable(widget.model.currentValue) ||
+        widget.model.currentValue <= 0) {
+      return;
+    }
     final currentContext = _currentBusKey.currentContext;
     if (currentContext == null) return;
     Scrollable.ensureVisible(
@@ -157,10 +126,10 @@ class _BusPickerDialogState extends State<BusPickerDialog> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (widget.canDisconnect)
+                          if (widget.model.allowNone)
                             _NoneSection(
-                              selected: widget.currentBus == 0,
-                              onTap: widget.currentBus == 0
+                              selected: widget.model.currentValue == 0,
+                              onTap: widget.model.currentValue == 0
                                   ? null
                                   : () => Navigator.of(context).pop(0),
                             ),
@@ -177,7 +146,7 @@ class _BusPickerDialogState extends State<BusPickerDialog> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Currently: ${widget.currentBus == 0 ? "None" : widget.busLabel(widget.currentBus)}',
+                  'Currently: ${widget.model.labelFor(widget.model.currentValue)}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -190,7 +159,11 @@ class _BusPickerDialogState extends State<BusPickerDialog> {
     );
   }
 
-  Widget _section(String header, List<int> buses, ThemeData theme) {
+  Widget _section(
+    String header,
+    List<BusSelectionChoice> choices,
+    ThemeData theme,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -213,15 +186,18 @@ class _BusPickerDialogState extends State<BusPickerDialog> {
             spacing: 8,
             runSpacing: 6,
             children: [
-              for (final bus in buses)
+              for (final choice in choices)
                 _BusTile(
-                  key: bus == widget.currentBus ? _currentBusKey : null,
-                  bus: bus,
-                  label: widget.busLabel(bus),
-                  selected: bus == widget.currentBus,
-                  onTap: bus == widget.currentBus
+                  key: choice.value == widget.model.currentValue
+                      ? _currentBusKey
+                      : null,
+                  bus: choice.value,
+                  label: choice.label,
+                  deviceIoProfile: widget.model.deviceIoProfile,
+                  selected: choice.value == widget.model.currentValue,
+                  onTap: choice.value == widget.model.currentValue
                       ? null
-                      : () => Navigator.of(context).pop(bus),
+                      : () => Navigator.of(context).pop(choice.value),
                 ),
             ],
           ),
@@ -234,12 +210,14 @@ class _BusPickerDialogState extends State<BusPickerDialog> {
 class _BusTile extends StatefulWidget {
   final int bus;
   final String label;
+  final DeviceIoProfile deviceIoProfile;
   final bool selected;
   final VoidCallback? onTap;
   const _BusTile({
     super.key,
     required this.bus,
     required this.label,
+    required this.deviceIoProfile,
     required this.selected,
     required this.onTap,
   });
@@ -256,7 +234,9 @@ class _NoneSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final borderColor = selected ? theme.colorScheme.primary : theme.colorScheme.outline;
+    final borderColor = selected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.outline;
     final borderWidth = selected ? 3.0 : 1.5;
     final fillColor = selected
         ? theme.colorScheme.primary.withValues(alpha: 0.18)
@@ -334,7 +314,11 @@ class _BusTileState extends State<_BusTile> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final baseColor = BusColorPalette.baseColor(widget.bus, isDark: isDark);
+    final baseColor = BusColorPalette.baseColor(
+      widget.bus,
+      isDark: isDark,
+      deviceIoProfile: widget.deviceIoProfile,
+    );
     final borderColor = widget.selected ? theme.colorScheme.primary : baseColor;
     final borderWidth = widget.selected ? 3.0 : (_hovered ? 2.0 : 1.5);
     final fillAlpha = widget.selected ? 0.45 : (_hovered ? 0.35 : 0.18);

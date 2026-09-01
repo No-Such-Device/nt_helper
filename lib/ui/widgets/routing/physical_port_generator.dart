@@ -1,4 +1,5 @@
 import 'package:nt_helper/core/routing/models/port.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Utility class for generating physical I/O port configurations.
 ///
@@ -18,8 +19,10 @@ class PhysicalPortGenerator {
   /// they provide signals to algorithm inputs.
   ///
   /// Returns a list of 12 Port objects configured as physical inputs.
-  static List<Port> generatePhysicalInputPorts() {
-    return List.generate(physicalInputCount, (index) {
+  static List<Port> generatePhysicalInputPorts({
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) {
+    return List.generate(deviceIoProfile.inputBusCount, (index) {
       final portNumber = index + 1;
       return Port(
         id: 'hw_in_$portNumber',
@@ -41,8 +44,10 @@ class PhysicalPortGenerator {
   /// they receive signals from algorithm outputs.
   ///
   /// Returns a list of 8 Port objects configured as physical outputs.
-  static List<Port> generatePhysicalOutputPorts() {
-    return List.generate(physicalOutputCount, (index) {
+  static List<Port> generatePhysicalOutputPorts({
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) {
+    return List.generate(deviceIoProfile.outputBusCount, (index) {
       final portNumber = index + 1;
       return Port(
         id: 'hw_out_$portNumber',
@@ -61,10 +66,13 @@ class PhysicalPortGenerator {
   ///
   /// [index] should be between 1 and 12 inclusive.
   /// Throws [ArgumentError] if index is out of range.
-  static Port generatePhysicalInputPort(int index) {
-    if (index < 1 || index > physicalInputCount) {
+  static Port generatePhysicalInputPort(
+    int index, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) {
+    if (index < 1 || index > deviceIoProfile.inputBusCount) {
       throw ArgumentError(
-        'Physical input index must be between 1 and $physicalInputCount, got $index',
+        'Physical input index must be between 1 and ${deviceIoProfile.inputBusCount}, got $index',
       );
     }
 
@@ -84,10 +92,13 @@ class PhysicalPortGenerator {
   ///
   /// [index] should be between 1 and 8 inclusive.
   /// Throws [ArgumentError] if index is out of range.
-  static Port generatePhysicalOutputPort(int index) {
-    if (index < 1 || index > physicalOutputCount) {
+  static Port generatePhysicalOutputPort(
+    int index, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
+  }) {
+    if (index < 1 || index > deviceIoProfile.outputBusCount) {
       throw ArgumentError(
-        'Physical output index must be between 1 and $physicalOutputCount, got $index',
+        'Physical output index must be between 1 and ${deviceIoProfile.outputBusCount}, got $index',
       );
     }
 

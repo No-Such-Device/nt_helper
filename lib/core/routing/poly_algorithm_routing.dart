@@ -3,6 +3,7 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'algorithm_routing.dart';
 import 'models/port.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 typedef _GateCvParameterPair = ({ParameterInfo gate, ParameterInfo count});
 
@@ -460,6 +461,7 @@ class PolyAlgorithmRouting extends CachedAlgorithmRouting {
   /// - [algorithmUuid]: Optional UUID for the algorithm instance
   static PolyAlgorithmRouting createFromSlot(
     Slot slot, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
     required Map<String, int> ioParameters,
     Map<String, int>? modeParameters,
     Map<String, ({int parameterNumber, int value})>? modeParametersWithNumbers,
@@ -949,6 +951,8 @@ class PolyAlgorithmRouting extends CachedAlgorithmRouting {
       },
     );
 
-    return PolyAlgorithmRouting(config: config);
+    final routing = PolyAlgorithmRouting(config: config);
+    routing.deviceIoProfile = deviceIoProfile;
+    return routing;
   }
 }

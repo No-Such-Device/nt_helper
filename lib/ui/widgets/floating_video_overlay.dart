@@ -264,6 +264,7 @@ class FloatingVideoContent extends StatelessWidget {
                         _,
                         _,
                         _,
+                        _,
                         videoStream,
                         _,
                         _,

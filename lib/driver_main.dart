@@ -93,7 +93,10 @@ Future<String> _handleDriverData(String? message) async {
       orElse: () => slots.first,
     );
     if (clockDividerSlot.algorithm.guid == 'clkd') {
-      final routing = AlgorithmRouting.fromSlot(clockDividerSlot);
+      final routing = AlgorithmRouting.fromSlot(
+        clockDividerSlot,
+        deviceIoProfile: state.deviceIoProfile,
+      );
       result['clockDividerOutputs'] = routing.outputPorts.map((port) {
         return {
           'name': port.name,

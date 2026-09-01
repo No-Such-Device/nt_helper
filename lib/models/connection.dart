@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_label_formatter.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 part 'connection.freezed.dart';
 part 'connection.g.dart';
@@ -25,11 +26,15 @@ sealed class Connection with _$Connection {
 
 extension ConnectionHelpers on Connection {
   // Helper to generate edge label
-  String getEdgeLabel({bool hasExtendedAuxBuses = false}) {
+  String getEdgeLabel({
+    bool hasExtendedAuxBuses = false,
+    DeviceIoProfile? deviceIoProfile,
+  }) {
     final label = BusLabelFormatter.formatBusLabelWithMode(
       assignedBus,
       replaceMode ? OutputMode.replace : OutputMode.add,
       hasExtendedAuxBuses: hasExtendedAuxBuses,
+      deviceIoProfile: deviceIoProfile,
     );
     return label ?? 'Bus$assignedBus';
   }

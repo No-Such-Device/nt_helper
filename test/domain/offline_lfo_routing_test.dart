@@ -74,7 +74,10 @@ void main() {
 
     test('uses bundled io metadata for LFO ports in offline mode', () async {
       final slot = await cubit.fetchSlot(manager, 0);
-      final routing = AlgorithmRouting.fromSlot(slot);
+      final routing = AlgorithmRouting.fromSlot(
+        slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+      );
 
       expect(
         routing.inputPorts.map((port) => port.name),

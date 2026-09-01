@@ -1,5 +1,5 @@
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Utility class for generating ES-5 Eurorack hardware node port configurations.
 ///
@@ -31,12 +31,32 @@ class ES5HardwareNode {
   static const int inputPortCount = 10;
 
   /// Returns the firmware-aware bus number for the L (left) audio port.
-  static int leftAudioBusForFirmware({required bool hasExtendedAuxBuses}) =>
-      hasExtendedAuxBuses ? BusSpec.es5MinExtended : BusSpec.es5Min;
+  static int? leftAudioBus(DeviceIoProfile deviceIoProfile) {
+    final buses = deviceIoProfile.contextualEs5Buses;
+    return buses.isEmpty ? null : buses.first;
+  }
 
   /// Returns the firmware-aware bus number for the R (right) audio port.
+  static int? rightAudioBus(DeviceIoProfile deviceIoProfile) =>
+      deviceIoProfile.contextualEs5Buses.length == 2
+      ? deviceIoProfile.contextualEs5Buses[1]
+      : null;
+
+  /// Compatibility helper for callers that have not yet resolved a profile.
+  static int leftAudioBusForFirmware({required bool hasExtendedAuxBuses}) =>
+      leftAudioBus(
+        hasExtendedAuxBuses
+            ? DeviceIoProfile.distingExtended
+            : DeviceIoProfile.distingLegacy,
+      )!;
+
+  /// Compatibility helper for callers that have not yet resolved a profile.
   static int rightAudioBusForFirmware({required bool hasExtendedAuxBuses}) =>
-      hasExtendedAuxBuses ? BusSpec.es5MaxExtended : BusSpec.es5Max;
+      rightAudioBus(
+        hasExtendedAuxBuses
+            ? DeviceIoProfile.distingExtended
+            : DeviceIoProfile.distingLegacy,
+      )!;
 
   /// Generates a list of all ES-5 input ports.
   ///
@@ -46,38 +66,44 @@ class ES5HardwareNode {
   /// - Ports 1-8: Gate/trigger outputs (no fixed bus assignment)
   ///
   /// Returns a list of 10 Port objects configured as ES-5 inputs.
-  static List<Port> createInputPorts({required bool hasExtendedAuxBuses}) {
+  static List<Port> createInputPorts({
+    DeviceIoProfile? deviceIoProfile,
+    bool? hasExtendedAuxBuses,
+  }) {
+    deviceIoProfile ??= hasExtendedAuxBuses == false
+        ? DeviceIoProfile.distingLegacy
+        : DeviceIoProfile.distingExtended;
     final ports = <Port>[];
 
-    ports.add(
-      Port(
-        id: 'es5_L',
-        name: 'L',
-        type: PortType.audio,
-        direction: PortDirection.input,
-        description: 'ES-5 Left (Silent Way)',
-        busValue: leftAudioBusForFirmware(
-          hasExtendedAuxBuses: hasExtendedAuxBuses,
-        ),
-        nodeId: id,
-        role: PortRole.es5Bus,
-      ),
-    );
-
-    ports.add(
-      Port(
-        id: 'es5_R',
-        name: 'R',
-        type: PortType.audio,
-        direction: PortDirection.input,
-        description: 'ES-5 Right (Silent Way)',
-        busValue: rightAudioBusForFirmware(
-          hasExtendedAuxBuses: hasExtendedAuxBuses,
-        ),
-        nodeId: id,
-        role: PortRole.es5Bus,
-      ),
-    );
+    final leftBus = leftAudioBus(deviceIoProfile);
+    final rightBus = rightAudioBus(deviceIoProfile);
+    if (leftBus != null && rightBus != null) {
+      ports
+        ..add(
+          Port(
+            id: 'es5_L',
+            name: 'L',
+            type: PortType.audio,
+            direction: PortDirection.input,
+            description: 'ES-5 Left (Silent Way)',
+            busValue: leftBus,
+            nodeId: id,
+            role: PortRole.es5Bus,
+          ),
+        )
+        ..add(
+          Port(
+            id: 'es5_R',
+            name: 'R',
+            type: PortType.audio,
+            direction: PortDirection.input,
+            description: 'ES-5 Right (Silent Way)',
+            busValue: rightBus,
+            nodeId: id,
+            role: PortRole.es5Bus,
+          ),
+        );
+    }
 
     // Create numbered ports 1-8 (gate, no fixed bus)
     for (int i = 1; i <= 8; i++) {
@@ -113,32 +139,40 @@ class ES5HardwareNode {
   }
 
   /// Gets the L (left) audio port.
-  static Port getLeftAudioPort({required bool hasExtendedAuxBuses}) {
+  static Port getLeftAudioPort({
+    DeviceIoProfile? deviceIoProfile,
+    bool? hasExtendedAuxBuses,
+  }) {
+    deviceIoProfile ??= hasExtendedAuxBuses == false
+        ? DeviceIoProfile.distingLegacy
+        : DeviceIoProfile.distingExtended;
     return Port(
       id: 'es5_L',
       name: 'L',
       type: PortType.audio,
       direction: PortDirection.input,
       description: 'ES-5 Left (Silent Way)',
-      busValue: leftAudioBusForFirmware(
-        hasExtendedAuxBuses: hasExtendedAuxBuses,
-      ),
+      busValue: leftAudioBus(deviceIoProfile),
       nodeId: id,
       role: PortRole.es5Bus,
     );
   }
 
   /// Gets the R (right) audio port.
-  static Port getRightAudioPort({required bool hasExtendedAuxBuses}) {
+  static Port getRightAudioPort({
+    DeviceIoProfile? deviceIoProfile,
+    bool? hasExtendedAuxBuses,
+  }) {
+    deviceIoProfile ??= hasExtendedAuxBuses == false
+        ? DeviceIoProfile.distingLegacy
+        : DeviceIoProfile.distingExtended;
     return Port(
       id: 'es5_R',
       name: 'R',
       type: PortType.audio,
       direction: PortDirection.input,
       description: 'ES-5 Right (Silent Way)',
-      busValue: rightAudioBusForFirmware(
-        hasExtendedAuxBuses: hasExtendedAuxBuses,
-      ),
+      busValue: rightAudioBus(deviceIoProfile),
       nodeId: id,
       role: PortRole.es5Bus,
     );

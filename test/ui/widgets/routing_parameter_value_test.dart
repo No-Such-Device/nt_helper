@@ -17,6 +17,7 @@ void main() {
           RoutingParameterValue(
             portLabel: 'Output 1',
             currentBus: 13,
+            parameterMin: 0,
             showEs5: false,
             hasExtendedAuxBuses: false,
             onValueChanged: (_) {},
@@ -34,8 +35,10 @@ void main() {
           RoutingParameterValue(
             portLabel: 'Output 1',
             currentBus: 0,
+            parameterMin: 0,
             showEs5: false,
             hasExtendedAuxBuses: false,
+            canDisconnect: true,
             onValueChanged: (_) {},
           ),
         ),
@@ -188,6 +191,7 @@ void main() {
           RoutingParameterValue(
             portLabel: 'Output 1',
             currentBus: 0,
+            parameterMin: 0,
             showEs5: false,
             hasExtendedAuxBuses: false,
             canDisconnect: true,
@@ -207,6 +211,7 @@ void main() {
           RoutingParameterValue(
             portLabel: 'Output 1',
             currentBus: 13,
+            parameterMin: 0,
             showEs5: false,
             hasExtendedAuxBuses: false,
             canDisconnect: true,
@@ -228,6 +233,7 @@ void main() {
           RoutingParameterValue(
             portLabel: 'Output 1',
             currentBus: 13,
+            parameterMin: 0,
             showEs5: false,
             hasExtendedAuxBuses: false,
             canDisconnect: true,
@@ -247,6 +253,7 @@ void main() {
           RoutingParameterValue(
             portLabel: 'Output 1',
             currentBus: 13,
+            parameterMin: 0,
             showEs5: false,
             hasExtendedAuxBuses: false,
             canDisconnect: true,
@@ -270,6 +277,7 @@ void main() {
           RoutingParameterValue(
             portLabel: 'Output 1',
             currentBus: 13,
+            parameterMin: 0,
             showEs5: false,
             hasExtendedAuxBuses: false,
             canDisconnect: false,
@@ -293,6 +301,7 @@ void main() {
           RoutingParameterValue(
             portLabel: 'Output 1',
             currentBus: 13,
+            parameterMin: 0,
             showEs5: false,
             hasExtendedAuxBuses: false,
             canDisconnect: true,

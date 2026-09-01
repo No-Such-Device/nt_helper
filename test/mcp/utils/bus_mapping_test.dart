@@ -266,10 +266,10 @@ void main() {
           BusMapping.isBusParameter(makeParam(unit: 1, min: 5, max: 28)),
           isFalse,
         );
-        // Max too large
+        // A broader advertised range is still intersected with the profile.
         expect(
           BusMapping.isBusParameter(makeParam(unit: 1, min: 0, max: 100)),
-          isFalse,
+          isTrue,
         );
       });
     });

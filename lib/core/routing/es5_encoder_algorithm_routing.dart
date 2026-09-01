@@ -2,6 +2,7 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'multi_channel_algorithm_routing.dart';
 import 'models/port.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Specialized routing implementation for the ES-5 Encoder algorithm.
 ///
@@ -199,6 +200,7 @@ class ES5EncoderAlgorithmRouting extends MultiChannelAlgorithmRouting {
   /// configuring it based on the slot's specifications and parameters.
   static ES5EncoderAlgorithmRouting createFromSlot(
     Slot slot, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
     String? algorithmUuid,
   }) {
     // Determine the number of channels from the channel pages
@@ -223,6 +225,8 @@ class ES5EncoderAlgorithmRouting extends MultiChannelAlgorithmRouting {
       },
     );
 
-    return ES5EncoderAlgorithmRouting(slot: slot, config: config);
+    final routing = ES5EncoderAlgorithmRouting(slot: slot, config: config);
+    routing.deviceIoProfile = deviceIoProfile;
+    return routing;
   }
 }

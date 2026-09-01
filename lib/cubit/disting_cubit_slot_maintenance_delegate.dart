@@ -149,13 +149,24 @@ class _SlotMaintenanceDelegate {
 
   Future<void> resetOutputs(Slot slot, int outputIndex) async {
     final disting = _cubit.requireDisting();
+    final state = _cubit.state;
+    final profile = state is DistingStateSynchronized
+        ? state.deviceIoProfile
+        : DeviceIoProfile.distingLegacy;
+    if (outputIndex < 0 ||
+        (outputIndex != 0 && !profile.contains(outputIndex))) {
+      return;
+    }
 
     slot.parameters
         .where(
           (p) =>
               p.name.toLowerCase().contains("output") &&
+              p.unit == 1 &&
               p.min == 0 &&
-              BusSpec.isBusParameterMaxValue(p.max),
+              profile.busesWithin(p.min, p.max).isNotEmpty &&
+              outputIndex >= p.min &&
+              outputIndex <= p.max,
         )
         .forEach(
           (p) => disting.setParameterValue(

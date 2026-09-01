@@ -1,5 +1,6 @@
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'multi_channel_algorithm_routing.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Routing implementation for the Noise gate algorithm (`nsgt`).
 ///
@@ -19,6 +20,7 @@ class NoiseGateAlgorithmRouting extends MultiChannelAlgorithmRouting {
 
   static NoiseGateAlgorithmRouting createFromSlot(
     Slot slot, {
+    DeviceIoProfile deviceIoProfile = DeviceIoProfile.distingExtended,
     required Map<String, int> ioParameters,
     Map<String, int>? modeParameters,
     Map<String, ({int parameterNumber, int value})>? modeParametersWithNumbers,
@@ -26,6 +28,7 @@ class NoiseGateAlgorithmRouting extends MultiChannelAlgorithmRouting {
   }) {
     final base = MultiChannelAlgorithmRouting.createFromSlot(
       slot,
+      deviceIoProfile: deviceIoProfile,
       ioParameters: ioParameters,
       modeParameters: modeParameters,
       modeParametersWithNumbers: modeParametersWithNumbers,
@@ -47,7 +50,9 @@ class NoiseGateAlgorithmRouting extends MultiChannelAlgorithmRouting {
       },
     );
 
-    return NoiseGateAlgorithmRouting(slot: slot, config: newConfig);
+    final routing = NoiseGateAlgorithmRouting(slot: slot, config: newConfig);
+    routing.deviceIoProfile = deviceIoProfile;
+    return routing;
   }
 
   /// Returns a new outputs list that contains the original outputs plus a

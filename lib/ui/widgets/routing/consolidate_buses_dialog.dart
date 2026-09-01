@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/cubit/routing_editor_cubit.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
+import 'package:nt_helper/cubit/routing_editor_state.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 class ConsolidateBusesDialog extends StatefulWidget {
   final AuxBusConsolidationPlan plan;
@@ -166,7 +167,11 @@ class _ConsolidateBusesDialogState extends State<ConsolidateBusesDialog> {
   ) {
     final merge = widget.plan.merges[mergeIndex];
     final enabled = _enabledMerges.contains(mergeIndex);
-    final keepLocal = BusSpec.toLocalNumber(merge.keepBus) ?? merge.keepBus;
+    final routingState = widget.cubit.state;
+    final profile = routingState is RoutingEditorStateLoaded
+        ? routingState.deviceIoProfile
+        : DeviceIoProfile.distingExtended;
+    final keepLocal = profile.localNumber(merge.keepBus) ?? merge.keepBus;
     final canToggle = !_isExecuting && !_isComplete;
 
     return Column(

@@ -12,6 +12,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'quan_test',
       );
 
@@ -27,10 +28,14 @@ void main() {
     });
 
     test('Auto-calibrator outputs default to Replace mode', () {
-      final slot = _createSimpleOutputSlot(guid: 'cali', name: 'Auto-calibrator');
+      final slot = _createSimpleOutputSlot(
+        guid: 'cali',
+        name: 'Auto-calibrator',
+      );
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'cali_test',
       );
 
@@ -45,29 +50,32 @@ void main() {
       }
     });
 
-    test('Algorithm not in always-replace list keeps null mode without param',
-        () {
-      final slot = _createSimpleOutputSlot(
-        guid: 'unkn',
-        name: 'Unknown algorithm',
-      );
-
-      final routing = AlgorithmRouting.fromSlot(
-        slot,
-        algorithmUuid: 'unkn_test',
-      );
-
-      expect(routing.outputPorts, isNotEmpty);
-      for (final port in routing.outputPorts) {
-        expect(
-          port.outputMode,
-          isNull,
-          reason:
-              'Algorithm not in always-replace list should keep null mode '
-              'when no mode parameter exists',
+    test(
+      'Algorithm not in always-replace list keeps null mode without param',
+      () {
+        final slot = _createSimpleOutputSlot(
+          guid: 'unkn',
+          name: 'Unknown algorithm',
         );
-      }
-    });
+
+        final routing = AlgorithmRouting.fromSlot(
+          slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+          algorithmUuid: 'unkn_test',
+        );
+
+        expect(routing.outputPorts, isNotEmpty);
+        for (final port in routing.outputPorts) {
+          expect(
+            port.outputMode,
+            isNull,
+            reason:
+                'Algorithm not in always-replace list should keep null mode '
+                'when no mode parameter exists',
+          );
+        }
+      },
+    );
   });
 
   group('defaultOutputMode parameter on createFromSlot', () {
@@ -146,6 +154,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'input_test',
       );
 

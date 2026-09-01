@@ -114,6 +114,7 @@ void main() {
       // Create routing from slot
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'test_lua_${DateTime.now().millisecondsSinceEpoch}',
       );
 
@@ -150,6 +151,7 @@ void main() {
       // Create routing from slot
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid:
             'test_outputmode_${DateTime.now().millisecondsSinceEpoch}',
       );
@@ -180,6 +182,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'test_add_${DateTime.now().millisecondsSinceEpoch}',
       );
 
@@ -195,6 +198,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'test_replace_${DateTime.now().millisecondsSinceEpoch}',
       );
 
@@ -210,6 +214,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid:
             'test_uncontrolled_${DateTime.now().millisecondsSinceEpoch}',
       );
@@ -232,6 +237,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid:
               'test_fallback_${DateTime.now().millisecondsSinceEpoch}',
         );
@@ -258,6 +264,7 @@ void main() {
       // Create routing from slot - PolyAlgorithmRouting should be selected
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid:
             'test_poly_outputmode_${DateTime.now().millisecondsSinceEpoch}',
       );
@@ -282,6 +289,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'test_poly_add_${DateTime.now().millisecondsSinceEpoch}',
       );
 
@@ -301,6 +309,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid:
             'test_poly_replace_${DateTime.now().millisecondsSinceEpoch}',
       );
@@ -324,6 +333,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid:
               'test_poly_fallback_${DateTime.now().millisecondsSinceEpoch}',
         );

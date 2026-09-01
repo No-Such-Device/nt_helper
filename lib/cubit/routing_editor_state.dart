@@ -4,6 +4,7 @@ import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/core/routing/models/connection.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/core/routing/node_layout_algorithm.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 part 'routing_editor_state.freezed.dart';
 
@@ -88,6 +89,7 @@ sealed class RoutingEditorState with _$RoutingEditorState {
 
   /// State when routing data is loaded and ready for visualization
   const factory RoutingEditorState.loaded({
+    @Default(DeviceIoProfile.distingExtended) DeviceIoProfile deviceIoProfile,
     required List<Port> physicalInputs, // 12 physical input ports
     required List<Port> physicalOutputs, // 8 physical output ports
     @Default([])

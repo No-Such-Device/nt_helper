@@ -65,7 +65,10 @@ void main() {
           ],
         );
 
-        final routing = AlgorithmRouting.fromSlot(slot);
+        final routing = AlgorithmRouting.fromSlot(
+          slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+        );
 
         expect(routing.inputPorts, isNotEmpty);
         expect(routing.outputPorts, isNotEmpty);
@@ -108,7 +111,10 @@ void main() {
           ],
         );
 
-        final routing = AlgorithmRouting.fromSlot(slot);
+        final routing = AlgorithmRouting.fromSlot(
+          slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+        );
 
         expect(routing.inputPorts, isNotEmpty);
         expect(routing.outputPorts, isNotEmpty);
@@ -134,7 +140,10 @@ void main() {
         );
 
         // Create routing from slot
-        final routing = AlgorithmRouting.fromSlot(slot);
+        final routing = AlgorithmRouting.fromSlot(
+          slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+        );
 
         // Verify no ports are generated (no fallback ports)
         expect(routing.inputPorts, isEmpty);
@@ -176,7 +185,10 @@ void main() {
           );
 
           // Create routing from slot
-          final routing = AlgorithmRouting.fromSlot(slot);
+          final routing = AlgorithmRouting.fromSlot(
+            slot,
+            deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+          );
 
           // Verify no fallback ports are generated
           expect(routing.inputPorts, isEmpty);
@@ -267,14 +279,20 @@ void main() {
         );
 
         // Test that algorithms with ports are included
-        final routingWithPorts = AlgorithmRouting.fromSlot(slotWithPorts);
+        final routingWithPorts = AlgorithmRouting.fromSlot(
+          slotWithPorts,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+        );
         final hasPorts =
             routingWithPorts.inputPorts.isNotEmpty ||
             routingWithPorts.outputPorts.isNotEmpty;
         expect(hasPorts, isTrue);
 
         // Test that algorithms without ports are excluded
-        final routingWithoutPorts = AlgorithmRouting.fromSlot(slotWithoutPorts);
+        final routingWithoutPorts = AlgorithmRouting.fromSlot(
+          slotWithoutPorts,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+        );
         final hasNoPorts =
             routingWithoutPorts.inputPorts.isEmpty &&
             routingWithoutPorts.outputPorts.isEmpty;

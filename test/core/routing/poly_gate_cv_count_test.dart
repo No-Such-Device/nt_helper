@@ -109,6 +109,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'icy_beauty_test',
         );
 
@@ -154,6 +155,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'factory_poly_test',
       );
 
@@ -192,6 +194,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'unrelated_test',
         );
 
@@ -227,6 +230,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'wrong_order_test',
       );
 
@@ -260,6 +264,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'incomplete_metadata_test',
       );
 
@@ -362,6 +367,7 @@ void main() {
 
         final routing = AlgorithmRouting.fromSlot(
           slot,
+          deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
           algorithmUuid: 'pymu_test',
         );
 
@@ -388,6 +394,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'pymu_test',
       );
 
@@ -407,6 +414,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'pymu_test',
       );
 
@@ -469,6 +477,7 @@ void main() {
 
       final routing = AlgorithmRouting.fromSlot(
         slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
         algorithmUuid: 'pymu_test',
       );
 

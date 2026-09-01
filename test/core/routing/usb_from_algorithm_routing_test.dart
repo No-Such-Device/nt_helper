@@ -79,7 +79,10 @@ void main() {
 
     test('should be created by factory and have correct ports', () {
       final slot = createTestSlot();
-      final routing = AlgorithmRouting.fromSlot(slot);
+      final routing = AlgorithmRouting.fromSlot(
+        slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+      );
 
       expect(routing, isA<UsbFromAlgorithmRouting>());
       expect(routing.inputPorts, isEmpty);
@@ -155,7 +158,10 @@ void main() {
         valueStrings: const [],
       );
 
-      final routing = AlgorithmRouting.fromSlot(slot);
+      final routing = AlgorithmRouting.fromSlot(
+        slot,
+        deviceIoProfile: AlgorithmRouting.defaultDeviceIoProfile,
+      );
 
       expect(routing, isA<UsbFromAlgorithmRouting>());
       expect(routing.inputPorts, isEmpty);

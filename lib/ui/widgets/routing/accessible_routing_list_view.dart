@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:nt_helper/core/routing/bus_spec.dart';
 import 'package:nt_helper/core/routing/models/connection.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/cubit/routing_editor_cubit.dart';
 import 'package:nt_helper/cubit/routing_editor_state.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 
 /// A list-based representation of the routing editor for screen reader users.
 ///
@@ -23,6 +23,7 @@ class AccessibleRoutingListView extends StatelessWidget {
           disconnected: () => const Center(child: Text('Disconnected')),
           loaded:
               (
+                deviceIoProfile,
                 physicalInputs,
                 physicalOutputs,
                 es5Inputs,
@@ -49,7 +50,7 @@ class AccessibleRoutingListView extends StatelessWidget {
                 connections,
                 physicalInputs,
                 physicalOutputs,
-                hasExtendedAuxBuses: hasExtendedAuxBuses,
+                deviceIoProfile: deviceIoProfile,
               ),
         );
       },
@@ -62,7 +63,7 @@ class AccessibleRoutingListView extends StatelessWidget {
     List<Connection> connections,
     List<Port> physicalInputs,
     List<Port> physicalOutputs, {
-    bool hasExtendedAuxBuses = false,
+    required DeviceIoProfile deviceIoProfile,
   }) {
     final theme = Theme.of(context);
     final cubit = context.read<RoutingEditorCubit>();
@@ -111,7 +112,7 @@ class AccessibleRoutingListView extends StatelessWidget {
               conn,
               algorithms,
               cubit,
-              hasExtendedAuxBuses: hasExtendedAuxBuses,
+              deviceIoProfile: deviceIoProfile,
             ),
           ),
       ],
@@ -241,7 +242,7 @@ class AccessibleRoutingListView extends StatelessWidget {
     Connection conn,
     List<RoutingAlgorithm> algorithms,
     RoutingEditorCubit cubit, {
-    bool hasExtendedAuxBuses = false,
+    required DeviceIoProfile deviceIoProfile,
   }) {
     final theme = Theme.of(context);
     final sourceName = _findPortName(conn.sourcePortId, algorithms);
@@ -249,10 +250,7 @@ class AccessibleRoutingListView extends StatelessWidget {
     final isAlgoToAlgo =
         conn.connectionType == ConnectionType.algorithmToAlgorithm;
     final auxLabel = isAlgoToAlgo
-        ? _formatBusLabel(
-            conn.busNumber,
-            hasExtendedAuxBuses: hasExtendedAuxBuses,
-          )
+        ? _formatBusLabel(conn.busNumber, deviceIoProfile: deviceIoProfile)
         : null;
 
     final reason = cubit.deletionBlockReasonForConnection(conn);
@@ -292,26 +290,16 @@ class AccessibleRoutingListView extends StatelessWidget {
     );
   }
 
-  String _formatBusLabel(int? busNumber, {bool hasExtendedAuxBuses = false}) {
+  String _formatBusLabel(
+    int? busNumber, {
+    required DeviceIoProfile deviceIoProfile,
+  }) {
     if (busNumber == null) return 'Unknown bus';
-    if (busNumber >= 1 && busNumber <= 12) return 'Input $busNumber';
-    if (busNumber >= 13 && busNumber <= 20) return 'Output ${busNumber - 12}';
-    if (BusSpec.isEs5ForFirmware(
-      busNumber,
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
-    )) {
-      final local = BusSpec.toLocalNumberForFirmware(
-        busNumber,
-        hasExtendedAuxBuses: hasExtendedAuxBuses,
-      );
-      return local == 1 ? 'ES-5 Left' : 'ES-5 Right';
-    }
-    if (BusSpec.isAuxForFirmware(
-      busNumber,
-      hasExtendedAuxBuses: hasExtendedAuxBuses,
-    )) {
-      return 'Aux ${BusSpec.toLocalNumberForFirmware(busNumber, hasExtendedAuxBuses: hasExtendedAuxBuses)}';
-    }
+    final label = deviceIoProfile.labelForBus(busNumber);
+    if (label != null) return label;
+    final es5Index = deviceIoProfile.contextualEs5Buses.indexOf(busNumber);
+    if (es5Index == 0) return 'ES-5 Left';
+    if (es5Index == 1) return 'ES-5 Right';
     return 'Bus $busNumber';
   }
 
