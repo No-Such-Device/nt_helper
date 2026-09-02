@@ -575,6 +575,13 @@ class DistingCubit extends _DistingCubitBase
     renameSlotImpl(algorithmIndex, newName);
   }
 
+  Future<void> setAlgorithmVisualStyle(
+    int algorithmIndex,
+    AlgorithmVisualStyle style,
+  ) {
+    return setAlgorithmVisualStyleImpl(algorithmIndex, style);
+  }
+
   /// Reorders multiple performance parameters by setting new perfPageIndex values.
   Future<void> reorderPerformanceParameters(
     List<({int slotIndex, int parameterNumber, int perfPageIndex})> assignments,

@@ -407,9 +407,22 @@ F0 00 21 27 6D <id> 40 <slot> F7
 ```
 F0 00 21 27 6D <id> 40 <slot>
   <guid: 4 bytes>
-  <custom name: 24 bytes, null-terminated>
+  <custom name: up to 24 bytes, null-terminated when shorter>
+  [<style version> <left indent> <right indent>
+   <line above> <line below> <bracket>]
 F7
 ```
+
+Firmware 1.18 and newer append the versioned algorithm visual-style block
+after the name field. Style version `1` uses these values:
+
+| Field | Values |
+|-------|--------|
+| `left indent` | 0–15 |
+| `right indent` | 0–15 |
+| `line above` | 0 = off, 1 = on |
+| `line below` | 0 = off, 1 = on |
+| `bracket` | 0 = none, 1 = open, 2 = close, 3 = line, 4 = open and close |
 
 ---
 
@@ -776,10 +789,13 @@ Sets a string-valued parameter (unit type 18). Null-terminated ASCII.
 
 ---
 
-### `0x54` — Set Performance Page Mapping
+### `0x54` — Set Performance Page Mapping / Algorithm Visual Style
 
 **Direction:** Host → Device
 **Used by:** `dnt_preset_editor.html`
+
+The meaning is firmware-version dependent. The legacy pre-1.16 performance
+page command is:
 
 ```
 F0 00 21 27 6D <id> 54 <slot> <param as 21-bit short> <mappingVersion> <index> F7
@@ -789,6 +805,18 @@ F0 00 21 27 6D <id> 54 <slot> <param as 21-bit short> <mappingVersion> <index> F
 |-------|-------------|
 | `mappingVersion` | Performance page mapping protocol version (`5`) |
 | `index` | Performance page position (0–30) |
+
+Firmware 1.18 and newer use `0x54` for algorithm visual style:
+
+```
+F0 00 21 27 6D <id> 54 <slot> 01
+  <left indent> <right indent> <line above> <line below> <bracket>
+F7
+```
+
+The style fields use the same version-1 values documented in the `0x40`
+response. Firmware 1.16 and newer manage performance-page items through
+`0x57`/`0x58`, so nt_helper must gate style writes to firmware 1.18 or newer.
 
 ---
 
@@ -1160,7 +1188,7 @@ Triggers a rescan of the `/programs/plug-ins/` directory. Required after uploadi
 | Set Slot Name | `51` | X | | | | | |
 | Get Algo Names / Pages | `52` | X | | | | | |
 | Set Param String Value | `53` | X | | | | | |
-| Set Perf Page Mapping | `54` | X | | | | | |
+| Set Perf Mapping / Visual Style | `54` | X | | | | | |
 | Get Output Mode Usage | `55` | X | | | | | |
 | Query Paths | `56` | X | | | | | X |
 | Get Slot Count | `60` | X | | | | | |

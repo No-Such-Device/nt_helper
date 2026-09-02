@@ -8,12 +8,23 @@ class AlgorithmResponse extends SysexResponse {
 
   @override
   Algorithm parse() {
+    const nameOffset = 5;
+    const maximumNameLength = 24;
+    final nameLimit = data.length < nameOffset + maximumNameLength
+        ? data.length
+        : nameOffset + maximumNameLength;
+    var nameEnd = nameOffset;
+    while (nameEnd < nameLimit && data[nameEnd] != 0) {
+      nameEnd++;
+    }
+    final styleOffset = nameEnd < nameLimit ? nameEnd + 1 : nameLimit;
+    final visualStyle = AlgorithmVisualStyle.tryParse(data, styleOffset);
+
     return Algorithm(
       algorithmIndex: data[0].toInt(),
       guid: String.fromCharCodes(data.sublist(1, 5)),
-      name: String.fromCharCodes(
-        data.sublist(5).takeWhile((value) => value != 0),
-      ).trim(),
+      name: String.fromCharCodes(data.sublist(nameOffset, nameEnd)).trim(),
+      visualStyle: visualStyle,
     );
   }
 }

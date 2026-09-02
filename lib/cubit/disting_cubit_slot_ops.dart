@@ -3,6 +3,8 @@ part of 'disting_cubit.dart';
 mixin _DistingCubitSlotOps on _DistingCubitBase {
   final Map<int, CancelableOperation<void>> _renameSlotVerificationOperations =
       {};
+  final Map<int, CancelableOperation<void>> _visualStyleVerificationOperations =
+      {};
 
   void renameSlotImpl(int algorithmIndex, String newName) async {
     final currentState = state;
@@ -24,6 +26,7 @@ mixin _DistingCubitSlotOps on _DistingCubitBase {
         guid: currentAlgorithm.guid,
         name: trimmed,
         specifications: currentAlgorithm.specifications,
+        visualStyle: currentAlgorithm.visualStyle,
       );
       final optimisticSlots = updateSlot(
         algorithmIndex,
@@ -91,5 +94,103 @@ mixin _DistingCubitSlotOps on _DistingCubitBase {
             onCancel: () {},
           );
     }
+  }
+
+  Future<void> setAlgorithmVisualStyleImpl(
+    int algorithmIndex,
+    AlgorithmVisualStyle style,
+  ) async {
+    final currentState = state;
+    if (currentState is! DistingStateSynchronized) return;
+    if (currentState.offline ||
+        !currentState.firmwareVersion.hasAlgorithmVisualStyle) {
+      throw UnsupportedError(
+        'Algorithm visual styling requires connected firmware 1.18 or newer',
+      );
+    }
+    if (algorithmIndex < 0 || algorithmIndex >= currentState.slots.length) {
+      return;
+    }
+
+    final originalAlgorithm = currentState.slots[algorithmIndex].algorithm;
+    if (originalAlgorithm.visualStyle == style) return;
+
+    final disting = requireDisting();
+    await disting.requestSetAlgorithmVisualStyle(algorithmIndex, style);
+
+    final stateAfterWrite = state;
+    if (stateAfterWrite is! DistingStateSynchronized ||
+        !identical(stateAfterWrite.disting, disting) ||
+        algorithmIndex >= stateAfterWrite.slots.length ||
+        stateAfterWrite.slots[algorithmIndex].algorithm.guid !=
+            originalAlgorithm.guid) {
+      return;
+    }
+
+    final optimisticSlots = updateSlot(
+      algorithmIndex,
+      stateAfterWrite.slots,
+      (slot) =>
+          slot.copyWith(algorithm: slot.algorithm.copyWith(visualStyle: style)),
+    );
+    emit(stateAfterWrite.copyWith(slots: optimisticSlots, isDirty: true));
+
+    _visualStyleVerificationOperations[algorithmIndex]?.cancel();
+    _visualStyleVerificationOperations[algorithmIndex] =
+        CancelableOperation.fromFuture(
+          Future.delayed(const Duration(milliseconds: 250), () async {
+            if (isClosed) return;
+            final beforeRead = state;
+            if (beforeRead is! DistingStateSynchronized ||
+                !identical(beforeRead.disting, disting) ||
+                algorithmIndex >= beforeRead.slots.length) {
+              return;
+            }
+            final beforeReadAlgorithm =
+                beforeRead.slots[algorithmIndex].algorithm;
+            if (beforeReadAlgorithm.guid != originalAlgorithm.guid ||
+                beforeReadAlgorithm.visualStyle != style) {
+              return;
+            }
+
+            Algorithm? actual;
+            try {
+              actual = await disting.requestAlgorithmGuid(algorithmIndex);
+            } catch (_) {
+              return;
+            }
+            if (actual == null ||
+                actual.guid != originalAlgorithm.guid ||
+                actual.visualStyle == null ||
+                actual.visualStyle == style) {
+              return;
+            }
+            if (isClosed) return;
+
+            final afterRead = state;
+            if (afterRead is! DistingStateSynchronized ||
+                !identical(afterRead.disting, disting) ||
+                algorithmIndex >= afterRead.slots.length) {
+              return;
+            }
+            final currentAlgorithm = afterRead.slots[algorithmIndex].algorithm;
+            if (currentAlgorithm.guid != originalAlgorithm.guid ||
+                currentAlgorithm.visualStyle != style) {
+              return;
+            }
+
+            final correctedSlots = updateSlot(
+              algorithmIndex,
+              afterRead.slots,
+              (slot) => slot.copyWith(
+                algorithm: slot.algorithm.copyWith(
+                  visualStyle: actual!.visualStyle,
+                ),
+              ),
+            );
+            emit(afterRead.copyWith(slots: correctedSlots, isDirty: true));
+          }),
+          onCancel: () {},
+        );
   }
 }

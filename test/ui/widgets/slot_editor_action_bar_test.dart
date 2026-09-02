@@ -22,6 +22,7 @@ void main() {
 
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    registerFallbackValue(const AlgorithmVisualStyle());
     database = AppDatabase.forTesting(NativeDatabase.memory());
     await AlgorithmMetadataService().initialize(database);
   });
@@ -73,6 +74,130 @@ void main() {
       expect(field.model.choices.map((choice) => choice.value), profile.buses);
     },
   );
+
+  testWidgets('hides overview styling before firmware 1.18', (tester) async {
+    final slot = _slotWithOutputAndMode();
+    final cubit = _MockDistingCubit();
+    when(() => cubit.state).thenReturn(
+      _synchronizedState(
+        slot: slot,
+        manager: _MockDistingMidiManager(),
+        firmwareVersion: '1.17.9',
+      ),
+    );
+    when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider<DistingCubit>.value(
+          value: cubit,
+          child: Scaffold(
+            body: SlotEditorActionBar(slot: slot, sectionsCollapsed: false),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('slot-editor-more-options')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit Overview Style'), findsNothing);
+  });
+
+  testWidgets('edits firmware 1.18 overview styling from the slot menu', (
+    tester,
+  ) async {
+    const initialStyle = AlgorithmVisualStyle(
+      leftIndent: 2,
+      rightIndent: 4,
+      lineAbove: true,
+      bracket: AlgorithmVisualBracket.line,
+    );
+    final baseSlot = _slotWithOutputAndMode();
+    final slot = baseSlot.copyWith(
+      algorithm: baseSlot.algorithm.copyWith(visualStyle: initialStyle),
+    );
+    final cubit = _MockDistingCubit();
+    when(() => cubit.state).thenReturn(
+      _synchronizedState(
+        slot: slot,
+        manager: _MockDistingMidiManager(),
+        firmwareVersion: '1.18.0beta',
+      ),
+    );
+    when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
+    when(
+      () => cubit.setAlgorithmVisualStyle(any(), any()),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider<DistingCubit>.value(
+          value: cubit,
+          child: Scaffold(
+            body: SlotEditorActionBar(slot: slot, sectionsCollapsed: false),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('slot-editor-more-options')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit Overview Style'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Algorithm Overview Style'), findsOneWidget);
+    expect(
+      tester
+          .widget<DropdownButtonFormField<int>>(
+            find.byKey(const ValueKey('algorithm-style-left-indent')),
+          )
+          .initialValue,
+      2,
+    );
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.byKey(const ValueKey('algorithm-style-line-above')),
+          )
+          .value,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('algorithm-style-line-below')));
+    await tester.tap(find.byKey(const ValueKey('algorithm-style-save')));
+    await tester.pumpAndSettle();
+
+    verify(
+      () => cubit.setAlgorithmVisualStyle(
+        0,
+        const AlgorithmVisualStyle(
+          leftIndent: 2,
+          rightIndent: 4,
+          lineAbove: true,
+          lineBelow: true,
+          bracket: AlgorithmVisualBracket.line,
+        ),
+      ),
+    ).called(1);
+  });
+}
+
+DistingStateSynchronized _synchronizedState({
+  required Slot slot,
+  required IDistingMidiManager manager,
+  required String firmwareVersion,
+}) {
+  return DistingState.synchronized(
+        disting: manager,
+        distingVersion: firmwareVersion,
+        firmwareVersion: FirmwareVersion(firmwareVersion),
+        presetName: 'Test',
+        algorithms: const [],
+        slots: [slot],
+        unitStrings: const [],
+      )
+      as DistingStateSynchronized;
 }
 
 Slot _slotWithOutputAndMode() => Slot(

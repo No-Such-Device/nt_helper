@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
+import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/ui/algorithm_documentation_screen.dart';
 import 'package:nt_helper/ui/reset_outputs_dialog.dart';
+import 'package:nt_helper/ui/widgets/algorithm_visual_style_dialog.dart';
 import 'package:nt_helper/ui/widgets/slot_bypass_control.dart';
 
 class SlotEditorActionBar extends StatelessWidget {
@@ -49,11 +54,16 @@ class SlotEditorActionBar extends StatelessWidget {
         PopupMenuButton<String>(
           key: const ValueKey('slot-editor-more-options'),
           icon: const Icon(Icons.more_vert, semanticLabel: 'More options'),
-          itemBuilder: (context) {
+          itemBuilder: (_) {
             final metadata = AlgorithmMetadataService().getAlgorithmByGuid(
               slot.algorithm.guid,
             );
             final isHelpAvailable = metadata != null;
+            final distingState = context.read<DistingCubit>().state;
+            final canEditOverviewStyle =
+                distingState is DistingStateSynchronized &&
+                !distingState.offline &&
+                distingState.firmwareVersion.hasAlgorithmVisualStyle;
 
             return <PopupMenuEntry<String>>[
               if (isHelpAvailable)
@@ -76,6 +86,14 @@ class SlotEditorActionBar extends StatelessWidget {
                   ),
                 ),
               if (isHelpAvailable) const PopupMenuDivider(),
+              if (canEditOverviewStyle)
+                PopupMenuItem(
+                  value: 'Edit Overview Style',
+                  onTap: () {
+                    unawaited(_editOverviewStyle(context));
+                  },
+                  child: const Text('Edit Overview Style'),
+                ),
               PopupMenuItem(
                 value: 'Reset Outputs',
                 onTap: () {
@@ -133,5 +151,39 @@ class SlotEditorActionBar extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _editOverviewStyle(BuildContext context) async {
+    await Future<void>.delayed(Duration.zero);
+    if (!context.mounted) return;
+
+    final style = await showDialog<AlgorithmVisualStyle>(
+      context: context,
+      builder: (_) => AlgorithmVisualStyleDialog(
+        initialStyle:
+            slot.algorithm.visualStyle ?? const AlgorithmVisualStyle(),
+      ),
+    );
+    if (style == null || !context.mounted) return;
+
+    try {
+      await context.read<DistingCubit>().setAlgorithmVisualStyle(
+        slot.algorithm.algorithmIndex,
+        style,
+      );
+      if (!context.mounted) return;
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        'Algorithm overview style updated',
+        Directionality.of(context),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to update algorithm overview style: $error'),
+        ),
+      );
+    }
   }
 }

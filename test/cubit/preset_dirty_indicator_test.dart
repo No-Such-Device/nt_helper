@@ -20,7 +20,8 @@ class MockAppDatabase extends Mock implements AppDatabase {}
 
 class MockMetadataDao extends Mock implements MetadataDao {}
 
-class MockDistingMidiManager extends Mock implements IDistingMidiManager {}
+class MockDistingMidiManager extends Mock
+    implements IDistingMidiManager, AlgorithmVisualStyleWriter {}
 
 class TestDistingCubit extends DistingCubit {
   TestDistingCubit(super.database, {super.midiCommand});
@@ -77,6 +78,7 @@ void main() {
     );
     registerFallbackValue(PackedMappingData.filler());
     registerFallbackValue(PerformancePageItem.empty(0));
+    registerFallbackValue(const AlgorithmVisualStyle());
     registerFallbackValue(Duration.zero);
   });
 
@@ -1975,6 +1977,71 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect((cubit.state as DistingStateSynchronized).isDirty, isTrue);
+    });
+  });
+
+  group('cubit algorithm visual style', () {
+    test('writes firmware 1.18 style and marks the preset dirty', () async {
+      const style = AlgorithmVisualStyle(
+        leftIndent: 1,
+        rightIndent: 3,
+        lineAbove: true,
+        bracket: AlgorithmVisualBracket.open,
+      );
+      when(
+        () => mockDisting.requestSetAlgorithmVisualStyle(0, style),
+      ).thenAnswer((_) async {});
+
+      cubit.emit(
+        makeSyncState(firmwareVersion: '1.18.0beta', slots: [makeSlot()]),
+      );
+      await cubit.setAlgorithmVisualStyle(0, style);
+
+      final state = cubit.state as DistingStateSynchronized;
+      expect(state.slots.single.algorithm.visualStyle, style);
+      expect(state.isDirty, isTrue);
+      verify(
+        () => mockDisting.requestSetAlgorithmVisualStyle(0, style),
+      ).called(1);
+    });
+
+    test('rejects style writes before firmware 1.18', () async {
+      cubit.emit(makeSyncState(firmwareVersion: '1.17.9', slots: [makeSlot()]));
+
+      await expectLater(
+        cubit.setAlgorithmVisualStyle(0, const AlgorithmVisualStyle()),
+        throwsUnsupportedError,
+      );
+      verifyNever(
+        () => mockDisting.requestSetAlgorithmVisualStyle(any(), any()),
+      );
+    });
+
+    test('reconciles the optimistic style with the device readback', () async {
+      const requestedStyle = AlgorithmVisualStyle(leftIndent: 4);
+      const deviceStyle = AlgorithmVisualStyle(
+        rightIndent: 2,
+        bracket: AlgorithmVisualBracket.close,
+      );
+      when(
+        () => mockDisting.requestSetAlgorithmVisualStyle(0, requestedStyle),
+      ).thenAnswer((_) async {});
+      when(() => mockDisting.requestAlgorithmGuid(0)).thenAnswer(
+        (_) async => Algorithm(
+          algorithmIndex: 0,
+          guid: 'test',
+          name: 'Test',
+          visualStyle: deviceStyle,
+        ),
+      );
+
+      cubit.emit(makeSyncState(firmwareVersion: '1.18.0', slots: [makeSlot()]));
+      await cubit.setAlgorithmVisualStyle(0, requestedStyle);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      final state = cubit.state as DistingStateSynchronized;
+      expect(state.slots.single.algorithm.visualStyle, deviceStyle);
+      verify(() => mockDisting.requestAlgorithmGuid(0)).called(1);
     });
   });
 

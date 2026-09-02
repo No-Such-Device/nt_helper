@@ -18,6 +18,14 @@ abstract interface class SlotCountInfoProvider {
   });
 }
 
+/// Optional firmware-1.18 capability implemented by live MIDI managers.
+abstract interface class AlgorithmVisualStyleWriter {
+  Future<void> requestSetAlgorithmVisualStyle(
+    int algorithmIndex,
+    AlgorithmVisualStyle style,
+  );
+}
+
 /// Abstract interface for Disting MIDI communication.
 /// Allows for mocking or different implementations.
 abstract class IDistingMidiManager {
@@ -193,5 +201,21 @@ extension SlotCountInfoRequest on IDistingMidiManager {
       maxRetries: maxRetries,
     );
     return slotCount == null ? null : SlotCountInfo(slotCount: slotCount);
+  }
+}
+
+extension AlgorithmVisualStyleRequest on IDistingMidiManager {
+  Future<void> requestSetAlgorithmVisualStyle(
+    int algorithmIndex,
+    AlgorithmVisualStyle style,
+  ) {
+    final manager = this;
+    if (manager is AlgorithmVisualStyleWriter) {
+      return (manager as AlgorithmVisualStyleWriter)
+          .requestSetAlgorithmVisualStyle(algorithmIndex, style);
+    }
+    return Future<void>.error(
+      UnsupportedError('Algorithm visual styling requires live MIDI'),
+    );
   }
 }

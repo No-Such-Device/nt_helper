@@ -36,6 +36,11 @@ class FirmwareVersion {
     return isSupported('1.17.0');
   }
 
+  /// Firmware 1.18+ exposes per-algorithm overview styling via SysEx 0x40/0x54.
+  bool get hasAlgorithmVisualStyle {
+    return isSupported('1.18.0');
+  }
+
   /// Firmware 1.15+ supports entering bootloader mode via SysEx.
   bool get hasBootloaderSysEx {
     return major > 1 || (major == 1 && minor >= 15);

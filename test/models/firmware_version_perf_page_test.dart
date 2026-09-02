@@ -62,4 +62,15 @@ void main() {
       expect(FirmwareVersion('2.0').hasWaveCacheListing, true);
     });
   });
+
+  group('FirmwareVersion.hasAlgorithmVisualStyle', () {
+    test('is false before firmware 1.18', () {
+      expect(FirmwareVersion('1.17.9').hasAlgorithmVisualStyle, false);
+    });
+
+    test('is true for 1.18 beta and newer firmware', () {
+      expect(FirmwareVersion('1.18.0beta').hasAlgorithmVisualStyle, true);
+      expect(FirmwareVersion('2.0').hasAlgorithmVisualStyle, true);
+    });
+  });
 }

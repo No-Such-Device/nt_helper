@@ -379,25 +379,125 @@ class AlgorithmInfo {
   }
 }
 
+enum AlgorithmVisualBracket {
+  none(0),
+  open(1),
+  close(2),
+  line(3),
+  openAndClose(4);
+
+  final int value;
+
+  const AlgorithmVisualBracket(this.value);
+
+  static AlgorithmVisualBracket? tryFromValue(int value) {
+    for (final bracket in values) {
+      if (bracket.value == value) return bracket;
+    }
+    return null;
+  }
+}
+
+/// Controls how an algorithm is drawn in the disting NT overview.
+///
+/// Firmware 1.18 introduced version 1 of this payload. Indents are measured
+/// in the module's overview-layout units and are limited to 0-15.
+class AlgorithmVisualStyle {
+  static const int currentVersion = 1;
+
+  final int version;
+  final int leftIndent;
+  final int rightIndent;
+  final bool lineAbove;
+  final bool lineBelow;
+  final AlgorithmVisualBracket bracket;
+
+  const AlgorithmVisualStyle({
+    this.version = currentVersion,
+    this.leftIndent = 0,
+    this.rightIndent = 0,
+    this.lineAbove = false,
+    this.lineBelow = false,
+    this.bracket = AlgorithmVisualBracket.none,
+  }) : assert(leftIndent >= 0 && leftIndent <= 15),
+       assert(rightIndent >= 0 && rightIndent <= 15);
+
+  static AlgorithmVisualStyle? tryParse(List<int> data, int offset) {
+    if (offset < 0 || data.length < offset + 6) return null;
+    if (data[offset] != currentVersion) return null;
+
+    final leftIndent = data[offset + 1];
+    final rightIndent = data[offset + 2];
+    final bracket = AlgorithmVisualBracket.tryFromValue(data[offset + 5]);
+    if (leftIndent > 15 || rightIndent > 15 || bracket == null) return null;
+
+    return AlgorithmVisualStyle(
+      leftIndent: leftIndent,
+      rightIndent: rightIndent,
+      lineAbove: data[offset + 3] != 0,
+      lineBelow: data[offset + 4] != 0,
+      bracket: bracket,
+    );
+  }
+
+  List<int> encodePayload() => [
+    version,
+    leftIndent,
+    rightIndent,
+    lineAbove ? 1 : 0,
+    lineBelow ? 1 : 0,
+    bracket.value,
+  ];
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AlgorithmVisualStyle &&
+          version == other.version &&
+          leftIndent == other.leftIndent &&
+          rightIndent == other.rightIndent &&
+          lineAbove == other.lineAbove &&
+          lineBelow == other.lineBelow &&
+          bracket == other.bracket;
+
+  @override
+  int get hashCode => Object.hash(
+    version,
+    leftIndent,
+    rightIndent,
+    lineAbove,
+    lineBelow,
+    bracket,
+  );
+}
+
 class Algorithm {
   final int algorithmIndex;
   final String guid;
   final String name;
   final List<int> specifications;
+  final AlgorithmVisualStyle? visualStyle;
 
   Algorithm({
     required this.algorithmIndex,
     required this.guid,
     required this.name,
     this.specifications = const [],
+    this.visualStyle,
   });
 
-  Algorithm copyWith({int? algorithmIndex, List<int>? specifications}) {
+  Algorithm copyWith({
+    int? algorithmIndex,
+    String? name,
+    List<int>? specifications,
+    AlgorithmVisualStyle? visualStyle,
+  }) {
     return Algorithm(
       algorithmIndex: algorithmIndex ?? this.algorithmIndex,
       guid: guid,
-      name: name,
+      name: name ?? this.name,
       specifications: specifications ?? this.specifications,
+      visualStyle: visualStyle ?? this.visualStyle,
     );
   }
 }
@@ -476,7 +576,12 @@ enum DistingNTRequestMessageType {
   setSlotName(0x51),
   requestParameterPages(0x52),
   setParameterString(0x53),
+
+  /// Legacy pre-1.16 performance-page mapping command.
   setPerformancePageMapping(0x54),
+
+  /// Firmware 1.18+ reuses 0x54 for algorithm overview styling.
+  setAlgorithmVisualStyle(0x54),
 
   /// Request output mode usage for a parameter (SysEx 0x55)
   requestOutputModeUsage(0x55),

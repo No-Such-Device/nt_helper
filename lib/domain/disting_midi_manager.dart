@@ -43,6 +43,7 @@ import 'package:nt_helper/domain/sysex/requests/set_i2c_mapping.dart';
 import 'package:nt_helper/domain/sysex/requests/set_midi_mapping.dart';
 import 'package:nt_helper/domain/sysex/requests/set_parameter_value.dart';
 import 'package:nt_helper/domain/sysex/requests/set_parameter_string.dart';
+import 'package:nt_helper/domain/sysex/requests/set_algorithm_visual_style.dart';
 import 'package:nt_helper/domain/sysex/requests/set_performance_page_message.dart';
 import 'package:nt_helper/domain/sysex/requests/request_perf_page_item.dart';
 import 'package:nt_helper/domain/sysex/requests/set_perf_page_item.dart';
@@ -75,7 +76,11 @@ import 'package:nt_helper/models/slot_count_info.dart';
 
 /// Abstract interface for Disting MIDI communication.
 
-class DistingMidiManager implements IDistingMidiManager, SlotCountInfoProvider {
+class DistingMidiManager
+    implements
+        IDistingMidiManager,
+        SlotCountInfoProvider,
+        AlgorithmVisualStyleWriter {
   // Implement interface
   final DistingMessageScheduler _scheduler;
   final int sysExId;
@@ -901,6 +906,26 @@ class DistingMidiManager implements IDistingMidiManager, SlotCountInfoProvider {
       slotIndex: slotIndex,
       parameterNumber: parameterNumber,
       perfPageIndex: perfPageIndex,
+    );
+    final packet = message.encode();
+    final key = RequestKey(sysExId: sysExId);
+
+    return _scheduler.sendRequest<void>(
+      packet,
+      key,
+      responseExpectation: ResponseExpectation.none,
+    );
+  }
+
+  @override
+  Future<void> requestSetAlgorithmVisualStyle(
+    int algorithmIndex,
+    AlgorithmVisualStyle style,
+  ) {
+    final message = SetAlgorithmVisualStyleMessage(
+      sysExId: sysExId,
+      algorithmIndex: algorithmIndex,
+      style: style,
     );
     final packet = message.encode();
     final key = RequestKey(sysExId: sysExId);
