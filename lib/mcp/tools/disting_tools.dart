@@ -7,6 +7,7 @@ import 'package:nt_helper/domain/disting_nt_sysex.dart'
     show
         Algorithm,
         AlgorithmInfo,
+        AlgorithmVisualStyle,
         ParameterInfo,
         Mapping,
         ParameterValue,
@@ -38,6 +39,62 @@ class DistingTools {
   static const int _maxPresetParameterPageSize = 16;
 
   DistingTools(this._controller, this._distingCubit);
+
+  /// Set the complete firmware 1.18 overview style for one algorithm slot.
+  Future<String> setAlgorithmVisualStyle(Map<String, dynamic> params) async {
+    final slotIndex = params['slot_index'] as int;
+    final state = _distingCubit.state;
+    if (state is! DistingStateSynchronized) {
+      return jsonEncode(MCPUtils.buildError('Device not synchronized'));
+    }
+    if (slotIndex < 0 || slotIndex >= state.slots.length) {
+      return jsonEncode(MCPUtils.buildError('Slot $slotIndex is empty'));
+    }
+    if (!state.offline && !state.firmwareVersion.hasAlgorithmVisualStyle) {
+      return jsonEncode(
+        MCPUtils.buildError(
+          'Algorithm visual styling requires connected firmware 1.18 or newer',
+        ),
+      );
+    }
+    final leftIndent = params['left_indent'] as int;
+    final rightIndent = params['right_indent'] as int;
+    if (leftIndent < 0 || leftIndent > 15) {
+      return jsonEncode(
+        MCPUtils.buildError('left_indent must be between 0 and 15'),
+      );
+    }
+    if (rightIndent < 0 || rightIndent > 15) {
+      return jsonEncode(
+        MCPUtils.buildError('right_indent must be between 0 and 15'),
+      );
+    }
+    final bracket = MCPAlgorithmVisualStyleCodec.parseBracket(
+      params['bracket'],
+    );
+    if (bracket == null) {
+      return jsonEncode(
+        MCPUtils.buildError(
+          'Unknown bracket mode. Expected one of: none, open, close, line, open_and_close',
+        ),
+      );
+    }
+    final style = AlgorithmVisualStyle(
+      leftIndent: leftIndent,
+      rightIndent: rightIndent,
+      lineAbove: params['line_above'] as bool,
+      lineBelow: params['line_below'] as bool,
+      bracket: bracket,
+    );
+
+    await _distingCubit.setAlgorithmVisualStyle(slotIndex, style);
+
+    return jsonEncode({
+      'success': true,
+      'slot_index': slotIndex,
+      'visual_style': MCPAlgorithmVisualStyleCodec.encode(style),
+    });
+  }
 
   DeviceIoProfile get _deviceIoProfile {
     final state = _distingCubit.state;

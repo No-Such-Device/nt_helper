@@ -1,5 +1,7 @@
 import 'dart:math' show pow;
 
+import 'package:nt_helper/domain/disting_nt_sysex.dart'
+    show AlgorithmVisualBracket, AlgorithmVisualStyle;
 import 'package:nt_helper/domain/disting_limits.dart';
 
 /// Constants and utilities for MCP tools
@@ -20,6 +22,32 @@ class MCPConstants {
   static const int maxNotesLineLength = 31;
   static const int maxSlots = DistingLimits.maxPresetSlots;
   static const int maxSlotIndex = DistingLimits.maxPresetSlotIndex;
+}
+
+/// Converts algorithm overview styles at the MCP/domain boundary.
+class MCPAlgorithmVisualStyleCodec {
+  static AlgorithmVisualBracket? parseBracket(dynamic value) => switch (value) {
+    'none' => AlgorithmVisualBracket.none,
+    'open' => AlgorithmVisualBracket.open,
+    'close' => AlgorithmVisualBracket.close,
+    'line' => AlgorithmVisualBracket.line,
+    'open_and_close' => AlgorithmVisualBracket.openAndClose,
+    _ => null,
+  };
+
+  static Map<String, dynamic> encode(AlgorithmVisualStyle style) => {
+    'left_indent': style.leftIndent,
+    'right_indent': style.rightIndent,
+    'line_above': style.lineAbove,
+    'line_below': style.lineBelow,
+    'bracket': switch (style.bracket) {
+      AlgorithmVisualBracket.none => 'none',
+      AlgorithmVisualBracket.open => 'open',
+      AlgorithmVisualBracket.close => 'close',
+      AlgorithmVisualBracket.line => 'line',
+      AlgorithmVisualBracket.openAndClose => 'open_and_close',
+    },
+  };
 }
 
 /// Result of algorithm resolution

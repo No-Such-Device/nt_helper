@@ -5,7 +5,12 @@ import 'package:nt_helper/services/disting_controller.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/core/routing/algorithm_routing.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart'
-    show ParameterInfo, ParameterValue, Mapping, DisplayMode;
+    show
+        AlgorithmVisualStyle,
+        ParameterInfo,
+        ParameterValue,
+        Mapping,
+        DisplayMode;
 import 'package:nt_helper/util/case_converter.dart';
 import 'package:nt_helper/mcp/mcp_constants.dart';
 import 'package:nt_helper/mcp/utils/bus_mapping.dart';
@@ -762,6 +767,9 @@ class MCPAlgorithmTools {
           if (algorithm.specifications.isNotEmpty)
             'specifications': algorithm.specifications,
         },
+        'visual_style': MCPAlgorithmVisualStyleCodec.encode(
+          algorithm.visualStyle ?? const AlgorithmVisualStyle(),
+        ),
         'parameter_count': totalCount,
         'offset': clampedOffset,
         'limit': effectiveLimit,

@@ -7,7 +7,7 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
-import 'package:nt_helper/ui/widgets/algorithm_visual_style_preview.dart';
+import 'package:nt_helper/ui/widgets/algorithm_visual_style_container.dart';
 
 class AlgorithmVisualStyleDialog extends StatefulWidget {
   const AlgorithmVisualStyleDialog({
@@ -163,10 +163,16 @@ class _AlgorithmVisualStyleDialogState
                         color: AppThemeColors.ntDisplaySurface,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: AlgorithmVisualStylePreview(
+                      child: AlgorithmVisualStyleContainer(
                         key: const ValueKey('algorithm-style-live-preview'),
                         style: _style,
                         color: AppThemeColors.ntDisplayForeground,
+                        boxDecoration: BoxDecoration(
+                          color: AppThemeColors.ntDisplaySurface,
+                          border: Border.all(
+                            color: AppThemeColors.ntDisplayForeground,
+                          ),
+                        ),
                         child: Text(
                           widget.algorithmName,
                           maxLines: 1,

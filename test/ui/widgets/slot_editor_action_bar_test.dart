@@ -14,7 +14,7 @@ import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_selection_field.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_action_bar.dart';
-import 'package:nt_helper/ui/widgets/algorithm_visual_style_preview.dart';
+import 'package:nt_helper/ui/widgets/algorithm_visual_style_container.dart';
 
 class _MockDistingCubit extends Mock implements DistingCubit {}
 
@@ -281,7 +281,7 @@ void main() {
     expect(find.byKey(const ValueKey('algorithm-style-save')), findsNothing);
     expect(find.text('CANCEL'), findsNothing);
 
-    final initialPreview = tester.widget<AlgorithmVisualStylePreview>(
+    final initialPreview = tester.widget<AlgorithmVisualStyleContainer>(
       find.byKey(const ValueKey('algorithm-style-live-preview')),
     );
     expect(initialPreview.style, initialStyle);
@@ -289,7 +289,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('algorithm-style-line-below')));
     await tester.pump();
 
-    final updatedPreview = tester.widget<AlgorithmVisualStylePreview>(
+    final updatedPreview = tester.widget<AlgorithmVisualStyleContainer>(
       find.byKey(const ValueKey('algorithm-style-live-preview')),
     );
     expect(updatedPreview.style.lineBelow, isTrue);

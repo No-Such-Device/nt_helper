@@ -408,6 +408,7 @@ class ToolRegistry {
         name: 'show_slot',
         description:
             'Show a slot with compact, paged parameter summaries (name and current value). '
+            'Includes the complete algorithm visual_style for restoration. '
             'Returns at most 8 parameters by default. Follow next exactly when has_more is true. '
             'Does NOT include ranges, enum value lists, or full mappings; use show_parameter for those. '
             'is_enum, is_disabled, and has_mapping are included only when true.',
@@ -756,6 +757,42 @@ class ToolRegistry {
         },
         handler: (args) => _distingTools.editParameter(args),
         timeout: const Duration(seconds: 15),
+      ),
+    );
+
+    _entries.add(
+      ToolRegistryEntry(
+        name: 'set_algorithm_visual_style',
+        description:
+            'Set the complete overview decoration for one algorithm slot. '
+            'Requires firmware 1.18 or newer when connected. Marks the current preset as modified but does not save it.',
+        inputSchema: {
+          'properties': {
+            'slot_index': {
+              'type': 'integer',
+              'minimum': _slotMinimum,
+              'maximum': _slotMaximum,
+              'description': 'Slot index ($_slotRangeDescription).',
+            },
+            'left_indent': {'type': 'integer', 'minimum': 0, 'maximum': 15},
+            'right_indent': {'type': 'integer', 'minimum': 0, 'maximum': 15},
+            'line_above': {'type': 'boolean'},
+            'line_below': {'type': 'boolean'},
+            'bracket': {
+              'type': 'string',
+              'enum': ['none', 'open', 'close', 'line', 'open_and_close'],
+            },
+          },
+          'required': [
+            'slot_index',
+            'left_indent',
+            'right_indent',
+            'line_above',
+            'line_below',
+            'bracket',
+          ],
+        },
+        handler: _distingTools.setAlgorithmVisualStyle,
       ),
     );
   }

@@ -9,7 +9,7 @@ import 'package:nt_helper/domain/disting_nt_sysex.dart'
     show AlgorithmVisualStyle, DisplayMode;
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/services/settings_service.dart';
-import 'package:nt_helper/ui/widgets/algorithm_visual_style_preview.dart';
+import 'package:nt_helper/ui/widgets/algorithm_visual_style_container.dart';
 import 'package:nt_helper/ui/widgets/clipboard_selectable_tab.dart';
 import 'package:nt_helper/ui/widgets/rename_slot_dialog.dart';
 import 'package:nt_helper/ui/widgets/shift_click_gesture_recognizer.dart';
@@ -203,6 +203,10 @@ class _AlgorithmListTileState extends State<_AlgorithmListTile>
     final visualStyle =
         widget.slot.algorithm.visualStyle ?? const AlgorithmVisualStyle();
     final originalNameSubtitle = _buildOriginalNameSubtitle(context);
+    final colorScheme = Theme.of(context).colorScheme;
+    final algorithmBoxColor = widget.isSelected
+        ? colorScheme.secondaryContainer
+        : colorScheme.surfaceContainerLow;
     final hasActions =
         widget.onMoveUp != null ||
         widget.onMoveDown != null ||
@@ -279,124 +283,108 @@ class _AlgorithmListTileState extends State<_AlgorithmListTile>
               selection: widget.clipboardSelection ?? _emptySelection,
               slotIndex: widget.index,
               horizontalPadding: 4,
-              child: Stack(
-                children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.only(
-                      left:
-                          12 +
-                          visualStyle.leftIndent *
-                              AlgorithmVisualStylePreview.defaultIndentExtent,
-                      right:
-                          16 +
-                          visualStyle.rightIndent *
-                              AlgorithmVisualStylePreview.defaultIndentExtent,
-                    ),
-                    title: ExcludeSemantics(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(displayName, overflow: TextOverflow.ellipsis),
-                          ?originalNameSubtitle,
-                        ],
+              child: AlgorithmVisualStyleContainer(
+                key: ValueKey('algorithm-style-preview-${widget.index}'),
+                style: visualStyle,
+                color: colorScheme.onSurfaceVariant,
+                contentPadding: EdgeInsets.zero,
+                boxDecoration: BoxDecoration(
+                  color: algorithmBoxColor,
+                  border: Border.all(color: colorScheme.outlineVariant),
+                ),
+                child: Stack(
+                  children: [
+                    ListTile(
+                      contentPadding: const EdgeInsets.only(
+                        left: 12,
+                        right: 16,
                       ),
+                      title: ExcludeSemantics(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(displayName, overflow: TextOverflow.ellipsis),
+                            ?originalNameSubtitle,
+                          ],
+                        ),
+                      ),
+                      selected: widget.isSelected,
+                      selectedColor: colorScheme.onSecondaryContainer,
+                      onTap: () {
+                        widget.onSelectionChanged(widget.index);
+                        SemanticsService.sendAnnouncement(
+                          WidgetsBinding
+                              .instance
+                              .platformDispatcher
+                              .views
+                              .first,
+                          'Slot ${widget.index + 1}: $displayName selected',
+                          TextDirection.ltr,
+                        );
+                      },
+                      onLongPress: () async {
+                        var cubit = context.read<DistingCubit>();
+                        final newName = await showDialog<String>(
+                          context: context,
+                          builder: (dialogCtx) =>
+                              RenameSlotDialog(initialName: displayName),
+                        );
+                        if (newName != null && newName != displayName) {
+                          cubit.renameSlot(widget.index, newName);
+                        }
+                      },
                     ),
-                    selected: widget.isSelected,
-                    selectedTileColor: Theme.of(
-                      context,
-                    ).colorScheme.secondaryContainer,
-                    selectedColor: Theme.of(
-                      context,
-                    ).colorScheme.onSecondaryContainer,
-                    onTap: () {
-                      widget.onSelectionChanged(widget.index);
-                      SemanticsService.sendAnnouncement(
-                        WidgetsBinding.instance.platformDispatcher.views.first,
-                        'Slot ${widget.index + 1}: $displayName selected',
-                        TextDirection.ltr,
-                      );
-                    },
-                    onLongPress: () async {
-                      var cubit = context.read<DistingCubit>();
-                      final newName = await showDialog<String>(
-                        context: context,
-                        builder: (dialogCtx) =>
-                            RenameSlotDialog(initialName: displayName),
-                      );
-                      if (newName != null && newName != displayName) {
-                        cubit.renameSlot(widget.index, newName);
-                      }
-                    },
-                  ),
-                  if (hasActions)
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      child: AnimatedBuilder(
-                        animation: _fadeController,
-                        builder: (context, child) {
-                          final t = _fadeController.value;
-                          final tileColor = widget.isSelected
-                              ? Theme.of(context).colorScheme.secondaryContainer
-                              : Theme.of(context).colorScheme.surface;
-                          final maskColor = Theme.of(
-                            context,
-                          ).colorScheme.onSurface;
-                          return ShaderMask(
-                            shaderCallback: (bounds) => LinearGradient(
-                              colors: [
-                                maskColor.withValues(alpha: t),
-                                maskColor,
-                              ],
-                              stops: const [0.0, 0.5],
-                            ).createShader(bounds),
-                            blendMode: BlendMode.dstIn,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    tileColor.withValues(alpha: 0),
-                                    tileColor.withValues(alpha: t),
-                                  ],
-                                  stops: const [0.0, 0.3],
+                    if (hasActions)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: AnimatedBuilder(
+                          animation: _fadeController,
+                          builder: (context, child) {
+                            final t = _fadeController.value;
+                            final tileColor = algorithmBoxColor;
+                            final maskColor = Theme.of(
+                              context,
+                            ).colorScheme.onSurface;
+                            return ShaderMask(
+                              shaderCallback: (bounds) => LinearGradient(
+                                colors: [
+                                  maskColor.withValues(alpha: t),
+                                  maskColor,
+                                ],
+                                stops: const [0.0, 0.5],
+                              ).createShader(bounds),
+                              blendMode: BlendMode.dstIn,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      tileColor.withValues(alpha: 0),
+                                      tileColor.withValues(alpha: t),
+                                    ],
+                                    stops: const [0.0, 0.3],
+                                  ),
+                                ),
+                                padding: const EdgeInsets.only(
+                                  left: 24,
+                                  right: 8,
+                                ),
+                                child: Opacity(
+                                  opacity: widget.isSelected
+                                      ? 0.3 + 0.7 * t
+                                      : t,
+                                  child: child,
                                 ),
                               ),
-                              padding: const EdgeInsets.only(
-                                left: 24,
-                                right: 8,
-                              ),
-                              child: Opacity(
-                                opacity: widget.isSelected ? 0.3 + 0.7 * t : t,
-                                child: child,
-                              ),
-                            ),
-                          );
-                        },
-                        child: _buildActionRow(),
-                      ),
-                    ),
-                  Positioned.fill(
-                    left:
-                        visualStyle.leftIndent *
-                        AlgorithmVisualStylePreview.defaultIndentExtent,
-                    right:
-                        visualStyle.rightIndent *
-                        AlgorithmVisualStylePreview.defaultIndentExtent,
-                    child: IgnorePointer(
-                      child: CustomPaint(
-                        key: ValueKey(
-                          'algorithm-style-preview-${widget.index}',
-                        ),
-                        foregroundPainter: AlgorithmVisualStylePainter(
-                          style: visualStyle,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            );
+                          },
+                          child: _buildActionRow(),
                         ),
                       ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

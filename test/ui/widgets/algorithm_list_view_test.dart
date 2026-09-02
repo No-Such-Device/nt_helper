@@ -10,7 +10,7 @@ import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/ui/widgets/algorithm_list_view.dart';
-import 'package:nt_helper/ui/widgets/algorithm_visual_style_preview.dart';
+import 'package:nt_helper/ui/widgets/algorithm_visual_style_container.dart';
 
 class _MockDistingCubit extends Mock implements DistingCubit {}
 
@@ -83,12 +83,10 @@ void main() {
     expect(find.byIcon(Icons.format_shapes_rounded), findsNothing);
     expect(find.byKey(const ValueKey('algorithm-decoration-0')), findsNothing);
 
-    final betaPreview = tester.widget<CustomPaint>(
+    final betaPreview = tester.widget<AlgorithmVisualStyleContainer>(
       find.byKey(const ValueKey('algorithm-style-preview-1')),
     );
-    final betaPainter =
-        betaPreview.foregroundPainter! as AlgorithmVisualStylePainter;
-    expect(betaPainter.style, const AlgorithmVisualStyle(lineAbove: true));
+    expect(betaPreview.style, const AlgorithmVisualStyle(lineAbove: true));
     expect(
       tester.getSemantics(find.text('Beta')).label,
       contains('line above'),
@@ -105,12 +103,20 @@ void main() {
     await tester.pumpWidget(
       buildWidget(slots: slots, firmwareVersion: '1.17.9', offline: false),
     );
-    final preview = tester.widget<CustomPaint>(
+    final preview = tester.widget<AlgorithmVisualStyleContainer>(
       find.byKey(const ValueKey('algorithm-style-preview-0')),
     );
-    final painter = preview.foregroundPainter! as AlgorithmVisualStylePainter;
-    expect(painter.style.isDecorated, isFalse);
+    expect(preview.style.isDecorated, isFalse);
     expect(find.byIcon(Icons.format_shapes_rounded), findsNothing);
+    final box = tester.widget<DecoratedBox>(
+      find.descendant(
+        of: find.byKey(const ValueKey('algorithm-style-preview-0')),
+        matching: find.byKey(const ValueKey('algorithm-style-box')),
+      ),
+    );
+    final decoration = box.decoration as BoxDecoration;
+    expect(decoration.color, isNotNull);
+    expect(decoration.border, isNotNull);
   });
 
   testWidgets('offline style is simulated in the desktop algorithm list', (
@@ -133,21 +139,26 @@ void main() {
       buildWidget(slots: slots, firmwareVersion: '1.15.0', offline: true),
     );
 
-    final preview = tester.widget<CustomPaint>(
+    final preview = tester.widget<AlgorithmVisualStyleContainer>(
       find.byKey(const ValueKey('algorithm-style-preview-0')),
     );
-    final painter = preview.foregroundPainter! as AlgorithmVisualStylePainter;
-    expect(painter.style.leftIndent, 3);
-    expect(painter.style.rightIndent, 2);
-    expect(painter.style.lineBelow, isTrue);
-    expect(painter.style.bracket, AlgorithmVisualBracket.close);
-    final tileRect = tester.getRect(find.byType(ListTile));
-    final previewRect = tester.getRect(
+    expect(preview.style.leftIndent, 3);
+    expect(preview.style.rightIndent, 2);
+    expect(preview.style.lineBelow, isTrue);
+    expect(preview.style.bracket, AlgorithmVisualBracket.close);
+    final indentPadding = tester.widget<Padding>(
+      find.descendant(
+        of: find.byKey(const ValueKey('algorithm-style-preview-0')),
+        matching: find.byKey(const ValueKey('algorithm-style-indent')),
+      ),
+    );
+    expect(indentPadding.padding, const EdgeInsets.only(left: 15, right: 10));
+    final containerRect = tester.getRect(
       find.byKey(const ValueKey('algorithm-style-preview-0')),
     );
-    expect(previewRect.left - tileRect.left, 9);
-    expect(tileRect.right - previewRect.right, 6);
-    expect(tester.getTopLeft(find.text('Alpha')).dx - previewRect.left, 12);
+    final algorithmBoxRect = tester.getRect(find.byType(ListTile));
+    expect(algorithmBoxRect.left - containerRect.left, 15);
+    expect(containerRect.right - algorithmBoxRect.right, 18);
     expect(find.byIcon(Icons.format_shapes_rounded), findsNothing);
   });
 

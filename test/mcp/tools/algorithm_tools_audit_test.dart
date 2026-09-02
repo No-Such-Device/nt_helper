@@ -6,6 +6,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart'
     show
         Algorithm,
+        AlgorithmVisualBracket,
+        AlgorithmVisualStyle,
         Mapping,
         ParameterEnumStrings,
         ParameterInfo,
@@ -575,6 +577,37 @@ void main() {
   });
 
   group('showSlot — parameter summary format', () {
+    test(
+      'includes the current algorithm visual style for restoration',
+      () async {
+        when(() => controller.getAlgorithmInSlot(0)).thenAnswer(
+          (_) async => Algorithm(
+            algorithmIndex: 0,
+            guid: 'test',
+            name: 'TestAlgo',
+            visualStyle: const AlgorithmVisualStyle(
+              leftIndent: 3,
+              rightIndent: 5,
+              lineAbove: true,
+              lineBelow: false,
+              bracket: AlgorithmVisualBracket.openAndClose,
+            ),
+          ),
+        );
+
+        final result = await algoTools.showSlot(0);
+        final json = jsonDecode(result) as Map<String, dynamic>;
+
+        expect(json['visual_style'], {
+          'left_indent': 3,
+          'right_indent': 5,
+          'line_above': true,
+          'line_below': false,
+          'bracket': 'open_and_close',
+        });
+      },
+    );
+
     test('includes algorithm specification values', () async {
       when(() => controller.getAlgorithmInSlot(0)).thenAnswer(
         (_) async => Algorithm(
