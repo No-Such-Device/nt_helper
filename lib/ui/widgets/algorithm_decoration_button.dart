@@ -9,13 +9,11 @@ class AlgorithmDecorationButton extends StatelessWidget {
     super.key,
     required this.slot,
     this.enabled = true,
-    this.compact = false,
     this.tooltip,
   });
 
   final Slot slot;
   final bool enabled;
-  final bool compact;
   final String? tooltip;
 
   @override
@@ -25,7 +23,7 @@ class AlgorithmDecorationButton extends StatelessWidget {
     final label = isDecorated
         ? 'Edit decoration for $algorithmName; decoration applied'
         : 'Decorate $algorithmName';
-    final button = IconButton(
+    final button = IconButton.filledTonal(
       tooltip: tooltip ?? label,
       onPressed: enabled
           ? () {
@@ -34,15 +32,13 @@ class AlgorithmDecorationButton extends StatelessWidget {
               );
             }
           : null,
-      visualDensity: compact ? VisualDensity.compact : null,
-      padding: compact ? EdgeInsets.zero : null,
-      constraints: compact
-          ? const BoxConstraints.tightFor(width: 40, height: 40)
-          : null,
+      iconSize: 24,
+      padding: const EdgeInsets.all(8),
+      alignment: Alignment.center,
+      enableFeedback: true,
       icon: Icon(
         Icons.format_shapes_rounded,
         semanticLabel: label,
-        size: compact ? 19 : null,
         color: isDecorated && enabled
             ? Theme.of(context).colorScheme.primary
             : null,

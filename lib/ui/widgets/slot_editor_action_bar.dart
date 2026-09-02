@@ -30,12 +30,14 @@ class SlotEditorActionBar extends StatelessWidget {
       children: [
         ?editorModeSelector,
         if (editorModeSelector != null) const SizedBox(width: 8),
-        if (_canEditDecoration(context))
+        if (_canEditDecoration(context)) ...[
           AlgorithmDecorationButton(
             key: const ValueKey('slot-editor-algorithm-decoration'),
             slot: slot,
             tooltip: 'Decorate algorithm',
           ),
+          const SizedBox(width: 8),
+        ],
         Tooltip(
           message: sectionsCollapsed ? 'Expand all' : 'Collapse all',
           child: IconButton.filledTonal(

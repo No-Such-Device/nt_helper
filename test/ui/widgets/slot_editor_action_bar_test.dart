@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,6 +14,7 @@ import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_selection_field.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_action_bar.dart';
+import 'package:nt_helper/ui/widgets/algorithm_visual_style_preview.dart';
 
 class _MockDistingCubit extends Mock implements DistingCubit {}
 
@@ -135,9 +138,68 @@ void main() {
       find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
       findsOneWidget,
     );
+
+    final button = tester.widget<IconButton>(
+      find.descendant(
+        of: find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(button.iconSize, 24);
+    expect(button.alignment, Alignment.center);
+    expect(button.padding, const EdgeInsets.all(8));
   });
 
-  testWidgets('edits firmware 1.18 decoration from the action bar', (
+  testWidgets('keeps equal spacing around the decoration action', (
+    tester,
+  ) async {
+    final slot = _slotWithOutputAndMode();
+    final cubit = _MockDistingCubit();
+    when(() => cubit.state).thenReturn(
+      _synchronizedState(
+        slot: slot,
+        manager: _MockDistingMidiManager(),
+        firmwareVersion: '1.18.0',
+      ),
+    );
+    when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider<DistingCubit>.value(
+          value: cubit,
+          child: Scaffold(
+            body: SlotEditorActionBar(
+              slot: slot,
+              sectionsCollapsed: false,
+              editorModeSelector: IconButton.filledTonal(
+                key: const ValueKey('editor-mode-selector'),
+                onPressed: () {},
+                icon: const Icon(Icons.extension),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final editorCenter = tester.getCenter(
+      find.byKey(const ValueKey('editor-mode-selector')),
+    );
+    final decorationCenter = tester.getCenter(
+      find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
+    );
+    final collapseCenter = tester.getCenter(
+      find.byKey(const ValueKey('slot-editor-collapse-toggle')),
+    );
+
+    expect(
+      decorationCenter.dx - editorCenter.dx,
+      collapseCenter.dx - decorationCenter.dx,
+    );
+  });
+
+  testWidgets('edits and syncs firmware 1.18 decoration immediately', (
     tester,
   ) async {
     const initialStyle = AlgorithmVisualStyle(
@@ -159,9 +221,10 @@ void main() {
       ),
     );
     when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
+    final syncCompleter = Completer<void>();
     when(
       () => cubit.setAlgorithmVisualStyle(any(), any()),
-    ).thenAnswer((_) async {});
+    ).thenAnswer((_) => syncCompleter.future);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -204,10 +267,25 @@ void main() {
           .selected,
       isTrue,
     );
+    expect(find.byKey(const ValueKey('algorithm-style-save')), findsNothing);
+    expect(find.text('CANCEL'), findsNothing);
+
+    final initialPreview = tester.widget<AlgorithmVisualStylePreview>(
+      find.byKey(const ValueKey('algorithm-style-live-preview')),
+    );
+    expect(initialPreview.style, initialStyle);
 
     await tester.tap(find.byKey(const ValueKey('algorithm-style-line-below')));
-    await tester.tap(find.byKey(const ValueKey('algorithm-style-save')));
-    await tester.pumpAndSettle();
+    await tester.pump();
+
+    final updatedPreview = tester.widget<AlgorithmVisualStylePreview>(
+      find.byKey(const ValueKey('algorithm-style-live-preview')),
+    );
+    expect(updatedPreview.style.lineBelow, isTrue);
+    expect(
+      find.byKey(const ValueKey('algorithm-style-sync-indicator')),
+      findsOneWidget,
+    );
 
     verify(
       () => cubit.setAlgorithmVisualStyle(
@@ -221,6 +299,17 @@ void main() {
         ),
       ),
     ).called(1);
+
+    syncCompleter.complete();
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('algorithm-style-sync-indicator')),
+      findsNothing,
+    );
+
+    await tester.tap(find.text('CLOSE'));
+    await tester.pumpAndSettle();
+    expect(find.text('Algorithm Decoration'), findsNothing);
   });
 }
 

@@ -103,7 +103,7 @@ void main() {
       );
     }
 
-    testWidgets('top toolbar opens decoration editor for selected algorithm', (
+    testWidgets('top toolbar omits the algorithm decoration action', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -114,18 +114,13 @@ void main() {
         ),
       );
 
-      final button = find.byKey(const ValueKey('toolbar-algorithm-decoration'));
-      expect(button, findsOneWidget);
-      expect(find.byTooltip('Decorate selected algorithm'), findsOneWidget);
-
-      await tester.tap(button);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Algorithm Decoration'), findsOneWidget);
-      expect(tester.takeException(), isNull);
+      expect(
+        find.byKey(const ValueKey('toolbar-algorithm-decoration')),
+        findsNothing,
+      );
     });
 
-    testWidgets('top toolbar exposes offline decoration preview', (
+    testWidgets('top toolbar also omits the offline decoration action', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -136,13 +131,10 @@ void main() {
         ),
       );
 
-      final button = find.byKey(const ValueKey('toolbar-algorithm-decoration'));
-      expect(button, findsOneWidget);
-
-      await tester.tap(button);
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('Offline preview'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('toolbar-algorithm-decoration')),
+        findsNothing,
+      );
     });
 
     testWidgets('slot tabs expose shift-click hint via semantics on desktop', (

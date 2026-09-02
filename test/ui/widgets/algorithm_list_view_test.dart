@@ -10,6 +10,7 @@ import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/ui/widgets/algorithm_list_view.dart';
+import 'package:nt_helper/ui/widgets/algorithm_visual_style_preview.dart';
 
 class _MockDistingCubit extends Mock implements DistingCubit {}
 
@@ -62,7 +63,7 @@ void main() {
     );
   }
 
-  testWidgets('each firmware 1.18 slot has a direct decoration control', (
+  testWidgets('decorated slots render the NT overview style without an icon', (
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
@@ -79,36 +80,24 @@ void main() {
       buildWidget(slots: slots, firmwareVersion: '1.18.0beta', offline: false),
     );
 
-    final alphaButton = find.byKey(const ValueKey('algorithm-decoration-0'));
-    final betaButton = find.byKey(const ValueKey('algorithm-decoration-1'));
-    expect(alphaButton, findsOneWidget);
-    expect(betaButton, findsOneWidget);
-    expect(find.byTooltip('Decorate slot 1: Alpha'), findsOneWidget);
-    expect(find.bySemanticsLabel('Decorate Alpha'), findsOneWidget);
+    expect(find.byIcon(Icons.format_shapes_rounded), findsNothing);
+    expect(find.byKey(const ValueKey('algorithm-decoration-0')), findsNothing);
 
-    final betaIcon = tester.widget<Icon>(
-      find.descendant(
-        of: betaButton,
-        matching: find.byIcon(Icons.format_shapes_rounded),
-      ),
+    final betaPreview = tester.widget<CustomPaint>(
+      find.byKey(const ValueKey('algorithm-style-preview-1')),
     );
+    final betaPainter =
+        betaPreview.foregroundPainter! as AlgorithmVisualStylePainter;
+    expect(betaPainter.style, const AlgorithmVisualStyle(lineAbove: true));
     expect(
-      betaIcon.color,
-      Theme.of(tester.element(betaButton)).colorScheme.primary,
+      tester.getSemantics(find.text('Beta')).label,
+      contains('line above'),
     );
-
-    await tester.tap(
-      find.descendant(of: alphaButton, matching: find.byType(IconButton)),
-    );
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Algorithm Decoration'), findsOneWidget);
     expect(tester.takeException(), isNull);
     semantics.dispose();
   });
 
-  testWidgets('online decoration controls require firmware 1.18 or newer', (
+  testWidgets('unstyled slots keep their ordinary list presentation', (
     tester,
   ) async {
     final slots = [_slot(0, 'Alpha')];
@@ -116,36 +105,109 @@ void main() {
     await tester.pumpWidget(
       buildWidget(slots: slots, firmwareVersion: '1.17.9', offline: false),
     );
-    expect(find.byKey(const ValueKey('algorithm-decoration-0')), findsNothing);
+    final preview = tester.widget<CustomPaint>(
+      find.byKey(const ValueKey('algorithm-style-preview-0')),
+    );
+    final painter = preview.foregroundPainter! as AlgorithmVisualStylePainter;
+    expect(painter.style.isDecorated, isFalse);
+    expect(find.byIcon(Icons.format_shapes_rounded), findsNothing);
   });
 
-  testWidgets('offline mode exposes a decoration preview on older firmware', (
+  testWidgets('offline style is simulated in the desktop algorithm list', (
     tester,
   ) async {
-    final slots = [_slot(0, 'Alpha')];
+    final slots = [
+      _slot(
+        0,
+        'Alpha',
+        visualStyle: const AlgorithmVisualStyle(
+          leftIndent: 3,
+          rightIndent: 2,
+          lineBelow: true,
+          bracket: AlgorithmVisualBracket.close,
+        ),
+      ),
+    ];
 
     await tester.pumpWidget(
       buildWidget(slots: slots, firmwareVersion: '1.15.0', offline: true),
     );
 
-    final button = find.byKey(const ValueKey('algorithm-decoration-0'));
-    expect(button, findsOneWidget);
-
-    await tester.tap(
-      find.descendant(of: button, matching: find.byType(IconButton)),
+    final preview = tester.widget<CustomPaint>(
+      find.byKey(const ValueKey('algorithm-style-preview-0')),
     );
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pumpAndSettle();
+    final painter = preview.foregroundPainter! as AlgorithmVisualStylePainter;
+    expect(painter.style.leftIndent, 3);
+    expect(painter.style.rightIndent, 2);
+    expect(painter.style.lineBelow, isTrue);
+    expect(painter.style.bracket, AlgorithmVisualBracket.close);
+    final tileRect = tester.getRect(find.byType(ListTile));
+    final previewRect = tester.getRect(
+      find.byKey(const ValueKey('algorithm-style-preview-0')),
+    );
+    expect(previewRect.left - tileRect.left, 9);
+    expect(tileRect.right - previewRect.right, 6);
+    expect(tester.getTopLeft(find.text('Alpha')).dx - previewRect.left, 12);
+    expect(find.byIcon(Icons.format_shapes_rounded), findsNothing);
+  });
 
-    expect(find.text('Algorithm Decoration'), findsOneWidget);
-    expect(find.textContaining('Offline preview'), findsOneWidget);
+  testWidgets('adjacent bracket rows share an edge for a continuous line', (
+    tester,
+  ) async {
+    final slots = [
+      _slot(
+        0,
+        'Open',
+        visualStyle: const AlgorithmVisualStyle(
+          bracket: AlgorithmVisualBracket.open,
+        ),
+      ),
+      _slot(
+        1,
+        'Renamed line',
+        guid: 'pywt',
+        visualStyle: const AlgorithmVisualStyle(
+          bracket: AlgorithmVisualBracket.line,
+        ),
+      ),
+      _slot(
+        2,
+        'Close',
+        visualStyle: const AlgorithmVisualStyle(
+          bracket: AlgorithmVisualBracket.close,
+        ),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      buildWidget(slots: slots, firmwareVersion: '1.18.0', offline: false),
+    );
+
+    final openRect = tester.getRect(
+      find.byKey(const ValueKey('algorithm-style-preview-0')),
+    );
+    final lineRect = tester.getRect(
+      find.byKey(const ValueKey('algorithm-style-preview-1')),
+    );
+    final closeRect = tester.getRect(
+      find.byKey(const ValueKey('algorithm-style-preview-2')),
+    );
+
+    expect(find.text('Poly Wavetable'), findsOneWidget);
+    expect(openRect.bottom, lineRect.top);
+    expect(lineRect.bottom, closeRect.top);
   });
 }
 
-Slot _slot(int index, String name, {AlgorithmVisualStyle? visualStyle}) => Slot(
+Slot _slot(
+  int index,
+  String name, {
+  String? guid,
+  AlgorithmVisualStyle? visualStyle,
+}) => Slot(
   algorithm: Algorithm(
     algorithmIndex: index,
-    guid: 'guid-$index',
+    guid: guid ?? 'guid-$index',
     name: name,
     visualStyle: visualStyle,
   ),

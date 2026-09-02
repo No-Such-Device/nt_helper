@@ -130,6 +130,10 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
   final Color backwardConnection;
   final Color emptyBus;
 
+  /// Fixed high-contrast colours used to simulate the disting NT display.
+  static const Color ntDisplaySurface = Color(0xFF101010);
+  static const Color ntDisplayForeground = Color(0xFFF5F5F5);
+
   static const Color _successSeed = Color(0xFF2E7D32);
   static const Color _warningSeed = Color(0xFFEF6C00);
   static const Color _infoSeed = Color(0xFF1565C0);
