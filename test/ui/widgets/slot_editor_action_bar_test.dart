@@ -148,6 +148,15 @@ void main() {
     expect(button.iconSize, 24);
     expect(button.alignment, Alignment.center);
     expect(button.padding, const EdgeInsets.all(8));
+
+    await tester.tap(
+      find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Offline preview'), findsNothing);
+    expect(find.textContaining('SysEx'), findsNothing);
+    expect(find.byIcon(Icons.visibility_outlined), findsNothing);
   });
 
   testWidgets('keeps equal spacing around the decoration action', (
@@ -243,6 +252,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Algorithm Decoration'), findsOneWidget);
+    expect(find.text('Preview'), findsOneWidget);
+    expect(find.text('NT overview preview'), findsNothing);
     expect(
       tester
           .widget<DropdownButtonFormField<int>>(

@@ -138,30 +138,11 @@ class _AlgorithmVisualStyleDialogState
                   'Place lines, brackets, and indents around this algorithm on the disting NT overview screen.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                if (widget.offlinePreview) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.visibility_outlined,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Offline preview — changes stay in this local working preset. No SysEx is sent.',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
                 const SizedBox(height: 20),
                 Semantics(
                   header: true,
                   child: Text(
-                    'NT overview preview',
+                    'Preview',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
