@@ -123,6 +123,10 @@ Use the `nt-helper-release` skill and the existing
 `.github/workflows/tag-build.yml` workflow. A tag or release page is not the
 finish line: every required distribution job and public asset must be verified.
 
+Use the `thorinside` GitHub CLI credential for this repository. Before release
+checks or GitHub API operations, run `gh auth switch -u thorinside`; do not use
+the `nealsanche` credential.
+
 Before creating a tag:
 
 1. Confirm `main` is clean and synchronized with `origin/main`.
