@@ -108,7 +108,7 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('decoration controls require online firmware 1.18 or newer', (
+  testWidgets('online decoration controls require firmware 1.18 or newer', (
     tester,
   ) async {
     final slots = [_slot(0, 'Alpha')];
@@ -117,11 +117,28 @@ void main() {
       buildWidget(slots: slots, firmwareVersion: '1.17.9', offline: false),
     );
     expect(find.byKey(const ValueKey('algorithm-decoration-0')), findsNothing);
+  });
+
+  testWidgets('offline mode exposes a decoration preview on older firmware', (
+    tester,
+  ) async {
+    final slots = [_slot(0, 'Alpha')];
 
     await tester.pumpWidget(
-      buildWidget(slots: slots, firmwareVersion: '1.18.0', offline: true),
+      buildWidget(slots: slots, firmwareVersion: '1.15.0', offline: true),
     );
-    expect(find.byKey(const ValueKey('algorithm-decoration-0')), findsNothing);
+
+    final button = find.byKey(const ValueKey('algorithm-decoration-0'));
+    expect(button, findsOneWidget);
+
+    await tester.tap(
+      find.descendant(of: button, matching: find.byType(IconButton)),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Algorithm Decoration'), findsOneWidget);
+    expect(find.textContaining('Offline preview'), findsOneWidget);
   });
 }
 

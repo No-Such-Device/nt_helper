@@ -102,7 +102,7 @@ mixin _DistingCubitSlotOps on _DistingCubitBase {
   ) async {
     final currentState = state;
     if (currentState is! DistingStateSynchronized) return;
-    if (currentState.offline ||
+    if (!currentState.offline &&
         !currentState.firmwareVersion.hasAlgorithmVisualStyle) {
       throw UnsupportedError(
         'Algorithm visual styling requires connected firmware 1.18 or newer',

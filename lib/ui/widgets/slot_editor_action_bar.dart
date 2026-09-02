@@ -144,7 +144,6 @@ class SlotEditorActionBar extends StatelessWidget {
   bool _canEditDecoration(BuildContext context) {
     final state = context.read<DistingCubit>().state;
     return state is DistingStateSynchronized &&
-        !state.offline &&
-        state.firmwareVersion.hasAlgorithmVisualStyle;
+        (state.offline || state.firmwareVersion.hasAlgorithmVisualStyle);
   }
 }

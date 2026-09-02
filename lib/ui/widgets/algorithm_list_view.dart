@@ -73,7 +73,7 @@ class AlgorithmListView extends StatelessWidget {
                     onMoveDown: onMoveDown,
                     onDelete: onDelete,
                     canDecorate:
-                        !offline && firmwareVersion.hasAlgorithmVisualStyle,
+                        offline || firmwareVersion.hasAlgorithmVisualStyle,
                     clipboardSelection: clipboardSelection,
                     onToggleClipboardSelection: onToggleClipboardSelection,
                   ),

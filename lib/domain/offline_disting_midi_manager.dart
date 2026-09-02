@@ -8,7 +8,7 @@ import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/db/daos/metadata_dao.dart';
 
 import 'package:nt_helper/domain/i_disting_midi_manager.dart'
-    show IDistingMidiManager;
+    show AlgorithmVisualStyleWriter, IDistingMidiManager;
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:flutter/foundation.dart';
 import '../db/daos/presets_dao.dart';
@@ -20,7 +20,8 @@ import 'package:nt_helper/services/offline_algorithm_shape_resolver.dart';
 
 /// An implementation of [IDistingMidiManager] that interacts with the
 /// cached database instead of a physical MIDI device.
-class OfflineDistingMidiManager implements IDistingMidiManager {
+class OfflineDistingMidiManager
+    implements IDistingMidiManager, AlgorithmVisualStyleWriter {
   final AppDatabase _database;
   late final MetadataDao _metadataDao;
   late final OfflineAlgorithmShapeResolver _shapeResolver;
@@ -34,6 +35,7 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
   final Map<int, Map<int, int>> _parameterValues = {};
   final Map<int, Map<int, String>> _parameterStringValues = {};
   final Map<int, Map<int, PackedMappingData>> _mappings = {};
+  final Map<int, AlgorithmVisualStyle> _visualStyles = {};
   final Map<int, String> _customNames = {};
   final Map<int, String> _defaultNames = {};
   String _presetName = "Offline Preset";
@@ -52,6 +54,7 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
     _parameterValues.clear();
     _parameterStringValues.clear();
     _mappings.clear();
+    _visualStyles.clear();
     _customNames.clear();
     _defaultNames.clear();
     _loadedPresetId = null;
@@ -209,6 +212,7 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
           specifications: List<int>.from(
             _presetSpecificationValues[algorithmIndex],
           ),
+          visualStyle: _visualStyles[algorithmIndex],
         );
       } else {
         return null;
@@ -514,6 +518,17 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
   }
 
   @override
+  Future<void> requestSetAlgorithmVisualStyle(
+    int algorithmIndex,
+    AlgorithmVisualStyle style,
+  ) async {
+    if (algorithmIndex < 0 || algorithmIndex >= _presetAlgorithmGuids.length) {
+      return;
+    }
+    _visualStyles[algorithmIndex] = style;
+  }
+
+  @override
   Future<void> requestSetPresetName(String name) async {
     _presetName = name;
     if (_loadedPresetId == null) return;
@@ -553,6 +568,7 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
     _parameterValues.clear();
     _parameterStringValues.clear();
     _mappings.clear();
+    _visualStyles.clear();
     _customNames.clear();
     _defaultNames.clear();
     _presetName = "Init";
@@ -585,6 +601,7 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
     _parameterValues[slotIndex] = {};
     _parameterStringValues[slotIndex] = {};
     _mappings[slotIndex] = {};
+    _visualStyles.remove(slotIndex);
     _customNames.remove(slotIndex);
   }
 
@@ -846,6 +863,7 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
     _parameterValues.remove(removedIndex);
     _parameterStringValues.remove(removedIndex);
     _mappings.remove(removedIndex);
+    _visualStyles.remove(removedIndex);
     _customNames.remove(removedIndex);
     _defaultNames.remove(removedIndex);
 
@@ -853,6 +871,12 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
       _parameterValues[i] = _parameterValues.remove(i + 1) ?? {};
       _parameterStringValues[i] = _parameterStringValues.remove(i + 1) ?? {};
       _mappings[i] = _mappings.remove(i + 1) ?? {};
+      final movedVisualStyle = _visualStyles.remove(i + 1);
+      if (movedVisualStyle != null) {
+        _visualStyles[i] = movedVisualStyle;
+      } else {
+        _visualStyles.remove(i);
+      }
       final movedCustomName = _customNames.remove(i + 1);
       if (movedCustomName != null) {
         _customNames[i] = movedCustomName;
@@ -870,6 +894,7 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
     _parameterValues.remove(lastIndex);
     _parameterStringValues.remove(lastIndex);
     _mappings.remove(lastIndex);
+    _visualStyles.remove(lastIndex);
     _customNames.remove(lastIndex);
     _defaultNames.remove(lastIndex);
   }
@@ -879,6 +904,8 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
     final otherDefaultName = _defaultNames[movedIndex - 1];
     final movingCustomName = _customNames[movedIndex];
     final otherCustomName = _customNames[movedIndex - 1];
+    final movingVisualStyle = _visualStyles[movedIndex];
+    final otherVisualStyle = _visualStyles[movedIndex - 1];
 
     final tempValues = _parameterValues[movedIndex - 1];
     _parameterValues[movedIndex - 1] = _parameterValues[movedIndex] ?? {};
@@ -892,6 +919,17 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
     final tempMappings = _mappings[movedIndex - 1];
     _mappings[movedIndex - 1] = _mappings[movedIndex] ?? {};
     _mappings[movedIndex] = tempMappings ?? {};
+
+    if (movingVisualStyle != null) {
+      _visualStyles[movedIndex - 1] = movingVisualStyle;
+    } else {
+      _visualStyles.remove(movedIndex - 1);
+    }
+    if (otherVisualStyle != null) {
+      _visualStyles[movedIndex] = otherVisualStyle;
+    } else {
+      _visualStyles.remove(movedIndex);
+    }
 
     if (movingDefaultName != null) {
       _defaultNames[movedIndex - 1] = movingDefaultName;
@@ -921,6 +959,8 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
     final otherDefaultName = _defaultNames[movedIndex + 1];
     final movingCustomName = _customNames[movedIndex];
     final otherCustomName = _customNames[movedIndex + 1];
+    final movingVisualStyle = _visualStyles[movedIndex];
+    final otherVisualStyle = _visualStyles[movedIndex + 1];
 
     final tempValues = _parameterValues[movedIndex];
     _parameterValues[movedIndex] = _parameterValues[movedIndex + 1] ?? {};
@@ -934,6 +974,17 @@ class OfflineDistingMidiManager implements IDistingMidiManager {
     final tempMappings = _mappings[movedIndex];
     _mappings[movedIndex] = _mappings[movedIndex + 1] ?? {};
     _mappings[movedIndex + 1] = tempMappings ?? {};
+
+    if (movingVisualStyle != null) {
+      _visualStyles[movedIndex + 1] = movingVisualStyle;
+    } else {
+      _visualStyles.remove(movedIndex + 1);
+    }
+    if (otherVisualStyle != null) {
+      _visualStyles[movedIndex] = otherVisualStyle;
+    } else {
+      _visualStyles.remove(movedIndex);
+    }
 
     if (movingDefaultName != null) {
       _defaultNames[movedIndex + 1] = movingDefaultName;

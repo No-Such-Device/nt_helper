@@ -125,6 +125,26 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('top toolbar exposes offline decoration preview', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildWidget(
+          [_slot(0, 'G1', 'Alpha')],
+          firmwareVersion: '1.15.0',
+          offline: true,
+        ),
+      );
+
+      final button = find.byKey(const ValueKey('toolbar-algorithm-decoration'));
+      expect(button, findsOneWidget);
+
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Offline preview'), findsOneWidget);
+    });
+
     testWidgets('slot tabs expose shift-click hint via semantics on desktop', (
       tester,
     ) async {

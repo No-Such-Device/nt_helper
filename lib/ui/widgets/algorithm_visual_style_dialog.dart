@@ -6,9 +6,14 @@ import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 
 class AlgorithmVisualStyleDialog extends StatefulWidget {
-  const AlgorithmVisualStyleDialog({super.key, required this.initialStyle});
+  const AlgorithmVisualStyleDialog({
+    super.key,
+    required this.initialStyle,
+    this.offlinePreview = false,
+  });
 
   final AlgorithmVisualStyle initialStyle;
+  final bool offlinePreview;
 
   @override
   State<AlgorithmVisualStyleDialog> createState() =>
@@ -39,6 +44,25 @@ class _AlgorithmVisualStyleDialogState
                   'Place lines, brackets, and indents around this algorithm on the disting NT overview screen.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
+                if (widget.offlinePreview) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.visibility_outlined,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Offline preview — changes stay in this local working preset. No SysEx is sent.',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 20),
                 Semantics(
                   header: true,
@@ -201,23 +225,29 @@ Future<void> showAlgorithmVisualStyleEditor({
   await Future<void>.delayed(Duration.zero);
   if (!context.mounted) return;
 
+  final cubit = context.read<DistingCubit>();
+  final isOffline = switch (cubit.state) {
+    DistingStateSynchronized(offline: final offline) => offline,
+    _ => false,
+  };
+
   final style = await showDialog<AlgorithmVisualStyle>(
     context: context,
     builder: (_) => AlgorithmVisualStyleDialog(
       initialStyle: slot.algorithm.visualStyle ?? const AlgorithmVisualStyle(),
+      offlinePreview: isOffline,
     ),
   );
   if (style == null || !context.mounted) return;
 
   try {
-    await context.read<DistingCubit>().setAlgorithmVisualStyle(
-      slot.algorithm.algorithmIndex,
-      style,
-    );
+    await cubit.setAlgorithmVisualStyle(slot.algorithm.algorithmIndex, style);
     if (!context.mounted) return;
     SemanticsService.sendAnnouncement(
       View.of(context),
-      'Algorithm decoration updated',
+      isOffline
+          ? 'Algorithm decoration preview updated'
+          : 'Algorithm decoration updated',
       Directionality.of(context),
     );
   } catch (error) {

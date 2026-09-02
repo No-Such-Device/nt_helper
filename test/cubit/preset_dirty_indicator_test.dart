@@ -2017,6 +2017,32 @@ void main() {
       );
     });
 
+    test('simulates style writes in offline mode on older firmware', () async {
+      const style = AlgorithmVisualStyle(
+        lineBelow: true,
+        bracket: AlgorithmVisualBracket.close,
+      );
+      when(
+        () => mockDisting.requestSetAlgorithmVisualStyle(0, style),
+      ).thenAnswer((_) async {});
+
+      cubit.emit(
+        makeSyncState(
+          firmwareVersion: '1.15.0',
+          offline: true,
+          slots: [makeSlot()],
+        ),
+      );
+      await cubit.setAlgorithmVisualStyle(0, style);
+
+      final state = cubit.state as DistingStateSynchronized;
+      expect(state.slots.single.algorithm.visualStyle, style);
+      expect(state.isDirty, isTrue);
+      verify(
+        () => mockDisting.requestSetAlgorithmVisualStyle(0, style),
+      ).called(1);
+    });
+
     test('reconciles the optimistic style with the device readback', () async {
       const requestedStyle = AlgorithmVisualStyle(leftIndent: 4);
       const deviceStyle = AlgorithmVisualStyle(

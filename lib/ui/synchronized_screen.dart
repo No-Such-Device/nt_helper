@@ -2101,8 +2101,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
               },
       ),
       if (widget.slots.isNotEmpty &&
-          widget.firmwareVersion.hasAlgorithmVisualStyle &&
-          !isOffline)
+          (isOffline || widget.firmwareVersion.hasAlgorithmVisualStyle))
         AlgorithmDecorationButton(
           key: const ValueKey('toolbar-algorithm-decoration'),
           slot: widget.slots[_selectedIndex],

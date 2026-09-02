@@ -107,6 +107,36 @@ void main() {
     );
   });
 
+  testWidgets('shows decoration preview control offline', (tester) async {
+    final slot = _slotWithOutputAndMode();
+    final cubit = _MockDistingCubit();
+    when(() => cubit.state).thenReturn(
+      _synchronizedState(
+        slot: slot,
+        manager: _MockDistingMidiManager(),
+        firmwareVersion: '1.15.0',
+        offline: true,
+      ),
+    );
+    when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider<DistingCubit>.value(
+          value: cubit,
+          child: Scaffold(
+            body: SlotEditorActionBar(slot: slot, sectionsCollapsed: false),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('edits firmware 1.18 decoration from the action bar', (
     tester,
   ) async {
@@ -198,6 +228,7 @@ DistingStateSynchronized _synchronizedState({
   required Slot slot,
   required IDistingMidiManager manager,
   required String firmwareVersion,
+  bool offline = false,
 }) {
   return DistingState.synchronized(
         disting: manager,
@@ -207,6 +238,7 @@ DistingStateSynchronized _synchronizedState({
         algorithms: const [],
         slots: [slot],
         unitStrings: const [],
+        offline: offline,
       )
       as DistingStateSynchronized;
 }
