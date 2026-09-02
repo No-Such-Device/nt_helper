@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 
@@ -23,23 +26,85 @@ class _AlgorithmVisualStyleDialogState
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Semantics(
-        header: true,
-        child: const Text('Algorithm Overview Style'),
-      ),
+      title: Semantics(header: true, child: const Text('Algorithm Decoration')),
       content: DigitShortcutBlocker(
         child: SizedBox(
-          width: 420,
+          width: 440,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Controls how this algorithm is grouped on the disting NT overview screen.',
+                  'Place lines, brackets, and indents around this algorithm on the disting NT overview screen.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 20),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    'Lines',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilterChip(
+                      key: const ValueKey('algorithm-style-line-above'),
+                      label: const Text('Line above'),
+                      selected: _lineAbove,
+                      onSelected: (value) => setState(() {
+                        _lineAbove = value;
+                      }),
+                    ),
+                    FilterChip(
+                      key: const ValueKey('algorithm-style-line-below'),
+                      label: const Text('Line below'),
+                      selected: _lineBelow,
+                      onSelected: (value) => setState(() {
+                        _lineBelow = value;
+                      }),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    'Bracket',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final bracket in AlgorithmVisualBracket.values)
+                      ChoiceChip(
+                        key: ValueKey(
+                          'algorithm-style-bracket-${bracket.name}',
+                        ),
+                        label: Text(_bracketLabel(bracket)),
+                        selected: _bracket == bracket,
+                        onSelected: (_) => setState(() {
+                          _bracket = bracket;
+                        }),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    'Indent',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
@@ -64,48 +129,6 @@ class _AlgorithmVisualStyleDialogState
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<AlgorithmVisualBracket>(
-                  key: const ValueKey('algorithm-style-bracket'),
-                  initialValue: _bracket,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Bracket',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final bracket in AlgorithmVisualBracket.values)
-                      DropdownMenuItem(
-                        value: bracket,
-                        child: Text(_bracketLabel(bracket)),
-                      ),
-                  ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() {
-                      _bracket = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 8),
-                SwitchListTile(
-                  key: const ValueKey('algorithm-style-line-above'),
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Line above'),
-                  value: _lineAbove,
-                  onChanged: (value) => setState(() {
-                    _lineAbove = value;
-                  }),
-                ),
-                SwitchListTile(
-                  key: const ValueKey('algorithm-style-line-below'),
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Line below'),
-                  value: _lineBelow,
-                  onChanged: (value) => setState(() {
-                    _lineBelow = value;
-                  }),
                 ),
               ],
             ),
@@ -166,7 +189,41 @@ class _AlgorithmVisualStyleDialogState
       AlgorithmVisualBracket.open => 'Open',
       AlgorithmVisualBracket.close => 'Close',
       AlgorithmVisualBracket.line => 'Line',
-      AlgorithmVisualBracket.openAndClose => 'Open & close',
+      AlgorithmVisualBracket.openAndClose => 'Open + close',
     };
+  }
+}
+
+Future<void> showAlgorithmVisualStyleEditor({
+  required BuildContext context,
+  required Slot slot,
+}) async {
+  await Future<void>.delayed(Duration.zero);
+  if (!context.mounted) return;
+
+  final style = await showDialog<AlgorithmVisualStyle>(
+    context: context,
+    builder: (_) => AlgorithmVisualStyleDialog(
+      initialStyle: slot.algorithm.visualStyle ?? const AlgorithmVisualStyle(),
+    ),
+  );
+  if (style == null || !context.mounted) return;
+
+  try {
+    await context.read<DistingCubit>().setAlgorithmVisualStyle(
+      slot.algorithm.algorithmIndex,
+      style,
+    );
+    if (!context.mounted) return;
+    SemanticsService.sendAnnouncement(
+      View.of(context),
+      'Algorithm decoration updated',
+      Directionality.of(context),
+    );
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Unable to update algorithm decoration: $error')),
+    );
   }
 }

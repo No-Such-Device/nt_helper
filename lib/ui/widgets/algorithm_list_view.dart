@@ -8,6 +8,8 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart' show DisplayMode;
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/services/settings_service.dart';
+import 'package:nt_helper/ui/widgets/algorithm_decoration_button.dart';
+import 'package:nt_helper/ui/widgets/algorithm_visual_style_dialog.dart';
 import 'package:nt_helper/ui/widgets/clipboard_selectable_tab.dart';
 import 'package:nt_helper/ui/widgets/rename_slot_dialog.dart';
 import 'package:nt_helper/ui/widgets/shift_click_gesture_recognizer.dart';
@@ -51,27 +53,33 @@ class AlgorithmListView extends StatelessWidget {
     return BlocBuilder<DistingCubit, DistingState>(
       builder: (context, state) {
         return switch (state) {
-          DistingStateSynchronized(slots: final _) => ListView.builder(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-            itemCount: slots.length,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: _AlgorithmListTile(
-                  slot: slots[index],
-                  index: index,
-                  isSelected: index == selectedIndex,
-                  onSelectionChanged: onSelectionChanged,
-                  onHelpTextChanged: onHelpTextChanged,
-                  onMoveUp: onMoveUp,
-                  onMoveDown: onMoveDown,
-                  onDelete: onDelete,
-                  clipboardSelection: clipboardSelection,
-                  onToggleClipboardSelection: onToggleClipboardSelection,
-                ),
-              );
-            },
-          ),
+          DistingStateSynchronized(
+            offline: final offline,
+            firmwareVersion: final firmwareVersion,
+          ) =>
+            ListView.builder(
+              padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+              itemCount: slots.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: _AlgorithmListTile(
+                    slot: slots[index],
+                    index: index,
+                    isSelected: index == selectedIndex,
+                    onSelectionChanged: onSelectionChanged,
+                    onHelpTextChanged: onHelpTextChanged,
+                    onMoveUp: onMoveUp,
+                    onMoveDown: onMoveDown,
+                    onDelete: onDelete,
+                    canDecorate:
+                        !offline && firmwareVersion.hasAlgorithmVisualStyle,
+                    clipboardSelection: clipboardSelection,
+                    onToggleClipboardSelection: onToggleClipboardSelection,
+                  ),
+                );
+              },
+            ),
           _ => const Center(child: Text("Loading slots...")),
         };
       },
@@ -88,6 +96,7 @@ class _AlgorithmListTile extends StatefulWidget {
   final Future<int> Function(int index)? onMoveUp;
   final Future<int> Function(int index)? onMoveDown;
   final ValueChanged<int>? onDelete;
+  final bool canDecorate;
   final ValueNotifier<Set<int>>? clipboardSelection;
   final ValueChanged<int>? onToggleClipboardSelection;
 
@@ -100,6 +109,7 @@ class _AlgorithmListTile extends StatefulWidget {
     this.onMoveUp,
     this.onMoveDown,
     this.onDelete,
+    required this.canDecorate,
     this.clipboardSelection,
     this.onToggleClipboardSelection,
   });
@@ -217,6 +227,15 @@ class _AlgorithmListTileState extends State<_AlgorithmListTile>
       label: 'Slot ${widget.index + 1}: $displayName',
       hint: 'Double tap to select. Long press to rename.',
       customSemanticsActions: {
+        if (widget.canDecorate)
+          const CustomSemanticsAction(label: 'Decorate algorithm'): () {
+            unawaited(
+              showAlgorithmVisualStyleEditor(
+                context: context,
+                slot: widget.slot,
+              ),
+            );
+          },
         const CustomSemanticsAction(label: 'Rename algorithm'): () async {
           var cubit = context.read<DistingCubit>();
           final newName = await showDialog<String>(
@@ -285,6 +304,17 @@ class _AlgorithmListTileState extends State<_AlgorithmListTile>
               child: Stack(
                 children: [
                   ListTile(
+                    leading: widget.canDecorate
+                        ? AlgorithmDecorationButton(
+                            key: ValueKey(
+                              'algorithm-decoration-${widget.index}',
+                            ),
+                            slot: widget.slot,
+                            compact: true,
+                            tooltip:
+                                'Decorate slot ${widget.index + 1}: $displayName',
+                          )
+                        : null,
                     title: ExcludeSemantics(
                       child: Text(displayName, overflow: TextOverflow.ellipsis),
                     ),

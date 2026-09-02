@@ -63,6 +63,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/ui/widgets/algorithm_list_view.dart';
+import 'package:nt_helper/ui/widgets/algorithm_decoration_button.dart';
 import 'package:nt_helper/ui/widgets/algorithm_controller/algorithm_controller_section_controller.dart';
 import 'package:nt_helper/ui/widgets/disting_version.dart';
 import 'package:nt_helper/ui/widgets/slot_detail_view.dart';
@@ -2099,6 +2100,15 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                 cubit.refresh();
               },
       ),
+      if (widget.slots.isNotEmpty &&
+          widget.firmwareVersion.hasAlgorithmVisualStyle &&
+          !isOffline)
+        AlgorithmDecorationButton(
+          key: const ValueKey('toolbar-algorithm-decoration'),
+          slot: widget.slots[_selectedIndex],
+          enabled: !widget.loading,
+          tooltip: 'Decorate selected algorithm',
+        ),
       // Mode-specific actions with AnimatedSwitcher
       AnimatedSwitcher(
         duration: const Duration(milliseconds: 100),

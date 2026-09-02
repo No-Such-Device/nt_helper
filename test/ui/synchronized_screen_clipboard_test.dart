@@ -68,16 +68,20 @@ void main() {
       await database.close();
     });
 
-    Widget buildWidget(List<Slot> slots) {
+    Widget buildWidget(
+      List<Slot> slots, {
+      String firmwareVersion = '1.10.0',
+      bool offline = true,
+    }) {
       final state = DistingStateSynchronized(
         disting: mockMidiManager,
-        distingVersion: '1.10.0',
-        firmwareVersion: FirmwareVersion('1.10.0'),
+        distingVersion: firmwareVersion,
+        firmwareVersion: FirmwareVersion(firmwareVersion),
         presetName: 'Test Preset',
         algorithms: const [],
         slots: slots,
         unitStrings: const [],
-        offline: true,
+        offline: offline,
       );
       when(() => mockCubit.state).thenReturn(state);
       when(() => mockCubit.stream).thenAnswer((_) => Stream.value(state));
@@ -85,8 +89,8 @@ void main() {
         home: BlocProvider<DistingCubit>.value(
           value: mockCubit,
           child: SynchronizedScreen(
-            distingVersion: '1.10.0',
-            firmwareVersion: FirmwareVersion('1.10.0'),
+            distingVersion: firmwareVersion,
+            firmwareVersion: FirmwareVersion(firmwareVersion),
             slots: slots,
             algorithms: const [],
             units: const [],
@@ -98,6 +102,28 @@ void main() {
         ),
       );
     }
+
+    testWidgets('top toolbar opens decoration editor for selected algorithm', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildWidget(
+          [_slot(0, 'G1', 'Alpha')],
+          firmwareVersion: '1.18.0',
+          offline: false,
+        ),
+      );
+
+      final button = find.byKey(const ValueKey('toolbar-algorithm-decoration'));
+      expect(button, findsOneWidget);
+      expect(find.byTooltip('Decorate selected algorithm'), findsOneWidget);
+
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Algorithm Decoration'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets('slot tabs expose shift-click hint via semantics on desktop', (
       tester,

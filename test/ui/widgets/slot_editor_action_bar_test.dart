@@ -75,7 +75,7 @@ void main() {
     },
   );
 
-  testWidgets('hides overview styling before firmware 1.18', (tester) async {
+  testWidgets('hides decoration controls before firmware 1.18', (tester) async {
     final slot = _slotWithOutputAndMode();
     final cubit = _MockDistingCubit();
     when(() => cubit.state).thenReturn(
@@ -101,10 +101,13 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('slot-editor-more-options')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Edit Overview Style'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
+      findsNothing,
+    );
   });
 
-  testWidgets('edits firmware 1.18 overview styling from the slot menu', (
+  testWidgets('edits firmware 1.18 decoration from the action bar', (
     tester,
   ) async {
     const initialStyle = AlgorithmVisualStyle(
@@ -141,12 +144,12 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey('slot-editor-more-options')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Edit Overview Style'));
+    await tester.tap(
+      find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text('Algorithm Overview Style'), findsOneWidget);
+    expect(find.text('Algorithm Decoration'), findsOneWidget);
     expect(
       tester
           .widget<DropdownButtonFormField<int>>(
@@ -157,10 +160,18 @@ void main() {
     );
     expect(
       tester
-          .widget<SwitchListTile>(
+          .widget<FilterChip>(
             find.byKey(const ValueKey('algorithm-style-line-above')),
           )
-          .value,
+          .selected,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<ChoiceChip>(
+            find.byKey(const ValueKey('algorithm-style-bracket-line')),
+          )
+          .selected,
       isTrue,
     );
 

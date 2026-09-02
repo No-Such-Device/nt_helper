@@ -422,6 +422,13 @@ class AlgorithmVisualStyle {
   }) : assert(leftIndent >= 0 && leftIndent <= 15),
        assert(rightIndent >= 0 && rightIndent <= 15);
 
+  bool get isDecorated =>
+      leftIndent != 0 ||
+      rightIndent != 0 ||
+      lineAbove ||
+      lineBelow ||
+      bracket != AlgorithmVisualBracket.none;
+
   static AlgorithmVisualStyle? tryParse(List<int> data, int offset) {
     if (offset < 0 || data.length < offset + 6) return null;
     if (data[offset] != currentVersion) return null;
