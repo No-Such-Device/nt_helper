@@ -115,7 +115,7 @@ void main() {
     expect(outerPadding.padding, const EdgeInsets.only(left: 15, right: 10));
 
     final frame = tester.widget<CustomPaint>(
-      find.byKey(const ValueKey('algorithm-style-decoration-frame')),
+      find.byKey(const ValueKey('algorithm-style-frame')),
     );
     final painter = frame.foregroundPainter! as AlgorithmVisualStylePainter;
     expect(
@@ -127,7 +127,9 @@ void main() {
     );
   });
 
-  testWidgets('decoration strokes are always fully opaque', (tester) async {
+  testWidgets('algorithm style strokes are always fully opaque', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -141,14 +143,14 @@ void main() {
     );
 
     final customPaint = tester.widget<CustomPaint>(
-      find.byKey(const ValueKey('algorithm-style-decoration-frame')),
+      find.byKey(const ValueKey('algorithm-style-frame')),
     );
     final painter =
         customPaint.foregroundPainter! as AlgorithmVisualStylePainter;
     expect(painter.color.a, 1);
   });
 
-  testWidgets('decoration frame stays the same size while style changes', (
+  testWidgets('style frame stays the same size while style changes', (
     tester,
   ) async {
     Future<Size> measure(AlgorithmVisualStyle style) async {

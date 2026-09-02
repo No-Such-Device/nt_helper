@@ -89,8 +89,8 @@ class _AlgorithmVisualStyleDialogState
       SemanticsService.sendAnnouncement(
         View.of(context),
         widget.offlinePreview
-            ? 'Algorithm decoration preview updated'
-            : 'Algorithm decoration synced',
+            ? 'Algorithm style preview updated'
+            : 'Algorithm style synced',
         Directionality.of(context),
       );
     } catch (error) {
@@ -100,7 +100,7 @@ class _AlgorithmVisualStyleDialogState
         _isSaving = false;
         _syncFailed = true;
       });
-      const message = 'Unable to update algorithm decoration';
+      const message = 'Unable to update algorithm style';
       SemanticsService.sendAnnouncement(
         View.of(context),
         message,
@@ -120,7 +120,7 @@ class _AlgorithmVisualStyleDialogState
           Expanded(
             child: Semantics(
               header: true,
-              child: const Text('Algorithm Decoration'),
+              child: const Text('Algorithm Style'),
             ),
           ),
           if (_isDirty || _isSaving || _syncFailed) _buildSyncIndicator(),
@@ -135,7 +135,7 @@ class _AlgorithmVisualStyleDialogState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Place lines, brackets, and indents around this algorithm on the disting NT overview screen.',
+                  'Choose how this algorithm appears on the disting NT overview screen.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 20),
@@ -150,7 +150,7 @@ class _AlgorithmVisualStyleDialogState
                 Semantics(
                   liveRegion: true,
                   label:
-                      'Decoration preview for ${widget.algorithmName}: '
+                      'Style preview for ${widget.algorithmName}: '
                       '${describeAlgorithmVisualStyle(_style)}',
                   child: ExcludeSemantics(
                     child: Container(

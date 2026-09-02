@@ -296,8 +296,8 @@ Show a slot with compact, paged parameter summaries. Each parameter shows its
 name and current value. Ranges, enum value lists, and full mapping details are
 reserved for `show_parameter`. The `is_enum`, `is_disabled`, and `has_mapping`
 flags are included only when true. The response also includes the complete
-`visual_style`, so a caller can restore overview decorations after temporary
-render comparisons.
+`visual_style`, so a caller can restore the overview display style after
+temporary render comparisons.
 
 **Parameters**:
 - `slot_index` (required, integer): Slot index (0-39)
@@ -595,7 +595,7 @@ reports `persisted: true`.
 
 #### set_algorithm_visual_style
 
-Set the complete overview decoration for one populated algorithm slot. On a
+Set the complete overview display style for one populated algorithm slot. On a
 connected NT this requires firmware 1.18 or newer. The edit is applied
 immediately and marks the preset as modified, but does not save it.
 

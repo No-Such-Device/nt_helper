@@ -78,7 +78,9 @@ void main() {
     },
   );
 
-  testWidgets('hides decoration controls before firmware 1.18', (tester) async {
+  testWidgets('hides algorithm style controls before firmware 1.18', (
+    tester,
+  ) async {
     final slot = _slotWithOutputAndMode();
     final cubit = _MockDistingCubit();
     when(() => cubit.state).thenReturn(
@@ -105,12 +107,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
+      find.byKey(const ValueKey('slot-editor-algorithm-style')),
       findsNothing,
     );
   });
 
-  testWidgets('shows decoration preview control offline', (tester) async {
+  testWidgets('shows algorithm style preview control offline', (tester) async {
     final slot = _slotWithOutputAndMode();
     final cubit = _MockDistingCubit();
     when(() => cubit.state).thenReturn(
@@ -135,13 +137,13 @@ void main() {
     );
 
     expect(
-      find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
+      find.byKey(const ValueKey('slot-editor-algorithm-style')),
       findsOneWidget,
     );
 
     final button = tester.widget<IconButton>(
       find.descendant(
-        of: find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
+        of: find.byKey(const ValueKey('slot-editor-algorithm-style')),
         matching: find.byType(IconButton),
       ),
     );
@@ -149,9 +151,7 @@ void main() {
     expect(button.alignment, Alignment.center);
     expect(button.padding, const EdgeInsets.all(8));
 
-    await tester.tap(
-      find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
-    );
+    await tester.tap(find.byKey(const ValueKey('slot-editor-algorithm-style')));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Offline preview'), findsNothing);
@@ -159,7 +159,7 @@ void main() {
     expect(find.byIcon(Icons.visibility_outlined), findsNothing);
   });
 
-  testWidgets('keeps equal spacing around the decoration action', (
+  testWidgets('keeps equal spacing around the algorithm style action', (
     tester,
   ) async {
     final slot = _slotWithOutputAndMode();
@@ -195,20 +195,20 @@ void main() {
     final editorCenter = tester.getCenter(
       find.byKey(const ValueKey('editor-mode-selector')),
     );
-    final decorationCenter = tester.getCenter(
-      find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
+    final styleCenter = tester.getCenter(
+      find.byKey(const ValueKey('slot-editor-algorithm-style')),
     );
     final collapseCenter = tester.getCenter(
       find.byKey(const ValueKey('slot-editor-collapse-toggle')),
     );
 
     expect(
-      decorationCenter.dx - editorCenter.dx,
-      collapseCenter.dx - decorationCenter.dx,
+      styleCenter.dx - editorCenter.dx,
+      collapseCenter.dx - styleCenter.dx,
     );
   });
 
-  testWidgets('edits and syncs firmware 1.18 decoration immediately', (
+  testWidgets('edits and syncs firmware 1.18 algorithm style immediately', (
     tester,
   ) async {
     const initialStyle = AlgorithmVisualStyle(
@@ -246,12 +246,10 @@ void main() {
       ),
     );
 
-    await tester.tap(
-      find.byKey(const ValueKey('slot-editor-algorithm-decoration')),
-    );
+    await tester.tap(find.byKey(const ValueKey('slot-editor-algorithm-style')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Algorithm Decoration'), findsOneWidget);
+    expect(find.text('Algorithm Style'), findsOneWidget);
     expect(find.text('Preview'), findsOneWidget);
     expect(find.text('NT overview preview'), findsNothing);
     expect(
@@ -320,7 +318,7 @@ void main() {
 
     await tester.tap(find.text('CLOSE'));
     await tester.pumpAndSettle();
-    expect(find.text('Algorithm Decoration'), findsNothing);
+    expect(find.text('Algorithm Style'), findsNothing);
   });
 }
 

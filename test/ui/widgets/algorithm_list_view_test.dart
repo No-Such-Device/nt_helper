@@ -63,7 +63,7 @@ void main() {
     );
   }
 
-  testWidgets('decorated slots render the NT overview style without an icon', (
+  testWidgets('styled slots render the NT overview style without an icon', (
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
@@ -81,7 +81,7 @@ void main() {
     );
 
     expect(find.byIcon(Icons.format_shapes_rounded), findsNothing);
-    expect(find.byKey(const ValueKey('algorithm-decoration-0')), findsNothing);
+    expect(find.byKey(const ValueKey('algorithm-style-0')), findsNothing);
 
     final betaPreview = tester.widget<AlgorithmVisualStyleContainer>(
       find.byKey(const ValueKey('algorithm-style-preview-1')),
@@ -106,7 +106,7 @@ void main() {
     final preview = tester.widget<AlgorithmVisualStyleContainer>(
       find.byKey(const ValueKey('algorithm-style-preview-0')),
     );
-    expect(preview.style.isDecorated, isFalse);
+    expect(preview.style.hasCustomStyle, isFalse);
     expect(find.byIcon(Icons.format_shapes_rounded), findsNothing);
     final box = tester.widget<DecoratedBox>(
       find.descendant(

@@ -4,7 +4,7 @@ import 'package:nt_helper/domain/disting_nt_sysex.dart';
 /// Lays out and draws the firmware 1.18 algorithm-overview style around [child].
 ///
 /// Hardware screenshots establish the geometry used by both the dialog preview
-/// and desktop sidebar: 5 pixels per indent unit inside a fixed decoration
+/// and desktop sidebar: 5 pixels per indent unit inside a fixed style
 /// frame, rules on the row boundaries, and a bracket rail 6 pixels beyond the
 /// unindented algorithm box's right edge.
 class AlgorithmVisualStyleContainer extends StatelessWidget {
@@ -39,7 +39,7 @@ class AlgorithmVisualStyleContainer extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: CustomPaint(
-        key: const ValueKey('algorithm-style-decoration-frame'),
+        key: const ValueKey('algorithm-style-frame'),
         foregroundPainter: AlgorithmVisualStylePainter(
           style: style,
           color: decorationColor,
@@ -206,7 +206,7 @@ class AlgorithmVisualStyleSegment {
 }
 
 String describeAlgorithmVisualStyle(AlgorithmVisualStyle style) {
-  if (!style.isDecorated) return 'no decoration';
+  if (!style.hasCustomStyle) return 'default style';
 
   final parts = <String>[];
   if (style.lineAbove) parts.add('line above');

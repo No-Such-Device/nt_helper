@@ -764,7 +764,7 @@ class ToolRegistry {
       ToolRegistryEntry(
         name: 'set_algorithm_visual_style',
         description:
-            'Set the complete overview decoration for one algorithm slot. '
+            'Set the complete overview display style for one algorithm slot. '
             'Requires firmware 1.18 or newer when connected. Marks the current preset as modified but does not save it.',
         inputSchema: {
           'properties': {

@@ -103,9 +103,7 @@ void main() {
       );
     }
 
-    testWidgets('top toolbar omits the algorithm decoration action', (
-      tester,
-    ) async {
+    testWidgets('top toolbar omits the algorithm style action', (tester) async {
       await tester.pumpWidget(
         buildWidget(
           [_slot(0, 'G1', 'Alpha')],
@@ -115,12 +113,12 @@ void main() {
       );
 
       expect(
-        find.byKey(const ValueKey('toolbar-algorithm-decoration')),
+        find.byKey(const ValueKey('toolbar-algorithm-style')),
         findsNothing,
       );
     });
 
-    testWidgets('top toolbar also omits the offline decoration action', (
+    testWidgets('top toolbar also omits the offline algorithm style action', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -132,7 +130,7 @@ void main() {
       );
 
       expect(
-        find.byKey(const ValueKey('toolbar-algorithm-decoration')),
+        find.byKey(const ValueKey('toolbar-algorithm-style')),
         findsNothing,
       );
     });
@@ -380,7 +378,7 @@ void main() {
       await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
 
       // Both tiles now report selected via the public ClipboardSelectableTab
-      // state (no decoration sniffing).
+      // state (without inferring it from the visual style).
       bool isTileSelected(String label) {
         final element = tester.element(find.text(label));
         final state = element

@@ -4,7 +4,7 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/ui/algorithm_documentation_screen.dart';
 import 'package:nt_helper/ui/reset_outputs_dialog.dart';
-import 'package:nt_helper/ui/widgets/algorithm_decoration_button.dart';
+import 'package:nt_helper/ui/widgets/algorithm_style_button.dart';
 import 'package:nt_helper/ui/widgets/slot_bypass_control.dart';
 
 class SlotEditorActionBar extends StatelessWidget {
@@ -30,11 +30,11 @@ class SlotEditorActionBar extends StatelessWidget {
       children: [
         ?editorModeSelector,
         if (editorModeSelector != null) const SizedBox(width: 8),
-        if (_canEditDecoration(context)) ...[
-          AlgorithmDecorationButton(
-            key: const ValueKey('slot-editor-algorithm-decoration'),
+        if (_canEditAlgorithmStyle(context)) ...[
+          AlgorithmStyleButton(
+            key: const ValueKey('slot-editor-algorithm-style'),
             slot: slot,
-            tooltip: 'Decorate algorithm',
+            tooltip: 'Edit algorithm style',
           ),
           const SizedBox(width: 8),
         ],
@@ -143,7 +143,7 @@ class SlotEditorActionBar extends StatelessWidget {
     );
   }
 
-  bool _canEditDecoration(BuildContext context) {
+  bool _canEditAlgorithmStyle(BuildContext context) {
     final state = context.read<DistingCubit>().state;
     return state is DistingStateSynchronized &&
         (state.offline || state.firmwareVersion.hasAlgorithmVisualStyle);

@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/ui/widgets/algorithm_visual_style_dialog.dart';
 
-class AlgorithmDecorationButton extends StatelessWidget {
-  const AlgorithmDecorationButton({
+class AlgorithmStyleButton extends StatelessWidget {
+  const AlgorithmStyleButton({
     super.key,
     required this.slot,
     this.enabled = true,
@@ -18,11 +18,11 @@ class AlgorithmDecorationButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDecorated = slot.algorithm.visualStyle?.isDecorated ?? false;
+    final hasCustomStyle = slot.algorithm.visualStyle?.hasCustomStyle ?? false;
     final algorithmName = slot.algorithm.name;
-    final label = isDecorated
-        ? 'Edit decoration for $algorithmName; decoration applied'
-        : 'Decorate $algorithmName';
+    final label = hasCustomStyle
+        ? 'Edit algorithm style for $algorithmName; custom style applied'
+        : 'Edit algorithm style for $algorithmName';
     final button = IconButton.filledTonal(
       tooltip: tooltip ?? label,
       onPressed: enabled
@@ -39,12 +39,12 @@ class AlgorithmDecorationButton extends StatelessWidget {
       icon: Icon(
         Icons.format_shapes_rounded,
         semanticLabel: label,
-        color: isDecorated && enabled
+        color: hasCustomStyle && enabled
             ? Theme.of(context).colorScheme.primary
             : null,
       ),
     );
 
-    return Semantics(button: true, selected: isDecorated, child: button);
+    return Semantics(button: true, selected: hasCustomStyle, child: button);
   }
 }

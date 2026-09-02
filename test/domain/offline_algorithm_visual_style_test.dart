@@ -8,7 +8,7 @@ import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/domain/offline_disting_midi_manager.dart';
 
 void main() {
-  test('offline manager retains simulated algorithm decoration', () async {
+  test('offline manager retains simulated algorithm style', () async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
     final manager = OfflineDistingMidiManager(database);

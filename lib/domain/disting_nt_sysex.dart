@@ -422,7 +422,7 @@ class AlgorithmVisualStyle {
   }) : assert(leftIndent >= 0 && leftIndent <= 15),
        assert(rightIndent >= 0 && rightIndent <= 15);
 
-  bool get isDecorated =>
+  bool get hasCustomStyle =>
       leftIndent != 0 ||
       rightIndent != 0 ||
       lineAbove ||
