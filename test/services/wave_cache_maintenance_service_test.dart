@@ -6,8 +6,8 @@ import 'package:nt_helper/services/wave_cache_maintenance_service.dart';
 
 class _MockDistingMidiManager extends Mock implements IDistingMidiManager {}
 
-DirectoryEntry _file(String name) =>
-    DirectoryEntry(name: name, attributes: 0x20, date: 0, time: 0, size: 0);
+DirectoryEntry _file(String name, {int size = 1}) =>
+    DirectoryEntry(name: name, attributes: 0x20, date: 0, time: 0, size: size);
 
 DirectoryEntry _dir(String name) =>
     DirectoryEntry(name: '$name/', attributes: 0x10, date: 0, time: 0, size: 0);
@@ -39,6 +39,82 @@ void main() {
     final plan = await service.findAll();
 
     expect(plan.cachePaths, ['/distingNT.wavcache']);
+  });
+
+  test(
+    'findZeroByteWavs finds only empty WAVs and their sibling caches',
+    () async {
+      stubListings({
+        '/': [_dir('samples')],
+        '/samples': [_dir('Kit'), _dir('Other')],
+        '/samples/Kit': [
+          _file('Empty.WAV', size: 0),
+          _file('valid.wav', size: 42),
+          _file('empty.txt', size: 0),
+          _file('distingNT.wavcache', size: 100),
+        ],
+        '/samples/Other': [_file('also-empty.wav', size: 0)],
+      });
+
+      final plan = await service.findZeroByteWavs();
+
+      expect(plan.zeroByteWavPaths, [
+        '/samples/Kit/Empty.WAV',
+        '/samples/Other/also-empty.wav',
+      ]);
+      expect(plan.cachePaths, ['/samples/Kit/distingNT.wavcache']);
+    },
+  );
+
+  test(
+    'targeted search marks only matching zero-byte WAVs for deletion',
+    () async {
+      stubListings({
+        '/': [_dir('samples')],
+        '/samples': [_dir('Kit')],
+        '/samples/Kit': [
+          _file('Broken Kick.wav', size: 0),
+          _file('Working Kick.wav', size: 42),
+          _file('distingNT.wavcache', size: 100),
+        ],
+      });
+
+      final plan = await service.findForSampleFragment('kick');
+
+      expect(plan.matchedSamplePaths, [
+        '/samples/Kit/Broken Kick.wav',
+        '/samples/Kit/Working Kick.wav',
+      ]);
+      expect(plan.zeroByteWavPaths, ['/samples/Kit/Broken Kick.wav']);
+      expect(plan.cachePaths, ['/samples/Kit/distingNT.wavcache']);
+    },
+  );
+
+  test('deletes zero-byte WAVs before caches and remounts', () async {
+    const plan = WaveCacheCleanupPlan(
+      sampleFragment: null,
+      matchedSamplePaths: [],
+      cachePaths: ['/samples/Kit/distingNT.wavcache'],
+      directoriesWithoutCache: ['/samples/Other'],
+      zeroByteWavPaths: [
+        '/samples/Kit/empty.wav',
+        '/samples/Other/also-empty.wav',
+      ],
+    );
+    when(
+      () => manager.requestFileDelete(any()),
+    ).thenAnswer((_) async => SdCardStatus(success: true, message: 'Deleted'));
+    when(() => manager.requestRemountSd()).thenAnswer((_) async {});
+
+    final result = await service.deleteAndRemount(plan);
+
+    expect(result.deletedZeroByteWavPaths, plan.zeroByteWavPaths);
+    verifyInOrder([
+      () => manager.requestFileDelete('/samples/Kit/empty.wav'),
+      () => manager.requestFileDelete('/samples/Other/also-empty.wav'),
+      () => manager.requestFileDelete('/samples/Kit/distingNT.wavcache'),
+      () => manager.requestRemountSd(),
+    ]);
   });
 
   test('finds only the cache beside a matching WAV filename', () async {
@@ -172,6 +248,30 @@ void main() {
 
     expect(result.deletedCachePaths, isEmpty);
     expect(result.failedCachePaths, hasLength(1));
+    expect(result.remountRequested, false);
+    verifyNever(() => manager.requestRemountSd());
+  });
+
+  test('reports a failed zero-byte WAV deletion without remounting', () async {
+    const plan = WaveCacheCleanupPlan(
+      sampleFragment: null,
+      matchedSamplePaths: [],
+      cachePaths: [],
+      directoriesWithoutCache: ['/samples/Kit'],
+      zeroByteWavPaths: ['/samples/Kit/empty.wav'],
+      isZeroByteWavScan: true,
+    );
+    when(
+      () => manager.requestFileDelete(any()),
+    ).thenThrow(StateError('Device disconnected'));
+
+    final result = await service.deleteAndRemount(plan);
+
+    expect(result.deletedZeroByteWavPaths, isEmpty);
+    expect(
+      result.failedZeroByteWavPaths['/samples/Kit/empty.wav'],
+      contains('Device disconnected'),
+    );
     expect(result.remountRequested, false);
     verifyNever(() => manager.requestRemountSd());
   });

@@ -61,8 +61,8 @@ class _WaveCacheTroubleshootingDialogState
       return Semantics(
         liveRegion: true,
         label: deleting
-            ? 'Deleting wave cache files and remounting the SD card'
-            : 'Searching the SD card for wave cache files',
+            ? 'Deleting selected files and remounting the SD card'
+            : 'Searching the SD card for WAV and cache issues',
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -70,7 +70,7 @@ class _WaveCacheTroubleshootingDialogState
             const SizedBox(height: 16),
             Text(
               deleting
-                  ? 'Deleting cache files and remounting the SD card…'
+                  ? 'Deleting selected files and remounting the SD card…'
                   : 'Searching every folder on the SD card…',
               textAlign: TextAlign.center,
             ),
@@ -94,7 +94,8 @@ class _WaveCacheTroubleshootingDialogState
         const Text(
           'Enter part of the WAV filename shown on the Disting NT. NT Helper '
           'will search the entire SD card and find the exact '
-          'distingNT.wavcache file in the same folder.',
+          'distingNT.wavcache file in the same folder. You can also scan for '
+          'zero-byte WAV files that the Disting NT cannot load.',
         ),
         const SizedBox(height: 16),
         TextField(
@@ -138,11 +139,18 @@ class _WaveCacheTroubleshootingDialogState
 
   Widget _buildPlan(BuildContext context, WaveCacheCleanupPlan plan) {
     final cacheCount = plan.cachePaths.length;
+    final zeroByteWavCount = plan.zeroByteWavPaths.length;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (plan.isGlobal) ...[
+        if (plan.isZeroByteWavScan) ...[
+          Text(
+            zeroByteWavCount == 0
+                ? 'No zero-byte WAV files were found.'
+                : '$zeroByteWavCount zero-byte WAV ${zeroByteWavCount == 1 ? 'file was' : 'files were'} found.',
+          ),
+        ] else if (plan.isGlobal) ...[
           Text(
             cacheCount == 0
                 ? 'No ${WaveCacheMaintenanceService.cacheFileName} files were found.'
@@ -160,14 +168,22 @@ class _WaveCacheTroubleshootingDialogState
             _buildPathSection('Matching WAV files', plan.matchedSamplePaths),
           ],
         ],
+        if (plan.zeroByteWavPaths.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildPathSection(
+            'Zero-byte WAV files to delete',
+            plan.zeroByteWavPaths,
+          ),
+        ],
         if (plan.cachePaths.isNotEmpty) ...[
           const SizedBox(height: 16),
           _buildPathSection('Cache files to delete', plan.cachePaths),
+        ],
+        if (plan.hasDeletions) ...[
           const SizedBox(height: 12),
           Text(
-            'Confirming will permanently delete '
-            '$cacheCount ${cacheCount == 1 ? 'cache file' : 'cache files'} '
-            'and remount the SD card so the Disting NT rebuilds its sample cache.',
+            'Confirming will permanently delete ${_deletionSummary(plan)} and '
+            'remount the SD card so the Disting NT rebuilds its sample cache.',
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ] else if (plan.matchedSamplePaths.isNotEmpty) ...[
@@ -180,7 +196,9 @@ class _WaveCacheTroubleshootingDialogState
         if (plan.directoriesWithoutCache.isNotEmpty) ...[
           const SizedBox(height: 12),
           _buildPathSection(
-            'Matching folders without a cache',
+            plan.isZeroByteWavScan
+                ? 'Zero-byte WAV folders without a cache'
+                : 'Matching folders without a cache',
             plan.directoriesWithoutCache,
           ),
         ],
@@ -199,14 +217,23 @@ class _WaveCacheTroubleshootingDialogState
   }
 
   Widget _buildResult(BuildContext context, WaveCacheCleanupResult result) {
-    final deletedCount = result.deletedCachePaths.length;
-    final failedCount = result.failedCachePaths.length;
+    final deletedCacheCount = result.deletedCachePaths.length;
+    final deletedZeroByteWavCount = result.deletedZeroByteWavPaths.length;
+    final deletedCount = deletedCacheCount + deletedZeroByteWavCount;
+    final failedEntries = {
+      ...result.failedZeroByteWavPaths,
+      ...result.failedCachePaths,
+    };
+    final failedCount = failedEntries.length;
     final success = deletedCount > 0 && result.remountRequested;
     final title = success
-        ? 'Wave cache reset complete'
+        ? deletedZeroByteWavCount > 0
+              ? 'Zero-byte WAV repair complete'
+              : 'Wave cache reset complete'
         : deletedCount > 0
-        ? 'Cache deleted, but SD remount failed'
-        : 'No cache files were deleted';
+        ? 'Files deleted, but SD remount failed'
+        : 'No files were deleted';
+    final deletedSummary = _resultDeletionSummary(result);
 
     return Semantics(
       liveRegion: true,
@@ -221,9 +248,9 @@ class _WaveCacheTroubleshootingDialogState
           const SizedBox(height: 8),
           Text(
             success
-                ? '$deletedCount ${deletedCount == 1 ? 'cache file was' : 'cache files were'} deleted and the SD card remount was requested.'
+                ? '$deletedSummary ${deletedCount == 1 ? 'was' : 'were'} deleted and the SD card remount was requested.'
                 : deletedCount > 0
-                ? '$deletedCount ${deletedCount == 1 ? 'cache file was' : 'cache files were'} deleted. Use System > Remount SD Card before testing the sample again.'
+                ? '$deletedSummary ${deletedCount == 1 ? 'was' : 'were'} deleted. Use System > Remount SD Card before testing the sample again.'
                 : 'The SD card was not remounted.',
           ),
           if (result.remountError != null) ...[
@@ -236,11 +263,11 @@ class _WaveCacheTroubleshootingDialogState
           if (failedCount > 0) ...[
             const SizedBox(height: 12),
             Text(
-              '$failedCount ${failedCount == 1 ? 'cache file could' : 'cache files could'} not be deleted:',
+              '$failedCount ${failedCount == 1 ? 'file could' : 'files could'} not be deleted:',
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
             const SizedBox(height: 4),
-            ...result.failedCachePaths.entries.map(
+            ...failedEntries.entries.map(
               (entry) => Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: SelectableText('${entry.key}: ${entry.value}'),
@@ -289,7 +316,7 @@ class _WaveCacheTroubleshootingDialogState
     if (plan != null) {
       return [
         TextButton(onPressed: _startOver, child: const Text('Back')),
-        if (plan.cachePaths.isNotEmpty)
+        if (plan.hasDeletions)
           FilledButton(
             key: const Key('wave-cache-delete-confirm'),
             style: FilledButton.styleFrom(
@@ -297,10 +324,7 @@ class _WaveCacheTroubleshootingDialogState
               foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             onPressed: _deleteAndRemount,
-            child: Text(
-              'Delete ${plan.cachePaths.length} '
-              '${plan.cachePaths.length == 1 ? 'cache' : 'caches'} and remount',
-            ),
+            child: Text('Delete ${_deletionSummary(plan)} and remount'),
           )
         else
           FilledButton(
@@ -319,6 +343,11 @@ class _WaveCacheTroubleshootingDialogState
         key: const Key('wave-cache-find-all'),
         onPressed: _findAll,
         child: const Text('Find all caches'),
+      ),
+      OutlinedButton(
+        key: const Key('wave-cache-find-zero-byte-wavs'),
+        onPressed: _findZeroByteWavs,
+        child: const Text('Find empty WAVs'),
       ),
       FilledButton(
         key: const Key('wave-cache-find-fragment'),
@@ -340,6 +369,10 @@ class _WaveCacheTroubleshootingDialogState
     await _scan(widget.service.findAll);
   }
 
+  Future<void> _findZeroByteWavs() async {
+    await _scan(widget.service.findZeroByteWavs);
+  }
+
   Future<void> _scan(Future<WaveCacheCleanupPlan> Function() scan) async {
     setState(() {
       _busy = true;
@@ -353,9 +386,9 @@ class _WaveCacheTroubleshootingDialogState
         _busy = false;
       });
       _announce(
-        plan.cachePaths.isEmpty
-            ? 'Search complete. No wave cache files are ready to delete.'
-            : 'Search complete. ${plan.cachePaths.length} wave cache files are ready for review.',
+        plan.hasDeletions
+            ? 'Search complete. ${plan.zeroByteWavPaths.length} zero-byte WAV files and ${plan.cachePaths.length} wave cache files are ready for review.'
+            : 'Search complete. No files are ready to delete.',
       );
     } catch (error) {
       if (!mounted) return;
@@ -369,7 +402,7 @@ class _WaveCacheTroubleshootingDialogState
 
   Future<void> _deleteAndRemount() async {
     final plan = _plan;
-    if (plan == null || plan.cachePaths.isEmpty) return;
+    if (plan == null || !plan.hasDeletions) return;
 
     setState(() {
       _busy = true;
@@ -383,9 +416,39 @@ class _WaveCacheTroubleshootingDialogState
     });
     _announce(
       result.remountRequested
-          ? 'Wave cache deletion complete. The SD card is remounting.'
-          : 'Wave cache deletion did not complete. The SD card was not remounted.',
+          ? 'File deletion complete. The SD card is remounting.'
+          : 'File deletion did not complete. The SD card was not remounted.',
     );
+  }
+
+  String _deletionSummary(WaveCacheCleanupPlan plan) {
+    final parts = <String>[];
+    final zeroByteWavCount = plan.zeroByteWavPaths.length;
+    final cacheCount = plan.cachePaths.length;
+    if (zeroByteWavCount > 0) {
+      parts.add(
+        '$zeroByteWavCount ${zeroByteWavCount == 1 ? 'empty WAV' : 'empty WAVs'}',
+      );
+    }
+    if (cacheCount > 0) {
+      parts.add('$cacheCount ${cacheCount == 1 ? 'cache' : 'caches'}');
+    }
+    return parts.join(' and ');
+  }
+
+  String _resultDeletionSummary(WaveCacheCleanupResult result) {
+    final parts = <String>[];
+    final zeroByteWavCount = result.deletedZeroByteWavPaths.length;
+    final cacheCount = result.deletedCachePaths.length;
+    if (zeroByteWavCount > 0) {
+      parts.add(
+        '$zeroByteWavCount zero-byte WAV ${zeroByteWavCount == 1 ? 'file' : 'files'}',
+      );
+    }
+    if (cacheCount > 0) {
+      parts.add('$cacheCount cache ${cacheCount == 1 ? 'file' : 'files'}');
+    }
+    return parts.join(' and ');
   }
 
   void _startOver() {

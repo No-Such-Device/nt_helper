@@ -136,4 +136,58 @@ void main() {
     verify(() => service.findAll()).called(1);
     verifyNever(() => service.deleteAndRemount(plan));
   });
+
+  testWidgets('reviews zero-byte WAVs and sibling caches before repair', (
+    tester,
+  ) async {
+    const plan = WaveCacheCleanupPlan(
+      sampleFragment: null,
+      matchedSamplePaths: [],
+      cachePaths: ['/samples/Kit/distingNT.wavcache'],
+      directoriesWithoutCache: ['/samples/Other'],
+      zeroByteWavPaths: [
+        '/samples/Kit/empty.wav',
+        '/samples/Other/also-empty.wav',
+      ],
+      isZeroByteWavScan: true,
+    );
+    const result = WaveCacheCleanupResult(
+      plan: plan,
+      deletedCachePaths: ['/samples/Kit/distingNT.wavcache'],
+      failedCachePaths: {},
+      deletedZeroByteWavPaths: [
+        '/samples/Kit/empty.wav',
+        '/samples/Other/also-empty.wav',
+      ],
+      remountRequested: true,
+    );
+    when(() => service.findZeroByteWavs()).thenAnswer((_) async => plan);
+    when(() => service.deleteAndRemount(plan)).thenAnswer((_) async => result);
+    await pumpDialog(tester);
+
+    await tester.tap(find.byKey(const Key('wave-cache-find-zero-byte-wavs')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 zero-byte WAV files were found.'), findsOneWidget);
+    expect(find.text('Zero-byte WAV files to delete'), findsOneWidget);
+    expect(find.text('/samples/Kit/empty.wav'), findsOneWidget);
+    expect(
+      find.text('Delete 2 empty WAVs and 1 cache and remount'),
+      findsOneWidget,
+    );
+    verify(() => service.findZeroByteWavs()).called(1);
+    verifyNever(() => service.deleteAndRemount(plan));
+
+    await tester.tap(find.byKey(const Key('wave-cache-delete-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Zero-byte WAV repair complete'), findsOneWidget);
+    expect(
+      find.textContaining(
+        '2 zero-byte WAV files and 1 cache file were deleted',
+      ),
+      findsOneWidget,
+    );
+    verify(() => service.deleteAndRemount(plan)).called(1);
+  });
 }
