@@ -588,8 +588,8 @@ class PresetsDao extends DatabaseAccessor<AppDatabase> with _$PresetsDaoMixin {
 
   /// Copies a subset of slots from `templateId` into `targetPresetId`.
   ///
-  /// See [ApplyTemplateSlotsResult] for the result shape and the spec in
-  /// `specs/2026-05-22_multi-algorithm-templates.md` for the full semantics.
+  /// See [ApplyTemplateSlotsResult] for the result shape. The maintained
+  /// behavioral contract is in `test/db/daos/apply_template_slots_test.dart`.
   Future<ApplyTemplateSlotsResult> applyTemplateSlots({
     required int templateId,
     required int targetPresetId,
