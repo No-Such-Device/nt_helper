@@ -99,6 +99,45 @@ void main() {
     expect(find.text('12% | 34%'), findsOneWidget);
   });
 
+  testWidgets('labels CPU values by their actual meaning', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: BlocProvider<DistingCubit>.value(
+            value: cubit,
+            child: const CpuMonitorWidget(),
+          ),
+        ),
+      ),
+    );
+
+    cpuUsageController.add(
+      CpuUsage(cpu1: 12, cpu2: 34, slotUsages: const [5, 6]),
+    );
+    await tester.pump();
+
+    final tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
+    expect(
+      tooltip.message,
+      'CPU Usage:\n'
+      'Audio thread: 12%\n'
+      'Overall CPU: 34%\n'
+      '\n'
+      'Algorithm Slots:\n'
+      'Slot 1: 5%\n'
+      'Slot 2: 6%',
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Semantics &&
+            widget.properties.label ==
+                'CPU usage: Audio thread 12%, Overall CPU 34%',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('pauses and hides while chat panel is open', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

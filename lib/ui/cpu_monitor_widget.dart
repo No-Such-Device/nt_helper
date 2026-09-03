@@ -120,7 +120,7 @@ class _CpuMonitorWidgetState extends State<CpuMonitorWidget> {
   }) {
     final theme = Theme.of(context);
 
-    // Check if either CPU core is above 90%
+    // Check if either CPU measurement is above 90%
     final bool isHighUsage =
         (cpu1 != null && cpu1 > 90) || (cpu2 != null && cpu2 > 90);
 
@@ -141,7 +141,7 @@ class _CpuMonitorWidgetState extends State<CpuMonitorWidget> {
 
     final semanticLabel = isWaitingForSample
         ? 'CPU monitor: waiting for usage sample'
-        : 'CPU usage: Core 1 ${cpu1 ?? 0}%, Core 2 ${cpu2 ?? 0}%${isHighUsage ? ', warning: high usage' : ''}';
+        : 'CPU usage: Audio thread ${cpu1 ?? 0}%, Overall CPU ${cpu2 ?? 0}%${isHighUsage ? ', warning: high usage' : ''}';
 
     return Semantics(
       label: semanticLabel,
@@ -194,8 +194,8 @@ class _CpuMonitorWidgetState extends State<CpuMonitorWidget> {
 
     final buffer = StringBuffer();
     buffer.writeln('CPU Usage:');
-    buffer.writeln('Core 1: ${cpu1 ?? 0}%');
-    buffer.writeln('Core 2: ${cpu2 ?? 0}%');
+    buffer.writeln('Audio thread: ${cpu1 ?? 0}%');
+    buffer.writeln('Overall CPU: ${cpu2 ?? 0}%');
 
     if (slotUsages.isNotEmpty) {
       buffer.writeln();
