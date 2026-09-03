@@ -94,7 +94,7 @@ class _WaveCacheTroubleshootingDialogState
         const Text(
           'Enter part of the WAV filename shown on the Disting NT. NT Helper '
           'will search the entire SD card and find the exact '
-          'distingNT.wavecache file in the same folder.',
+          'distingNT.wavcache file in the same folder.',
         ),
         const SizedBox(height: 16),
         TextField(
@@ -174,7 +174,7 @@ class _WaveCacheTroubleshootingDialogState
           const SizedBox(height: 12),
           const Text(
             'The matching sample folders do not contain a visible '
-            'distingNT.wavecache file, so nothing will be deleted.',
+            'distingNT.wavcache file, so nothing will be deleted.',
           ),
         ],
         if (plan.directoriesWithoutCache.isNotEmpty) ...[

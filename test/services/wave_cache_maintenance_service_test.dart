@@ -31,16 +31,26 @@ void main() {
     });
   }
 
+  test('findAll finds the canonical distingNT.wavcache filename', () async {
+    stubListings({
+      '/': [_file('distingNT.wavcache')],
+    });
+
+    final plan = await service.findAll();
+
+    expect(plan.cachePaths, ['/distingNT.wavcache']);
+  });
+
   test('finds only the cache beside a matching WAV filename', () async {
     stubListings({
       '/': [_dir('samples')],
       '/samples': [_dir('Future Music CD1'), _dir('Other')],
       '/samples/Future Music CD1': [
-        _file('distingNT.wavecache'),
+        _file('distingNT.wavcache'),
         _file('FM1 - Track 44.wav'),
         _file('FM1 - Track 43.wav'),
       ],
-      '/samples/Other': [_file('distingNT.wavecache'), _file('Track 45.wav')],
+      '/samples/Other': [_file('distingNT.wavcache'), _file('Track 45.wav')],
     });
 
     final plan = await service.findForSampleFragment('track 44');
@@ -48,7 +58,7 @@ void main() {
     expect(plan.matchedSamplePaths, [
       '/samples/Future Music CD1/FM1 - Track 44.wav',
     ]);
-    expect(plan.cachePaths, ['/samples/Future Music CD1/distingNT.wavecache']);
+    expect(plan.cachePaths, ['/samples/Future Music CD1/distingNT.wavcache']);
     expect(plan.directoriesWithoutCache, isEmpty);
     verify(() => manager.requestWake()).called(1);
   });
@@ -60,7 +70,7 @@ void main() {
         '/': [_dir('samples')],
         '/samples': [_dir('Kit')],
         '/samples/Kit': [
-          _file('DISTINGnt.WAVECACHE'),
+          _file('DISTINGnt.WAVCACHE'),
           _file('Kick Loud.WAV'),
           _file('Kick Soft.wav'),
         ],
@@ -69,7 +79,7 @@ void main() {
       final plan = await service.findForSampleFragment('KICK');
 
       expect(plan.matchedSamplePaths, hasLength(2));
-      expect(plan.cachePaths, ['/samples/Kit/DISTINGnt.WAVECACHE']);
+      expect(plan.cachePaths, ['/samples/Kit/DISTINGnt.WAVCACHE']);
     },
   );
 
@@ -91,18 +101,18 @@ void main() {
 
   test('findAll returns every exact cache basename across the card', () async {
     stubListings({
-      '/': [_file('distingNT.wavecache'), _dir('samples'), _dir('programs')],
+      '/': [_file('distingNT.wavcache'), _dir('samples'), _dir('programs')],
       '/samples': [_dir('Kit')],
-      '/samples/Kit': [_file('DISTINGNT.WAVECACHE'), _file('kick.wav')],
-      '/programs': [_file('not-distingNT.wavecache')],
+      '/samples/Kit': [_file('DISTINGNT.WAVCACHE'), _file('kick.wav')],
+      '/programs': [_file('not-distingNT.wavcache')],
     });
 
     final plan = await service.findAll();
 
     expect(plan.isGlobal, true);
     expect(plan.cachePaths, [
-      '/distingNT.wavecache',
-      '/samples/Kit/DISTINGNT.WAVECACHE',
+      '/distingNT.wavcache',
+      '/samples/Kit/DISTINGNT.WAVCACHE',
     ]);
   });
 
@@ -118,18 +128,18 @@ void main() {
         sampleFragment: 'kick',
         matchedSamplePaths: ['/samples/Kit/kick.wav'],
         cachePaths: [
-          '/samples/Kit/distingNT.wavecache',
-          '/samples/Other/distingNT.wavecache',
+          '/samples/Kit/distingNT.wavcache',
+          '/samples/Other/distingNT.wavcache',
         ],
         directoriesWithoutCache: [],
       );
       when(
-        () => manager.requestFileDelete('/samples/Kit/distingNT.wavecache'),
+        () => manager.requestFileDelete('/samples/Kit/distingNT.wavcache'),
       ).thenAnswer(
         (_) async => SdCardStatus(success: true, message: 'Deleted'),
       );
       when(
-        () => manager.requestFileDelete('/samples/Other/distingNT.wavecache'),
+        () => manager.requestFileDelete('/samples/Other/distingNT.wavcache'),
       ).thenAnswer(
         (_) async => SdCardStatus(success: false, message: 'Read only'),
       );
@@ -137,9 +147,9 @@ void main() {
 
       final result = await service.deleteAndRemount(plan);
 
-      expect(result.deletedCachePaths, ['/samples/Kit/distingNT.wavecache']);
+      expect(result.deletedCachePaths, ['/samples/Kit/distingNT.wavcache']);
       expect(
-        result.failedCachePaths['/samples/Other/distingNT.wavecache'],
+        result.failedCachePaths['/samples/Other/distingNT.wavcache'],
         'Read only',
       );
       expect(result.remountRequested, true);
@@ -151,7 +161,7 @@ void main() {
     const plan = WaveCacheCleanupPlan(
       sampleFragment: null,
       matchedSamplePaths: [],
-      cachePaths: ['/samples/Kit/distingNT.wavecache'],
+      cachePaths: ['/samples/Kit/distingNT.wavcache'],
       directoriesWithoutCache: [],
     );
     when(
@@ -170,7 +180,7 @@ void main() {
     const plan = WaveCacheCleanupPlan(
       sampleFragment: null,
       matchedSamplePaths: [],
-      cachePaths: ['/samples/Kit/distingNT.wavecache'],
+      cachePaths: ['/samples/Kit/distingNT.wavcache'],
       directoriesWithoutCache: [],
     );
     when(

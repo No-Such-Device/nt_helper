@@ -39,7 +39,7 @@ class WaveCacheMaintenanceService {
   WaveCacheMaintenanceService(this._manager)
     : _fileSystem = PresetFileSystemImpl(_manager);
 
-  static const cacheFileName = 'distingNT.wavecache';
+  static const cacheFileName = 'distingNT.wavcache';
 
   final IDistingMidiManager _manager;
   final PresetFileSystemImpl _fileSystem;

@@ -68,12 +68,12 @@ void main() {
     const plan = WaveCacheCleanupPlan(
       sampleFragment: 'Track 44',
       matchedSamplePaths: ['/samples/Future Music CD1/FM1 - Track 44.wav'],
-      cachePaths: ['/samples/Future Music CD1/distingNT.wavecache'],
+      cachePaths: ['/samples/Future Music CD1/distingNT.wavcache'],
       directoriesWithoutCache: [],
     );
     const result = WaveCacheCleanupResult(
       plan: plan,
-      deletedCachePaths: ['/samples/Future Music CD1/distingNT.wavecache'],
+      deletedCachePaths: ['/samples/Future Music CD1/distingNT.wavcache'],
       failedCachePaths: {},
       remountRequested: true,
     );
@@ -97,7 +97,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.text('/samples/Future Music CD1/distingNT.wavecache'),
+      find.text('/samples/Future Music CD1/distingNT.wavcache'),
       findsOneWidget,
     );
     verifyNever(() => service.deleteAndRemount(plan));
@@ -120,8 +120,8 @@ void main() {
       sampleFragment: null,
       matchedSamplePaths: [],
       cachePaths: [
-        '/samples/Kit/distingNT.wavecache',
-        '/wavetables/Bank/distingNT.wavecache',
+        '/samples/Kit/distingNT.wavcache',
+        '/wavetables/Bank/distingNT.wavcache',
       ],
       directoriesWithoutCache: [],
     );
