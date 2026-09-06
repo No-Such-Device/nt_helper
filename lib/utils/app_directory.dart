@@ -19,44 +19,80 @@ Completer<Directory>? _initCompleter;
 /// Returns the dedicated nt_helper directory within the application documents
 /// directory, creating it if needed. On first run, copies any existing files
 /// (database, gallery cache) from the parent documents directory.
+/// On Windows, unavailable Documents folders (including OneDrive redirects)
+/// fall back to application support. Once created, that fallback stays in use
+/// across launches so restoring Documents cannot hide newly saved data.
 ///
 /// Uses a [Completer] to ensure the initialization logic runs only once, even
 /// if called concurrently.
 ///
-/// [docsProvider] is injectable for testing.
+/// Directory providers and [isWindows] are injectable for testing.
 Future<Directory> getAppDirectory({
   Future<Directory> Function()? docsProvider,
+  Future<Directory> Function()? supportProvider,
+  bool? isWindows,
 }) async {
   if (_initCompleter != null) {
     return _initCompleter!.future;
   }
 
-  _initCompleter = Completer<Directory>();
+  final completer = Completer<Directory>();
+  _initCompleter = completer;
 
   try {
-    final docsDir = docsProvider != null
-        ? await docsProvider()
-        : await getApplicationDocumentsDirectory();
-    final appDir = Directory(p.join(docsDir.path, _subDir));
+    Directory? fallbackDir;
+    if (isWindows ?? Platform.isWindows) {
+      try {
+        final supportDir =
+            await (supportProvider ?? getApplicationSupportDirectory)();
+        fallbackDir = Directory(p.join(supportDir.path, _subDir));
+      } on FileSystemException {
+        // A working Documents location can still be used without support.
+      } on MissingPlatformDirectoryException {
+        // A working Documents location can still be used without support.
+      }
+    }
 
-    if (!appDir.existsSync()) {
-      appDir.createSync(recursive: true);
+    Directory? docsDir;
+    Directory appDir;
+    if (fallbackDir != null && fallbackDir.existsSync()) {
+      appDir = fallbackDir;
+    } else {
+      try {
+        docsDir = await (docsProvider ?? getApplicationDocumentsDirectory)();
+        appDir = Directory(p.join(docsDir.path, _subDir));
+        if (!appDir.existsSync()) {
+          appDir.createSync(recursive: true);
+        }
+      } catch (error) {
+        if (fallbackDir == null ||
+            (error is! FileSystemException &&
+                error is! MissingPlatformDirectoryException)) {
+          rethrow;
+        }
+        docsDir = null;
+        appDir = fallbackDir;
+        appDir.createSync(recursive: true);
+      }
     }
 
     final marker = File(p.join(appDir.path, _markerFile));
     if (!marker.existsSync()) {
-      migrateExistingFiles(docsDir, appDir);
+      if (docsDir != null) {
+        migrateExistingFiles(docsDir, appDir);
+      }
       marker.createSync();
     }
 
-    _initCompleter!.complete(appDir);
+    completer.complete(appDir);
   } catch (e, st) {
-    _initCompleter!.completeError(e, st);
+    completer.completeError(e, st);
     _initCompleter = null;
-    rethrow;
   }
 
-  return _initCompleter!.future;
+  // Return the same future on failure as well, avoiding an unobserved second
+  // error when the first caller has already caught the startup exception.
+  return completer.future;
 }
 
 /// Resets the cached directory so [getAppDirectory] will re-initialize.

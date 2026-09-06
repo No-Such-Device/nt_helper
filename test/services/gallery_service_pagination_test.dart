@@ -35,7 +35,10 @@ void main() {
       tempRoot = Directory.systemTemp.createTempSync(
         'gallery_service_pagination_test_',
       );
-      await getAppDirectory(docsProvider: () async => tempRoot);
+      await getAppDirectory(
+        docsProvider: () async => tempRoot,
+        isWindows: false,
+      );
 
       pluginPageRequests = [];
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
