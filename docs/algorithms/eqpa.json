@@ -1,60 +1,50 @@
 {
   "guid": "eqpa",
   "name": "EQ Parametric",
-  "description": "This algorithm is a multi-channel, multi-band, parametric EQ. Each channel can process a number of busses - you might typically have a channel processing one or two busses for a mono or stereo signal, but you could, say, process all 12 of the inputs with the same EQ settings by using a single channel with a width of 12.",
-  "categories": [
-    "Equalizer",
-    "Audio Processing",
-    "Filtering"
-  ],
   "short_description": "Multi-band parametric EQ",
-  "gui_description": "The display shows a graphical representation of the EQ curve for the current channel. The frequency and gain of the current band within the channel is indicated with a small box.",
-  "specifications": [
-    {
-      "name": "Channels",
-      "value": "1-12",
-      "description": "The number of bus channels to process."
-    },
-    {
-      "name": "Bands",
-      "value": "1-4",
-      "description": "The number of EQ bands per channel."
-    }
+  "description": "This algorithm is a multi-channel, multi-band, parametric EQ. Each channel can process a number of busses – you might typically have a channel processing one or two busses for a mono or stereo signal, but you could, say, process all 12 of the inputs with the same EQ settings by using a single channel with a width of 12.",
+  "categories": [
+    "EQ",
+    "Filter"
   ],
+  "use_cases": [
+    "Multi-channel bus EQ",
+    "Stereo signal EQ",
+    "Multi-bus processing with shared EQ settings"
+  ],
+  "gui_description": "The display shows a graphical representation of the EQ curve for the current channel. The frequency and gain of the current band within the channel is indicated with a small box.",
   "parameters": [
     {
       "name": "Width",
       "min": 1,
       "max": 12,
       "default": 1,
-      "description": "The number of busses to process, starting from the Input. For example, for a stereo signal, set this to 2.",
-      "type": "bus",
-      "channelCountRef": "per-channel"
+      "scope": "per-channel",
+      "description": "The number of busses to process, starting from the Input. For example, for a stereo signal, set this to 2."
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above.",
-      "type": "enum",
-      "channelCountRef": "per-channel"
+      "scope": "per-channel",
+      "description": "The standard Add/Replace mode selector."
     },
     {
       "name": "Enable",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "Enables the EQ band.",
-      "type": "toggle",
-      "channelCountRef": "per-channel per-band"
+      "scope": "per-channel",
+      "description": "Enables the EQ band."
     },
     {
       "name": "Type",
       "min": 0,
       "max": 6,
       "default": 6,
-      "description": "Chooses the type of the EQ band.",
+      "scope": "per-channel",
+      "description": "Chooses the type of the EQ band. The options are \"Low pass (1st)\", \"High pass (1st)\", \"Low pass (2nd)\", \"High pass (2nd)\", \"Low shelf\", \"High shelf\", and \"Peak\".",
       "enum_values": [
         "Low pass (1st)",
         "High pass (1st)",
@@ -63,37 +53,33 @@
         "Low shelf",
         "High shelf",
         "Peak"
-      ],
-      "type": "enum",
-      "channelCountRef": "per-channel per-band"
+      ]
     },
     {
       "name": "Frequency",
       "min": 0,
       "max": 16383,
       "default": 8192,
-      "description": "Sets the EQ band centre frequency.",
-      "type": "scaled",
-      "channelCountRef": "per-channel per-band"
+      "scope": "per-channel",
+      "description": "Sets the EQ band centre frequency."
     },
     {
       "name": "Q",
       "min": 0,
       "max": 127,
       "default": 48,
-      "description": "Sets the EQ band ‘Q’ or resonance. Note that some EQ types do not use this parameter.",
-      "type": "scaled",
-      "channelCountRef": "per-channel per-band"
+      "scope": "per-channel",
+      "description": "Sets the EQ band 'Q' or resonance. Note that some EQ types do not use this parameter."
     },
     {
       "name": "Gain",
       "min": -12.0,
       "max": 12.0,
       "default": 0.0,
+      "scope": "per-channel",
       "description": "Sets the EQ band gain. Note that some EQ types do not use this parameter.",
-      "type": "scaled",
-      "channelCountRef": "per-channel per-band",
-      "is_bus": false
+      "type": "folder",
+      "is_bus": true
     }
   ],
   "input_ports": [
@@ -105,7 +91,7 @@
   "output_ports": [
     {
       "name": "Output",
-      "description": "The first output bus. If set to ‘None’, the input bus is used as output, and the mode is always ‘Replace’."
+      "description": "The first output bus. If set to 'None', the input bus is used as output, and the mode is always 'Replace'."
     }
   ]
 }

@@ -1,19 +1,12 @@
 {
   "guid": "nsgt",
   "name": "Noise gate",
-  "description": "This algorithm is a multi-channel noise gate. Each channel is fully independent – this being a multichannel algorithm is simply a convenience so that if you, say, want a noise gate on all 12 module\ninputs, you don’t need to add 12 copies of the algorithm to do so.\n\nA sidechain input is available, to gate one signal with another.\n\nThe algorithm always works as an insert effect i.e. the output replaces the input.",
+  "short_description": "A simple noise gate",
+  "description": "This algorithm is a multi-channel noise gate. Each channel is fully independent – this being a multichannel algorithm is simply a convenience so that if you, say, want a noise gate on all 12 module inputs, you don't need to add 12 copies of the algorithm to do so. A sidechain input is available, to gate one signal with another. The algorithm always works as an insert effect i.e. the output replaces the input.",
   "categories": [
     "Dynamics",
-    "Utility"
-  ],
-  "short_description": "A simple noise gate",
-  "gui_description": "The display shows a graph of the signal level (travelling from right to left). Superimposed on this are the threshold and hysteresis levels. To the right of the graph, the bar represents the gain reduction currently being applied.",
-  "specifications": [
-    {
-      "name": "Channels",
-      "value": "1-12",
-      "description": "The number of bus channels to process."
-    }
+    "Processing",
+    "Multichannel"
   ],
   "parameters": [
     {
@@ -28,76 +21,59 @@
       "min": -70.0,
       "max": 0.0,
       "default": -24.0,
-      "description": "The threshold level required to open the gate.",
       "type": "folder",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
-      "is_bus": false
+      "is_bus": true
     },
     {
       "name": "Hysteresis",
       "min": -24.0,
       "max": 0.0,
       "default": -3.0,
-      "description": "The level, relative to the threshold, that the input must drop below before the gate closes again.",
       "type": "folder",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
-      "is_bus": false
+      "is_bus": true
     },
     {
       "name": "Attack",
       "min": 0,
       "max": 1023,
       "default": 100,
-      "description": "The attack time for the gate opening, from 0.2ms to 200ms with an exponential scale."
+      "type": "folder",
+      "is_bus": true
     },
     {
       "name": "Hold",
       "min": 0,
       "max": 1023,
       "default": 100,
-      "description": "The minimum time that the gate remains open, from 1ms to 1000ms with an exponential scale."
+      "type": "folder",
+      "is_bus": true
     },
     {
       "name": "Release",
       "min": 0,
       "max": 1023,
       "default": 100,
-      "description": "The release time for the gate closing, from 2ms to 2000ms with an exponential scale."
+      "type": "folder",
+      "is_bus": true
     },
     {
       "name": "Lookahead",
       "min": 0.0,
       "max": 10.0,
       "default": 1.0,
-      "description": "The lookahead time. Increase this to prevent the gate from missing sharp attack transients. Note that the audio is delayed by the amount of the lookahead time i.e. this adds latency.",
       "type": "folder",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
-      "is_bus": false
+      "is_bus": true
     },
     {
       "name": "Gain reduction",
       "min": -80,
       "max": 0,
       "default": -80,
-      "description": "Sets the amount by which the signal is attenuated when the gate is closed. ‘-80’ is actually treated as ‘-∞dB’ i.e. fully attenuated.",
       "type": "folder",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
-      "is_bus": false
+      "is_bus": true
     }
   ],
   "input_ports": [
-    {
-      "name": "Main Input",
-      "description": "The primary audio signal to be processed by the gate."
-    },
-    {
-      "name": "Sidechain Input",
-      "description": "An external signal used to trigger the gate."
-    },
     {
       "name": "Left/mono input",
       "description": "The left or mono input bus."
@@ -113,8 +89,8 @@
   ],
   "output_ports": [
     {
-      "name": "Main Output",
-      "description": "The gated output signal, replacing the input."
+      "name": "Output",
+      "description": "The processed output signal (insert effect, replaces input)"
     }
   ]
 }

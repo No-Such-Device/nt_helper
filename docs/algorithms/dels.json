@@ -1,41 +1,41 @@
 {
   "guid": "dels",
   "name": "Delay (Stereo)",
-  "description": "This algorithm is a simple stereo in/stereo out delay effect.\n\nThe delay time can be set manually, via a clock pulse, or via MIDI clock.\n\nIt can also be modulated via its ‘V/oct input’, which halves the delay time for every 1V rise in CV\n(conversely, doubles it for every 1V fall in CV).\n\nThe ‘Fractional’ parameter allows for delay times that are not integer multiples of the sample rate.\nThis slightly increases CPU load but will sound significantly better if the delay time is being\nmodulated, for example for chorus or flange type sounds. Conversely, turning it off makes for an\nextremely clean digital delay, with no colouration in the repeats.",
+  "short_description": "A simple stereo delay effect",
+  "description": "This algorithm is a simple stereo in/stereo out delay effect. The delay time can be set manually, via a clock pulse, or via MIDI clock. It can also be modulated via its 'V/oct input', which halves the delay time for every 1V rise in CV (conversely, doubles it for every 1V fall in CV). The 'Fractional' parameter allows for delay times that are not integer multiples of the sample rate. This slightly increases CPU load but will sound significantly better if the delay time is being modulated, for example for chorus or flange type sounds. Conversely, turning it off makes for an extremely clean digital delay, with no colouration in the repeats.",
   "categories": [
     "Delay",
-    "Effects",
+    "Effect",
     "Stereo"
   ],
-  "short_description": "A simple stereo delay effect",
-  "specifications": [
-    {
-      "name": "Max delay time",
-      "value": "1-30 seconds",
-      "description": "The maximum delay time."
-    }
+  "use_cases": [
+    "Stereo delay effects",
+    "Ping-pong delay",
+    "Chorus and flange type sounds via modulation",
+    "Clean digital delay"
   ],
+  "gui_description": "Simple stereo delay with mode selection, mix/level controls, time/feedback, and sync options.",
   "parameters": [
     {
       "name": "Mode",
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "The delay mode. The options are “Stereo”, “Stereo ping-pong” (each echo swaps left and right), and “Ping-pong” (the input to the delay is summed to mono, panned, and then swaps left and right on each echo).",
-      "enum_values": [
-        "Stereo",
-        "Stereo ping-pong",
-        "Ping-pong"
-      ]
+      "type": "enum",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "Mix",
       "min": 0,
       "max": 100,
       "default": 100,
-      "description": "The wet/dry mix.",
-      "type": "scaled",
-      "channelCountRef": "",
+      "type": "folder",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
       "is_bus": false
     },
     {
@@ -43,120 +43,135 @@
       "min": -40,
       "max": 0,
       "default": 0,
-      "description": "The gain applied to the delay/wet signal.",
-      "type": "scaled"
+      "type": "folder",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "Time",
       "min": 1,
       "max": 32767,
       "default": 250,
-      "description": "The delay time.",
-      "type": "scaled"
+      "type": "folder",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "Feedback",
       "min": 0,
       "max": 100,
       "default": 50,
-      "description": "The delay feedback.",
-      "type": "scaled"
+      "type": "folder",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "Initial pan",
       "min": -100,
       "max": 100,
       "default": -100,
-      "description": "If the mode is “Ping-pong”, sets the pan position of the first delay.",
-      "type": "scaled"
+      "type": "folder",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "Delay multiplier",
       "min": 0,
       "max": 23,
       "default": 15,
-      "description": "Sets a multiplier to apply to the delay time. Affects both the ‘Time’ parameter and the delay time set by the clock."
+      "type": "folder",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "Time change",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets how changes of delay time will be handled. The options are ‘Slew’ (the delay time is smoothly interpolated, sounding a bit like a tape being played slower or faster) and ‘Crossfade’ (the effect rapidly crossfades from one time setting to the other).",
-      "enum_values": [
-        "Slew",
-        "Crossfade"
-      ]
+      "type": "enum",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "Fractional",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables fractional delay times. See above."
+      "type": "folder",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "Block DC",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "Enables a DC blocker at the delay input. Recommended for audio use; disable when processing CVs."
+      "type": "folder",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "Clock source",
       "min": 0,
       "max": 2,
       "default": 1,
-      "description": "Chooses the clock source: ‘None’, ‘Clock input’, or ‘MIDI clock’.",
-      "enum_values": [
-        "None",
-        "Clock input",
-        "MIDI clock"
-      ]
+      "type": "enum",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "MIDI divisor",
       "min": 0,
       "max": 19,
       "default": 9,
-      "description": "The MIDI divisor, if the clock source is ‘MIDI clock’."
+      "type": "folder",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "MIDI numerator",
       "min": 1,
       "max": 16,
       "default": 1,
-      "description": "The MIDI numerator, if the clock source is ‘MIDI clock’."
+      "type": "folder",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "type": "enum",
+      "channelCountRef": ">=2",
+      "isPerChannel": false,
+      "isCommon": true,
+      "is_bus": false
     }
   ],
   "input_ports": [
-    {
-      "name": "Left input",
-      "description": "Left audio input signal"
-    },
-    {
-      "name": "Right input",
-      "description": "Right audio input signal"
-    },
-    {
-      "name": "V/oct input",
-      "description": "CV input for 1V/octave modulation of the delay time"
-    },
-    {
-      "name": "Clock input",
-      "description": "Clock pulse input for delay synchronization"
-    },
-    {
-      "name": "Clock input",
-      "description": "The input bus to use for the clock, if the source is ‘Clock input’."
-    },
     {
       "name": "Left input",
       "description": "The left input bus."
@@ -168,17 +183,33 @@
     {
       "name": "V/oct input",
       "description": "The input bus to use for 1V/octave modulation of the delay time."
+    },
+    {
+      "name": "Clock input",
+      "description": "The input bus to use for the clock, if the source is 'Clock input'."
+    },
+    {
+      "name": "Clock input",
+      "description": "",
+      "isPerChannel": false
+    },
+    {
+      "name": "Left input",
+      "description": "",
+      "isPerChannel": false
+    },
+    {
+      "name": "Right input",
+      "description": "",
+      "isPerChannel": false
+    },
+    {
+      "name": "V/oct input",
+      "description": "",
+      "isPerChannel": false
     }
   ],
   "output_ports": [
-    {
-      "name": "Left output",
-      "description": "Left audio output signal"
-    },
-    {
-      "name": "Right output",
-      "description": "Right audio output signal"
-    },
     {
       "name": "Left output",
       "description": "The left output bus."
@@ -186,6 +217,16 @@
     {
       "name": "Right output",
       "description": "The right output bus."
+    },
+    {
+      "name": "Left output",
+      "description": "",
+      "isPerChannel": false
+    },
+    {
+      "name": "Right output",
+      "description": "",
+      "isPerChannel": false
     }
   ]
 }

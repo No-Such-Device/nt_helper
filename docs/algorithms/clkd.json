@@ -1,12 +1,16 @@
 {
   "guid": "clkd",
   "name": "Clock Divider",
-  "description": "This algorithm is a simple clock divider, outputting slower clocks from a faster one. The channels can use completely independent clocks, or share clocks.\n\nThere is a shared reset input and a per-channel reset input. If either is active, the channel is reset.",
+  "short_description": "Divides clocks",
+  "description": "This algorithm is a simple clock divider, outputting slower clocks from a faster one. The channels can use completely independent clocks, or share clocks. There is a shared reset input and a per-channel reset input. If either is active, the channel is reset.",
   "categories": [
     "Clock",
-    "Utility"
+    "Timing"
   ],
-  "short_description": "Divides clocks",
+  "use_cases": [
+    "Dividing clock signals to slower rates",
+    "Creating metrical subdivisions of a clock"
+  ],
   "specifications": [
     {
       "name": "Channels",
@@ -21,7 +25,7 @@
       "max": 2,
       "default": 0,
       "scope": "per-channel",
-      "description": "The divisor type. The options are “Free”, “Metrical (2)”, and “Metrical (2,3)”.",
+      "description": "The divisor type. The options are \"Free\", \"Metrical (2)\", and \"Metrical (2,3)\".",
       "enum_values": [
         "Free",
         "Metrical (2)",
@@ -34,7 +38,7 @@
       "max": 32,
       "default": 2,
       "scope": "per-channel",
-      "description": "The divisor, if the type is “Free”. The divisor value is simply the parameter value."
+      "description": "The divisor, if the type is \"Free\". The divisor value is simply the parameter value."
     },
     {
       "name": "Divisor",
@@ -42,7 +46,15 @@
       "max": 5,
       "default": 1,
       "scope": "per-channel",
-      "description": "The divisor, if the type is “Metrical (2)”. Chooses between 1, 2, 4, 8, 16, & 32."
+      "description": "The divisor, if the type is \"Metrical (2)\". Chooses between 1, 2, 4, 8, 16, & 32.",
+      "enum_values": [
+        "1",
+        "2",
+        "4",
+        "8",
+        "16",
+        "32"
+      ]
     },
     {
       "name": "Divisor",
@@ -50,7 +62,19 @@
       "max": 9,
       "default": 1,
       "scope": "per-channel",
-      "description": "The divisor, if the type is “Metrical (2,3)”. Chooses between 1, 2, 3, 4, 6, 8, 12, 16, 24, & 32."
+      "description": "The divisor, if the type is \"Metrical (2,3)\". Chooses between 1, 2, 3, 4, 6, 8, 12, 16, 24, & 32.",
+      "enum_values": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "6",
+        "8",
+        "12",
+        "16",
+        "24",
+        "32"
+      ]
     },
     {
       "name": "Enable",
@@ -66,7 +90,11 @@
       "max": 1,
       "default": 1,
       "scope": "per-channel",
-      "description": "The standard Add/Replace mode selector as described above."
+      "description": "The standard Add/Replace mode selector as described above.",
+      "enum_values": [
+        "Add",
+        "Replace"
+      ]
     },
     {
       "name": "ES-5 Expander",
@@ -74,12 +102,18 @@
       "max": 6,
       "default": 0,
       "scope": "per-channel",
-      "description": "If set, the ES-5 expander header to use for output instead of the bus specified by the Output parameter. “1” means the ES-5 itself.",
-      "type": "enum",
-      "channelCountRef": "Col5"
+      "description": "If set, the ES-5 expander header to use for output instead of the bus specified by the Output parameter. \"1\" means the ES-5 itself."
     }
   ],
   "input_ports": [
+    {
+      "name": "Clock Input",
+      "description": "The clock input bus to divide."
+    },
+    {
+      "name": "Reset Input",
+      "description": "The reset input bus. If active, the channel is reset."
+    },
     {
       "name": "Reset input",
       "description": "The shared reset input bus."
@@ -94,6 +128,10 @@
     }
   ],
   "output_ports": [
+    {
+      "name": "Clock Output",
+      "description": "The divided clock output bus."
+    },
     {
       "name": "Output",
       "description": "The clock output bus."

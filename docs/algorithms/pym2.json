@@ -1,13 +1,18 @@
 {
   "guid": "pym2",
   "name": "Poly Macro Oscillator 2",
-  "description": "This algorithm is a polysynth where each voice is essentially a Plaits (the open source Plaits module by Émilie Gillet). Please refer to the section “Common polysynth features” above.",
+  "short_description": "It's lots of Plaits!",
+  "description": "This algorithm is a polysynth where each voice is essentially a Plaits (the open source Plaits module by Émilie Gillet). Please refer to the section 'Common polysynth features' above.",
   "categories": [
-    "Polysynth",
     "Oscillator",
+    "Polyphonic",
     "Synthesis"
   ],
-  "short_description": "It's lots of Plaits!",
+  "use_cases": [
+    "Polyphonic synthesis",
+    "MPE performance",
+    "Plaits-style sound design"
+  ],
   "gui_description": "The display shows the notes being played by the various voices. Note that Plaits voices never really end – in theory they decay forever.",
   "specifications": [
     {
@@ -16,15 +21,296 @@
       "description": "The number of simultaneous voices."
     }
   ],
-  "input_ports": [],
+  "parameters": [
+    {
+      "name": "Model",
+      "min": 0,
+      "max": 23,
+      "default": 0,
+      "description": "Chooses the synthesis model."
+    },
+    {
+      "name": "Coarse tune",
+      "min": -60,
+      "max": 60,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Fine tune",
+      "min": -100,
+      "max": 100,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Harmonics",
+      "min": 0,
+      "max": 127,
+      "default": 64,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Timbre",
+      "min": 0,
+      "max": 127,
+      "default": 64,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Morph",
+      "min": 0,
+      "max": 127,
+      "default": 64,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "FM",
+      "min": -100,
+      "max": 100,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Timbre mod",
+      "min": -100,
+      "max": 100,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Morph mod",
+      "min": -100,
+      "max": 100,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Low-pass gate",
+      "min": 0,
+      "max": 127,
+      "default": 127,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Time/decay",
+      "min": 0,
+      "max": 127,
+      "default": 64,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Output mode",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Main gain",
+      "min": -40,
+      "max": 6,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Aux gain",
+      "min": -40,
+      "max": 6,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "MIDI channel",
+      "min": 0,
+      "max": 16,
+      "default": 1,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "MPE channels",
+      "min": 1,
+      "max": 16,
+      "default": 1,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "I2C channel",
+      "min": 0,
+      "max": 255,
+      "default": 1,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Bend range",
+      "min": 0,
+      "max": 48,
+      "default": 2,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Sustain mode",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Sustain",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Press -> volume",
+      "min": -100,
+      "max": 100,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Press -> harmonics",
+      "min": -127,
+      "max": 127,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Press -> timbre",
+      "min": -127,
+      "max": 127,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "Press -> morph",
+      "min": -127,
+      "max": 127,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "MPE Y -> volume",
+      "min": -100,
+      "max": 100,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "MPE Y -> harmonics",
+      "min": -127,
+      "max": 127,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "MPE Y -> timbre",
+      "min": -127,
+      "max": 127,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    },
+    {
+      "name": "MPE Y -> morph",
+      "min": -127,
+      "max": 127,
+      "default": 0,
+      "type": "string",
+      "is_common": true,
+      "is_bus": false
+    }
+  ],
+  "input_ports": [
+    {
+      "name": "Level input",
+      "description": ""
+    },
+    {
+      "name": "FM input",
+      "description": ""
+    },
+    {
+      "name": "Harmonics input",
+      "description": ""
+    },
+    {
+      "name": "Timbre input",
+      "description": ""
+    },
+    {
+      "name": "Morph input",
+      "description": ""
+    }
+  ],
   "output_ports": [
     {
       "name": "Main",
-      "description": "Main output signal"
+      "description": "The main audio output. If the same bus is selected for both Main and Aux, they are mixed."
     },
     {
       "name": "Aux",
-      "description": "Aux output signal"
+      "description": "The auxiliary audio output. If the same bus is selected for both Main and Aux, they are mixed."
+    },
+    {
+      "name": "Main output",
+      "description": ""
+    },
+    {
+      "name": "Aux output",
+      "description": ""
     }
   ]
 }

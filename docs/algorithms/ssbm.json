@@ -1,21 +1,19 @@
 {
   "guid": "ssbm",
   "name": "SSB Modulator",
-  "description": "This algorithm is based on one mode of the Frequency Shifter algorithm on the disting EX. It modulates two signals with each other, and produces the upper and lower sidebands on separate outputs.\n\nIf you use a pure sine wave for one of the inputs, you essentially have a frequency shifter, but one where you control the shift by controlling the frequency of your input oscillator.",
+  "short_description": "Single Side Band modulator",
+  "description": "This algorithm is based on one mode of the Frequency Shifter algorithm on the disting EX. It modulates two signals with each other, and produces the upper and lower sidebands on separate outputs. If you use a pure sine wave for one of the inputs, you essentially have a frequency shifter, but one where you control the shift by controlling the frequency of your input oscillator.",
   "categories": [
     "Modulation",
     "Frequency Shifting"
   ],
-  "short_description": "Single Side Band modulator",
   "parameters": [
     {
       "name": "Mix",
       "min": 0,
       "max": 100,
       "default": 100,
-      "description": "The output wet/dry mix.",
-      "type": "scaled",
-      "channelCountRef": "Width",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -23,35 +21,15 @@
       "min": -40,
       "max": 0,
       "default": 0,
-      "description": "The output gain applied to the modulated signal.",
-      "type": "scaled",
+      "type": "folder",
       "is_bus": false
-    },
-    {
-      "name": "Input 1",
-      "min": 1,
-      "max": 64,
-      "default": 1,
-      "description": "The first input bus to process for the first signal.",
-      "type": "bus",
-      "is_bus": true
-    },
-    {
-      "name": "Input 2",
-      "min": 1,
-      "max": 64,
-      "default": 2,
-      "description": "The first input bus to process for the second signal.",
-      "type": "bus",
-      "is_bus": true
     },
     {
       "name": "Width",
       "min": 1,
       "max": 8,
       "default": 1,
-      "description": "The number of busses to process, starting from the Input. For example, for a stereo signal, set this to 2.",
-      "type": "scaled",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -59,8 +37,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above for the upper side band.",
-      "type": "enum",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -68,30 +45,21 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above for the lower side band.",
-      "type": "enum",
+      "type": "folder",
       "is_bus": false
     }
   ],
   "input_ports": [
     {
       "name": "Input 1",
-      "description": "First signal input for modulation"
+      "description": "The first input bus to process for the first signal."
     },
     {
       "name": "Input 2",
-      "description": "Second signal input for modulation"
+      "description": "The first input bus to process for the second signal."
     }
   ],
   "output_ports": [
-    {
-      "name": "Upper Sideband",
-      "description": "Output for the upper sideband signal"
-    },
-    {
-      "name": "Lower Sideband",
-      "description": "Output for the lower sideband signal"
-    },
     {
       "name": "Upper SB output",
       "description": "The first output bus for the upper side band."

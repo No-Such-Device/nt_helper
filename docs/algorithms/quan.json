@@ -1,18 +1,27 @@
 {
   "guid": "quan",
   "name": "Quantizer",
-  "description": "This algorithm is a multi-channel CV quantizer, loosely based on the Quad Quantizer algorithm on the disting EX. It supports microtuning (see above), but this is not a requirement. It quantizes CV inputs and generates CV outputs and/or MIDI output. The quantization parameters are common to all channels; the individual channels’ parameters are solely related to routing.",
-  "categories": [
-    "CV",
-    "Quantization",
-    "MIDI"
-  ],
   "short_description": "A CV quantizer",
+  "description": "This algorithm is a multi-channel CV quantizer, loosely based on the Quad Quantizer algorithm on the disting EX. It supports microtuning, but this is not a requirement. It quantizes CV inputs and generates CV outputs and/or MIDI output. The quantization parameters are common to all channels; the individual channels' parameters are solely related to routing. The quantization signal flow involves: sampling the input CV, applying input transpose, quantizing into the lookup scale, applying shift, selecting a CV in the output scale, and applying output transpose. Three quantization modes are available: Nearest, Mapped, and Warped. Key, scale, and mode parameters constrain quantized notes to a particular scale. Mask parameters can be used to select which notes in the scale are used. The algorithm supports microtuning via Scala files and keyboard map files.",
+  "categories": [
+    "Quantization",
+    "CV",
+    "MIDI",
+    "Microtuning"
+  ],
+  "use_cases": [
+    "Quantizing CV inputs to musical scales",
+    "Generating MIDI output from CV signals",
+    "Creating regular note patterns from LFOs using Warped mode",
+    "Microtonal quantization with Scala files",
+    "Constraining quantization to specific scales and modes"
+  ],
+  "gui_description": "The display has different screens depending on the selected parameter and tuning. If the current parameter is key, scale, mode, or a mask parameter, and 12-degree logic is applied, a graphical piano key view of one octave is shown with bright notes for selected and dark notes for deselected. Otherwise, the display shows detailed channel information: current input voltage and MIDI note, sampled voltage, quantized lookup and output note numbers, and output voltage/note with tuning info in cents or ratios.",
   "specifications": [
     {
       "name": "Channels",
-      "value": "1-12",
-      "description": "The number of bus channels to process."
+      "min": 1,
+      "max": 12
     }
   ],
   "parameters": [
@@ -21,163 +30,133 @@
       "min": 0,
       "max": 2,
       "default": 0,
+      "description": "Sets the quantization mode: 'Nearest', 'Mapped', or 'Warped'.",
       "enum_values": [
         "Nearest",
         "Mapped",
         "Warped"
-      ],
-      "type": "enum",
-      "is_common": true,
-      "is_bus": false
+      ]
     },
     {
       "name": "Input transpose",
       "min": -48,
       "max": 48,
       "default": 0,
+      "description": "Sets the input transposition, in 12-TET semitones.",
       "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "is_bus": true
     },
     {
       "name": "Shift",
       "min": -48,
       "max": 48,
       "default": 0,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "Sets the in-scale shift."
     },
     {
       "name": "Key",
       "min": -12,
       "max": 12,
       "default": 0,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "Sets the key (C, D, E, etc.)."
     },
     {
       "name": "Scale",
       "min": 0,
       "max": 10,
       "default": 2,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "The scale to quantize into. Defaults to Chromatic."
     },
     {
       "name": "Mode",
       "min": 1,
       "max": 12,
       "default": 1,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "Sets the mode, that is, the rotation of the notes within the scale. If the selected scale is 'Major', the mode is displayed by one of the familiar names Ionian, Dorian, Phrygian, Lydian, Mixolydian, Aeolian, or Locrian."
     },
     {
       "name": "Output transpose",
       "min": -48,
       "max": 48,
       "default": 0,
+      "description": "Sets the output transposition, in 12-TET semitones.",
       "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "is_bus": true
     },
     {
       "name": "Output gate mode",
       "min": 0,
       "max": 2,
       "default": 0,
+      "description": "Sets the behaviour of the gate/trigger outputs. Options: 'Triggers', 'Inv Triggers' (inverted triggers, always high except for a low pulse when the trigger is fired), and 'Gates' (output is gated by the corresponding gate input). Also applies to any MIDI output.",
       "enum_values": [
         "Triggers",
         "Inv Triggers",
         "Gates"
-      ],
-      "type": "enum",
-      "is_common": true,
-      "is_bus": false
+      ]
     },
     {
       "name": "Gate offset",
       "min": 0.0,
       "max": 10.0,
       "default": 2.0,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "Offsets (delays) the gate inputs relative to the pitch inputs. Useful to allow pitch CVs to settle before they are sampled on the rising gate, and to cope with modules which output both a pitch and gate but change their gate first."
     },
     {
       "name": "MIDI channel (in)",
       "min": 0,
       "max": 16,
       "default": 1,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "The MIDI channel to receive on."
     },
     {
       "name": "MIDI channel (out)",
       "min": 0,
       "max": 16,
       "default": 0,
-      "type": "string",
-      "is_common": false,
-      "is_bus": true
+      "description": "The MIDI channel to output notes on."
     },
     {
       "name": "Output to breakout",
       "min": 0,
       "max": 1,
       "default": 0,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "Enables MIDI output to the breakout."
     },
     {
       "name": "Output to Select Bus",
       "min": 0,
       "max": 1,
       "default": 0,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "Enables MIDI output to the Select Bus."
     },
     {
       "name": "Output to USB",
       "min": 0,
       "max": 1,
       "default": 0,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "Enables MIDI output to USB."
     },
     {
       "name": "Output to internal",
       "min": 0,
       "max": 1,
       "default": 0,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "Enables internal MIDI output – that is, MIDI is sent to the other algorithms."
     },
     {
       "name": "Send pitch bend",
       "min": 0,
       "max": 1,
       "default": 0,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "If enabled, a pitch bend message is sent with each note on message to adjust the note tuning according to the selected microtuning."
     },
     {
       "name": "Pitch bend range",
       "min": 1,
       "max": 48,
       "default": 2,
-      "type": "string",
-      "is_common": true,
-      "is_bus": false
+      "description": "Sets the pitch bend range, in semitones. For the 'Send pitch bend' function to work properly, this should match the pitch bend range of the receiving synth."
     }
   ],
   "input_ports": [
@@ -187,45 +166,41 @@
     },
     {
       "name": "Gate input",
-      "description": "The (optional) gate input bus used to sample the CV."
+      "description": "The (optional) gate input bus."
     },
     {
       "name": "CV input",
-      "description": ""
+      "description": "The pitch CV input bus."
     },
     {
       "name": "Gate input",
-      "description": ""
+      "description": "The (optional) gate input bus."
     }
   ],
   "output_ports": [
     {
       "name": "CV output",
-      "description": "The pitch CV output bus."
+      "description": "The pitch CV output bus. Always uses 'Replace' output mode."
     },
     {
       "name": "Gate output",
-      "description": "The gate output bus, behavior determined by Output gate mode."
+      "description": "The gate output bus, according to the 'Output gate mode' parameter. Always uses 'Replace' output mode."
     },
     {
       "name": "Change output",
-      "description": "Fires a trigger pulse when the quantized note changes."
-    },
-    {
-      "name": "MIDI output",
-      "description": "MIDI output sent to breakout, Select Bus, USB, or internal algorithms."
+      "description": "The 'change trigger' output bus. Fires a trigger pulse when the quantized note changes. Always uses 'Replace' output mode."
     },
     {
       "name": "CV output",
-      "description": ""
+      "description": "The pitch CV output bus. Always uses 'Replace' output mode."
     },
     {
       "name": "Gate output",
-      "description": ""
+      "description": "The gate output bus, according to the 'Output gate mode' parameter. Always uses 'Replace' output mode."
     },
     {
       "name": "Change output",
-      "description": ""
+      "description": "The 'change trigger' output bus. Fires a trigger pulse when the quantized note changes. Always uses 'Replace' output mode."
     }
   ]
 }

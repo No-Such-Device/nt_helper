@@ -1,13 +1,18 @@
 {
   "guid": "maco",
   "name": "Macro Oscillator",
-  "description": "This algorithm is an implementation of the open source Braids module by Émilie Gillet. This implementation should behave and sound identical to the original, with the caveat that the original module runs at 96kHz – for a totally accurate recreation, you would need to run the disting NT at 96kHz. Any demos or tutorials you may find online should apply just as well to this version.",
+  "short_description": "It's Braids!",
+  "description": "This algorithm is an implementation of the open source Braids module by Émilie Gillet. This implementation should behave and sound identical to the original, with the caveat that the original module runs at 96kHz – for a totally accurate recreation, you would need to run the disting NT at 96kHz. Any demos or tutorials you may find online should apply just as well to this version. The original Braids has a separate mode in which the FM CV controls the choice of synthesis model. The disting NT doesn't require a special mode for this since you can use Mappings to control the model parameter however you like.",
   "categories": [
     "Synthesis",
-    "Oscillator",
-    "FM"
+    "Oscillator"
   ],
-  "short_description": "It's Braids!",
+  "use_cases": [
+    "Synthesis",
+    "Sound design",
+    "Melodic sequences"
+  ],
+  "specifications": [],
   "parameters": [
     {
       "name": "Model",
@@ -63,35 +68,28 @@
       "min": 0,
       "max": 15,
       "default": 0,
-      "description": "Sets the amount by which the envelope affects the colour1."
+      "description": "Sets the amount by which the envelope affects the colour."
     },
     {
       "name": "AD VCA",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets whether the envelope is applied to the volume of the output.",
-      "enum_values": [
-        "Off",
-        "On"
-      ],
-      "type": "toggle"
+      "description": "Sets whether the envelope is applied to the volume of the output."
     },
     {
       "name": "Coarse",
       "min": -48,
       "max": 48,
       "default": 0,
-      "description": "Coarse tuning control.",
-      "type": "string"
+      "description": "Coarse tuning control."
     },
     {
       "name": "Fine",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Fine tuning control.",
-      "type": "string"
+      "description": "Fine tuning control."
     },
     {
       "name": "Scale",
@@ -140,36 +138,35 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "applies a detuning in the lower and higher frequencies, to recreate some of the tuning imperfections of VCOs."
+      "description": "Applies a detuning in the lower and higher frequencies, to recreate some of the tuning imperfections of VCOs."
     },
     {
       "name": "Drift",
       "min": 0,
       "max": 4,
       "default": 0,
-      "description": "recreates the drifting of a disastrously designed VCO."
+      "description": "Recreates the drifting of a disastrously designed VCO."
     },
     {
       "name": "Signature",
       "min": 0,
       "max": 4,
       "default": 0,
-      "description": "applies grungy glitches/waveform imperfections to the output signal. The exact behavior of this option is unique to each module built."
+      "description": "Applies grungy glitches/waveform imperfections to the output signal. The exact behavior of this option is unique to each module built."
     },
     {
       "name": "Gain",
       "min": -40,
       "max": 12,
       "default": 0,
-      "description": "Sets an output gain.",
-      "type": "string"
+      "description": "Sets an output gain."
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "description": "The standard Add/Replace mode selector."
     },
     {
       "name": "MIDI mode",
@@ -214,26 +211,6 @@
   ],
   "input_ports": [
     {
-      "name": "Trigger",
-      "description": "Trigger input for the oscillator"
-    },
-    {
-      "name": "Pitch",
-      "description": "Pitch input for the oscillator"
-    },
-    {
-      "name": "FM",
-      "description": "Frequency Modulation input"
-    },
-    {
-      "name": "Timbre",
-      "description": "Timbre control input"
-    },
-    {
-      "name": "Colour",
-      "description": "Colour control input"
-    },
-    {
       "name": "Trigger input",
       "description": "Selects which bus is used as the trigger input."
     },
@@ -255,10 +232,6 @@
     }
   ],
   "output_ports": [
-    {
-      "name": "Output",
-      "description": "The output signal of the oscillator"
-    },
     {
       "name": "Output",
       "description": "The bus for the output signal."

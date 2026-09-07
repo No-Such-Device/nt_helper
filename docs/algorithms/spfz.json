@@ -1,29 +1,30 @@
 {
   "guid": "spfz",
   "name": "Spectral Freeze",
-  "description": "This algorithm is an audio ‘freeze’ effect – it captures sound at a moment in time and sustains it indefinitely. The ‘spectral’ part of the name indicates that it works in the frequency domain – unlike simple loopers or granular effects, which work in the time domain, this algorithm captures the spectrum of a sound (using an FFT) and uses that to resynthesize audio. As well as completely freezing sound, the algorithm can actually play it back at any desired speed (i.e. it does time stretching) and pitch. There are a number (depending on the specification) of different ‘voices’ i.e. you can freeze different moments of audio and play them simultaneously.",
+  "short_description": "An audio 'freeze' effect",
+  "description": "This algorithm is an audio 'freeze' effect – it captures sound at a moment in time and sustains it indefinitely. The 'spectral' part of the name indicates that it works in the frequency domain – unlike simple loopers or granular effects, which work in the time domain, this algorithm captures the spectrum of a sound (using an FFT) and uses that to resynthesize audio. As well as completely freezing sound, the algorithm can actually play it back at any desired speed (i.e. it does time stretching) and pitch. There are a number (depending on the specification) of different 'voices' i.e. you can freeze different moments of audio and play them simultaneously. The algorithm is based on the disting EX algorithm of the same name. Note that there is also a Temporal Freeze algorithm.",
   "categories": [
     "Spectral",
-    "Effect",
-    "Time-stretching"
+    "Freeze",
+    "Time Stretching",
+    "Pitch Shifting",
+    "Effects"
   ],
-  "short_description": "An audio ‘freeze’ effect",
-  "gui_description": "The display shows information about each of the voices. The vertical bar on the left shows the envelope level. The small vertical lines visualise the segment of the audio that is being used. The ‘T’ above to the voice number indicates the ‘Freeze target’; if there is no ‘T’, the target is set to ‘Auto’.",
   "specifications": [
     {
       "name": "Voices",
-      "value": "1-8",
-      "description": "The number of simultaneous voices."
+      "min": 1,
+      "max": 8
     },
     {
       "name": "History",
-      "value": "4-2048",
-      "description": "The length of the history stored for each voice."
+      "min": 4,
+      "max": 2048
     },
     {
       "name": "FFT size",
-      "value": "8-12",
-      "description": "The size of the FFT used internally."
+      "min": 8,
+      "max": 12
     }
   ],
   "parameters": [
@@ -32,55 +33,53 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Activates a new freeze when the parameter changes from ‘0’ to ‘1’."
+      "description": "Activates a new freeze when the parameter changes from '0' to '1'."
     },
     {
       "name": "Freeze gate",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Activates a new freeze when the parameter changes from ‘0’ to ‘1’, and releases the freeze when the parameter changes from ‘1’ to ‘0’."
+      "description": "Activates a new freeze when the parameter changes from '0' to '1', and releases the freeze when the parameter changes from '1' to '0'."
     },
     {
       "name": "Freeze target",
       "min": 0,
-      "default": 2,
-      "description": "Chooses the voice for the next freeze, or ‘0’ for ‘Auto’."
+      "max": 2,
+      "description": "Chooses the voice for the next freeze, or '0' for 'Auto'."
     },
     {
       "name": "Unfreeze all",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "When this parameter changes to ‘1’, all active freezes are released."
+      "description": "When this parameter changes to '1', all active freezes are released."
     },
     {
       "name": "Movement",
       "min": 0,
       "max": 4,
       "default": 2,
+      "description": "Chooses the type of movement. The options are 'Forwards', 'Backwards', 'Alternating', 'Random walk', and 'Random skip'.",
       "enum_values": [
         "Forwards",
         "Backwards",
         "Alternating",
         "Random walk",
         "Random skip"
-      ],
-      "type": "enum",
-      "is_per_channel": false,
-      "is_bus": false
+      ]
     },
     {
       "name": "Rate",
       "min": 0,
       "max": 1000,
       "default": 340,
-      "description": "Sets the rate of movement. ‘0’ is stopped; ‘1000’ is ‘normal speed’ (as recorded). In between, the scale is highly non-linear to give more control at slower speeds."
+      "description": "Sets the rate of movement. '0' is stopped; '1000' is 'normal speed' (as recorded). In between, the scale is highly non-linear to give more control at slower speeds."
     },
     {
       "name": "Depth",
       "min": 1,
-      "default": 2,
+      "max": 2,
       "description": "Sets the maximum amount of movement."
     },
     {
@@ -94,16 +93,14 @@
       "min": 0.0,
       "max": 100.0,
       "default": 0.0,
-      "description": "Drops out transient elements of the sound.",
-      "type": "folder",
-      "is_bus": false
+      "description": "Drops out transient elements of the sound."
     },
     {
       "name": "Live process",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "When this parameter changes to ‘1’, a new voice is started which uses live audio input instead of actually freezing. This is provided mainly as a means to use the etherization effect on live audio."
+      "description": "When this parameter changes to '1', a new voice is started which uses live audio input instead of actually freezing. This is provided mainly as a means to use the etherization effect on live audio."
     },
     {
       "name": "Attack",
@@ -124,43 +121,35 @@
       "min": -48,
       "max": 24,
       "default": 0,
-      "description": "Sets the coarse pitch shift amount for all voices. Added to the individual voice shifts.",
-      "type": "enum",
-      "is_bus": false
+      "description": "Sets the coarse pitch shift amount for all voices. Added to the individual voice shifts."
     },
     {
       "name": "Fine shift",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Sets the fine pitch shift amount for all voices. Added to the individual voice shifts.",
-      "type": "enum",
-      "is_bus": false
+      "description": "Sets the fine pitch shift amount for all voices. Added to the individual voice shifts."
     },
     {
-      "name": "Freeze (per-voice)",
+      "name": "Freeze",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Activates a new freeze on the corresponding voice when the parameter changes from ‘0’ to ‘1’, and releases the freeze when the parameter changes from ‘1’ to ‘0’."
+      "description": "Activates a new freeze on the corresponding voice when the parameter changes from '0' to '1', and releases the freeze when the parameter changes from '1' to '0'."
     },
     {
       "name": "Coarse shift (per-voice)",
       "min": -48,
       "max": 24,
       "default": 0,
-      "description": "Sets the coarse pitch shift amount.",
-      "type": "enum",
-      "is_bus": false
+      "description": "Sets the coarse pitch shift amount."
     },
     {
       "name": "Fine shift (per-voice)",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Sets the fine pitch shift amount.",
-      "type": "enum",
-      "is_bus": false
+      "description": "Sets the fine pitch shift amount."
     },
     {
       "name": "Output mode",
@@ -174,9 +163,17 @@
     {
       "name": "Input",
       "description": "Sets the input audio bus."
+    },
+    {
+      "name": "Input",
+      "description": "Sets the input audio bus."
     }
   ],
   "output_ports": [
+    {
+      "name": "Output",
+      "description": "Sets the output bus for the voice."
+    },
     {
       "name": "Output",
       "description": "Sets the output bus for the voice."

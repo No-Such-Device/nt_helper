@@ -1,44 +1,30 @@
 {
   "guid": "lpsd",
   "name": "Looper (MicroSD)",
-  "description": "This algorithm is a version of the Looper algorithm (above) which uses the MicroSD card for storage instead of the module’s memory. Consequently, the maximum loop times are much, much longer. Operation of the algorithm is identical to that of the Looper. Please refer to the documentation above; this section will cover only the differences between the two algorithms.",
+  "short_description": "A MicroSD-based looper",
+  "description": "This algorithm is a version of the Looper algorithm which uses the MicroSD card for storage instead of the module's memory. Consequently, the maximum loop times are much, much longer. Operation of the algorithm is identical to that of the Looper. When the algorithm is instantiated, it creates files on the MicroSD card, one for each layer of each loop, located in the 'looper' folder on card. Each file is 1GB in size, giving a maximum loop time of about 1.5 hours (using mono 32 bit float, 48kHz). To improve read/write performance, each file is allocated as contiguous space on the card. It is recommended to use 'exFAT' formatting for cards. Certain operations take effect after a small delay because data has to be read from the card: starting overdub into a new layer, changing layer (including undo/redo), and switching into/out of reverse. During these delays, 'Busy' is displayed in the UI, and for the overdub case, a percentage indicator is also shown.",
   "categories": [
     "Looper",
-    "Sampling",
+    "Recording",
     "Storage"
   ],
-  "short_description": "A MicroSD-based looper",
-  "specifications": [
+  "parameters": [
     {
       "name": "Loops",
-      "value": "1-4",
+      "min": 1,
+      "max": 4,
       "description": "The number of simultaneous loops."
     },
     {
       "name": "Layers",
-      "value": "1-8",
+      "min": 1,
+      "max": 8,
       "description": "The number of layers for each loop."
     },
     {
-      "name": "Max Loop Time",
-      "value": "About 1.5 hours",
-      "description": "Using mono 32 bit float, 48kHz; other bit depths affect the time as for the regular Looper algorithm."
-    },
-    {
-      "name": "Storage Format",
-      "value": "exFAT",
-      "description": "Recommended formatting for cards used with this algorithm."
-    },
-    {
-      "name": "File Size",
-      "value": "1GB",
-      "description": "Each file created on the MicroSD card is 1GB in size."
-    }
-  ],
-  "parameters": [
-    {
       "name": "Number of layers",
-      "description": "Sets how many of the available layers it will actually use. Setting this to '1' effectively disables layers for this loop, which might be preferred if it’s important to avoid the delay associated with starting overdub into a new layer."
+      "min": 1,
+      "description": "Sets how many of the available layers a loop will actually use. Setting this to 1 effectively disables layers for this loop, which might be preferred if it's important to avoid the delay associated with starting overdub into a new layer."
     }
   ],
   "input_ports": [],

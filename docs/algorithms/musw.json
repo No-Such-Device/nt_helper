@@ -1,20 +1,12 @@
 {
   "guid": "musw",
   "name": "Multi-Switch",
+  "short_description": "Sequential or CV-controlled switch",
   "description": "This algorithm is based on the disting EX algorithm of the same name. It offers up to six highly configurable sequential or voltage controlled switches. Being DC-coupled, it can switch audio or CVs. Each switch consists of two sub-switches: an input sub-switch, and an output sub-switch. The selected input is routed to the selected output. When multiple switches share the same output, their signals are summed. Each sub-switch can crossfade when transitioning, for click-free switches (when the fade is very short) or noticeable blends between sources/targets (when the fade is long). The switches can be controlled by CV inputs, or by one of the 'Macro' parameters, which can in turn be controlled by one of the mapping sources (CV, MIDI, or I2C).",
   "categories": [
-    "Utility",
+    "Switching",
     "Routing",
-    "Switching"
-  ],
-  "short_description": "Sequential or CV-controlled switch",
-  "gui_description": "The display shows which input and output busses are currently joined by the various switches.",
-  "specifications": [
-    {
-      "name": "Switches",
-      "value": "1-6",
-      "description": "The number of switches."
-    }
+    "CV"
   ],
   "parameters": [
     {
@@ -22,7 +14,6 @@
       "min": 0,
       "max": 127,
       "default": 0,
-      "scope": "common",
       "description": "A macro parameter that can be chosen as a sub-switch control source."
     },
     {
@@ -30,7 +21,6 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "common",
       "description": "The standard Add/Replace mode selector as described above, shared by all switch outputs."
     },
     {
@@ -38,8 +28,7 @@
       "min": 0,
       "max": 9,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The type of control source for the input switch.",
+      "description": "The type of control source for the input switch. See 'control types' below.",
       "enum_values": [
         "None",
         "Trig fwds",
@@ -58,7 +47,6 @@
       "min": 0,
       "max": 34,
       "default": 0,
-      "scope": "per-channel",
       "description": "The control source for the input switch – one of the 64 busses, or one of the 6 macro parameters."
     },
     {
@@ -66,24 +54,21 @@
       "min": 0,
       "max": 6,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The linked switch, if the ‘In control type’ is ‘Link’."
+      "description": "The linked switch, if the 'In control type' is 'Link'."
     },
     {
       "name": "In link offset",
       "min": 0,
       "max": 11,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The linked switch offset, if the ‘In control type’ is ‘Link’."
+      "description": "The linked switch offset, if the 'In control type' is 'Link'."
     },
     {
       "name": "Out control type",
       "min": 0,
       "max": 9,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The type of control source for the output switch.",
+      "description": "The type of control source for the output switch. See 'control types' below.",
       "enum_values": [
         "None",
         "Trig fwds",
@@ -102,7 +87,6 @@
       "min": 0,
       "max": 34,
       "default": 0,
-      "scope": "per-channel",
       "description": "The control source for the output switch – one of the 64 busses, or one of the 6 macro parameters."
     },
     {
@@ -110,23 +94,20 @@
       "min": 0,
       "max": 6,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The linked switch, if the ‘Out control type’ is ‘Link’."
+      "description": "The linked switch, if the 'Out control type' is 'Link'."
     },
     {
       "name": "Out link offset",
       "min": 0,
       "max": 11,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The linked switch offset, if the ‘Out control type’ is ‘Link’."
+      "description": "The linked switch offset, if the 'Out control type' is 'Link'."
     },
     {
       "name": "Reset source",
       "min": 0,
       "max": 34,
       "default": 0,
-      "scope": "per-channel",
       "description": "The reset source for the switch – one of the 64 busses, or one of the 6 macro parameters."
     },
     {
@@ -134,20 +115,14 @@
       "min": 0,
       "max": 1000,
       "default": 1,
-      "scope": "per-channel",
       "description": "The switch's crossfade time, in milliseconds.",
-      "type": "string",
-      "channelCountRef": "per-switch",
-      "is_per_channel": true,
-      "is_common": false,
-      "is_bus": false
+      "type": "bus"
     },
     {
       "name": "Input A-L",
       "min": 0,
       "max": 64,
       "default": 0,
-      "scope": "per-channel",
       "description": "The bus to use for the 12 possible inputs of the input sub-switch."
     },
     {
@@ -155,7 +130,6 @@
       "min": 0,
       "max": 64,
       "default": 0,
-      "scope": "per-channel",
       "description": "The bus to use for the 8 possible outputs of the output sub-switch."
     }
   ],

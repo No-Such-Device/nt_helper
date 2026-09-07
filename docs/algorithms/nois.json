@@ -1,18 +1,12 @@
 {
   "guid": "nois",
   "name": "Noise generator",
-  "description": "This algorithm is a simple noise generator. Various standard “colours” of noise can be generated.",
+  "short_description": "Generates various colours of noise",
+  "description": "This algorithm is a simple noise generator. Various standard \"colours\" of noise can be generated.",
   "categories": [
     "Noise",
-    "Generator"
-  ],
-  "short_description": "Generates various colours of noise",
-  "specifications": [
-    {
-      "name": "Channels",
-      "value": "1-8",
-      "description": "The number of output channels."
-    }
+    "Generator",
+    "Audio"
   ],
   "parameters": [
     {
@@ -20,11 +14,10 @@
       "min": -40,
       "max": 6,
       "default": 0,
-      "scope": "global",
-      "type": "file",
-      "channelCountRef": "global",
-      "is_per_channel": false,
-      "is_common": true,
+      "type": "folder",
+      "channelCountRef": "Channels",
+      "isPerChannel": false,
+      "isCommon": true,
       "is_bus": false
     },
     {
@@ -32,20 +25,19 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The standard Add/Replace mode selector as described above."
+      "type": "bus",
+      "isPerChannel": true,
+      "isCommon": false,
+      "is_bus": true
     },
     {
       "name": "Amplitude",
       "min": 0.0,
       "max": 10.0,
       "default": 10.0,
-      "scope": "per-channel",
-      "description": "The amplitude of the noise signal (before the gain is applied).",
-      "type": "file",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
+      "isPerChannel": true,
+      "isCommon": false,
       "is_bus": false
     },
     {
@@ -53,12 +45,9 @@
       "min": -40,
       "max": 6,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The output level.",
-      "type": "file",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
+      "isPerChannel": true,
+      "isCommon": false,
       "is_bus": false
     },
     {
@@ -66,23 +55,20 @@
       "min": 0,
       "max": 4,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The noise colour. The options are “Blended”, “Violet”, “White”, “Pink”, and “Red”.",
-      "enum_values": [
-        "Blended",
-        "Violet",
-        "White",
-        "Pink",
-        "Red"
-      ]
+      "type": "folder",
+      "isPerChannel": true,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Blend",
       "min": 0,
       "max": 300,
       "default": 0,
-      "scope": "per-channel",
-      "description": "If “Blended” is selected, sets the blend between noise colours."
+      "type": "folder",
+      "isPerChannel": true,
+      "isCommon": false,
+      "is_bus": false
     }
   ],
   "input_ports": [],
@@ -90,6 +76,11 @@
     {
       "name": "Output",
       "description": "The output bus."
+    },
+    {
+      "name": "Output",
+      "description": "",
+      "isPerChannel": true
     }
   ]
 }

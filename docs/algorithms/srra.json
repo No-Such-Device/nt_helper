@@ -1,45 +1,38 @@
 {
   "guid": "srra",
   "name": "Shift Register Random",
-  "description": "This algorithm generates random CVs via the popular rotating shift register method, often known simply as a “Turing Machine” after this module. The joy of this method is that it generates a loop of CVs, with a controllable likelihood of change, including the possibility to lock the loop so it does not change. On each clock, the shift register rotates and a new CV is output. On each rotation, there is the possibility that one bit of the shift register will be flipped, changing the pattern. This algorithm can output either CVs, or triggers, or both. You may like to feed the CVs into the Quantizer algorithm to generate random melodies.",
-  "categories": [
-    "Randomization",
-    "CV Generation",
-    "Sequencing"
-  ],
   "short_description": "Generates random CVs",
-  "gui_description": "The display shows a graphical representation of the shift register. If the unrandomness is ±100%, it also shows “<LOCKED>”.",
-  "specifications": [],
-  "parameters": [
-    {
-      "name": "Unrandomness",
-      "min": -100,
-      "max": 100,
-      "default": 0,
-      "type": "string",
-      "channelCountRef": "1",
-      "is_per_channel": false,
-      "is_bus": false
-    }
+  "description": "This algorithm generates random CVs via the popular rotating shift register method, often known simply as a \"Turing Machine\" after this module. The joy of this method is that it generates a loop of CVs, with a controllable likelihood of change, including the possibility to lock the loop so it does not change. On each clock, the shift register rotates and a new CV is output. On each rotation, there is the possibility that one bit of the shift register will be flipped, changing the pattern. This algorithm can output either CVs, or triggers, or both. You may like to feed the CVs into the Quantizer algorithm to generate random melodies.",
+  "categories": [
+    "Random",
+    "CV",
+    "Clock"
   ],
+  "use_cases": [
+    "Generating random CVs",
+    "Creating evolving patterns with controllable randomness",
+    "Generating random melodies when combined with Quantizer"
+  ],
+  "gui_description": "The display shows a graphical representation of the shift register. If the unrandomness is ±100%, it also shows '<LOCKED>'.",
+  "specifications": [],
   "input_ports": [
     {
-      "name": "Clock input",
-      "description": "The clock input bus used to rotate the shift register."
+      "name": "Clock",
+      "description": "Clock input bus that drives the shift register rotation"
     },
     {
-      "name": "Modify input",
-      "description": "The modify input bus. If this gate input is high, the pattern will always be modified on a clock, even if the pattern is locked."
+      "name": "Modify",
+      "description": "Gate input that forces pattern modification on each clock, even when locked"
     }
   ],
   "output_ports": [
     {
-      "name": "CV output",
-      "description": "The output bus for the generated CV."
+      "name": "CV",
+      "description": "Output bus for the generated CV"
     },
     {
-      "name": "Trigger output",
-      "description": "The output bus for the generated trigger."
+      "name": "Trigger",
+      "description": "Output bus for the generated trigger"
     }
   ]
 }

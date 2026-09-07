@@ -1,19 +1,25 @@
 {
   "guid": "roty",
   "name": "Rotary",
-  "description": "This algorithm is based on the algorithm of the same name on the disting mk4. You may like to watch the video on that algorithm here https://www.youtube.com/watch?v=fT-1Bceazbs [112] . It provides an emulation of a rotary speaker effect.",
-  "categories": [
-    "Effect",
-    "Speaker Emulation"
-  ],
   "short_description": "Rotary speaker emulation",
+  "description": "This algorithm is based on the algorithm of the same name on the disting mk4. It provides an emulation of a rotary speaker effect.",
+  "categories": [
+    "Modulation",
+    "Effect"
+  ],
+  "use_cases": [
+    "Rotary speaker effect emulation",
+    "Pitch modulation with amplitude modulation on bass"
+  ],
+  "specifications": [],
   "parameters": [
     {
       "name": "Mix",
       "min": 0,
       "max": 100,
       "default": 100,
-      "type": "scaled",
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -21,7 +27,8 @@
       "min": -40,
       "max": 0,
       "default": 0,
-      "type": "scaled",
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -29,7 +36,8 @@
       "min": 0,
       "max": 1023,
       "default": 512,
-      "type": "scaled",
+      "type": "folder",
+      "is_common": false,
       "is_bus": false
     },
     {
@@ -37,7 +45,8 @@
       "min": 0,
       "max": 100,
       "default": 38,
-      "type": "scaled",
+      "type": "folder",
+      "is_common": false,
       "is_bus": false
     },
     {
@@ -45,7 +54,8 @@
       "min": 0,
       "max": 100,
       "default": 10,
-      "type": "scaled",
+      "type": "folder",
+      "is_common": false,
       "is_bus": false
     },
     {
@@ -53,7 +63,8 @@
       "min": 0,
       "max": 1024,
       "default": 480,
-      "type": "scaled",
+      "type": "folder",
+      "is_common": false,
       "is_bus": false
     },
     {
@@ -61,7 +72,8 @@
       "min": 0,
       "max": 100,
       "default": 23,
-      "type": "scaled",
+      "type": "folder",
+      "is_common": false,
       "is_bus": false
     },
     {
@@ -69,17 +81,30 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "type": "enum",
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     }
   ],
   "input_ports": [
     {
       "name": "Input",
+      "description": "The input bus."
+    },
+    {
+      "name": "Input",
       "description": ""
     }
   ],
   "output_ports": [
+    {
+      "name": "Left output",
+      "description": "The left output bus."
+    },
+    {
+      "name": "Right output",
+      "description": "The right output bus."
+    },
     {
       "name": "Left output",
       "description": ""

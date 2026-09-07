@@ -1,22 +1,19 @@
 {
   "guid": "satu",
   "name": "Saturation",
-  "description": "This algorithm implements a simple soft-saturation effect. It can be used simply for creative toneshaping, but it is particularly useful for avoiding harsh digital clipping when signals get loud. (It is the same processing that is built into many of the disting EX algorithms as a final “output bus” limiter.)",
+  "short_description": "Soft-clipping saturation",
+  "description": "This algorithm implements a simple soft-saturation effect. It can be used simply for creative toneshaping, but it is particularly useful for avoiding harsh digital clipping when signals get loud. (It is the same processing that is built into many of the disting EX algorithms as a final \"output bus\" limiter.)",
   "categories": [
-    "Saturation",
     "Distortion",
     "Dynamics"
   ],
-  "short_description": "Soft-clipping saturation",
   "parameters": [
     {
       "name": "Pre gain",
       "min": -40,
       "max": 24,
       "default": 0,
-      "description": "A gain to apply before the saturation.",
-      "type": "scaled",
-      "channelCountRef": "global",
+      "type": "folder",
       "is_per_channel": false,
       "is_bus": false
     },
@@ -25,9 +22,7 @@
       "min": -40,
       "max": 6,
       "default": 0,
-      "description": "A gain to apply after the saturation.",
-      "type": "scaled",
-      "channelCountRef": "global",
+      "type": "folder",
       "is_per_channel": false,
       "is_bus": false
     },
@@ -36,9 +31,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables saturation on this channel.",
-      "type": "scaled",
-      "channelCountRef": "per_channel",
+      "type": "folder",
       "is_per_channel": true,
       "is_bus": false
     },
@@ -47,9 +40,7 @@
       "min": 1,
       "max": 12,
       "default": 1,
-      "description": "The number of busses to process, starting from the Input. For example, for a stereo signal, set this to 2.",
-      "type": "scaled",
-      "channelCountRef": "per_channel",
+      "type": "folder",
       "is_per_channel": true,
       "is_bus": false
     }
@@ -60,5 +51,10 @@
       "description": "The input (and output) bus."
     }
   ],
-  "output_ports": []
+  "output_ports": [
+    {
+      "name": "Input",
+      "description": "The input (and output) bus."
+    }
+  ]
 }

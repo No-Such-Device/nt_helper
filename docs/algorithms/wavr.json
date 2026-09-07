@@ -1,21 +1,19 @@
 {
   "guid": "wavr",
   "name": "Audio recorder",
-  "description": "This algorithm records WAV files to the MicroSD card. A typical use for this would be to record the module’s inputs, but any bus can be the source for a recording, so you could also record the output of other algorithms – for example, you could run a mixer and record the stereo mix-down.\n\nThe algorithm can also play back its recordings. It does so to the same bus channels as are chosen for recording.\n\nSince the module is fully DC-coupled, it can also record and play CVs.\n\nUp to 10 files can be recorded simultaneously, each mono or stereo. It goes without saying that the more files you record, and the larger the chosen bit depth, the more demands are placed on the MicroSD card. You would be advised to check your card performance before relying on the algorithm for any crucial recordings.",
+  "short_description": "Records audio to the MicroSD card",
+  "description": "This algorithm records WAV files to the MicroSD card. A typical use for this would be to record the module's inputs, but any bus can be the source for a recording, so you could also record the output of other algorithms – for example, you could run a mixer and record the stereo mix-down. The algorithm can also play back its recordings. It does so to the same bus channels as are chosen for recording. Since the module is fully DC-coupled, it can also record and play CVs. Up to 10 files can be recorded simultaneously, each mono or stereo. It goes without saying that the more files you record, and the larger the chosen bit depth, the more demands are placed on the MicroSD card. You would be advised to check your card performance before relying on the algorithm for any crucial recordings.",
   "categories": [
-    "Audio Recording",
-    "Storage",
+    "Recording",
+    "Playback",
     "Utility"
   ],
-  "short_description": "Records audio to the MicroSD card",
-  "gui_description": "The display shows a level meter for each file. This will be grayed out if the file is disabled. The meters show the input levels when idle or recording, and the playback levels when playing. While recording, the display shows the name of the current recording, and the elapsed time. It also shows a gauge of the pressure on the MicroSD card. When idle, the display shows the name of the last recording completed or played. During playback, the display shows the name of the recording being played, and the elapsed time.",
-  "specifications": [
-    {
-      "name": "Max files",
-      "value": "1-10",
-      "description": "The maximum number of simultaneous files to record."
-    }
+  "use_cases": [
+    "Recording module inputs",
+    "Recording the output of other algorithms (e.g. stereo mix-down from a mixer)",
+    "Recording and playing back CVs"
   ],
+  "gui_description": "The display shows a level meter for each file, grayed out if the file is disabled. Meters show input levels when idle or recording, and playback levels when playing. While recording, the display shows the name of the current recording, elapsed time, and a gauge of the pressure on the MicroSD card. When idle, the display shows the name of the last recording completed or played. During playback, the display shows the name of the recording being played and the elapsed time.",
   "parameters": [
     {
       "name": "Record",
@@ -77,10 +75,7 @@
       "min": -40,
       "max": 24,
       "default": 0,
-      "description": "Sets the playback level.",
-      "type": "folder",
-      "channelCountRef": "mono",
-      "is_per_channel": false,
+      "type": "scaled",
       "is_bus": false
     },
     {
@@ -89,15 +84,17 @@
       "max": 1,
       "default": 0,
       "description": "Enables the file for recording and playback.",
-      "type": "file"
+      "type": "scaled",
+      "is_bus": false
     },
     {
       "name": "Playback",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "Enables the file for playback. (Both ‘Enable’ and ‘Playback’ must be on for the file to be included in playback.)",
-      "type": "file"
+      "description": "Enables the file for playback. (Both 'Enable' and 'Playback' must be on for the file to be included in playback.)",
+      "type": "scaled",
+      "is_bus": false
     }
   ],
   "input_ports": [
@@ -110,5 +107,10 @@
       "description": "Sets the right channel to record."
     }
   ],
-  "output_ports": []
+  "output_ports": [
+    {
+      "name": "Output",
+      "description": "Plays back recordings to the same bus channels as are chosen for recording."
+    }
+  ]
 }

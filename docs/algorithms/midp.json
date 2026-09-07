@@ -1,15 +1,22 @@
 {
   "guid": "midp",
   "name": "MIDI Player",
-  "description": "This algorithm plays standard MIDI files, outputting the MIDI messages, and converting the MIDI to CVs and gates. It will use an internal clock (using the file's tempo, if specified), or sync to analogue clocks or incoming MIDI clock. See the MicroSD card section above for information on supported MIDI file formats, and how to arrange the files on the card. Optionally, this algorithm will also process live MIDI. While the MIDI/CV converters built into this algorithm are convenient for simple monophonic use, you may like to pair this algorithm with Poly CV (below) for more flexibility.",
+  "short_description": "Plays MIDI files from the MicroSD card",
+  "description": "This algorithm plays standard MIDI files, outputting the MIDI messages, and converting the MIDI to CVs and gates. It will use an internal clock (using the file's tempo, if specified), or sync to analogue clocks or incoming MIDI clock. Optionally, this algorithm will also process live MIDI. While the MIDI/CV converters built into this algorithm are convenient for simple monophonic use, you may like to pair this algorithm with Poly CV for more flexibility. This algorithm will use the first 24 tracks of each MIDI file. Tracks beyond that will be ignored. By default all MIDI files loop. To prevent a file from looping, include \"_ONESHOT\" in its filename.",
   "categories": [
     "MIDI",
+    "Playback",
     "Sequencer",
-    "Utility"
+    "CV"
   ],
-  "short_description": "Plays MIDI files from the MicroSD card",
-  "gui_description": "On the right side, the display shows the current transport position (in bars, beats, and sixteenths) and the current position within the file (which would be different if, say, the file had looped, or you select a new file to play without stopping the transport). Below that is the file’s tempo (if it defines one) and the file’s length in bars. At the bottom right is a simple progress bar, indicating the playback position within the file. There are two lines of activity indicators. The upper one represents the tracks in the file; the lower one represents MIDI channels. If the current parameter is one of the ‘Track mode’ parameters, further information about that track is shown: the track name (if defined in the file) and the most recent MIDI message played on that track.",
-  "specifications": [],
+  "use_cases": [
+    "Playing MIDI files from MicroSD card",
+    "Converting MIDI to CV and gates",
+    "Drum triggering from MIDI",
+    "Processing live MIDI",
+    "Synchronizing to external clocks"
+  ],
+  "gui_description": "On the right side, the display shows the current transport position (in bars, beats, and sixteenths) and the current position within the file. Below that is the file's tempo (if it defines one) and the file's length in bars. At the bottom right is a simple progress bar, indicating the playback position within the file. There are two lines of activity indicators. The upper one represents the tracks in the file; the lower one represents MIDI channels. If the current parameter is one of the 'Track mode' parameters, further information about that track is shown: the track name (if defined in the file) and the most recent MIDI message played on that track.",
   "parameters": [
     {
       "name": "Folder",
@@ -38,10 +45,10 @@
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "Sets the behaviour when a new file is chosen.",
+      "description": "Sets the behaviour when a new file is chosen. The options are: Wait until the end of the bar and then change to the new file. Wait until the end of the file and then change to the new file. Change immediately.",
       "enum_values": [
-        "Wait until the end of the bar and then change to the new file",
-        "Wait until the end of the file and then change to the new file",
+        "Wait until end of bar",
+        "Wait until end of file",
         "Change immediately"
       ]
     },
@@ -50,10 +57,10 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets how the file position changes when switching to a new file.",
+      "description": "Sets how the file position changes when switching to a new file. The options are: The new file starts from the beginning. The new file starts from the current position in the old file (modulo the length of the new file).",
       "enum_values": [
-        "The new file starts from the beginning",
-        "The new file starts from the current position in the old file (modulo the length of the new file)"
+        "Start from beginning",
+        "Start from current position"
       ]
     },
     {
@@ -61,10 +68,10 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Set the playback mode for the tracks.",
+      "description": "Set the playback mode for the tracks. The options are: Normal playback. Track is muted.",
       "enum_values": [
         "Normal playback",
-        "Track is muted"
+        "Muted"
       ]
     },
     {
@@ -94,9 +101,7 @@
       "max": 100,
       "default": 10,
       "description": "Sets the length of output trigger pulses.",
-      "type": "trigger",
-      "channelCountRef": "Col5",
-      "is_bus": false
+      "type": "trigger"
     },
     {
       "name": "Convert live MIDI",
@@ -110,13 +115,13 @@
       "min": 0,
       "max": 4,
       "default": 0,
-      "description": "Sets the multiplier for incoming clock pulses.",
+      "description": "Sets the multiplier for incoming clock pulses. The options are: clock is interpreted as 24ppqn. clock is interpreted as 1/32 notes. clock is interpreted as 1/16 notes. clock is interpreted as 1/8 notes. clock is interpreted as 1/4 notes.",
       "enum_values": [
-        "clock is interpreted as 24ppqn",
-        "clock is interpreted as 1/32 notes",
-        "clock is interpreted as 1/16 notes",
-        "clock is interpreted as 1/8 notes",
-        "clock is interpreted as 1/4 notes"
+        "24ppqn",
+        "1/32 notes",
+        "1/16 notes",
+        "1/8 notes",
+        "1/4 notes"
       ]
     },
     {
@@ -124,10 +129,10 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets the mode for the reset input.",
+      "description": "Sets the mode for the reset input. The options are: the input is a reset trigger. the input is a run/stop signal.",
       "enum_values": [
-        "the input is a reset trigger",
-        "the input is a run/stop signal"
+        "Reset trigger",
+        "Run/stop signal"
       ]
     },
     {
@@ -176,15 +181,11 @@
   "input_ports": [
     {
       "name": "Clock input",
-      "description": "Bus used as the clock input"
+      "description": "The bus to use as the clock input."
     },
     {
       "name": "Reset input",
-      "description": "Bus used as the reset input"
-    },
-    {
-      "name": "Live MIDI",
-      "description": "Incoming live MIDI signal to be processed or converted"
+      "description": "The bus to use as the reset input."
     },
     {
       "name": "Clock input",
@@ -197,16 +198,12 @@
   ],
   "output_ports": [
     {
-      "name": "Pitch output 1-4",
-      "description": "MIDI/CV converter pitch outputs"
+      "name": "1-4 Pitch output",
+      "description": "Bus for the MIDI/CV converter pitch output."
     },
     {
-      "name": "Gate output 1-4",
-      "description": "MIDI/CV converter gate outputs"
-    },
-    {
-      "name": "MIDI output",
-      "description": "MIDI output to breakout, Select Bus, USB, or internal algorithms"
+      "name": "1-4 Gate output",
+      "description": "Bus for the MIDI/CV converter gate output."
     },
     {
       "name": "1-4 Pitch output",

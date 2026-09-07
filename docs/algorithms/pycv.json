@@ -1,17 +1,16 @@
 {
   "guid": "pycv",
   "name": "Poly CV",
-  "description": "This algorithm takes the polysynth control logic from the other polysynths and uses it not to produce sound, but to output CVs and gates. This makes it most obviously useful as a MIDI/CV converter, but it can also be used as a chord/arpeggio engine controlled by CV/gate inputs. In fact, the algorithm can also generate MIDI as well as or instead of CV/gates, and so works as a MIDI-to-MIDI chord engine, for example [99].",
-  "categories": [
-    "MIDI",
-    "CV",
-    "Converter",
-    "Utility"
-  ],
   "short_description": "A polyphonic MIDI/CV converter",
+  "description": "This algorithm takes the polysynth control logic from the other polysynths and uses it not to produce sound, but to output CVs and gates. This makes it most obviously useful as a MIDI/CV converter, but it can also be used as a chord/arpeggio engine controlled by CV/gate inputs. In fact, the algorithm can also generate MIDI as well as or instead of CV/gates, and so works as a MIDI-to-MIDI chord engine.",
+  "categories": [
+    "MIDI/CV Conversion",
+    "Chord/Arpeggio",
+    "CV Generation"
+  ],
   "use_cases": [
-    "MIDI/CV converter",
-    "chord/arpeggio engine controlled by CV/gate inputs",
+    "MIDI to CV/gate conversion",
+    "Chord/arpeggio engine controlled by CV/gate inputs",
     "MIDI-to-MIDI chord engine"
   ],
   "gui_description": "The display shows the notes being played by the various voices. When adjusting the microtuning parameters, more information about the chosen tuning is displayed.",
@@ -63,18 +62,16 @@
       "min": -60,
       "max": 60,
       "default": 0,
-      "description": "Coarse tuning control.",
-      "type": "string",
-      "channelCountRef": "ST"
+      "defaultValue": 0,
+      "description": "Coarse tuning control."
     },
     {
       "name": "Fine tune",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Fine tuning control.",
-      "type": "string",
-      "channelCountRef": "cents"
+      "defaultValue": 0,
+      "description": "Fine tuning control."
     },
     {
       "name": "Bend range",
@@ -88,32 +85,28 @@
       "min": 0.0,
       "max": 5.0,
       "default": 1.0,
-      "description": "Sets the minimum gate voltage, if the gates are set to be scaled by velocity. Velocity gates range from this voltage (for MIDI velocity 0) up to 5V (for MIDI velocity 127).",
-      "type": "string",
-      "channelCountRef": "V"
+      "description": "Sets the minimum gate voltage, if the gates are set to be scaled by velocity. Velocity gates range from this voltage (for MIDI velocity 0) up to 5V (for MIDI velocity 127)."
     },
     {
       "name": "Voice allocation",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets the voice allocation scheme for polyphonic converters – one of ‘Round robin’ or ‘Lowest voice’."
+      "description": "Sets the voice allocation scheme for polyphonic converters – one of 'Round robin' or 'Lowest voice'."
     },
     {
       "name": "Voices",
       "min": 1,
       "max": 14,
       "default": 1,
-      "description": "The number of voices to use (up to the maximum set by the specification).",
-      "type": "string",
-      "channelCountRef": "Col5"
+      "description": "The number of voices to use (up to the maximum set by the specification)."
     },
     {
       "name": "Gate outputs",
       "min": 0,
       "max": 2,
       "default": 1,
-      "description": "Whether to include gate outputs. If set to ‘Velocity’, the gate outputs are scaled by the note velocity."
+      "description": "Whether to include gate outputs. If set to 'Velocity', the gate outputs are scaled by the note velocity."
     },
     {
       "name": "Pitch outputs",
@@ -155,7 +148,7 @@
       "min": 0,
       "max": 6,
       "default": 0,
-      "description": "If set, the ES-5 expander header to use for the gate output instead of allocating a gate from the regular busses. “1” means the ES-5 itself."
+      "description": "If set, the ES-5 expander header to use for the gate output instead of allocating a gate from the regular busses. '1' means the ES-5 itself."
     },
     {
       "name": "Paraphonic gate",
@@ -179,7 +172,7 @@
       "description": "If enabled, apply the global tuning setting to the output pitch CVs. Disable this when using the pitch CVs internally to the NT to control another algorithm, since the controlled algorithm will be using the global tuning setting to adjust its pitch."
     },
     {
-      "name": "MIDI channel (Output)",
+      "name": "MIDI channel (output)",
       "min": 0,
       "max": 16,
       "default": 0,
@@ -190,9 +183,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables MIDI output to the breakout.",
-      "type": "string",
-      "channelCountRef": "Col5"
+      "description": "Enables MIDI output to the breakout."
     },
     {
       "name": "Output to Select Bus",
@@ -216,24 +207,27 @@
       "description": "Enables internal MIDI output – that is, MIDI is sent to the other algorithms."
     }
   ],
-  "input_ports": [
-    {
-      "name": "CV/gate inputs",
-      "description": "Inputs used to control the chord/arpeggio engine."
-    }
-  ],
+  "input_ports": [],
   "output_ports": [
     {
-      "name": "Gate",
-      "description": "Gate output for each voice."
+      "name": "Gate outputs",
+      "description": "Gate outputs for each voice, allocated to consecutive busses starting from 'First output'. Can be scaled by velocity."
     },
     {
-      "name": "Pitch CV",
-      "description": "Pitch CV output for each voice."
+      "name": "Pitch CV outputs",
+      "description": "Pitch CV outputs for each voice, allocated to consecutive busses after gate outputs."
     },
     {
-      "name": "Velocity",
-      "description": "Velocity output for each voice."
+      "name": "Velocity outputs",
+      "description": "Velocity outputs for each voice, allocated to consecutive busses after pitch CV outputs."
+    },
+    {
+      "name": "Paraphonic gate",
+      "description": "A paraphonic gate that is high while any voice gate output is high."
+    },
+    {
+      "name": "MIDI output",
+      "description": "MIDI output to breakout, Select Bus, USB, or internal algorithms."
     },
     {
       "name": "First output",

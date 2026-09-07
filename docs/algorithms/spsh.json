@@ -1,13 +1,17 @@
 {
   "guid": "spsh",
   "name": "Step Sequencer Head",
+  "short_description": "An extra playback head",
   "description": "This algorithm shares the sequence of another Step Sequencer algorithm (above), and replicates the parameters that define how that sequence is played. This allows you to, for example, have the same sequence played in different directions simultaneously, or at different speeds, or with different transpositions.\n\nThe Step Sequencer Head refers to the nearest Step Sequencer above it in the algorithm list. You can have as many Step Sequencer Heads as you like for each Step Sequencer.",
   "categories": [
     "Sequencer",
-    "MIDI",
-    "Routing"
+    "MIDI"
   ],
-  "short_description": "An extra playback head",
+  "use_cases": [
+    "Playing the same sequence in different directions simultaneously",
+    "Playing the same sequence at different speeds",
+    "Playing the same sequence with different transpositions"
+  ],
   "specifications": [],
   "parameters": [
     {
@@ -36,54 +40,50 @@
       "min": 0,
       "max": 6,
       "default": 0,
-      "description": "The sequencer direction. See above."
+      "description": "The sequencer direction."
     },
     {
       "name": "Permutation",
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "The sequencer permutation. See above."
+      "description": "The sequencer permutation."
     },
     {
       "name": "Gate type",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets the gate type: “% of clock” or “Trigger”."
+      "description": "Sets the gate type: '% of clock' or 'Trigger'."
     },
     {
       "name": "Gate length",
       "min": 1,
       "max": 99,
       "default": 50,
-      "description": "Sets the length of the gate output if the type is “% of clock”.",
-      "type": "string",
-      "channelCountRef": "percentage",
-      "is_per_channel": false,
-      "is_bus": false
+      "description": "Sets the length of the gate output if the type is '% of clock'.",
+      "enum_values": [
+        "% of clock",
+        "Trigger"
+      ]
     },
     {
       "name": "Trigger length",
       "min": 1,
       "max": 100,
       "default": 10,
-      "description": "Sets the length of the gate output if the type is “Trigger”.",
-      "type": "string",
-      "channelCountRef": "milliseconds",
-      "is_per_channel": false,
-      "is_bus": false
+      "description": "Sets the length of the gate output if the type is 'Trigger'.",
+      "enum_values": [
+        "% of clock",
+        "Trigger"
+      ]
     },
     {
       "name": "Glide",
       "min": 0,
       "max": 1000,
       "default": 100,
-      "description": "Sets the glide time for tied notes.",
-      "type": "string",
-      "channelCountRef": "milliseconds",
-      "is_per_channel": false,
-      "is_bus": false
+      "description": "Sets the glide time for tied notes."
     },
     {
       "name": "Octave",
@@ -97,53 +97,49 @@
       "min": -60,
       "max": 60,
       "default": 0,
-      "description": "Transposes the sequence in semitones.",
-      "type": "string",
-      "channelCountRef": "semitones",
-      "is_per_channel": false,
-      "is_bus": false
+      "description": "Transposes the sequence in semitones."
     },
     {
       "name": "Reset mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets the mode for the reset input. The options are: the input is a reset trigger; the input is a run/stop signal."
+      "description": "Sets the mode for the reset input. The options are: the input is a reset trigger, or the input is a run/stop signal."
     },
     {
       "name": "Pitch output mode",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for the pitch CV output."
+      "description": "The standard Add/Replace mode selector for the pitch CV output."
     },
     {
       "name": "Gate output mode",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for the gate output."
+      "description": "The standard Add/Replace mode selector for the gate output."
     },
     {
       "name": "Velocity output mode",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for the velocity output."
+      "description": "The standard Add/Replace mode selector for the velocity output."
     },
     {
       "name": "Mod output mode",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for the modulation CV output."
+      "description": "The standard Add/Replace mode selector for the modulation CV output."
     },
     {
       "name": "Step output mode",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for the step CV output."
+      "description": "The standard Add/Replace mode selector for the step CV output."
     },
     {
       "name": "Follow MIDI clock",
@@ -157,11 +153,7 @@
       "min": 0,
       "max": 19,
       "default": 4,
-      "description": "Sets the clock divisor when following MIDI clock.",
-      "type": "string",
-      "channelCountRef": "Col5",
-      "is_per_channel": false,
-      "is_bus": false
+      "description": "Sets the clock divisor when following MIDI clock."
     },
     {
       "name": "MIDI channel (out)",
@@ -208,6 +200,22 @@
   ],
   "input_ports": [
     {
+      "name": "Clock",
+      "description": "The clock input bus."
+    },
+    {
+      "name": "Reset",
+      "description": "The reset input bus."
+    },
+    {
+      "name": "Sequence CV",
+      "description": "The bus to use to select the sequence."
+    },
+    {
+      "name": "Sequence trigger",
+      "description": "The bus to use for the sequence select trigger."
+    },
+    {
       "name": "Clock input",
       "description": "The bus to use as the clock input."
     },
@@ -217,14 +225,34 @@
     },
     {
       "name": "Sequence CV input",
-      "description": "The bus to use to select the sequence. See above."
+      "description": "The bus to use to select the sequence."
     },
     {
       "name": "Sequence trigger input",
-      "description": "The bus to use for the sequence select trigger. See above."
+      "description": "The bus to use for the sequence select trigger."
     }
   ],
   "output_ports": [
+    {
+      "name": "Pitch",
+      "description": "The pitch CV output bus."
+    },
+    {
+      "name": "Gate",
+      "description": "The gate output bus."
+    },
+    {
+      "name": "Velocity",
+      "description": "The velocity output bus."
+    },
+    {
+      "name": "Mod",
+      "description": "The modulation CV output bus."
+    },
+    {
+      "name": "Step",
+      "description": "The step CV output bus. Represents the current sequencer step number scaled as 1/12th of a Volt per step."
+    },
     {
       "name": "Pitch output",
       "description": "The bus to use for the pitch CV output."

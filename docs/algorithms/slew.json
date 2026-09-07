@@ -1,12 +1,18 @@
 {
   "guid": "slew",
   "name": "Slew rate limiter",
-  "description": "This algorithm is a simple slew rate limiter, offering both logarithmic and linear slew.\n\nYou can choose to use a single slew rate for both rising and falling signals, or specify them separately.\nYou can also choose to use the same rates for all the busses, or specify them individually.",
+  "short_description": "Smooths CVs and creates glissandos",
+  "description": "This algorithm is a simple slew rate limiter, offering both logarithmic and linear slew. You can choose to use a single slew rate for both rising and falling signals, or specify them separately. You can also choose to use the same rates for all the busses, or specify them individually.",
   "categories": [
     "CV Processing",
-    "Utility"
+    "Slew",
+    "Filter"
   ],
-  "short_description": "Smooths CVs and creates glissandos",
+  "use_cases": [
+    "Smoothing CV signals",
+    "Creating glissandos",
+    "Controlling attack and release of parameters"
+  ],
   "specifications": [
     {
       "name": "Channels",
@@ -45,7 +51,11 @@
       "max": 1,
       "default": 0,
       "scope": "per-channel",
-      "description": "Chooses Logarithmic or Linear slew rate limiting."
+      "description": "Chooses Logarithmic or Linear slew rate limiting.",
+      "enum_values": [
+        "Logarithmic",
+        "Linear"
+      ]
     },
     {
       "name": "Control",
@@ -53,7 +63,13 @@
       "max": 3,
       "default": 0,
       "scope": "per-channel",
-      "description": "Chooses which controls will set the slew times.\n● ‘Single’ - use ‘Up/shared slew’ for both slew times.\n● ‘Dual’ - use separate slew times for rising and falling signals.\n● ‘Common single’ and ‘Common dual’ - as above but using the shared times from the Common parameters."
+      "description": "Chooses which controls will set the slew times.",
+      "enum_values": [
+        "Single",
+        "Dual",
+        "Common single",
+        "Common dual"
+      ]
     },
     {
       "name": "Up/shared slew",
@@ -70,26 +86,23 @@
       "default": 0,
       "scope": "per-channel",
       "description": "The slew time for falling signals."
-    },
-    {
-      "name": "Output mode",
-      "min": 0,
-      "max": 1,
-      "default": 1,
-      "scope": "per-channel",
-      "description": "The standard Add/Replace mode selector as described above."
     }
   ],
   "input_ports": [
     {
       "name": "Input",
-      "description": "The input bus."
+      "description": "The input bus.",
+      "channelCountRef": "Channels"
     }
   ],
   "output_ports": [
     {
       "name": "Output",
-      "description": "The output bus. If set to ‘None’, the input bus is used as output, and the mode is always ‘Replace’."
+      "description": "The output bus. If set to 'None', the input bus is used as output, and the mode is always 'Replace'."
+    },
+    {
+      "name": "Output mode",
+      "description": "The standard Add/Replace mode selector."
     }
   ]
 }

@@ -1,32 +1,26 @@
 {
   "guid": "mols",
   "name": "More Like Space",
-  "description": "This algorithm is a modulation effect of the chorus/flange/stereo-widening sort. It originates in the VST version of the Minky Starshine instrument, which is also present as a disting NT algorithm (above).\n\nThe signal is fed into a number of delays in parallel. The 'Voices' parameter sets the number of delays - a higher number of voices tends to give a lusher sound. The delay time of the delays is each modulated by an LFO.",
+  "short_description": "Modulation Effect",
+  "description": "This algorithm is a modulation effect of the chorus/flange/stereo-widening sort. It originates in the VST version of the Minky Starshine instrument, which is also present as a disting NT algorithm (above). The signal is fed into a number of delays in parallel. The 'Voices' parameter sets the number of delays - a higher number of voices tends to give a lusher sound. The delay time of the delays is each modulated by an LFO.",
   "categories": [
     "Modulation",
     "Chorus",
     "Flange",
-    "Stereo Widening"
+    "Stereo"
   ],
-  "short_description": "Modulation Effect",
+  "use_cases": [
+    "Chorus effect",
+    "Flange effect",
+    "Stereo widening"
+  ],
   "parameters": [
     {
       "name": "Mix",
       "min": 0,
       "max": 100,
       "default": 100,
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
-    },
-    {
-      "name": "Mix",
-      "min": 0,
-      "max": 100,
-      "default": 100,
-      "description": "The wet/dry mix.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -34,9 +28,7 @@
       "min": -40,
       "max": 0,
       "default": 0,
-      "description": "The gain applied to the effect/wet signal.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -44,9 +36,7 @@
       "min": 0.0,
       "max": 500.0,
       "default": 10.0,
-      "description": "Sets the minimum delay time.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -54,9 +44,7 @@
       "min": 0.0,
       "max": 50.0,
       "default": 1.0,
-      "description": "Sets the amount of modulation of the delay time by the LFO (added to the minimum).",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -64,9 +52,7 @@
       "min": 0,
       "max": 1000,
       "default": 500,
-      "description": "Sets the LFO speed. Exponential scale from 0.05Hz to 20Hz.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -74,9 +60,7 @@
       "min": -100.0,
       "max": 100.0,
       "default": 0.0,
-      "description": "Introduces feedback into the delay lines, for sustained echos or deeper flanging effects.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -84,9 +68,7 @@
       "min": 0.0,
       "max": 100.0,
       "default": 50.0,
-      "description": "Controls the amount of phase variance between the LFOs of the voices. E.g. two voices with a spread of 50% gives the classic quadrature phase stereo chorus effect.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -94,9 +76,7 @@
       "min": 1,
       "max": 4,
       "default": 2,
-      "description": "The number of voices (delay lines).",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -104,9 +84,7 @@
       "min": 0.0,
       "max": 100.0,
       "default": 0.0,
-      "description": "Applies waveshaping to the LFO waveform, which has a corresponding effect on the nature of the pitch alterations induced by the modulation. It's hard to describe exactly how it affects the sound – experiment with it! For classic chorus and flange effects, leave this setting at zero.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -114,9 +92,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     }
   ],

@@ -1,18 +1,11 @@
 {
   "guid": "absv",
   "name": "Rectifier",
+  "short_description": "Full-wave rectifier/absolute value",
   "description": "This simple algorithm computes the absolute value of the input voltage.",
   "categories": [
     "Signal Processing",
-    "Utility"
-  ],
-  "short_description": "Full-wave rectifier/absolute value",
-  "specifications": [
-    {
-      "name": "Channels",
-      "value": "1-12",
-      "description": "The number of bus channels to process."
-    }
+    "Math"
   ],
   "parameters": [
     {
@@ -32,14 +25,22 @@
   ],
   "input_ports": [
     {
+      "name": "Audio Input",
+      "description": "The input voltage to be rectified"
+    },
+    {
       "name": "Input",
       "description": "The input bus to process."
     }
   ],
   "output_ports": [
     {
+      "name": "Audio Output",
+      "description": "The absolute value of the input voltage"
+    },
+    {
       "name": "Output",
-      "description": "The output bus. If set to ‘None’, the input bus is used as output, and the mode is always ‘Replace’."
+      "description": "The output bus. If set to 'None', the input bus is used as output, and the mode is always 'Replace'."
     }
   ]
 }

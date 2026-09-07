@@ -1,34 +1,30 @@
 {
   "guid": "vowl",
   "name": "Vowel Filter",
-  "description": "This algorithm is based on the Dual Vowel Filter algorithm on the disting mk4. A set of three bandpass filters (BPFs) is used to mimic the response of the human vocal tract, resulting in vowel-like sounds when provided suitable source material.",
+  "short_description": "Simulates vowel sounds",
+  "description": "This algorithm is based on the Dual Vowel Filter algorithm on the disting mk4. A set of three bandpass filters (BPFs) is used to mimic the response of the human vocal tract, resulting in vowel-like sounds when provided suitable source material. The available vowels are: /ow/ (bought), /oo/ (boot), /a/ (hot), /uh/ (but), /er/ (bird), /ae/ (bat), /e/ (bet), /i/ (bit), /iy/ (beet).",
   "categories": [
     "Filter",
-    "Vocal",
-    "Synthesis"
+    "Voice",
+    "Effect"
   ],
-  "short_description": "Simulates vowel sounds",
   "parameters": [
     {
       "name": "Mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "One of ‘Switched’ or ‘Blended’.",
-      "enum_values": [
-        "Switched",
-        "Blended"
-      ]
+      "description": "One of 'Switched' or 'Blended'."
     },
     {
-      "name": "Vowel (Switched)",
+      "name": "Vowel",
       "min": 0,
       "max": 8,
       "default": 0,
       "description": "The chosen vowel, if the mode is Switched."
     },
     {
-      "name": "Vowel (Blended)",
+      "name": "Vowel",
       "min": 0,
       "max": 800,
       "default": 0,
@@ -66,6 +62,14 @@
   "input_ports": [
     {
       "name": "Audio input",
+      "description": "The audio signal to process through the vowel filter."
+    },
+    {
+      "name": "Vowel input",
+      "description": "CV input to control the vowel. Scaled such that 0-5V covers the full range of vowels."
+    },
+    {
+      "name": "Audio input",
       "description": "The first input bus to process."
     },
     {
@@ -74,6 +78,10 @@
     }
   ],
   "output_ports": [
+    {
+      "name": "Output",
+      "description": "The filtered audio output."
+    },
     {
       "name": "Output",
       "description": "The first output bus."

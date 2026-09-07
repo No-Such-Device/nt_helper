@@ -1,24 +1,29 @@
 {
   "guid": "pyfm",
   "name": "Poly FM",
-  "description": "This algorithm is inspired by the original Poly FM algorithm on the disting EX. It is a polyphonic, multitimbral, FM synthesizer. It uses the six-operator FM engine from the open source Plaits [100] module by Émilie Gillet (exactly as used in the Macro Oscillator 2 algorithm, above). It loads Yamaha DX7 voice bank SysEx files from the MicroSD card. Please refer to the section “Common polysynth features” above.",
+  "short_description": "A polyphonic FM synthesizer",
+  "description": "This algorithm is inspired by the original Poly FM algorithm on the disting EX. It is a polyphonic, multitimbral, FM synthesizer. It uses the six-operator FM engine from the open source Plaits module by Émilie Gillet (exactly as used in the Macro Oscillator 2 algorithm). It loads Yamaha DX7 voice bank SysEx files from the MicroSD card. The algorithm supports up to four different timbres, which mainly means a different bank/voice, plus some other parameters that make up a particular sound. The various timbres share the pool of up to 24 simultaneous voices.",
   "categories": [
-    "Synthesizer",
-    "FM Synthesis",
+    "Synthesis",
+    "FM",
     "Polyphonic"
   ],
-  "short_description": "A polyphonic FM synthesizer",
+  "use_cases": [
+    "Polyphonic FM synthesis",
+    "Loading Yamaha DX7 voice banks",
+    "Multitimbral performance"
+  ],
   "gui_description": "The display shows the notes being played by the various voices, each superimposed on a bar to indicate the note envelope. When adjusting the microtuning parameters, more information about the chosen tuning is displayed.",
   "specifications": [
     {
       "name": "Timbres",
       "value": "1-4",
-      "description": "The number of timbres."
+      "description": "The number of timbres"
     },
     {
       "name": "Voices",
       "value": "1-24",
-      "description": "The number of simultaneous voices."
+      "description": "The number of simultaneous voices"
     }
   ],
   "parameters": [
@@ -27,11 +32,7 @@
       "min": -40,
       "max": 6,
       "default": 0,
-      "scope": "global",
-      "type": "scaled",
-      "channelCountRef": "global",
-      "is_per_channel": false,
-      "is_common": true,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -39,18 +40,12 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "global",
-      "type": "enum",
-      "is_per_channel": false,
-      "is_common": true,
+      "type": "folder",
       "is_bus": false
     },
     {
       "name": "Bank",
-      "scope": "per-trigger",
-      "description": "Chooses the voice bank.",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -58,10 +53,7 @@
       "min": 1,
       "max": 32,
       "default": 1,
-      "scope": "per-trigger",
-      "description": "Chooses the voice within the bank.",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -69,11 +61,7 @@
       "min": -60,
       "max": 60,
       "default": 0,
-      "scope": "per-trigger",
-      "type": "scaled",
-      "channelCountRef": "per-trigger",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -81,11 +69,7 @@
       "min": -100,
       "max": 100,
       "default": 0,
-      "scope": "per-trigger",
-      "type": "scaled",
-      "channelCountRef": "per-trigger",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -93,11 +77,7 @@
       "min": -100,
       "max": 100,
       "default": 0,
-      "scope": "per-trigger",
-      "type": "scaled",
-      "channelCountRef": "per-trigger",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -105,11 +85,7 @@
       "min": -100,
       "max": 100,
       "default": 0,
-      "scope": "per-trigger",
-      "type": "scaled",
-      "channelCountRef": "per-trigger",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -117,11 +93,7 @@
       "min": -40,
       "max": 6,
       "default": 0,
-      "scope": "per-trigger",
-      "type": "scaled",
-      "channelCountRef": "per-trigger",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -129,11 +101,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "per-trigger",
-      "type": "scaled",
-      "channelCountRef": "per-trigger",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -141,11 +109,7 @@
       "min": -100,
       "max": 100,
       "default": 0,
-      "scope": "per-trigger",
-      "type": "scaled",
-      "channelCountRef": "per-trigger",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -153,11 +117,7 @@
       "min": -200,
       "max": 200,
       "default": 0,
-      "scope": "per-trigger",
-      "type": "scaled",
-      "channelCountRef": "per-trigger",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -165,11 +125,7 @@
       "min": -100,
       "max": 100,
       "default": 0,
-      "scope": "per-trigger",
-      "type": "scaled",
-      "channelCountRef": "per-trigger",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -177,11 +133,7 @@
       "min": -200,
       "max": 200,
       "default": 0,
-      "scope": "per-trigger",
-      "type": "scaled",
-      "channelCountRef": "per-trigger",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -189,10 +141,7 @@
       "min": 0,
       "max": 16,
       "default": 1,
-      "scope": "per-trigger",
-      "type": "enum",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -200,10 +149,7 @@
       "min": 1,
       "max": 16,
       "default": 1,
-      "scope": "per-trigger",
-      "type": "enum",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -211,10 +157,7 @@
       "min": 0,
       "max": 255,
       "default": 1,
-      "scope": "per-trigger",
-      "type": "enum",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -222,11 +165,7 @@
       "min": 0,
       "max": 48,
       "default": 2,
-      "scope": "per-trigger",
-      "type": "scaled",
-      "channelCountRef": "per-trigger",
-      "is_per_channel": true,
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     }
   ],

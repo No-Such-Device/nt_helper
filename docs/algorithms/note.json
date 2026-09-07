@@ -1,13 +1,17 @@
 {
   "guid": "note",
   "name": "Notes",
+  "short_description": "A place to store some text",
   "description": "This algorithm is simply a place to enter some text, perhaps an explanation of how the preset works, or your set list, or a reminder to buy milk.\n\nIt has absolutely no effect on the busses and consumes no CPU.",
   "categories": [
     "Utility"
   ],
-  "short_description": "A place to store some text",
-  "gui_description": "The display simply shows the lines of text all on one screen.",
   "parameters": [],
   "input_ports": [],
-  "output_ports": []
+  "output_ports": [
+    {
+      "name": "Output",
+      "description": "Passes through the input signal unchanged"
+    }
+  ]
 }

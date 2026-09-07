@@ -1,21 +1,33 @@
 {
   "guid": "xaoc",
   "name": "Chaos",
-  "description": "This algorithm generates chaotic CVs according to a variety of so-called ‘attractors’, including the well-known Lorenz equations [63] . Each generates three CVs, named X, Y, and Z, which are available on separate outputs.",
+  "short_description": "CVs from the Lorenz equations",
+  "description": "This algorithm generates chaotic CVs according to a variety of so-called 'attractors', including the well-known Lorenz equations. Each generates three CVs, named X, Y, and Z, which are available on separate outputs. You can modify the parameters of the Lorenz equation – 'Rho mod' affects 'r' (aka 'ρ'), and 'Beta mod' affects 'b' (aka 'β'). With the values at 0V, the parameters are the classic values as studied by Lorenz (64 and 8/3 respectively).",
   "categories": [
     "Modulation",
-    "Chaos Generator"
+    "CV Generator",
+    "Chaos"
   ],
-  "short_description": "CVs from the Lorenz equations",
+  "use_cases": [
+    "Generating chaotic CV modulation signals",
+    "Experimental sound design",
+    "Creating unpredictable control voltage patterns"
+  ],
   "gui_description": "The display shows a graphical representation of the outputs, projected onto the X/Y, X/Z, and Y/Z planes.",
-  "specifications": [],
   "parameters": [
     {
       "name": "Attractor",
       "min": 0,
       "max": 4,
       "default": 0,
-      "description": "Chooses which equations to use: Lorenz, Rössler, Aizawa, Arneodo, or Thomas."
+      "description": "Chooses which equations to use: Lorenz, Rössler, Aizawa, Arneodo, or Thomas.",
+      "enum_values": [
+        "Lorenz",
+        "Rössler",
+        "Aizawa",
+        "Arneodo",
+        "Thomas"
+      ]
     },
     {
       "name": "Speed range",
@@ -36,18 +48,18 @@
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
-      "description": "Modulates the Lorenz ‘r’ parameter.",
-      "type": "string",
-      "channelCountRef": "V"
+      "type": "folder",
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "Beta mod",
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
-      "description": "Modulates the Lorenz ‘b’ parameter.",
-      "type": "string",
-      "channelCountRef": "V"
+      "type": "folder",
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "Reset",
@@ -82,54 +94,42 @@
       "min": -20.0,
       "max": 20.0,
       "default": 10.0,
-      "description": "The scale of the X output.",
-      "type": "string",
-      "channelCountRef": "V"
+      "description": "The scale of the X output."
     },
     {
       "name": "X offset",
       "min": -20.0,
       "max": 20.0,
       "default": 0.0,
-      "description": "An offset added to the X output.",
-      "type": "string",
-      "channelCountRef": "V"
+      "description": "An offset added to the X output."
     },
     {
       "name": "Y scale",
       "min": -20.0,
       "max": 20.0,
       "default": 10.0,
-      "description": "The scale of the Y output.",
-      "type": "string",
-      "channelCountRef": "V"
+      "description": "The scale of the Y output."
     },
     {
       "name": "Y offset",
       "min": -20.0,
       "max": 20.0,
       "default": 0.0,
-      "description": "An offset added to the Y output.",
-      "type": "string",
-      "channelCountRef": "V"
+      "description": "An offset added to the Y output."
     },
     {
       "name": "Z scale",
       "min": -20.0,
       "max": 20.0,
       "default": 10.0,
-      "description": "The scale of the Z output.",
-      "type": "string",
-      "channelCountRef": "V"
+      "description": "The scale of the Z output."
     },
     {
       "name": "Z offset",
       "min": -20.0,
       "max": 20.0,
       "default": -8.0,
-      "description": "An offset added to the Z output.",
-      "type": "string",
-      "channelCountRef": "V"
+      "description": "An offset added to the Z output."
     },
     {
       "name": "X output mode",
@@ -155,8 +155,8 @@
   ],
   "input_ports": [
     {
-      "name": "Reset input",
-      "description": "A positive-going edge here resets the system to the values given by the Reset X/Y/Z parameters."
+      "name": "Reset",
+      "description": "A positive-going edge resets the system to the values given by the Reset X/Y/Z parameters."
     },
     {
       "name": "Reset input",
@@ -165,16 +165,16 @@
   ],
   "output_ports": [
     {
-      "name": "X output",
-      "description": "Chaotic CV output X"
+      "name": "X",
+      "description": "The X output of the chaotic system."
     },
     {
-      "name": "Y output",
-      "description": "Chaotic CV output Y"
+      "name": "Y",
+      "description": "The Y output of the chaotic system."
     },
     {
-      "name": "Z output",
-      "description": "Chaotic CV output Z"
+      "name": "Z",
+      "description": "The Z output of the chaotic system."
     },
     {
       "name": "X output",

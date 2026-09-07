@@ -1,23 +1,12 @@
 {
   "guid": "delt",
   "name": "Delay (Tape)",
-  "description": "This algorithm is based on the disting mk4 algorithm “D-2 Tape Delay”, which is itself a simplified version of the “Augustus Loop” effect. It is a delay/echo effect which simulates a variable speed tape loop echo device.\n\nThe ‘Tape length’ parameter sets the range of delay times available. Note though that changing this may introduce clicks and pops. The primary means of changing the delay time is the “Tape speed” parameter and/or the Speed CV input.\n\nThe tape speed can be set in the range from half speed (0.5x) to double speed (2x). If using the CV input, the scaling is 8V/octave i.e. +8V gives double speed and -4V gives half speed.\n\nThree options are available for how the wet/dry mix is controlled:\n- With feedback: the amount of delay in the mix rises in direct proportion to the amount of feedback.\n- Crossfade: the ‘Mix’ parameter is a crossfader.\n- Add delay: the dry level is constant, and the ‘Mix’ parameter adds in the delay signal.",
+  "short_description": "A tape delay effect",
+  "description": "This algorithm is based on the disting mk4 algorithm \"D-2 Tape Delay\", which is itself a simplified version of the \"Augustus Loop\" effect. It is a delay/echo effect which simulates a variable speed tape loop echo device.\n\nThe 'Tape length' parameter sets the range of delay times available. Note though that changing this may introduce clicks and pops. The primary means of changing the delay time is the \"Tape speed\" parameter and/or the Speed CV input.\n\nThe tape speed can be set in the range from half speed (0.5x) to double speed (2x). If using the CV input, the scaling is 8V/octave i.e. +8V gives double speed and -4V gives half speed.\n\nThree options are available for how the wet/dry mix is controlled:\n\n- With feedback - the amount of delay in the mix rises in direct proportion to the amount of feedback.\n- Crossfade - the 'Mix' parameter is a crossfader.\n- Add delay - the dry level is constant, and the 'Mix' parameter adds in the delay signal.",
   "categories": [
     "Delay",
     "Echo",
-    "Tape Simulation"
-  ],
-  "short_description": "A tape delay effect",
-  "specifications": [
-    {
-      "name": "Max tape length",
-      "value": "1-30 seconds",
-      "description": "The maximum length of the ‘tape’."
-    },
-    {
-      "name": "Stereo",
-      "description": "Whether the algorithm is mono or stereo."
-    }
+    "Tape"
   ],
   "parameters": [
     {
@@ -25,21 +14,14 @@
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "Sets how the delay and dry signals are mixed.",
-      "enum_values": [
-        "With feedback",
-        "Crossfade",
-        "Add delay"
-      ]
+      "description": "Sets how the delay and dry signals are mixed."
     },
     {
       "name": "Mix",
       "min": 0,
       "max": 100,
       "default": 100,
-      "description": "Controls the wet/dry mix, unless the ‘Mix mode’ is ‘With feedback’.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -47,18 +29,14 @@
       "min": 0,
       "max": 110,
       "default": 50,
-      "description": "The delay feedback.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
       "name": "Tape length",
       "min": 1,
       "default": 250,
-      "description": "Sets the length of the tape i.e. the delay time at 1x speed.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -66,9 +44,7 @@
       "min": -500,
       "max": 1000,
       "default": 0,
-      "description": "Sets the tape speed (in conjunction with the CV input).",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -76,7 +52,8 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "type": "folder",
+      "is_bus": false
     }
   ],
   "input_ports": [
@@ -91,6 +68,18 @@
     {
       "name": "Speed input",
       "description": "The tape speed CV input bus."
+    },
+    {
+      "name": "Left/mono input",
+      "description": ""
+    },
+    {
+      "name": "Right input",
+      "description": ""
+    },
+    {
+      "name": "Speed input",
+      "description": ""
     }
   ],
   "output_ports": [
@@ -101,6 +90,14 @@
     {
       "name": "Right output",
       "description": "The right output bus."
+    },
+    {
+      "name": "Left/mono output",
+      "description": ""
+    },
+    {
+      "name": "Right output",
+      "description": ""
     }
   ]
 }

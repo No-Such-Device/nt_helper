@@ -1,13 +1,19 @@
 {
   "guid": "fbnk",
   "name": "Filter bank",
-  "description": "This algorithm is based on the disting EX algorithm of the same name. The disting EX manual states “this algorithm provides a bank of eight parallel stereo bandpass filters or resonators. The filters' levels can be controlled manually, via CV, or with envelopes driven from gates, and their pitch can also be set manually or via CV or MIDI. The resonators in particular are good for being played as chords over MIDI, in the manner of the Alesis Quadraverb Plus”. This implementation goes further in that the number of filters can be increased to 12, and the filters can be mono, stereo, or up to 8 channels wide.",
-  "categories": [
-    "Filter",
-    "Resonator",
-    "Polysynth"
-  ],
   "short_description": "A fixed filter/resonator bank",
+  "description": "This algorithm is based on the disting EX algorithm of the same name. The disting EX manual states \"this algorithm provides a bank of eight parallel stereo bandpass filters or resonators. The filters' levels can be controlled manually, via CV, or with envelopes driven from gates, and their pitch can also be set manually or via CV or MIDI. The resonators in particular are good for being played as chords over MIDI, in the manner of the Alesis Quadraverb Plus.\" This implementation goes further in that the number of filters can be increased to 12, and the filters can be mono, stereo, or up to 8 channels wide. The filters can be set to one of three modes: Resonator, Bandpass or Multiband. Resonators are peaking all-pass filters that greatly emphasise the narrow band of frequencies around their centre frequencies. Bandpass filters are a basic filter type that attenuate frequencies away from their centre frequencies. In both of the modes above, all of the filters are completely independent. In Multiband mode however, the filter frequencies set a series of crossover points, such as you might find in a multiband compressor, for example. Therefore the frequencies passed by each band are bounded by its own frequency on the one side, and the frequency of the next band on the other.",
+  "categories": [
+    "filter",
+    "resonator",
+    "polysynth"
+  ],
+  "use_cases": [
+    "Playing chords over MIDI in the manner of the Alesis Quadraverb Plus",
+    "Resonator effects",
+    "Bandpass filtering",
+    "Multiband processing"
+  ],
   "gui_description": "The display shows the notes to which each filter is tuned, overlaid on a bar to represent the envelope level of the voice.",
   "specifications": [
     {
@@ -31,15 +37,12 @@
       "max": 2,
       "default": 0,
       "scope": "global",
+      "description": "The filter mode – see above.",
       "enum_values": [
         "Resonator",
         "Bandpass",
         "Multiband"
-      ],
-      "type": "enum",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      ]
     },
     {
       "name": "Resonance/Q",
@@ -48,10 +51,7 @@
       "default": 50,
       "scope": "global",
       "description": "Sets the filter gain (for resonators) or resonance (for bandpass/multiband).",
-      "type": "scaled",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "type": "folder"
     },
     {
       "name": "Attack time",
@@ -59,7 +59,8 @@
       "max": 1023,
       "default": 64,
       "scope": "global",
-      "description": "The envelope attack time. The scale is exponential, from 1ms up to 4s."
+      "description": "The envelope attack time. The scale is exponential, from 1ms up to 4s.",
+      "type": "folder"
     },
     {
       "name": "Release time",
@@ -67,7 +68,8 @@
       "max": 1023,
       "default": 64,
       "scope": "global",
-      "description": "The envelope release time. The scale is exponential, from 1ms up to 4s."
+      "description": "The envelope release time. The scale is exponential, from 1ms up to 4s.",
+      "type": "folder"
     },
     {
       "name": "Gain",
@@ -76,10 +78,7 @@
       "default": 0,
       "scope": "global",
       "description": "An overall gain control.",
-      "type": "scaled",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "type": "folder"
     },
     {
       "name": "Pitch",
@@ -87,7 +86,8 @@
       "max": 127,
       "default": 0,
       "scope": "per-channel",
-      "description": "The filter frequency/pitch, as a MIDI note number."
+      "description": "The filter frequency/pitch, as a MIDI note number.",
+      "type": "folder"
     },
     {
       "name": "Gate",
@@ -95,7 +95,8 @@
       "max": 1,
       "default": 0,
       "scope": "per-channel",
-      "description": "The filter gate."
+      "description": "The filter gate.",
+      "type": "folder"
     },
     {
       "name": "Output mode",
@@ -103,26 +104,17 @@
       "max": 1,
       "default": 0,
       "scope": "per-channel",
-      "enum_values": [
-        "Add",
-        "Replace"
-      ],
-      "type": "enum",
-      "is_per_channel": true,
-      "is_common": true,
-      "is_bus": false
+      "description": "The standard Add/Replace mode selector as described above.",
+      "type": "folder"
     },
     {
       "name": "Gain",
-      "min": -40.0,
-      "max": 24.0,
-      "default": 0.0,
+      "min": -40,
+      "max": 24,
+      "default": 0,
       "scope": "per-channel",
-      "description": "The filter’s gain.",
-      "type": "scaled",
-      "is_per_channel": true,
-      "is_common": true,
-      "is_bus": false
+      "description": "The filter's gain.",
+      "type": "folder"
     },
     {
       "name": "MIDI channel",
@@ -130,7 +122,8 @@
       "max": 16,
       "default": 1,
       "scope": "global",
-      "description": "The MIDI channel to listen on."
+      "description": "The MIDI channel to listen on.",
+      "type": "folder"
     },
     {
       "name": "MPE channels",
@@ -138,7 +131,8 @@
       "max": 16,
       "default": 1,
       "scope": "global",
-      "description": "Controls how the algorithm will respond to MPE."
+      "description": "Controls how the algorithm will respond to MPE. See above.",
+      "type": "folder"
     },
     {
       "name": "I2C channel",
@@ -146,7 +140,8 @@
       "max": 255,
       "default": 0,
       "scope": "global",
-      "description": "Sets the I2C channel."
+      "description": "Sets the I2C channel.",
+      "type": "folder"
     },
     {
       "name": "Controlled voices",
@@ -154,7 +149,8 @@
       "max": 12,
       "default": 12,
       "scope": "global",
-      "description": "Sets the number of filters that will be controlled by MIDI or CV/gate. By reducing this, you can elect to control some filters by MIDI while the rest remain under manual control."
+      "description": "Sets the number of filters that will be controlled by MIDI or CV/gate. By reducing this, you can elect to control some filters by MIDI while the rest remain under manual control.",
+      "type": "folder"
     },
     {
       "name": "Transpose",
@@ -163,10 +159,7 @@
       "default": 0,
       "scope": "global",
       "description": "Coarse tuning control.",
-      "type": "scaled",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "type": "folder"
     },
     {
       "name": "Fine tune",
@@ -175,10 +168,7 @@
       "default": 0,
       "scope": "global",
       "description": "Fine tuning control.",
-      "type": "scaled",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "type": "folder"
     },
     {
       "name": "Sustain",
@@ -186,7 +176,8 @@
       "max": 1,
       "default": 0,
       "scope": "global",
-      "description": "Directly controls the sustain (like a MIDI sustain pedal)."
+      "description": "Directly controls the sustain (like a MIDI sustain pedal).",
+      "type": "folder"
     },
     {
       "name": "Bend range",
@@ -194,7 +185,8 @@
       "max": 48,
       "default": 2,
       "scope": "global",
-      "description": "The MIDI pitch bend range."
+      "description": "The MIDI pitch bend range.",
+      "type": "folder"
     },
     {
       "name": "Unison",
@@ -202,7 +194,8 @@
       "max": 8,
       "default": 1,
       "scope": "global",
-      "description": "The number of voices to play simultaneously for each note triggered."
+      "description": "The number of voices to play simultaneously for each note triggered.",
+      "type": "folder"
     },
     {
       "name": "Unison detune",
@@ -211,10 +204,7 @@
       "default": 10,
       "scope": "global",
       "description": "The detune amount when Unison is active.",
-      "type": "scaled",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "type": "folder"
     },
     {
       "name": "Sustain mode",
@@ -222,7 +212,8 @@
       "max": 1,
       "default": 0,
       "scope": "global",
-      "description": "The standard polysynth sustain mode parameter."
+      "description": "The standard polysynth sustain mode parameter. See above.",
+      "type": "folder"
     },
     {
       "name": "Press -> volume",
@@ -231,10 +222,7 @@
       "default": 0,
       "scope": "global",
       "description": "The amount by which pressure (per note for MPE) affects the note volume.",
-      "type": "scaled",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "type": "folder"
     },
     {
       "name": "MPE Y -> volume",
@@ -243,13 +231,14 @@
       "default": 0,
       "scope": "global",
       "description": "The amount by which the MPE Y dimension affects the note volume.",
-      "type": "scaled",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "type": "folder"
     }
   ],
   "input_ports": [
+    {
+      "name": "Audio input",
+      "description": "The first audio input bus."
+    },
     {
       "name": "Audio input",
       "description": "The first audio input bus."
@@ -258,7 +247,11 @@
   "output_ports": [
     {
       "name": "Output",
-      "description": "The filter’s (first) output bus."
+      "description": "The filter's (first) output bus."
+    },
+    {
+      "name": "Output",
+      "description": "The filter's (first) output bus."
     }
   ]
 }

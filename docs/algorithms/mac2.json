@@ -1,12 +1,20 @@
 {
   "guid": "mac2",
   "name": "Macro Oscillator 2",
-  "description": "This algorithm is an implementation of the open source Plaits module by Émilie Gillet. This implementation should behave and sound identical to the original. Any demos or tutorials you may find online should apply just as well to this version. This version of the disting NT firmware is based on v1.2 of the Plaits code.",
-  "categories": [
-    "Synthesis",
-    "Oscillator"
-  ],
   "short_description": "It's Plaits!",
+  "description": "This algorithm is an implementation of the open source Plaits module by Émilie Gillet. This implementation should behave and sound identical to the original. Any demos or tutorials you may find online should apply just as well to this version. The user manual for the original module is available online. The documentation below assumes some familiarity with this. This version of the disting NT firmware is based on v1.2 of the Plaits code. The original Plaits module made extensive use of detecting which inputs had jacks plugged in and adjusting its behaviour accordingly. For example, if nothing is plugged into the Trigger input, the envelope is not used and the module constantly emits sound. The disting NT has no way of knowing whether its sockets are connected or not, so this algorithm relies on the various 'input' settings being enabled or not. To take the same example, if the 'Trigger input' setting is set to 'None', the algorithm will generate constant sound; if the setting is something else, the algorithm assumes you're going to supply triggers on the input you choose. As on the original Plaits, there are two outputs, 'Main' and 'Aux'. If you select the same bus for both outputs they are mixed.",
+  "categories": [
+    "Oscillator",
+    "Synthesis"
+  ],
+  "use_cases": [
+    "General-purpose synthesis",
+    "Wavetable synthesis",
+    "FM synthesis",
+    "Additive synthesis",
+    "Noise generation"
+  ],
+  "specifications": [],
   "parameters": [
     {
       "name": "Model",
@@ -20,22 +28,18 @@
       "min": -60,
       "max": 60,
       "default": 0,
-      "description": "Coarse tuning control.",
       "type": "string",
-      "channelCountRef": "ST",
-      "is_common": false,
-      "is_bus": false
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "Fine tune",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Fine tuning control.",
       "type": "string",
-      "channelCountRef": "cents",
-      "is_common": false,
-      "is_bus": false
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "Harmonics",
@@ -49,11 +53,9 @@
       "min": 0,
       "max": 127,
       "default": 64,
-      "description": "Sets the timbre control.",
       "type": "string",
-      "channelCountRef": "Col5",
-      "is_common": false,
-      "is_bus": false
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "Morph",
@@ -67,33 +69,27 @@
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Sets the FM depth.",
       "type": "string",
-      "channelCountRef": "%",
-      "is_common": false,
-      "is_bus": false
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "Timbre mod",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Sets the timbre modulation depth.",
       "type": "string",
-      "channelCountRef": "%",
-      "is_common": false,
-      "is_bus": false
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "Morph mod",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Sets the morph modulation depth.",
       "type": "string",
-      "channelCountRef": "%",
-      "is_common": false,
-      "is_bus": false
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "Low-pass gate",
@@ -114,145 +110,111 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector."
+      "type": "string",
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "Main gain",
       "min": -40,
       "max": 6,
       "default": 0,
-      "description": "The level of the ‘Main’ output signal.",
       "type": "string",
-      "channelCountRef": "dB",
-      "is_common": false,
-      "is_bus": false
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "Aux gain",
       "min": -40,
       "max": 6,
       "default": 0,
-      "description": "The level of the ‘Aux’ output signal.",
       "type": "string",
-      "channelCountRef": "dB",
-      "is_common": false,
-      "is_bus": false
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "MIDI mode",
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "Controls the algorithm's response to MIDI.",
-      "enum_values": [
-        "Off",
-        "Pitch",
-        "Trigger",
-        "Pitch & trigger"
-      ]
+      "type": "string",
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "I2C mode",
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "Controls the algorithm's response to I2C.",
-      "enum_values": [
-        "Off",
-        "Pitch",
-        "Trigger",
-        "Pitch & trigger"
-      ]
+      "type": "string",
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "MIDI channel",
       "min": 0,
       "max": 16,
       "default": 1,
-      "description": "The MIDI channel to receive on."
+      "type": "string",
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "I2C channel",
       "min": 0,
       "max": 255,
       "default": 1,
-      "description": "The I2C channel to receive on."
+      "type": "string",
+      "is_common": true,
+      "is_bus": true
     }
   ],
   "input_ports": [
     {
       "name": "Trigger input",
-      "description": "Trigger input for envelope and note onset."
+      "description": ""
     },
     {
       "name": "Level input",
-      "description": "Level input for amplitude control."
+      "description": ""
     },
     {
       "name": "CV input",
-      "description": "Pitch CV input."
+      "description": ""
     },
     {
       "name": "FM input",
-      "description": "FM depth input."
+      "description": ""
     },
     {
       "name": "Harmonics input",
-      "description": "Harmonics control input."
+      "description": ""
     },
     {
       "name": "Timbre input",
-      "description": "Timbre control input."
+      "description": ""
     },
     {
       "name": "Morph input",
-      "description": "Morph control input."
-    },
-    {
-      "name": "Trigger input",
-      "description": "Selects which bus is used as the trigger input."
-    },
-    {
-      "name": "Level input",
-      "description": "Selects which bus is used as the level input."
-    },
-    {
-      "name": "CV input",
-      "description": "Selects which bus is used as the pitch CV input."
-    },
-    {
-      "name": "FM input",
-      "description": "Selects which bus is used as the FM input."
-    },
-    {
-      "name": "Harmonics input",
-      "description": "Selects which bus is used as the harmonics input."
-    },
-    {
-      "name": "Timbre input",
-      "description": "Selects which bus is used as the timbre input."
-    },
-    {
-      "name": "Morph input",
-      "description": "Selects which bus is used as the morph input."
+      "description": ""
     }
   ],
   "output_ports": [
     {
       "name": "Main",
-      "description": "Main output signal."
+      "description": "The main output signal."
     },
     {
       "name": "Aux",
-      "description": "Auxiliary output signal."
+      "description": "The auxiliary output signal."
     },
     {
       "name": "Main output",
-      "description": "The bus for the ‘Main’ output."
+      "description": ""
     },
     {
       "name": "Aux output",
-      "description": "The bus for the ‘Aux’ output."
+      "description": ""
     }
   ]
 }

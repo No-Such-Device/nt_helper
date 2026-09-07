@@ -1,12 +1,18 @@
 {
   "guid": "attn",
   "name": "Attenuverter",
-  "description": "This simple algorithm scales and offsets signals. It is probably most useful for CVs, but can be used for audio as well.\n\nThe signal is scaled and then offset i.e.\n\noutput = offset + ( input × scale )\n\nVarious offset parameters are provided, which might be useful in different scenarios – they are all simply added together.\n\nNote that it is valid to use this algorithm with no input bus selected, in which case the output is simply the offset voltage.",
-  "categories": [
-    "Utility",
-    "CV Processing"
-  ],
   "short_description": "Attenuates and offsets signals",
+  "description": "This simple algorithm scales and offsets signals. It is probably most useful for CVs, but can be used for audio as well.\n\nThe signal is scaled and then offset i.e.\n\noutput = offset + ( input × scale )\n\nVarious offset parameters are provided, which might be useful in different scenarios – they are all simply added together. Similarly, the linear scale and logarithmic gain are simply multiplied.\n\nNote that it is valid to use this algorithm with no input bus selected, in which case the output is simply the offset voltage.",
+  "categories": [
+    "CV",
+    "Signal Processing",
+    "Utility"
+  ],
+  "use_cases": [
+    "Scaling and offsetting CV signals",
+    "Audio level adjustment",
+    "Generating offset voltages without input"
+  ],
   "specifications": [
     {
       "name": "Channels",
@@ -34,55 +40,48 @@
       "min": -200.0,
       "max": 200.0,
       "default": 100.0,
-      "description": "Sets the channel scale.",
       "type": "scaled",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
-      "is_bus": false
+      "is_bus": true
+    },
+    {
+      "name": "Gain",
+      "min": -70.0,
+      "max": 6.0,
+      "default": 0.0,
+      "type": "scaled",
+      "is_bus": true
     },
     {
       "name": "Offset",
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
-      "description": "Sets the channel offset (Volts).",
       "type": "scaled",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
-      "is_bus": false
+      "is_bus": true
     },
     {
       "name": "Fine",
       "min": -1000,
       "max": 1000,
       "default": 0,
-      "description": "Sets the channel offset (millivolts).",
       "type": "scaled",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
-      "is_bus": false
+      "is_bus": true
     },
     {
       "name": "Octaves",
       "min": -10,
       "max": 10,
       "default": 0,
-      "description": "Sets the channel offset (whole Volts).",
       "type": "scaled",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
-      "is_bus": false
+      "is_bus": true
     },
     {
       "name": "Semitones",
       "min": -60,
       "max": 60,
       "default": 0,
-      "description": "Sets the channel offset (semitones i.e. 1/12th of a Volt).",
       "type": "scaled",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
-      "is_bus": false
+      "is_bus": true
     }
   ],
   "input_ports": [
@@ -94,7 +93,7 @@
   "output_ports": [
     {
       "name": "Output",
-      "description": "The output bus. If set to ‘None’, the input bus is used as output, and the mode is always ‘Replace’."
+      "description": "The output bus. If set to 'None', the input bus is used as output, and the mode is always 'Replace'."
     }
   ]
 }

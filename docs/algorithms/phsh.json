@@ -1,29 +1,20 @@
 {
   "guid": "phsh",
   "name": "Phase Shifter",
-  "description": "This algorithm is based on the Phase Shifter algorithm on the disting mk4. You may like to view the video on that algorithm, which is here https://www.youtube.com/watch?v=MKjDCUPGxvU. The algorithm is a phase shifter – it generates two outputs, one of which is in a fixed phase relationship to the other. Unlike the Phaser algorithm (see below), which is simply designed to create a swooshy sound, this algorithm is designed for mathematical accuracy, and can produce some interesting psycho-acoustic effects. It can also produce swooshy sounds.",
+  "short_description": "Shifts the phase of signals",
+  "description": "This algorithm is based on the Phase Shifter algorithm on the disting mk4. The algorithm is a phase shifter – it generates two outputs, one of which is in a fixed phase relationship to the other. Unlike the Phaser algorithm, which is simply designed to create a swooshy sound, this algorithm is designed for mathematical accuracy, and can produce some interesting psycho-acoustic effects. It can also produce swooshy sounds.",
   "categories": [
-    "Audio Effects",
+    "Effect",
+    "Phase",
     "Modulation"
   ],
-  "short_description": "Shifts the phase of signals",
   "parameters": [
     {
       "name": "Shift",
       "min": -360,
       "max": 360,
       "default": 0,
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
-    },
-    {
-      "name": "Shift",
-      "min": -360,
-      "max": 360,
-      "default": 0,
-      "description": "Sets the phase shift.",
-      "type": "string",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -31,8 +22,7 @@
       "min": 0,
       "max": 100,
       "default": 100,
-      "description": "The output wet/dry mix.",
-      "type": "string",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -40,8 +30,7 @@
       "min": -40,
       "max": 0,
       "default": 0,
-      "description": "The output gain applied to the effected signal.",
-      "type": "string",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -49,8 +38,7 @@
       "min": 1,
       "max": 8,
       "default": 1,
-      "description": "The number of busses to process, starting from the Input. For example, for a stereo signal, set this to 2.",
-      "type": "string",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -58,8 +46,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above for the unshifted output.",
-      "type": "string",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -67,8 +54,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above for the positive shifted output.",
-      "type": "string",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -76,19 +62,26 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above for the negative shifted output.",
-      "type": "string",
+      "type": "folder",
       "is_bus": false
     }
   ],
   "input_ports": [
     {
+      "name": "Input",
+      "description": "The first audio input bus."
+    },
+    {
       "name": "Shift input",
       "description": "The bus to use for the phase shift CV, scaled as 5V per 360°."
     },
     {
+      "name": "Shift input",
+      "description": ""
+    },
+    {
       "name": "Input",
-      "description": "The first audio input bus."
+      "description": ""
     }
   ],
   "output_ports": [
@@ -103,6 +96,18 @@
     {
       "name": "-ve shift output",
       "description": "The bus to use for the negative shifted output."
+    },
+    {
+      "name": "Unshifted output",
+      "description": ""
+    },
+    {
+      "name": "+ve shift output",
+      "description": ""
+    },
+    {
+      "name": "-ve shift output",
+      "description": ""
     }
   ]
 }

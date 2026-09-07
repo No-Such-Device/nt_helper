@@ -1,30 +1,34 @@
 {
   "guid": "vcop",
   "name": "VCO - Pulsar",
-  "description": "This algorithm based on the Pulsar VCO algorithm on the disting mk4. It is an implementation of pulsar synthesis, inspired by the description in Curtis Roads's book Microsound (MIT Press) pp137-157.\n\nIn pulsar synthesis, a small grain of sound (known as a pulsaret, typically a pulse or single cycle waveform) is repeated periodically, followed by a small section of silence. The length of the sound within the repeating period (equivalently, the speed at which it is played) offers a means of control the timbre without affecting the perceived pitch of the sound. By the same token, changing the fundamental pitch without changing the speed at which the grain of sound is played offers pitch change without simply shifting the entire spectrum up and down, an effect reminiscent of 'vocal' or 'formant' synthesis.\n\nThere are therefore two pitch inputs:\n- the fundamental frequency – the rate at which the pulsaret train is generated.\n- the formant frequency – the rate at which the pulsaret is played.\n\nIf the ‘Pitch mode’ parameter is ‘Independent’, these two pitches are completely independent. If the mode is ‘Tracking’, the fundamental pitch is added to the formant pitch, so so changing the fundamental frequency also changes the formant frequency.\n\nThis algorithm uses wavetables from the SD card as the source of the pulsarets.",
+  "short_description": "A pulsar VCO",
+  "description": "This algorithm based on the Pulsar VCO algorithm on the disting mk4. It is an implementation of pulsar synthesis, inspired by the description in Curtis Roads's book Microsound (MIT Press) pp137-157. In pulsar synthesis, a small grain of sound (known as a pulsaret, typically a pulse or single cycle waveform) is repeated periodically, followed by a small section of silence. The length of the sound within the repeating period (equivalently, the speed at which it is played) offers a means of control the timbre without affecting the perceived pitch of the sound. By the same token, changing the fundamental pitch without changing the speed at which the grain of sound is played offers pitch change without simply shifting the entire spectrum up and down, an effect reminiscent of 'vocal' or 'formant' synthesis. There are therefore two pitch inputs: the fundamental frequency – the rate at which the pulsaret train is generated, and the formant frequency – the rate at which the pulsaret is played. If the 'Pitch mode' parameter is 'Independent', these two pitches are completely independent. If the mode is 'Tracking', the fundamental pitch is added to the formant pitch, so changing the fundamental frequency also changes the formant frequency. This algorithm uses wavetables from the SD card as the source of the pulsarets. Masking removes pulsarets from the train. There are two modes: Stochastic – pulsarets are randomly masked. The likelihood of a pulsaret being masked is set by the Masking parameter. Burst – masking works in groups of pulsarets, the length of which is set by the Burst length parameter. The Masking parameter sets how many pulsarets within each group will be masked. There are two outputs from the algorithm – the inverse output will emit a pulsaret when the main output does not, and vice versa.",
   "categories": [
     "VCO",
-    "Pulsar Synthesis",
-    "Wavetable Synthesis"
+    "Oscillator",
+    "Pulsar Synthesis"
   ],
-  "short_description": "A pulsar VCO",
-  "gui_description": "The display shows a single cycle of the current waveform, and the VCO’s pitch as a MIDI note name plus cents and as a frequency in Hz. The wavetable waveform will be stretched or expanded according to the relative pitch of the VCO and the formant.",
-  "specifications": [],
+  "use_cases": [
+    "Pulsar synthesis",
+    "Formant-like pitch shifting",
+    "Timbre control without pitch shift",
+    "Grain-based sound generation"
+  ],
+  "gui_description": "The display shows a single cycle of the current waveform, and the VCO's pitch as a MIDI note name plus cents and as a frequency in Hz. The wavetable waveform will be stretched or expanded according to the relative pitch of the VCO and the formant.",
   "parameters": [
     {
       "name": "Wavetable",
       "min": 0,
-      "description": "Chooses the wavetable."
+      "default": 0,
+      "type": "enum",
+      "is_bus": false
     },
     {
       "name": "Wave offset",
       "min": -100.0,
       "max": 100.0,
       "default": 0.0,
-      "description": "Sets the position within the wavetable.",
-      "type": "string",
-      "channelCountRef": "unit",
-      "is_per_channel": false,
+      "type": "enum",
       "is_bus": false
     },
     {
@@ -32,45 +36,31 @@
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "Sets the window applied to the pulsarets: one of Rectangular, Linear attack, Linear decay, or Gaussian.",
-      "enum_values": [
-        "Rectangular",
-        "Linear attack",
-        "Linear decay",
-        "Gaussian"
-      ]
+      "type": "enum",
+      "is_bus": false
     },
     {
       "name": "Pitch mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets whether the formant frequency is independent of the fundamental frequency or linked.",
-      "enum_values": [
-        "Independent",
-        "Tracking"
-      ]
+      "type": "enum",
+      "is_bus": false
     },
     {
       "name": "Masking mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets the masking mode: Stochastic or Burst.",
-      "enum_values": [
-        "Stochastic",
-        "Burst"
-      ]
+      "type": "enum",
+      "is_bus": false
     },
     {
       "name": "Masking",
       "min": 0,
       "max": 100,
       "default": 0,
-      "description": "Sets the amount of masking.",
-      "type": "string",
-      "channelCountRef": "unit",
-      "is_per_channel": false,
+      "type": "enum",
       "is_bus": false
     },
     {
@@ -78,24 +68,23 @@
       "min": 2,
       "max": 100,
       "default": 2,
-      "description": "Sets the burst length, if the masking mode is Burst."
+      "type": "enum",
+      "is_bus": false
     },
     {
       "name": "Octave",
       "min": -16,
       "max": 8,
       "default": 0,
-      "description": "Adjusts the VCO tuning in octaves."
+      "type": "enum",
+      "is_bus": false
     },
     {
       "name": "Transpose",
       "min": -60,
       "max": 60,
       "default": 0,
-      "description": "Adjusts the VCO tuning in semitones.",
-      "type": "string",
-      "channelCountRef": "unit",
-      "is_per_channel": false,
+      "type": "enum",
       "is_bus": false
     },
     {
@@ -103,10 +92,7 @@
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Adjusts the VCO tuning in cents.",
-      "type": "string",
-      "channelCountRef": "unit",
-      "is_per_channel": false,
+      "type": "enum",
       "is_bus": false
     },
     {
@@ -114,10 +100,7 @@
       "min": 0.0,
       "max": 10.0,
       "default": 10.0,
-      "description": "Sets the amplitude of the output (before it’s affected by the gain).",
-      "type": "string",
-      "channelCountRef": "unit",
-      "is_per_channel": false,
+      "type": "enum",
       "is_bus": false
     },
     {
@@ -125,10 +108,7 @@
       "min": -40,
       "max": 6,
       "default": 0,
-      "description": "Sets the level of the output.",
-      "type": "string",
-      "channelCountRef": "unit",
-      "is_per_channel": false,
+      "type": "enum",
       "is_bus": false
     },
     {
@@ -136,40 +116,27 @@
       "min": 0,
       "max": 16,
       "default": 0,
-      "description": "If enabled, MIDI notes on the specified channel will set the pitch of the VCO."
+      "type": "enum",
+      "is_bus": false
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above for the main output."
+      "type": "enum",
+      "is_bus": false
     },
     {
       "name": "Inverse output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above for the inverse output."
+      "type": "enum",
+      "is_bus": false
     }
   ],
   "input_ports": [
-    {
-      "name": "Pitch input",
-      "description": "The fundamental frequency CV input (1V/octave)."
-    },
-    {
-      "name": "Formant input",
-      "description": "The formant frequency CV input (1V/octave)."
-    },
-    {
-      "name": "Wave input",
-      "description": "CV input to modulate the wave offset."
-    },
-    {
-      "name": "MIDI",
-      "description": "MIDI notes to set the pitch of the VCO."
-    },
     {
       "name": "Pitch input",
       "description": "The pitch CV input (1V/octave)."
@@ -181,24 +148,36 @@
     {
       "name": "Wave input",
       "description": "Sets an input bus to modulate the wave offset."
+    },
+    {
+      "name": "Pitch input",
+      "description": ""
+    },
+    {
+      "name": "Formant input",
+      "description": ""
+    },
+    {
+      "name": "Wave input",
+      "description": ""
     }
   ],
   "output_ports": [
     {
       "name": "Output",
-      "description": "The main audio output."
+      "description": "The main output bus."
     },
     {
       "name": "Inverse output",
-      "description": "The output bus with inverse masking (emits a pulsaret when the main output does not)."
+      "description": "The output bus with inverse masking – emits a pulsaret when the main output does not."
     },
     {
       "name": "Output",
-      "description": "The output bus."
+      "description": ""
     },
     {
       "name": "Inverse output",
-      "description": "The output bus with inverse masking."
+      "description": ""
     }
   ]
 }

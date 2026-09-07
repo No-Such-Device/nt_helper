@@ -1,12 +1,13 @@
 {
   "guid": "mifi",
   "name": "MIDI Filter",
+  "short_description": "Filters MIDI messages",
   "description": "This algorithm is unusual inasmuch as it neither processes nor generates audio or CVs. Instead it filters and/or modifies MIDI on its way to the algorithms in the preset.\n\nMuch like the way in which audio flows through the algorithms (via the busses) from top to bottom, any MIDI that the module receives is processed by the algorithms in order. This algorithm sits in the preset and affects the MIDI seen by the algorithms that follow it. (It has no affect on the MIDI seen by algorithms that precede it in the preset.)\n\nProcessing can be specified independently for each of the 16 MIDI channels. The various types of MIDI message (notes, controllers, etc.) can be passed through unaltered, suppressed (filtered out), or they may have their MIDI channel modified.",
   "categories": [
-    "MIDI Utility",
-    "Filtering"
+    "MIDI",
+    "Filter",
+    "Utility"
   ],
-  "short_description": "Filters MIDI messages",
   "parameters": [
     {
       "name": "Enable",

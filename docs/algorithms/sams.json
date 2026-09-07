@@ -1,18 +1,12 @@
 {
   "guid": "sams",
   "name": "Sample Player (Speed)",
+  "short_description": "Plays samples with speed/pitch control",
   "description": "This algorithm plays samples with flexible control over the playback speed, including the possibility of playing the sample backwards. It provides the features of a number of disting mk4 algorithms, including Audio Playback, Audio Playback with V/Oct, Audio Playback with Z Speed, and Audio Playback with Reverse.",
   "categories": [
     "Sample Playback",
-    "Audio Utility"
-  ],
-  "short_description": "Plays samples with speed/pitch control",
-  "specifications": [
-    {
-      "name": "Record time",
-      "value": "0-60 seconds",
-      "description": "The maximum length of audio that can be recorded (sampled)."
-    }
+    "Audio",
+    "Pitch Control"
   ],
   "parameters": [
     {
@@ -20,10 +14,7 @@
       "min": -200.0,
       "max": 200.0,
       "default": 100.0,
-      "description": "Sets the playback speed. Negative values play backwards.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -31,10 +22,7 @@
       "min": -60,
       "max": 60,
       "default": 0,
-      "description": "Transposes the playback speed in semitones.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -42,22 +30,24 @@
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Adjusts the playback speed in cents.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_common": false,
+      "type": "folder",
       "is_bus": false
     }
   ],
   "input_ports": [
     {
       "name": "Speed input",
-      "description": "The bus to use for speed control, scaled as 5V for 100%."
+      "description": ""
     },
     {
       "name": "Pitch input",
-      "description": "The bus to use for 1V/octave pitch control."
+      "description": ""
     }
   ],
-  "output_ports": []
+  "output_ports": [
+    {
+      "name": "Audio",
+      "description": "Sample playback audio output"
+    }
+  ]
 }

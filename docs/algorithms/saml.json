@@ -1,13 +1,19 @@
 {
   "guid": "saml",
   "name": "Sample Player (Sliced)",
-  "description": "This algorithm allows you to place a number of marker points on a sample, and conveniently trigger playback from the various marker points. It’s your go-to algorithm for breakbeat slicing.",
-  "categories": [
-    "Sample Playback",
-    "Slicing",
-    "Breakbeat"
-  ],
   "short_description": "Plays sliced samples",
+  "description": "This algorithm allows you to place a number of marker points on a sample, and conveniently trigger playback from the various marker points. It's your go-to algorithm for breakbeat slicing. Once the markers have been placed, the slices can be triggered either by MIDI notes or CV/gate. A trigger signal on the 'Advance input' will advance the 'Slice' parameter by one, looping back to 1 when it hits the value set by the 'Slices' parameter. If you give the algorithm a clock source and enable 'Auto trigger', it will automatically trigger the sample in a loop, triggering each slice at the appropriate time to match the sample length to the tempo.",
+  "categories": [
+    "Sample",
+    "Playback",
+    "Slicing"
+  ],
+  "use_cases": [
+    "Breakbeat slicing",
+    "Sliced sample playback",
+    "Step-sequenced sample triggering"
+  ],
+  "gui_description": "The display shows the sample waveform with the slices indicated as check marks above. The last triggered slice is shown as the large number bottom right. Above this is the sample length (in seconds), the sample length in bars at the current tempo, and the calculated number of bars that the sample will loop over, if a clock is supplied and 'Auto trigger' is enabled.",
   "specifications": [
     {
       "name": "Record time",
@@ -21,25 +27,35 @@
       "min": 1,
       "max": 24,
       "default": 1,
-      "description": "Offsets the choice of which slice to play. Provided as a convenience when triggering playback with the ‘Play’ parameter."
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Slices",
       "min": 1,
       "max": 24,
       "default": 24,
-      "description": "Sets the number of slices in use."
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Speed",
       "min": -200.0,
       "max": 200.0,
       "default": 100.0,
-      "description": "Sets the playback speed. Multiplied by the per-slice Speed parameter.",
-      "type": "string",
-      "channelCountRef": "percentage",
-      "is_per_channel": false,
-      "is_common": false,
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
       "is_bus": false
     },
     {
@@ -47,169 +63,201 @@
       "min": -60,
       "max": 60,
       "default": 0,
-      "description": "Transposes the playback speed in semitones (across all slices).",
-      "type": "string",
-      "channelCountRef": "semitones"
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Fine tune",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Adjusts the playback speed in cents (across all slices).",
-      "type": "string",
-      "channelCountRef": "cents"
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Stop at slice end",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "If enabled, playback will stop when it reaches the next slice. Otherwise, playback continues to the end of the sample."
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Detect transients",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "When this parameter changes from 0 to 1, it invokes the ‘Detect transients’ function exactly as if the user had selected it from the menu."
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Clock source",
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "Sets the clock source: ‘Off’, ‘External’, or ‘MIDI’.",
-      "enum_values": [
-        "Off",
-        "External",
-        "MIDI"
-      ]
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Auto trigger",
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "Sets whether the sample will automatically be triggered by the clock. This can be at a fixed interval, or set automatically by the length of the loop.",
-      "enum_values": [
-        "Off",
-        "Fixed",
-        "Auto"
-      ]
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Auto divisor",
       "min": 0,
       "max": 19,
       "default": 15,
-      "description": "Sets how often the sample will be triggered, if ‘Auto trigger’ is ‘Fixed’."
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Time sig num",
       "min": 1,
       "max": 99,
       "default": 4,
-      "description": "The time signature numerator."
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Time sig denom",
       "min": 0,
       "max": 4,
       "default": 2,
-      "description": "The time signature denominator: one of 1, 2, 4, 8, or 16.",
-      "enum_values": [
-        "1",
-        "2",
-        "4",
-        "8",
-        "16"
-      ]
-    },
-    {
-      "name": "MIDI base note",
-      "description": "Sets the MIDI note number for slice 1. Subsequent slices are triggered by the following MIDI notes."
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": false,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Coarse",
       "min": 0.0,
       "max": 100.0,
       "default": 0.0,
-      "description": "The coarse slice position, as a percentage of the sample length.",
-      "type": "string",
-      "channelCountRef": "percentage"
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": true,
+      "isCommon": false,
+      "is_bus": false
     },
     {
       "name": "Fine",
       "min": -500,
       "max": 500,
       "default": 0,
-      "description": "The fine slice position, in sample frames."
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": true,
+      "isCommon": false,
+      "is_bus": false
     },
     {
-      "name": "Slice Speed",
+      "name": "Speed",
       "min": -200.0,
       "max": 200.0,
       "default": 100.0,
-      "description": "The playback speed for the slice.",
-      "type": "string",
-      "channelCountRef": "percentage"
+      "scope": "sample rate",
+      "type": "enum",
+      "channelCountRef": "slice",
+      "isPerChannel": true,
+      "isCommon": false,
+      "is_bus": false
     }
   ],
   "input_ports": [
     {
       "name": "Slice input",
-      "description": "Pitch CV input (V/oct) to select a slice."
+      "description": "Pitch CV for slice selection (V/oct, scaled at one semitone per slice)"
     },
     {
       "name": "Trigger input",
-      "description": "Trigger or gate input to start playback of a slice."
+      "description": "Trigger or gate signal to trigger slice playback"
     },
     {
       "name": "Advance input",
-      "description": "Trigger signal to advance the Slice parameter by one."
+      "description": "Trigger to step through the slices"
     },
     {
       "name": "Reset input",
-      "description": "Trigger signal to return the Slice parameter to 1."
+      "description": "Trigger to reset to slice 1"
     },
     {
       "name": "Clock input",
-      "description": "Clock source input (24 ppqn)."
-    },
-    {
-      "name": "MIDI notes",
-      "description": "MIDI notes used to trigger specific slices based on the MIDI base note."
-    },
-    {
-      "name": "MIDI clock",
-      "description": "MIDI clock source for automatic triggering."
-    },
-    {
-      "name": "Slice input",
-      "description": "The bus to use for the slice CV input (V/oct, scaled at one semitone per slice)."
-    },
-    {
-      "name": "Clock input",
-      "description": "The bus to use for the clock input (24 ppqn)."
+      "description": "Clock input (24 ppqn)"
     },
     {
       "name": "Run/stop input",
-      "description": "The bus to use for the run/stop input."
+      "description": "Run/stop input"
+    },
+    {
+      "name": "Slice input",
+      "description": "",
+      "isPerChannel": false
+    },
+    {
+      "name": "Clock input",
+      "description": "",
+      "isPerChannel": false
+    },
+    {
+      "name": "Run/stop input",
+      "description": "",
+      "isPerChannel": false
     },
     {
       "name": "Advance input",
-      "description": "The bus to use for the advance input (to step through the slices)."
+      "description": "",
+      "isPerChannel": false
     },
     {
       "name": "Reset input",
-      "description": "The bus to use for the reset input (to reset to slice 1)."
+      "description": "",
+      "isPerChannel": false
     }
   ],
   "output_ports": [
     {
-      "name": "Audio Output",
-      "description": "The audio output of the sample player."
+      "name": "Audio output",
+      "description": "Sliced sample audio output"
     }
   ]
 }

@@ -1,12 +1,19 @@
 {
   "guid": "delf",
   "name": "Delayed Function",
-  "description": "This algorithm generates a variety of one-shot functions after a delay, when triggered. The logic of each channel is as follows:\n\n- When triggered, it immediately jumps to its idle voltage, if not already there.\n- It stays at that voltage for the duration set by the Delay parameter.\n- It then executes the function, for the duration set by the Time parameter, if relevant (for example, the Step function has no duration).\n- Depending on the function, it then remains at the active or idle voltage until triggered again.",
+  "short_description": "Generates functions after a delay",
+  "description": "This algorithm generates a variety of one-shot functions after a delay, when triggered. The logic of each channel is as follows: When triggered, it immediately jumps to its idle voltage, if not already there. It stays at that voltage for the duration set by the Delay parameter. It then executes the function, for the duration set by the Time parameter, if relevant (for example, the Step function has no duration). Depending on the function, it then remains at the active or idle voltage until triggered again.",
   "categories": [
     "Function Generator",
-    "Utility"
+    "Trigger",
+    "Delay"
   ],
-  "short_description": "Generates functions after a delay",
+  "use_cases": [
+    "Generating one-shot functions after a delay",
+    "Trigger-based pulse, step, ramp, and sawtooth generation",
+    "Creating delayed voltage transitions"
+  ],
+  "gui_description": "The display shows, for each channel, from top to bottom: The remaining time of the delay, once triggered. The remaining time of the function. The output function as a bar graph.",
   "specifications": [
     {
       "name": "Channels",
@@ -20,21 +27,29 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "If set, disables all channels."
+      "description": "If set, disables all channels.",
+      "type": "toggle",
+      "is_common": true
     },
     {
       "name": "Detection",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets the method of trigger detection, either ‘Efficient’ or ‘Accurate’."
+      "description": "Sets the method of trigger detection, either 'Efficient' or 'Accurate'.",
+      "type": "enum",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Enable",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables the channel."
+      "description": "Enables the channel.",
+      "type": "toggle",
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "Function",
@@ -42,19 +57,19 @@
       "max": 3,
       "default": 0,
       "description": "Chooses the function from the table above.",
-      "enum_values": [
-        "Pulse",
-        "Step",
-        "Ramp",
-        "Sawtooth"
-      ]
+      "type": "enum",
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "Delay",
       "min": 0,
       "max": 1000,
       "default": 0,
-      "description": "Sets the delay time."
+      "description": "Sets the delay time.",
+      "type": "folder",
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "Delay multiplier",
@@ -62,22 +77,19 @@
       "max": 6,
       "default": 0,
       "description": "Sets a multiplier for the delay time, one of x1, x2, x5, x10, x20, x50, or x100.",
-      "enum_values": [
-        "x1",
-        "x2",
-        "x5",
-        "x10",
-        "x20",
-        "x50",
-        "x100"
-      ]
+      "type": "enum",
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "Time",
       "min": 1,
       "max": 1000,
       "default": 100,
-      "description": "Sets the function duration."
+      "description": "Sets the function duration.",
+      "type": "folder",
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "Time multiplier",
@@ -85,25 +97,17 @@
       "max": 6,
       "default": 0,
       "description": "Sets a multiplier for the function duration, one of x1, x2, x5, x10, x20, x50, or x100.",
-      "enum_values": [
-        "x1",
-        "x2",
-        "x5",
-        "x10",
-        "x20",
-        "x50",
-        "x100"
-      ]
+      "type": "enum",
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "Active voltage",
       "min": -10.0,
       "max": 10.0,
       "default": 5.0,
-      "description": "Sets the channel’s active voltage.",
-      "type": "string",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
+      "description": "Sets the channel's active voltage.",
+      "type": "folder",
       "is_common": false,
       "is_bus": false
     },
@@ -112,10 +116,8 @@
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
-      "description": "Sets the channel’s idle voltage.",
-      "type": "string",
-      "channelCountRef": "per-channel",
-      "is_per_channel": true,
+      "description": "Sets the channel's idle voltage.",
+      "type": "folder",
       "is_common": false,
       "is_bus": false
     },
@@ -124,28 +126,40 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "description": "The standard Add/Replace mode selector as described above.",
+      "type": "enum",
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "MIDI channel",
       "min": 0,
       "max": 16,
       "default": 0,
-      "description": "The MIDI channel on which notes can trigger the function generator."
+      "description": "The MIDI channel on which notes can trigger the function generator.",
+      "type": "folder",
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "I2C channel",
       "min": 0,
       "max": 255,
       "default": 0,
-      "description": "The I2C channel on which notes can trigger the function generator."
+      "description": "The I2C channel on which notes can trigger the function generator.",
+      "type": "folder",
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "Note number",
       "min": -1,
       "max": 127,
       "default": -1,
-      "description": "The MIDI or I2C note number that will trigger the function generator, or ‘-1’ for ‘Any’."
+      "description": "The MIDI or I2C note number that will trigger the function generator, or '-1' for 'Any'.",
+      "type": "folder",
+      "is_common": false,
+      "is_bus": false
     }
   ],
   "input_ports": [
@@ -155,10 +169,6 @@
     }
   ],
   "output_ports": [
-    {
-      "name": "Output",
-      "description": "The channel output signal."
-    },
     {
       "name": "Output",
       "description": "The bus to use for the channel output."

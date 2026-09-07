@@ -1,13 +1,20 @@
 {
   "guid": "lisp",
   "name": "Little Spacey",
-  "description": "This algorithm is a version of the Expert Sleepers VST plug-in of the same name. Little Spacey is delay effect, inspired by classic analogue ‘bucket brigade’ delays but with refinements only possible in the digital arena – not to mention a maximum delay time that would cost a small fortune to realise in hardware. Great care has been taken to give Little Spacey the smooth, creamy sound which makes analogue delays still popular today. In common with the best analogue delays Little Spacey allows you to modulate the delay time for chorus or vibrato effects. Unlike most analogue delays, Little Spacey is not restricted to mono operation, and works well in stereo settings, offering variation of the effect between the channels for particularly rich and involving sounds. Unlike the VST version, this implementation also allow the delay time to be synchronised to clocks (analogue or MIDI).",
+  "short_description": "A bucket-brigade delay effect",
+  "description": "This algorithm is a version of the Expert Sleepers VST plug-in of the same name. Little Spacey is a delay effect, inspired by classic analogue 'bucket brigade' delays but with refinements only possible in the digital arena – not to mention a maximum delay time that would cost a small fortune to realise in hardware. Great care has been taken to give Little Spacey the smooth, creamy sound which makes analogue delays still popular today. In common with the best analogue delays Little Spacey allows you to modulate the delay time for chorus or vibrato effects. Unlike most analogue delays, Little Spacey is not restricted to mono operation, and works well in stereo settings, offering variation of the effect between the channels for particularly rich and involving sounds. Unlike the VST version, this implementation also allows the delay time to be synchronised to clocks (analogue or MIDI). In common with all 'bucket brigade' designs, Little Spacey uses filters either side of the delay to remove aliasing and clock noise. The Path setting lets you control whether the feedback goes around the full signal path (including the filters) or just around the delay itself (not the filters). In practice this means that the 'inner' path gives a relatively bright delay while the 'outer' path tends to lose the top end off the delays much more quickly. Settings between 'inner' and 'outer' simply use a mixture of both feedback paths. LFO 1 modulates the delay time. LFO 2 modulates the depth of LFO 1. Regarding 'Spread' – at 0%, the LFOs are in phase i.e. the same modulation is applied to each channel. At 50% the LFOs are exactly out of phase i.e the LFO for the left channel is at its maximum when the LFO for the right channel is at its minimum. This is useful for creating 'wide'-sounding effects from mono sources.",
   "categories": [
     "Delay",
     "Modulation",
     "Stereo"
   ],
-  "short_description": "A bucket-brigade delay effect",
+  "use_cases": [
+    "Bucket brigade delay",
+    "Chorus",
+    "Vibrato",
+    "Stereo widening",
+    "Analogue-style delay"
+  ],
   "gui_description": "The display simply shows the current delay time, taking into account any clock syncing, and the limits on the delay time imposed by the currently selected BBD size.",
   "specifications": [
     {
@@ -28,184 +35,192 @@
       "min": 0.0,
       "max": 100.0,
       "default": 50.0,
-      "description": "Sets the delay time, between the minimum and maximum times determined from the BBD size and the current sample rate.",
-      "type": "string",
-      "channelCountRef": "stereo",
-      "is_bus": true
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Spread",
       "min": 0,
       "max": 100,
       "default": 0,
-      "description": "Sets the difference in delay times between the left and right channels. At 0%, the two channels have the same delay time.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Colour",
       "min": 0,
       "max": 100,
       "default": 0,
-      "description": "Allows you to lower the cut-off frequencies of the low pass filters, resulting in delays that lose more of their high frequency components.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Feedback",
       "min": 0.0,
       "max": 110.0,
       "default": 0.0,
-      "description": "Sets the amount of the delayed signal that gets routed back to the input of the delay, causing repeated echoes. Note that the control goes up to 110%. Settings above 100% cause ‘positive feedback’ i.e. the delays get louder over time.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Feedback path",
       "min": 0,
       "max": 100,
       "default": 0,
-      "description": "Sets the feedback path, as described above.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
+    },
+    {
+      "name": "Filter mode",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Mix",
       "min": 0,
       "max": 100,
       "default": 100,
-      "description": "The wet/dry mix.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Level",
       "min": -40,
       "max": 0,
       "default": 0,
-      "description": "The gain applied to the delay/wet signal.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Dry mix",
       "min": 0,
       "max": 100,
       "default": 0,
-      "description": "Controls whether the ‘dry’ output is indeed the true dry sound or a filtered version. The filtered version can be useful when using fairly ‘dark’-sounding delays to match the dry sound more closely to the delayed sound.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "LFO 1 Speed",
       "min": 0,
       "max": 1000,
       "default": 700,
-      "description": "The LFO speed. Exponential scale from 0.05Hz to 20Hz."
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "LFO 1 Depth",
       "min": 0,
       "max": 100,
       "default": 0,
-      "description": "The LFO depth.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "LFO 1 Spread",
       "min": 0,
       "max": 100,
       "default": 0,
-      "description": "Varies the phase of the LFO applied to each (stereo) channel.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "LFO 2 Speed",
       "min": 0,
       "max": 1000,
       "default": 700,
-      "description": "The LFO speed. Exponential scale from 0.05Hz to 20Hz."
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "LFO 2 Depth",
       "min": 0,
       "max": 100,
       "default": 0,
-      "description": "The LFO depth.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "LFO 2 Spread",
       "min": 0,
       "max": 100,
       "default": 0,
-      "description": "Varies the phase of the LFO applied to each (stereo) channel.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Ducking",
       "min": 0,
       "max": 40,
       "default": 0,
-      "description": "Reduces the level of the delays when the signal level is high. This is typically used to let the initial note ‘cut through’ the delays, with the delays then fading up during the note’s decay tails.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Env->LFO 1 Speed",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Sets the amount by which the envelope modifies the modulation speed. Positive settings cause the modulation to speed up when the sound is louder; negative settings cause the modulation to slow down when the sound is louder.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Env->LFO 1 Depth",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Sets the amount by which the envelope modifies the modulation depth. Positive settings cause the modulation depth to increase when the sound is louder; negative settings cause the modulation depth to decrease when the sound is louder.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Env->LFO 1 Spread",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Sets the amount by which the envelope modifies the modulation LFO’s spread.",
-      "type": "string"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Clock source",
       "min": 0,
       "max": 2,
       "default": 1,
-      "description": "Chooses the clock source: ‘None’, ‘Clock input’, or ‘MIDI clock’.",
-      "enum_values": [
-        "None",
-        "Clock input",
-        "MIDI clock"
-      ]
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "MIDI divisor",
       "min": 0,
       "max": 19,
       "default": 9,
-      "description": "The MIDI divisor, if the clock source is ‘MIDI clock’."
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "MIDI numerator",
       "min": 1,
       "max": 16,
       "default": 1,
-      "description": "The MIDI numerator, if the clock source is ‘MIDI clock’."
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Delay multiplier",
       "min": 0,
       "max": 23,
       "default": 15,
-      "description": "A delay multiplier, if the clock source is not ‘None’."
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "type": "folder",
+      "is_bus": false
     }
   ],
   "input_ports": [
@@ -219,7 +234,7 @@
     },
     {
       "name": "Clock input",
-      "description": "The input bus to use for the clock, if the source is ‘Clock input’."
+      "description": ""
     }
   ],
   "output_ports": [

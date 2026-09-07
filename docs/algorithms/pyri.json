@@ -1,13 +1,18 @@
 {
   "guid": "pyri",
   "name": "Poly Resonator",
-  "description": "This algorithm is a polysynth where each voice is essentially a Rings (the open source Rings module by Émilie Gillet). Rings itself does support a kind of polyphony, but it’s limited by having a single pitch and gate input - it’s very much designed so that only one note is triggered at a time. This algorithm gives you a full Rings implementation for each voice, with the convenience of shared parameter control.",
-  "categories": [
-    "Polysynth",
-    "Resonator",
-    "Synthesis"
-  ],
   "short_description": "It's lots of Rings!",
+  "description": "This algorithm is a polysynth where each voice is essentially a Rings (the open source Rings module by Émilie Gillet). Rings itself does support a kind of polyphony, but it's limited by having a single pitch and gate input - it's very much designed so that only one note is triggered at a time. This algorithm gives you a full Rings implementation for each voice, with the convenience of shared parameter control. Rings has a hidden internal parameter called 'resolution'. Essentially, it's the number of resonator building blocks that contribute to the overall sound. A Rings with no polyphony uses a resolution of 64; when you turn on polyphony, that 64 is divided by the number of voices e.g. if the polyphony is 4, each voice has a resolution of 16. This keeps the CPU load roughly constant. This algorithm allows you to control the resolution manually, so you can choose both the sound that you want and its CPU cost. It defaults to 16, so it sounds the same as a Rings set to 4 voice polyphony.",
+  "categories": [
+    "Synth",
+    "Effect",
+    "Resonator"
+  ],
+  "use_cases": [
+    "Polyphonic resonator synthesis",
+    "Audio effect processing with resonators",
+    "MPE expressive performance"
+  ],
   "gui_description": "The display shows the notes being played by the various voices. Note that Rings voices never really end – in theory they decay forever.",
   "specifications": [
     {
@@ -36,252 +41,268 @@
       "min": -36,
       "max": 24,
       "default": 0,
-      "description": "Provides a coarse tuning control.",
-      "type": "string",
-      "channelCountRef": "ST"
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Fine tune",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Provides a fine tuning control.",
-      "type": "string",
-      "channelCountRef": "cents"
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Resolution",
       "min": 8,
       "max": 64,
       "default": 16,
-      "description": "Sets the resolution of the resonators. This controls the number of resonator building blocks that contribute to the overall sound and affects CPU load."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Structure",
       "min": 0,
       "max": 127,
       "default": 64,
-      "description": "Controls the resonator 'structure'."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Brightness",
       "min": 0,
       "max": 127,
       "default": 64,
-      "description": "Controls the resonator 'brightness'."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Damping",
       "min": 0,
       "max": 127,
       "default": 64,
-      "description": "Controls the resonator 'damping'."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Position",
       "min": 0,
       "max": 127,
       "default": 64,
-      "description": "Controls the resonator 'position'."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Chord",
       "min": 0,
       "max": 10,
       "default": 0,
-      "description": "Chooses the chord to use for resonator modes that use one. In the original, set from the Structure knob."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Noise gate",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "Enables a noise gate on the audio input. Always enabled in the original Rings."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Input gain",
       "min": -40,
       "max": 12,
       "default": 0,
-      "description": "A gain applied to the input audio, before it hits the resonator.",
-      "type": "string",
-      "channelCountRef": "dB"
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Odd output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The Add/Replace mode for the Odd output."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Even output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The Add/Replace mode for the Even output."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Output gain",
       "min": -40,
       "max": 12,
       "default": 0,
-      "description": "The output level (of both the Odd and Even outputs).",
-      "type": "string",
-      "channelCountRef": "dB"
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Dry gain",
       "min": -40,
       "max": 12,
       "default": -40,
-      "description": "The level of the input audio mixed into the output(s).",
-      "type": "string",
-      "channelCountRef": "dB"
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "MIDI channel",
       "min": 0,
       "max": 16,
       "default": 1,
-      "description": "The MIDI channel to listen on."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "MPE channels",
       "min": 1,
       "max": 16,
       "default": 1,
-      "description": "Controls how the algorithm will respond to MPE."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "I2C channel",
       "min": 0,
       "max": 255,
       "default": 1,
-      "description": "Sets the I2C channel."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Bend range",
       "min": 0,
       "max": 48,
       "default": 2,
-      "description": "The MIDI pitch bend range."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Sustain mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard polysynth sustain mode parameter."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Sustain",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Directly controls the sustain (like a MIDI sustain pedal)."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Press -> volume",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "The amount by which pressure (per note for MPE) affects the note volume.",
-      "type": "string",
-      "channelCountRef": "%"
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Press -> structure",
       "min": -127,
       "max": 127,
       "default": 0,
-      "description": "The amount by which pressure (per note for MPE) affects the structure."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Press -> brightness",
       "min": -127,
       "max": 127,
       "default": 0,
-      "description": "The amount by which pressure (per note for MPE) affects the brightness."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Press -> damping",
       "min": -127,
       "max": 127,
       "default": 0,
-      "description": "The amount by which pressure (per note for MPE) affects the damping."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "Press -> position",
       "min": -127,
       "max": 127,
       "default": 0,
-      "description": "The amount by which pressure (per note for MPE) affects the position."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "MPE Y -> volume",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "The amount by which the MPE Y dimension affects the note volume.",
-      "type": "string",
-      "channelCountRef": "%"
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "MPE Y -> structure",
       "min": -127,
       "max": 127,
       "default": 0,
-      "description": "The amount by which the MPE Y dimension affects the structure."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "MPE Y -> brightness",
       "min": -127,
       "max": 127,
       "default": 0,
-      "description": "The amount by which the MPE Y dimension affects the brightness."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "MPE Y -> damping",
       "min": -127,
       "max": 127,
       "default": 0,
-      "description": "The amount by which the MPE Y dimension affects the damping."
+      "type": "toggle",
+      "is_bus": false
     },
     {
       "name": "MPE Y -> position",
       "min": -127,
       "max": 127,
       "default": 0,
-      "description": "The amount by which the MPE Y dimension affects the position."
+      "type": "toggle",
+      "is_bus": false
     }
   ],
   "input_ports": [
     {
       "name": "Audio input",
-      "description": "Audio signal input for the resonator."
+      "description": "The audio input to the resonator."
     },
     {
       "name": "Audio input",
-      "description": "Chooses which input bus to use for the audio input."
+      "description": ""
     }
   ],
   "output_ports": [
     {
       "name": "Odd output",
-      "description": "The Odd output signal."
+      "description": "The Odd output of the resonator."
     },
     {
       "name": "Even output",
-      "description": "The Even output signal."
+      "description": "The Even output of the resonator."
     },
     {
       "name": "Odd output",
-      "description": "The bus to use for the Odd output."
+      "description": ""
     },
     {
       "name": "Even output",
-      "description": "The bus to use for the Even output."
+      "description": ""
     }
   ]
 }

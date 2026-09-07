@@ -1,43 +1,48 @@
 {
   "guid": "spal",
   "name": "Spectrum Analyzer",
+  "short_description": "Displays the frequency spectrum of a signal",
   "description": "This algorithm implements a simple but useful spectrum analyser.",
   "categories": [
     "Analysis",
     "Visualization"
   ],
-  "short_description": "Displays the frequency spectrum of a signal",
-  "gui_description": "The display shows the frequency spectrum of the input signal, according to the display mode.",
-  "specifications": [
+  "parameters": [
     {
       "name": "FFT size",
-      "value": "8-12",
+      "min": 8,
+      "max": 12,
       "description": "The size of the analysis FFT."
-    }
-  ],
-  "parameters": [
+    },
     {
       "name": "Draw mode",
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "Sets the draw mode – Lines (continuous), Lines (vertical), or Points."
+      "description": "Sets the draw mode – Lines (continuous), Lines (vertical), or Points.",
+      "enum_values": [
+        "Lines (continuous)",
+        "Lines (vertical)",
+        "Points"
+      ]
     },
     {
       "name": "X axis",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "Sets whether the X axis is linear or logarithmic."
+      "description": "Sets whether the X axis is linear or logarithmic.",
+      "enum_values": [
+        "Linear",
+        "Logarithmic"
+      ]
     },
     {
       "name": "Min dB",
       "min": -140,
       "max": 0,
       "default": -140,
-      "description": "Sets the lower bound of the Y axis.",
-      "type": "string",
-      "channelCountRef": "dB",
+      "type": "scaled",
       "is_bus": false
     },
     {
@@ -45,9 +50,7 @@
       "min": -140,
       "max": 0,
       "default": -12,
-      "description": "Sets the upper bound of the Y axis.",
-      "type": "string",
-      "channelCountRef": "dB",
+      "type": "scaled",
       "is_bus": false
     }
   ],
@@ -61,5 +64,10 @@
       "description": "The right input audio bus (simply summed with the left bus, if provided)."
     }
   ],
-  "output_ports": []
+  "output_ports": [
+    {
+      "name": "Output",
+      "description": "Spectrum analyzer output (visualization)"
+    }
+  ]
 }

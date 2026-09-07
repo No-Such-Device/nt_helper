@@ -1,13 +1,19 @@
 {
   "guid": "resn",
   "name": "Resonator",
-  "description": "This algorithm is an implementation of the open source Rings module by Émilie Gillet. It can be played via MIDI or I2C, or simply via CV/gate as the original. Any demos or tutorials you may find online should apply just as well to this implementation. The user manual for the original module is here. The documentation below assumes some familiarity with this.",
+  "short_description": "It's Rings!",
+  "description": "This algorithm is an implementation of the open source Rings module by Émilie Gillet. It can be played via MIDI or I2C, or simply via CV/gate as the original. Any demos or tutorials you may find online should apply just as well to this implementation. The Disting NT has no way of knowing whether its sockets are connected or not, so this algorithm relies on the various 'input' parameters being enabled or not. To take the same example, if the 'Strum input' parameter is set to 'None', the algorithm will generate its own strums; if the parameter is something else, the algorithm assumes you're going to supply strums on the input you choose.",
   "categories": [
-    "Synthesis",
-    "Physical Modeling",
+    "Resonator",
+    "Synth",
     "Effects"
   ],
-  "short_description": "It's Rings!",
+  "use_cases": [
+    "Resonator effects on audio input",
+    "Synth voice with resonator modes",
+    "MIDI or I2C controlled resonator",
+    "CV/gate controlled resonator"
+  ],
   "specifications": [],
   "parameters": [
     {
@@ -36,18 +42,18 @@
       "min": -36,
       "max": 24,
       "default": 0,
-      "description": "Provides a coarse tuning control.",
       "type": "string",
-      "channelCountRef": "ST"
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Fine tune",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Provides a fine tuning control.",
       "type": "string",
-      "channelCountRef": "cents"
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Structure",
@@ -61,9 +67,7 @@
       "min": 0,
       "max": 127,
       "default": 64,
-      "description": "Controls the resonator 'brightness'.",
-      "type": "string",
-      "channelCountRef": "Col5"
+      "description": "Controls the resonator 'brightness'."
     },
     {
       "name": "Damping",
@@ -98,9 +102,9 @@
       "min": -40,
       "max": 12,
       "default": 0,
-      "description": "A gain applied to the input audio, before it hits the resonator.",
       "type": "string",
-      "channelCountRef": "dB"
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Odd output mode",
@@ -121,44 +125,32 @@
       "min": -40,
       "max": 12,
       "default": 0,
-      "description": "The output level (of both the Odd and Even outputs).",
       "type": "string",
-      "channelCountRef": "dB"
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Dry gain",
       "min": -40,
       "max": 12,
       "default": -40,
-      "description": "The level of the input audio mixed into the output(s).",
       "type": "string",
-      "channelCountRef": "dB"
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "MIDI mode",
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "Controls the algorithm's response to MIDI.",
-      "enum_values": [
-        "Off",
-        "Pitch",
-        "Strum",
-        "Pitch & strum"
-      ]
+      "description": "Controls the algorithm's response to MIDI. Options: Off, Pitch, Strum, Pitch & strum."
     },
     {
       "name": "I2C mode",
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "Controls the algorithm's response to I2C.",
-      "enum_values": [
-        "Off",
-        "Pitch",
-        "Strum",
-        "Pitch & strum"
-      ]
+      "description": "Controls the algorithm's response to I2C. Options: Off, Pitch, Strum, Pitch & strum."
     },
     {
       "name": "MIDI channel",
@@ -178,85 +170,85 @@
   "input_ports": [
     {
       "name": "Strum",
-      "description": "Input for triggering strums."
+      "description": "CV input for strumming"
     },
     {
       "name": "V/Oct",
-      "description": "Input for V/octave pitch CV."
+      "description": "CV input for pitch"
     },
     {
       "name": "Audio",
-      "description": "Audio input for processing."
+      "description": "Audio input to the resonator"
     },
     {
       "name": "Brightness",
-      "description": "Input for controlling resonator brightness."
+      "description": "CV input for brightness control"
     },
     {
       "name": "Frequency",
-      "description": "Input for controlling resonator frequency."
+      "description": "CV input for frequency control"
     },
     {
       "name": "Damping",
-      "description": "Input for controlling resonator damping."
+      "description": "CV input for damping control"
     },
     {
       "name": "Structure",
-      "description": "Input for controlling resonator structure."
+      "description": "CV input for structure control"
     },
     {
       "name": "Position",
-      "description": "Input for controlling resonator position."
+      "description": "CV input for position control"
     },
     {
       "name": "Strum input",
-      "description": "Chooses which input bus to use for 'strum'."
+      "description": ""
     },
     {
       "name": "V/Oct input",
-      "description": "Chooses which input bus to use for the V/octave pitch CV."
+      "description": ""
     },
     {
       "name": "Audio input",
-      "description": "Chooses which input bus to use for the audio input."
+      "description": ""
     },
     {
       "name": "Brightness input",
-      "description": "Chooses which input bus to use for 'brightness'."
+      "description": ""
     },
     {
       "name": "Frequency input",
-      "description": "Chooses which input bus to use for 'frequency'."
+      "description": ""
     },
     {
       "name": "Damping input",
-      "description": "Chooses which input bus to use for 'damping'."
+      "description": ""
     },
     {
       "name": "Structure input",
-      "description": "Chooses which input bus to use for 'structure'."
+      "description": ""
     },
     {
       "name": "Position input",
-      "description": "Chooses which input bus to use for 'position'."
+      "description": ""
     }
   ],
   "output_ports": [
     {
+      "name": "Odd",
+      "description": "Odd output of the resonator"
+    },
+    {
+      "name": "Even",
+      "description": "Even output of the resonator"
+    },
+    {
       "name": "Odd output",
-      "description": "The odd-numbered output signal."
+      "description": ""
     },
     {
       "name": "Even output",
-      "description": "The even-numbered output signal."
-    },
-    {
-      "name": "Odd output",
-      "description": "The bus to use for the Odd output."
-    },
-    {
-      "name": "Even output",
-      "description": "The bus to use for the Even output."
+      "description": ""
     }
   ]
 }

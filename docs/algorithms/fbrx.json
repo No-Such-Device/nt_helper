@@ -1,33 +1,28 @@
 {
   "guid": "fbrx",
   "name": "Feedback Receive/Send",
-  "description": "These two algorithms are taken together, as they are two parts of a mechanism to introduce feedback into presets. Though perhaps they are misnamed – they can just as easily feed forward. Think of them as two ends of a teleport/hyperspace tunnel – what goes in one end (the send) comes out of the other (the receive). If the receive is placed above the send in the preset you have feedback; if the receive is placed after the send, you have a way of teleporting busses past a section of the preset.\n\nBoth algorithms have an ‘Identifier’ parameter. This allows the system to match up send/receive pairs if there is more than one.\n\nThe send and receive can process a number of channels, according to the specifications. If these don’t match, the smaller number of channels will be processed.\n\nBe careful when setting up feedback loops. There’s a reason that the receive’s gain parameter defaults to fully silent. Raise this with caution.",
+  "short_description": "Receive/send for internal feedback loop",
+  "description": "These two algorithms are taken together, as they are two parts of a mechanism to introduce feedback into presets. Though perhaps they are misnamed – they can just as easily feed forward. Think of them as two ends of a teleport/hyperspace tunnel – what goes in one end (the send) comes out of the other (the receive). If the receive is placed above the send in the preset you have feedback; if the receive is placed after the send, you have a way of teleporting busses past a section of the preset.\n\nBoth algorithms have an 'Identifier' parameter. This allows the system to match up send/receive pairs if there is more than one.\n\nThe send and receive can process a number of channels, according to the specifications. If these don't match, the smaller number of channels will be processed.\n\nBe careful when setting up feedback loops. There's a reason that the receive's gain parameter defaults to fully silent. Raise this with caution.",
   "categories": [
     "Routing",
-    "Feedback"
-  ],
-  "short_description": "Receive/send for internal feedback loop",
-  "specifications": [
-    {
-      "name": "Channels",
-      "value": "1-8",
-      "description": "The number of busses to receive/send."
-    }
+    "Utility"
   ],
   "parameters": [
     {
-      "name": "Identifier (Receive)",
+      "name": "Identifier",
       "min": 1,
       "max": 32,
       "default": 1,
-      "description": "An identifier to match up the receive with a send."
+      "description": "An identifier to match up the receive with a send.",
+      "type": "enum"
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "description": "The standard Add/Replace mode selector as described above.",
+      "type": "enum"
     },
     {
       "name": "Gain",
@@ -35,24 +30,22 @@
       "max": 24.0,
       "default": -40.0,
       "description": "The gain applied to the received signal.",
-      "type": "folder",
-      "channelCountRef": "Channels",
-      "is_per_channel": true,
-      "is_common": false,
-      "is_bus": false
+      "type": "enum"
     },
     {
       "name": "Identifier (Send)",
       "min": 1,
       "max": 32,
       "default": 1,
-      "description": "An identifier to match up the send with a receive."
+      "description": "An identifier to match up the send with a receive.",
+      "type": "enum"
     },
     {
       "name": "Enable",
       "min": 0,
       "max": 1,
-      "description": "Enables or disables the channel."
+      "description": "Enables or disables the channel.",
+      "type": "enum"
     }
   ],
   "input_ports": [

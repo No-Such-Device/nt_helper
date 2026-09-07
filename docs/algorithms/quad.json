@@ -1,245 +1,41 @@
 {
   "guid": "quad",
   "name": "Quadraphonic Mixer",
-  "description": "This algorithm is based on the disting EX algorithm of the same name. It is a quadraphonic mixer – that is, it has four outputs for four speakers, rather than the usual two for a stereo mixer. The algorithm provides two means to perform that classic quadraphonic trick, spinning the audio around the audience. Each channel has a Spinner and an Orbiter. The spinner internally modulates the Angle parameter and only works if the channel is using polar coordinates, spinning the position around the centre. The orbiter spins the audio position around the nominal position set by the coordinates and works in both polar and rectangular coordinate modes.",
+  "short_description": "A quadraphonic mixer",
+  "description": "This algorithm is based on the disting EX algorithm of the same name. It is a quadraphonic mixer – that is, it has four outputs for four speakers, rather than the usual two for a stereo mixer. The algorithm provides two means to perform that classic quadraphonic trick, spinning the audio around the audience. Each channel has a Spinner and an Orbiter. By default, each channel uses its own, but you can set it up to share spinners and orbiters between channels. The spinner internally modulates the Angle parameter; it only works if the channel is using polar coordinates. Therefore it spins the position around the centre. The orbiter is what was called the spinner in the disting EX version. It spins the audio position around the nominal position set by the coordinates; it therefore works in both polar and rectangular coordinate modes.",
   "categories": [
     "Mixer",
     "Spatial Audio",
     "Quadraphonic"
   ],
-  "short_description": "A quadraphonic mixer",
+  "use_cases": [
+    "Quadraphonic audio mixing",
+    "Spatial audio positioning",
+    "Spinning audio around an audience",
+    "Multi-speaker audio routing"
+  ],
+  "gui_description": "When on the common parameters page, the GUI shows a mixer view similar to that of the Mixer Stereo algorithm, though with four outputs. When viewing the parameters of a channel, a graphical view is shown representing the channel position in the quadraphonic field.",
   "specifications": [
     {
       "name": "Channels",
-      "value": "1-12",
-      "description": "The number of mixer channels."
-    }
-  ],
-  "parameters": [
-    {
-      "name": "Output mode",
-      "min": 0,
-      "max": 1,
-      "default": 0,
-      "description": "The standard Add/Replace mode selector as described above, for all outputs."
-    },
-    {
-      "name": "Overall gain",
-      "min": -70.0,
-      "max": -12.0,
-      "default": 0.0,
-      "description": "An overall gain control; combines with the front and rear gain controls.",
-      "type": "folder",
-      "channelCountRef": "common",
-      "is_common": true,
-      "is_bus": false
-    },
-    {
-      "name": "Front gain",
-      "min": -70.0,
-      "max": -12.0,
-      "default": 0.0,
-      "description": "A gain control for the front speakers.",
-      "type": "folder",
-      "channelCountRef": "common",
-      "is_common": true,
-      "is_bus": false
-    },
-    {
-      "name": "Rear gain",
-      "min": -70.0,
-      "max": -12.0,
-      "default": 0.0,
-      "description": "A gain control for the rear speakers.",
-      "type": "folder",
-      "channelCountRef": "common",
-      "is_common": true,
-      "is_bus": false
-    },
-    {
-      "name": "Front bass",
-      "min": -24.0,
-      "max": 24.0,
-      "default": 0.0,
-      "description": "A shelving cut/boost bass tone control for the front speakers.",
-      "type": "folder",
-      "channelCountRef": "common",
-      "is_common": true,
-      "is_bus": false
-    },
-    {
-      "name": "Front treble",
-      "min": -24.0,
-      "max": 24.0,
-      "default": 0.0,
-      "description": "A shelving cut/boost treble tone control for the front speakers.",
-      "type": "folder",
-      "channelCountRef": "common",
-      "is_common": true,
-      "is_bus": false
-    },
-    {
-      "name": "Rear bass",
-      "min": -24.0,
-      "max": 24.0,
-      "default": 0.0,
-      "description": "A shelving cut/boost bass tone control for the rear speakers.",
-      "type": "folder",
-      "channelCountRef": "common",
-      "is_common": true,
-      "is_bus": false
-    },
-    {
-      "name": "Rear treble",
-      "min": -24.0,
-      "max": 24.0,
-      "default": 0.0,
-      "description": "A shelving cut/boost treble tone control for the rear speakers.",
-      "type": "folder",
-      "channelCountRef": "common",
-      "is_common": true,
-      "is_bus": false
-    },
-    {
-      "name": "Gain",
-      "min": -70.0,
-      "max": 6.0,
-      "default": -70.0,
-      "description": "The channel’s gain.",
-      "type": "folder",
-      "channelCountRef": "per-channel",
-      "is_common": false,
-      "is_bus": false
-    },
-    {
-      "name": "Coordinates",
-      "min": 0,
-      "max": 1,
-      "default": 0,
-      "description": "Whether the channel uses Rectangular or Polar coordinates."
-    },
-    {
-      "name": "X",
-      "min": -100,
-      "max": 100,
-      "default": 0,
-      "description": "If using Rectangular coordinates, the channel’s X position, from left (-100%) to right (100%)."
-    },
-    {
-      "name": "Y",
-      "min": -100,
-      "max": 100,
-      "default": 0,
-      "description": "If using Rectangular coordinates, the channel’s Y position, from rear (-100%) to front (100%)."
-    },
-    {
-      "name": "Angle",
-      "min": -180.0,
-      "max": 180.0,
-      "default": 0.0,
-      "description": "If using Polar coordinates, the channel’s angle, where 0 is front centre and ±180 is rear centre."
-    },
-    {
-      "name": "Radius",
-      "min": 0,
-      "max": 100,
-      "default": 0,
-      "description": "If using Polar coordinates, the channel’s radius, where 0% is centre and 100% is the maximum distance from the centre."
-    },
-    {
-      "name": "Spinner",
       "min": 1,
-      "description": "Which channel’s spinner to use."
-    },
-    {
-      "name": "Spin rate",
-      "min": -100,
-      "max": 100,
-      "default": 0,
-      "description": "The rate of spin to apply."
-    },
-    {
-      "name": "Orbiter",
-      "min": 1,
-      "description": "Which channel’s orbiter to use."
-    },
-    {
-      "name": "Orbit rate",
-      "min": -100,
-      "max": 100,
-      "default": 0,
-      "description": "The rate of the orbiter."
-    },
-    {
-      "name": "Orbit radius",
-      "min": 0,
-      "max": 100,
-      "default": 0,
-      "description": "The radius of the orbiter."
-    },
-    {
-      "name": "Orbit phase",
-      "min": -180,
-      "max": 180,
-      "default": 0,
-      "description": "Sets the phase angle to add to the orbiter. Different inputs with the same orbiter but different phase follow each other around the circle at a fixed offset."
-    },
-    {
-      "name": "Mute",
-      "min": 0,
-      "max": 1,
-      "default": 0,
-      "description": "Mutes the channel."
-    },
-    {
-      "name": "Solo",
-      "min": 0,
-      "max": 1,
-      "default": 0,
-      "description": "Solos the channel."
-    },
-    {
-      "name": "Name",
-      "description": "A text name for the channel for identification."
-    },
-    {
-      "name": "Distance gain",
-      "min": -24.0,
-      "max": 24.0,
-      "default": 0.0,
-      "description": "Sets the amount by which the gain will change when moving away from the centre. For example, if the listener is notionally in the centre position, you may like the audio to get quieter as the source moves away from the centre, in which case set this to a negative value."
+      "max": 12
     }
   ],
   "input_ports": [
     {
       "name": "Input",
-      "description": "The channel’s input bus."
+      "description": "The channel's input bus."
     }
   ],
   "output_ports": [
-    {
-      "name": "Front left",
-      "description": "Front left speaker output"
-    },
-    {
-      "name": "Front right",
-      "description": "Front right speaker output"
-    },
-    {
-      "name": "Rear left",
-      "description": "Rear left speaker output"
-    },
-    {
-      "name": "Rear right",
-      "description": "Rear right speaker output"
-    },
     {
       "name": "Front left output",
       "description": "The bus to use for the front left speaker output."
     },
     {
       "name": "Front right output",
-      "description": "The bus to use for the front left right output."
+      "description": "The bus to use for the front right speaker output."
     },
     {
       "name": "Rear left output",

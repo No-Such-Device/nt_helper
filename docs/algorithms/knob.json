@@ -1,19 +1,12 @@
 {
   "guid": "knob",
   "name": "Knob Recorders",
+  "short_description": "Configures the Knob Recorders",
   "description": "This algorithm is an intrinsic part of the Performance Page (above). It is implemented as an algorithm so that clocks can be routed into it via busses, and so that the user can choose how much memory to allocate to the knob recorders from the pool available to the preset.",
   "categories": [
     "Performance",
-    "Utility",
-    "Clocking"
-  ],
-  "short_description": "Configures the Knob Recorders",
-  "specifications": [
-    {
-      "name": "Time",
-      "value": "1-7200 seconds",
-      "description": "The total amount of knob recorder time."
-    }
+    "Recording",
+    "UI"
   ],
   "parameters": [
     {
@@ -22,7 +15,7 @@
       "max": 1,
       "default": 0,
       "scope": "global",
-      "description": "Enables the ‘Page select’ parameter."
+      "description": "Enables the 'Page select' parameter."
     },
     {
       "name": "Page select",
@@ -46,10 +39,9 @@
       "max": 1000,
       "default": 100,
       "scope": "per-channel",
-      "description": "Scales the amount of time allocated to this item from the available total (as set in the specification).",
       "type": "scaled",
-      "channelCountRef": "specification",
       "is_per_channel": true,
+      "is_common": false,
       "is_bus": false
     },
     {
@@ -58,7 +50,7 @@
       "max": 2,
       "default": 0,
       "scope": "per-channel",
-      "description": "Sets the clock source for this item: one of ‘None’, ‘Clock input’, or ‘MIDI’.",
+      "description": "Sets the clock source for this item: one of 'None', 'Clock input', or 'MIDI'.",
       "enum_values": [
         "None",
         "Clock input",
@@ -71,8 +63,7 @@
       "max": 19,
       "default": 9,
       "scope": "per-channel",
-      "description": "The MIDI clock divisor, if the ‘Clock source’ is ‘MIDI’.",
-      "type": "enum"
+      "description": "The MIDI clock divisor, if the 'Clock source' is 'MIDI'."
     },
     {
       "name": "Clock multiplier",
@@ -90,7 +81,7 @@
     },
     {
       "name": "Clock input",
-      "description": "The bus to use for the clock, if the ‘Clock source’ is ‘Clock input’."
+      "description": "The bus to use for the clock, if the 'Clock source' is 'Clock input'."
     }
   ],
   "output_ports": []

@@ -1,15 +1,18 @@
 {
   "guid": "wavs",
   "name": "Waveshaper",
-  "description": "This algorithm is based on the Dual Waveshaper algorithm on the disting mk4. You may like to watch the video on that algorithm here https://www.youtube.com/watch?v=-B1VzxQ2qOo [142] . From the disting mk4 manual:\n\n“Type 0 is what is usually termed a wavefolder. This increases the harmonic content of the sound in interesting ways, especially as the gain changes.\n\n“Type 1 is a triangle-to-sine waveshaper. Used on most audio this is a relatively gentle form of overdrive/saturation. However, when fed with the right level of triangle wave, the output is exactly a sine wave, which is useful when you have a triangle wave VCO handy but really want a pure sine wave instead.”",
+  "short_description": "Waveshaper/wavefolder",
+  "description": "This algorithm is based on the Dual Waveshaper algorithm on the disting mk4. Type 0 is what is usually termed a wavefolder. This increases the harmonic content of the sound in interesting ways, especially as the gain changes. Type 1 is a triangle-to-sine waveshaper. Used on most audio this is a relatively gentle form of overdrive/saturation. However, when fed with the right level of triangle wave, the output is exactly a sine wave, which is useful when you have a triangle wave VCO handy but really want a pure sine wave instead.",
   "categories": [
     "Distortion",
-    "Waveshaping",
-    "Utility"
+    "Waveshaping"
   ],
-  "short_description": "Waveshaper/wavefolder",
-  "gui_description": "The display shows how an input sine wave will be affected by the waveshaper. It is not an oscilloscope – it’s not showing what your actual audio looks like (unless you happen to be feeding it a sine wave). It’s just a graphical aid to get an idea of how much waveshaping is being applied.",
-  "specifications": [],
+  "use_cases": [
+    "Wavefolding for harmonic content",
+    "Triangle-to-sine conversion",
+    "Gentle overdrive/saturation"
+  ],
+  "gui_description": "The display shows how an input sine wave will be affected by the waveshaper. It is not an oscilloscope – it's not showing what your actual audio looks like (unless you happen to be feeding it a sine wave). It's just a graphical aid to get an idea of how much waveshaping is being applied.",
   "parameters": [
     {
       "name": "Input gain",
@@ -23,7 +26,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The waveshaping mode: ‘Wavefolder’ or ‘Tri-to-sine shaper’.",
+      "description": "The waveshaping mode: 'Wavefolder' or 'Tri-to-sine shaper'.",
       "enum_values": [
         "Wavefolder",
         "Tri-to-sine shaper"
@@ -34,20 +37,19 @@
       "min": 0,
       "max": 100,
       "default": 100,
+      "defaultValue": 100,
       "description": "The output wet/dry mix.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "enum_values": [
+        "Dry",
+        "Wet"
+      ]
     },
     {
       "name": "Level",
       "min": -40,
       "max": 0,
       "default": 0,
-      "description": "The output gain applied to the shaped signal.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "description": "The output gain applied to the shaped signal."
     },
     {
       "name": "Width",
@@ -61,10 +63,22 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "description": "The standard Add/Replace mode selector as described above.",
+      "enum_values": [
+        "Add",
+        "Replace"
+      ]
     }
   ],
   "input_ports": [
+    {
+      "name": "Input",
+      "description": "The first input bus to process."
+    },
+    {
+      "name": "Gain input",
+      "description": "The bus to use to control the input gain. Scaled such that a 5V CV gives 32x gain."
+    },
     {
       "name": "Gain input",
       "description": "The bus to use to control the input gain. Scaled such that a 5V CV gives 32x gain."
@@ -75,6 +89,10 @@
     }
   ],
   "output_ports": [
+    {
+      "name": "Output",
+      "description": "The first output bus."
+    },
     {
       "name": "Output",
       "description": "The first output bus."

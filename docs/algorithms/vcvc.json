@@ -1,0 +1,288 @@
+{
+  "guid": "vcvc",
+  "name": "Virtual CVC",
+  "short_description": "Haken Continuum CV expander",
+  "description": "This algorithm allows the disting NT to be used as a virtual CVC (Control Voltage Converter) for the Haken Audio Continuum fingerboard. The disting NT's I2C address needs to be set to 0x28 in the Settings. The Continuum sends 16 output channels. Each one of these can be output to any of the disting NT's busses. Note that the signals from the Continuum don't just have to emerge directly from the module's outputs; they could just as well be the inputs to other algorithms.",
+  "categories": [
+    "CV",
+    "Interface",
+    "Routing"
+  ],
+  "parameters": [
+    {
+      "name": "to_1",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 1."
+    },
+    {
+      "name": "mode_1",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 1."
+    },
+    {
+      "name": "to_2",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 2."
+    },
+    {
+      "name": "mode_2",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 2."
+    },
+    {
+      "name": "to_3",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 3."
+    },
+    {
+      "name": "mode_3",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 3."
+    },
+    {
+      "name": "to_4",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 4."
+    },
+    {
+      "name": "mode_4",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 4."
+    },
+    {
+      "name": "to_5",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 5."
+    },
+    {
+      "name": "mode_5",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 5."
+    },
+    {
+      "name": "to_6",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 6."
+    },
+    {
+      "name": "mode_6",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 6."
+    },
+    {
+      "name": "to_7",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 7."
+    },
+    {
+      "name": "mode_7",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 7."
+    },
+    {
+      "name": "to_8",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 8."
+    },
+    {
+      "name": "mode_8",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 8."
+    },
+    {
+      "name": "to_9",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 9."
+    },
+    {
+      "name": "mode_9",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 9."
+    },
+    {
+      "name": "to_10",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 10."
+    },
+    {
+      "name": "mode_10",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 10."
+    },
+    {
+      "name": "to_11",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 11."
+    },
+    {
+      "name": "mode_11",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 11."
+    },
+    {
+      "name": "to_12",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 12."
+    },
+    {
+      "name": "mode_12",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 12."
+    },
+    {
+      "name": "to_13",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 13."
+    },
+    {
+      "name": "mode_13",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 13."
+    },
+    {
+      "name": "to_14",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 14."
+    },
+    {
+      "name": "mode_14",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 14."
+    },
+    {
+      "name": "to_15",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 15."
+    },
+    {
+      "name": "mode_15",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 15."
+    },
+    {
+      "name": "to_16",
+      "min": 0,
+      "max": 64,
+      "description": "The bus on which to output Continuum channel 16."
+    },
+    {
+      "name": "mode_16",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "description": "The standard Add/Replace mode selector for channel 16."
+    }
+  ],
+  "input_ports": [],
+  "output_ports": [
+    {
+      "name": "channel_1",
+      "description": "Continuum channel 1 output, routed to selected bus"
+    },
+    {
+      "name": "channel_2",
+      "description": "Continuum channel 2 output, routed to selected bus"
+    },
+    {
+      "name": "channel_3",
+      "description": "Continuum channel 3 output, routed to selected bus"
+    },
+    {
+      "name": "channel_4",
+      "description": "Continuum channel 4 output, routed to selected bus"
+    },
+    {
+      "name": "channel_5",
+      "description": "Continuum channel 5 output, routed to selected bus"
+    },
+    {
+      "name": "channel_6",
+      "description": "Continuum channel 6 output, routed to selected bus"
+    },
+    {
+      "name": "channel_7",
+      "description": "Continuum channel 7 output, routed to selected bus"
+    },
+    {
+      "name": "channel_8",
+      "description": "Continuum channel 8 output, routed to selected bus"
+    },
+    {
+      "name": "channel_9",
+      "description": "Continuum channel 9 output, routed to selected bus"
+    },
+    {
+      "name": "channel_10",
+      "description": "Continuum channel 10 output, routed to selected bus"
+    },
+    {
+      "name": "channel_11",
+      "description": "Continuum channel 11 output, routed to selected bus"
+    },
+    {
+      "name": "channel_12",
+      "description": "Continuum channel 12 output, routed to selected bus"
+    },
+    {
+      "name": "channel_13",
+      "description": "Continuum channel 13 output, routed to selected bus"
+    },
+    {
+      "name": "channel_14",
+      "description": "Continuum channel 14 output, routed to selected bus"
+    },
+    {
+      "name": "channel_15",
+      "description": "Continuum channel 15 output, routed to selected bus"
+    },
+    {
+      "name": "channel_16",
+      "description": "Continuum channel 16 output, routed to selected bus"
+    }
+  ]
+}

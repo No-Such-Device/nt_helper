@@ -1,95 +1,95 @@
 {
   "guid": "wake",
   "name": "Display Awakener",
-  "description": "This simple algorithm generates no sound – it simply exists to give you a way to wake the display from sleep without physically touching the module.\n\nIt has 12 parameters, which can be mapped to whatever you’d like to wake the display. For example, you might map one to a MIDI CC so you can wake the display from a MIDI controller. Or, you might map one to an input CV so that the module wakes whenever it gets a clock pulse from your sequencer.\n\nNote that you can treat audio as CV for this purpose; if you map an audio input to one of the wake parameters, you can have a setup where the module display wakes whenever you play audio into the module – great for pedalboard use.",
+  "short_description": "Wakes the display from sleep",
+  "description": "This simple algorithm generates no sound – it simply exists to give you a way to wake the display from sleep without physically touching the module.\n\nIt has 12 parameters, which can be mapped to whatever you'd like to wake the display. For example, you might map one to a MIDI CC so you can wake the display from a MIDI controller. Or, you might map one to an input CV so that the module wakes whenever it gets a clock pulse from your sequencer.\n\nNote that you can treat audio as CV for this purpose; if you map an audio input to one of the wake parameters, you can have a setup where the module display wakes whenever you play audio into the module – great for pedalboard use.",
   "categories": [
     "Utility"
   ],
-  "short_description": "Wakes the display from sleep",
   "parameters": [
     {
       "name": "Wake 1",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     },
     {
       "name": "Wake 2",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     },
     {
       "name": "Wake 3",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     },
     {
       "name": "Wake 4",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     },
     {
       "name": "Wake 5",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     },
     {
       "name": "Wake 6",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     },
     {
       "name": "Wake 7",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     },
     {
       "name": "Wake 8",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     },
     {
       "name": "Wake 9",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     },
     {
       "name": "Wake 10",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     },
     {
       "name": "Wake 11",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     },
     {
       "name": "Wake 12",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Wakes the display if the parameter value is ‘1’."
+      "description": "Wakes the display if the parameter value is '1'."
     }
   ],
   "input_ports": [],

@@ -1,21 +1,19 @@
 {
   "guid": "djfi",
   "name": "DJ Filter",
-  "description": "This algorithm is an implementation of the disting mk4 algorithm of the same name. You may like to review the video about that algorithm, which is here https://www.youtube.com/watch?v=fII_lscKbBg. The algorithm is a filter which sweeps from lowpass to highpass on a single control. The Sweep parameter sets the filter cutoff. At the central, zero position no filter effect is applied. If the sweep goes negative, a lowpass filter is applied, with a cutoff frequency that sweeps down the more you go. If the sweep goes positive, a highpass filter is applied, with a cutoff frequency that sweeps up the more you go. There is a deadzone around zero where the filter has no effect, indicated by “>DRY<” next to the parameter value.",
-  "categories": [
-    "Filter"
-  ],
   "short_description": "Low/High pass filter",
-  "specifications": [],
+  "description": "This algorithm is an implementation of the disting mk4 algorithm of the same name. The algorithm is a filter which sweeps from lowpass to highpass on a single control. The Sweep parameter sets the filter cutoff. At the central, zero position no filter effect is applied. If the sweep goes negative, a lowpass filter is applied, with a cutoff frequency that sweeps down the more you go. If the sweep goes positive, a highpass filter is applied, with a cutoff frequency that sweeps up the more you go. There is a deadzone around zero where the filter has no effect, indicated by \">DRY<\" next to the parameter value.",
+  "categories": [
+    "Filter",
+    "Effect"
+  ],
   "parameters": [
     {
       "name": "Sweep",
       "min": -100.0,
       "max": 100.0,
       "default": 0.0,
-      "description": "Controls the filter sweep.",
-      "type": "file",
-      "channelCountRef": "",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -23,9 +21,7 @@
       "min": 0,
       "max": 100,
       "default": 0,
-      "description": "Sets the filter resonance/Q.",
-      "type": "file",
-      "channelCountRef": "",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -33,22 +29,28 @@
       "min": 1,
       "max": 8,
       "default": 1,
-      "description": "The number of busses to process, starting from the Input. For example, for a stereo signal, set this to 2.",
-      "type": "file",
-      "channelCountRef": "",
+      "type": "bus",
+      "is_bus": false
+    },
+    {
+      "name": "Output mode",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "type": "enum",
       "is_bus": false
     }
   ],
   "input_ports": [
     {
       "name": "Input",
-      "description": "The first input bus to process."
+      "description": ""
     }
   ],
   "output_ports": [
     {
       "name": "Output",
-      "description": "The first output bus."
+      "description": ""
     }
   ]
 }

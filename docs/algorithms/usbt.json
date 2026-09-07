@@ -1,13 +1,13 @@
 {
   "guid": "usbt",
   "name": "USB audio (to host)",
-  "description": "This algorithm routes signals to the USB audio host, if one is connected. The host sees 12 input channels. Each one of these can be set to receive any of the disting NT’s busses. Note that the signals seen by the algorithm, and so by the host, depend where in the list of algorithms this one appears. If it’s the first algorithm, it can send to the host the module’s own inputs, unmodified; if it’s the last algorithm, it can send to the host the outputs of all the other algorithms. Note also that “USB audio” doesn’t mean that the signals have to be audio; they could also be CVs, if you’d like to exchange signals with, say, VCV Rack or similar.",
-  "categories": [
-    "USB",
-    "Routing",
-    "Utility"
-  ],
   "short_description": "Sends audio to USB host",
+  "description": "This algorithm routes signals to the USB audio host, if one is connected. The host sees 12 input channels. Each one of these can be set to receive any of the disting NT's busses. Note that the signals seen by the algorithm, and so by the host, depend where in the list of algorithms this one appears. If it's the first algorithm, it can send to the host the module's own inputs, unmodified; if it's the last algorithm, it can send to the host the outputs of all the other algorithms. Note also that \"USB audio\" doesn't mean that the signals have to be audio; they could also be CVs, if you'd like to exchange signals with, say, VCV Rack or similar.",
+  "categories": [
+    "Routing",
+    "Output",
+    "USB"
+  ],
   "parameters": [
     {
       "name": "USB channel 1 from",
@@ -21,7 +21,7 @@
       "min": 1,
       "max": 64,
       "default": 2,
-      "description": "The same for USB channel 2."
+      "description": "The bus to send to USB channel 2."
     },
     {
       "name": "USB channel 3 from",
@@ -94,11 +94,54 @@
       "description": "The bus to send to USB channel 12."
     }
   ],
-  "input_ports": [],
   "output_ports": [
     {
-      "name": "USB Host",
-      "description": "12 channels of audio/CV sent to the connected USB host."
+      "name": "USB channel 1",
+      "description": "Output to USB host channel 1"
+    },
+    {
+      "name": "USB channel 2",
+      "description": "Output to USB host channel 2"
+    },
+    {
+      "name": "USB channel 3",
+      "description": "Output to USB host channel 3"
+    },
+    {
+      "name": "USB channel 4",
+      "description": "Output to USB host channel 4"
+    },
+    {
+      "name": "USB channel 5",
+      "description": "Output to USB host channel 5"
+    },
+    {
+      "name": "USB channel 6",
+      "description": "Output to USB host channel 6"
+    },
+    {
+      "name": "USB channel 7",
+      "description": "Output to USB host channel 7"
+    },
+    {
+      "name": "USB channel 8",
+      "description": "Output to USB host channel 8"
+    },
+    {
+      "name": "USB channel 9",
+      "description": "Output to USB host channel 9"
+    },
+    {
+      "name": "USB channel 10",
+      "description": "Output to USB host channel 10"
+    },
+    {
+      "name": "USB channel 11",
+      "description": "Output to USB host channel 11"
+    },
+    {
+      "name": "USB channel 12",
+      "description": "Output to USB host channel 12"
     }
   ]
 }

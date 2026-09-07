@@ -1,13 +1,18 @@
 {
   "guid": "eucp",
   "name": "Euclidean Patterns",
-  "description": "This algorithm generates rhythmic patterns of output pulses known as Euclidean patterns. For a detailed description of these patterns and how they are commonly found in music around the world [see e.g. here](https://en.wikipedia.org/wiki/Euclidean_rhythm) [74] or [here](https://www.hisschemoller.com/blog/2011/euclidean-rhythms/) [75] .\n\nA pattern is described by the total number of steps and the number of pulses (i.e. the number steps on which a pulse is output).\n\nThe patterns can also be rotated. At zero rotation, the first step in the pattern will always be a pulse, and the remaining pulses distributed according to the algorithm. The rotation setting moves the first pulse later by a number of steps.",
+  "short_description": "Generates Euclidean rhythm patterns",
+  "description": "This algorithm generates rhythmic patterns of output pulses known as Euclidean patterns. A pattern is described by the total number of steps and the number of pulses (i.e. the number of steps on which a pulse is output). The patterns can also be rotated. At zero rotation, the first step in the pattern will always be a pulse, and the remaining pulses distributed according to the algorithm. The rotation setting moves the first pulse later by a number of steps.",
   "categories": [
     "Rhythm",
-    "Sequencer",
+    "Pattern",
     "MIDI"
   ],
-  "short_description": "Generates Euclidean rhythm patterns",
+  "use_cases": [
+    "Generating Euclidean rhythm patterns",
+    "MIDI clock-based rhythm generation",
+    "Polyrhythmic pattern generation"
+  ],
   "gui_description": "The display shows a graphical representation of the patterns (channel 1 at the top).",
   "specifications": [
     {
@@ -122,44 +127,22 @@
       "description": "Sets whether the output is a fixed length trigger, or a clock pulse related to the period of the input clocks."
     },
     {
-      "name": "Length (Trigger)",
+      "name": "Length",
       "min": 1,
       "max": 100,
       "default": 10,
       "scope": "channel",
-      "description": "Sets the trigger length, if the ‘Output type’ is ‘Trigger’.",
       "type": "trigger",
-      "channelCountRef": "Output type",
-      "is_per_channel": true,
-      "is_bus": false
+      "is_bus": true
     },
     {
-      "name": "Length (% of clock)",
+      "name": "Length",
       "min": 1,
       "max": 100,
       "default": 50,
       "scope": "channel",
-      "description": "Sets the output clock pulse width, if the ‘Output type’ is ‘% of clock’.",
       "type": "trigger",
-      "channelCountRef": "Output type",
-      "is_per_channel": true,
-      "is_bus": false
-    },
-    {
-      "name": "Output Bus",
-      "min": 0,
-      "max": 64,
-      "default": 15,
-      "scope": "channel",
-      "description": "The output bus for the channel."
-    },
-    {
-      "name": "Output Mode",
-      "min": 0,
-      "max": 1,
-      "default": 0,
-      "scope": "channel",
-      "description": "The standard Add/Replace mode selector as described above."
+      "is_bus": true
     },
     {
       "name": "ES-5 Expander",
@@ -167,7 +150,7 @@
       "max": 6,
       "default": 0,
       "scope": "channel",
-      "description": "If set, the ES-5 expander header to use for output instead of the bus specified by the Output parameter. “1” means the ES-5 itself."
+      "description": "If set, the ES-5 expander header to use for output instead of the bus specified by the Output parameter. '1' means the ES-5 itself."
     },
     {
       "name": "MIDI channel",
@@ -194,20 +177,16 @@
     {
       "name": "Reset input",
       "description": "The reset input bus. A high level resets the patterns to step 1 (and holds them there)."
-    },
-    {
-      "name": "Clock input",
-      "description": "The clock input bus. A rising edge advances the patterns by one step."
-    },
-    {
-      "name": "Reset input",
-      "description": "The reset input bus. A high level resets the patterns to step 1 (and holds them there)."
     }
   ],
   "output_ports": [
     {
       "name": "Output",
-      "description": "The output bus for the channel."
+      "description": ""
+    },
+    {
+      "name": "Output",
+      "description": ""
     },
     {
       "name": "ES-5 Output",

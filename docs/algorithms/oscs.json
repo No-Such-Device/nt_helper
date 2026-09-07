@@ -1,15 +1,14 @@
 {
   "guid": "oscs",
   "name": "Oscilloscope",
+  "short_description": "Oscilloscope for viewing waveforms",
   "description": "This algorithm implements a simple but useful 2-channel oscilloscope.",
   "categories": [
+    "Display",
     "Analysis",
-    "Visualization",
     "Utility"
   ],
-  "short_description": "Oscilloscope for viewing waveforms",
   "gui_description": "The display shows one or both waveforms according to the display mode.",
-  "specifications": [],
   "parameters": [
     {
       "name": "Input 1",
@@ -44,34 +43,21 @@
       "min": -11.0,
       "max": 11.0,
       "default": 0.0,
-      "description": "Set the trigger voltage – the voltage the input signal has to cross to trigger the oscilloscope.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
-    },
-    {
-      "name": "Trigger voltage",
-      "min": -11.0,
-      "max": 11.0,
-      "default": 0.0,
-      "description": "Set the trigger voltage – the voltage the input signal has to cross to trigger the oscilloscope.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "description": "Set the trigger voltage – the voltage the input signal has to cross to trigger the oscilloscope."
     },
     {
       "name": "Time range",
       "min": 0,
       "max": 16,
       "default": 7,
-      "description": "Sets the time range corresponding to the full width of the display. The special value “Auto” sets the time range to the time between consecutive triggers."
+      "description": "Sets the time range corresponding to the full width of the display. The special value \"Auto\" sets the time range to the time between consecutive triggers."
     },
     {
       "name": "Display mode",
       "min": 0,
       "max": 4,
       "default": 2,
-      "description": "Sets which waveforms are displayed and how. In “XY” mode, inputs 1 & 2 are used as the coordinates to draw, instead of using time as the abscissa.",
+      "description": "Sets which waveforms are displayed and how.",
       "enum_values": [
         "Overlaid",
         "Split",
@@ -97,46 +83,28 @@
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "Sets the vertical scale for channel 1.",
-      "enum_values": [
-        "10V",
-        "5V",
-        "2V",
-        "1V"
-      ]
+      "description": "Sets the vertical scale for channel 1. The options are 10V, 5V, 2V, and 1V."
     },
     {
       "name": "Vertical scale 2",
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "Sets the vertical scale for channel 2.",
-      "enum_values": [
-        "10V",
-        "5V",
-        "2V",
-        "1V"
-      ]
+      "description": "Sets the vertical scale for channel 2."
     },
     {
       "name": "Vertical offset 1",
       "min": -11.0,
       "max": 11.0,
       "default": 0.0,
-      "description": "Sets an amount by which to move the display of channel 1 vertically.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "description": "Sets an amount by which to move the display of channel 1 vertically."
     },
     {
       "name": "Vertical offset 2",
       "min": -11.0,
       "max": 11.0,
       "default": 0.0,
-      "description": "Sets an amount by which to move the display of channel 2 vertically.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "description": "Sets an amount by which to move the display of channel 2 vertically."
     },
     {
       "name": "Disable screensaver",

@@ -1,22 +1,21 @@
 {
   "guid": "midt",
   "name": "MIDI Triggers",
+  "short_description": "Generates triggers from MIDI/I2C",
   "description": "This algorithm generates gates and triggers from MIDI or I2C note messages.",
   "categories": [
     "MIDI",
-    "Trigger",
-    "Gate",
-    "I2C",
-    "Utility"
+    "Triggers",
+    "Gates",
+    "I2C"
   ],
-  "short_description": "Generates triggers from MIDI/I2C",
   "parameters": [
     {
       "name": "Enable",
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "channel",
+      "scope": "per-channel",
       "description": "Enables the trigger."
     },
     {
@@ -24,7 +23,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "channel",
+      "scope": "per-channel",
       "description": "Sets whether to generate a trigger from note on messages, or a gate from note on/off messages."
     },
     {
@@ -32,27 +31,29 @@
       "min": 1,
       "max": 100,
       "default": 10,
-      "scope": "channel",
+      "scope": "per-channel",
       "description": "The length of the trigger pulse.",
       "type": "trigger",
-      "channelCountRef": "Channels, 1-12: The number of triggers to generate."
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "Level",
       "min": -10.0,
       "max": 10.0,
       "default": 5.0,
-      "scope": "channel",
+      "scope": "per-channel",
       "description": "The magnitude of the trigger/gate.",
       "type": "trigger",
-      "channelCountRef": "Channels, 1-12: The number of triggers to generate."
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "Velocity",
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "channel",
+      "scope": "per-channel",
       "description": "Sets whether to apply velocity scaling to the trigger/gate magnitude."
     },
     {
@@ -60,39 +61,42 @@
       "min": -10.0,
       "max": 10.0,
       "default": 1.0,
-      "scope": "channel",
-      "description": "If applying velocity scaling, the voltage corresponding to minimum velocity."
+      "scope": "per-channel",
+      "description": "If applying velocity scaling, the voltage corresponding to minimum velocity.",
+      "type": "trigger",
+      "is_common": false,
+      "is_bus": false
     },
     {
       "name": "MIDI channel",
       "min": 0,
       "max": 16,
       "default": 0,
-      "scope": "channel",
-      "description": "The MIDI channel, or ‘Off’."
+      "scope": "per-channel",
+      "description": "The MIDI channel, or 'Off'."
     },
     {
       "name": "I2C channel",
       "min": 0,
       "max": 255,
       "default": 0,
-      "scope": "channel",
-      "description": "The I2C channel, or ‘Off’."
+      "scope": "per-channel",
+      "description": "The I2C channel, or 'Off'."
     },
     {
       "name": "Note number",
       "min": -1,
       "max": 127,
       "default": -1,
-      "scope": "channel",
-      "description": "The note number to respond to, or ‘Any’."
+      "scope": "per-channel",
+      "description": "The note number to respond to, or 'Any'."
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "channel",
+      "scope": "per-channel",
       "description": "The standard Add/Replace mode selector as described above."
     },
     {
@@ -100,20 +104,12 @@
       "min": 0,
       "max": 6,
       "default": 0,
-      "scope": "channel",
-      "description": "If set, the ES-5 expander header to use for output instead of the bus specified by the Output parameter. “1” means the ES-5 itself."
+      "scope": "per-channel",
+      "description": "If set, the ES-5 expander header to use for output instead of the bus specified by the Output parameter. '1' means the ES-5 itself."
     }
   ],
   "input_ports": [],
   "output_ports": [
-    {
-      "name": "Output Bus",
-      "description": "Routed to the bus specified by the Output parameter."
-    },
-    {
-      "name": "ES-5 Expander Output",
-      "description": "Routed to the selected output on the ES-5 expander if enabled."
-    },
     {
       "name": "Output",
       "description": "The output bus."

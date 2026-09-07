@@ -1,12 +1,19 @@
 {
   "guid": "xfad",
   "name": "Crossfader",
-  "description": "This algorithm crossfades between two or more sets of signals (from mono up to sets of eight channels). When crossfading between more than two sets of signals, it behaves like a ‘scanning’ or ‘morphing’ mixer. Three different crossfade curves are available: Equal gain (Appropriate for crossfading phase-coherent material), Equal power (Appropriate for crossfading non-phase-coherent material), and Transition (DJ-style crossfade where both sources are at full gain at the 50% position). Inputs A to L, and the output, use a contiguous range of busses, starting with the one set via the parameters, and with the channel count set by the ‘Width’ parameter. For example, to crossfade stereo signals, set the Width to 2. The crossfade can be controlled by both a parameter and a CV, which are simply summed if both are in use.",
+  "short_description": "Crossfades signals",
+  "description": "This algorithm crossfades between two or more sets of signals (from mono up to sets of eight channels). When crossfading between more than two sets of signals, it behaves like a 'scanning' or 'morphing' mixer. Three different crossfade curves are available: Equal gain (appropriate for crossfading phase-coherent material), Equal power (appropriate for crossfading non-phase-coherent material), and Transition (DJ-style crossfade where both sources are at full gain at the 50% position). Inputs A to L, and the output, use a contiguous range of busses, starting with the one set via the parameters, and with the channel count set by the 'Width' parameter. The crossfade can be controlled by both a parameter and a CV, which are simply summed if both are in use.",
   "categories": [
     "Mixing",
-    "Utility"
+    "Routing",
+    "Signal Processing"
   ],
-  "short_description": "Crossfades signals",
+  "use_cases": [
+    "Crossfading between two audio sources",
+    "Morphing between multiple signal sets",
+    "DJ-style transitions",
+    "Scanning mixers"
+  ],
   "gui_description": "The display shows a graphical representation of the crossfade curves, and the amount of the two signals that are combined in the output mix.",
   "specifications": [],
   "parameters": [
@@ -15,9 +22,9 @@
       "min": 0.0,
       "max": 100.0,
       "default": 50.0,
-      "description": "The crossfade position, from 0% (input A only) to 100% (input B only).",
+      "scope": "global",
       "type": "folder",
-      "channelCountRef": "Width",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -25,185 +32,228 @@
       "min": 0,
       "max": 2,
       "default": 1,
-      "description": "The crossfade curve.",
-      "enum_values": [
-        "Equal gain",
-        "Equal power",
-        "Transition"
-      ]
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input A",
       "min": 1,
       "max": 64,
       "default": 1,
-      "description": "The first bus for input A."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input B",
       "min": 1,
       "max": 64,
       "default": 2,
-      "description": "The first bus for input B."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Width",
       "min": 1,
       "max": 8,
       "default": 1,
-      "description": "The number of busses to process. For example for stereo signals, set this to 2."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Number of inputs",
       "min": 2,
       "max": 12,
       "default": 2,
-      "description": "The number of inputs to use."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input C",
       "min": 1,
       "max": 64,
       "default": 3,
-      "description": "The first bus for input C."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input D",
       "min": 1,
       "max": 64,
       "default": 4,
-      "description": "The first bus for input D."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input E",
       "min": 1,
       "max": 64,
       "default": 5,
-      "description": "The first bus for input E."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input F",
       "min": 1,
       "max": 64,
       "default": 6,
-      "description": "The first bus for input F."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input G",
       "min": 1,
       "max": 64,
       "default": 7,
-      "description": "The first bus for input G."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input H",
       "min": 1,
       "max": 64,
       "default": 8,
-      "description": "The first bus for input H."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input I",
       "min": 1,
       "max": 64,
       "default": 9,
-      "description": "The first bus for input I."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input J",
       "min": 1,
       "max": 64,
       "default": 10,
-      "description": "The first bus for input J."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input K",
       "min": 1,
       "max": 64,
       "default": 11,
-      "description": "The first bus for input K."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Input L",
       "min": 1,
       "max": 64,
       "default": 12,
-      "description": "The first bus for input L."
+      "scope": "global",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     }
   ],
   "input_ports": [
     {
       "name": "Input A",
-      "description": "First set of signals to crossfade."
+      "description": "The first bus for input A."
     },
     {
       "name": "Input B",
-      "description": "Second set of signals to crossfade."
+      "description": "The first bus for input B."
     },
     {
       "name": "Input C",
-      "description": "Third set of signals to crossfade."
+      "description": "The first bus for input C."
     },
     {
       "name": "Input D",
-      "description": "Fourth set of signals to crossfade."
+      "description": "The first bus for input D."
     },
     {
       "name": "Input E",
-      "description": "Fifth set of signals to crossfade."
+      "description": "The first bus for input E."
     },
     {
       "name": "Input F",
-      "description": "Sixth set of signals to crossfade."
+      "description": "The first bus for input F."
     },
     {
       "name": "Input G",
-      "description": "Seventh set of signals to crossfade."
+      "description": "The first bus for input G."
     },
     {
       "name": "Input H",
-      "description": "Eighth set of signals to crossfade."
+      "description": "The first bus for input H."
     },
     {
       "name": "Input I",
-      "description": "Ninth set of signals to crossfade."
+      "description": "The first bus for input I."
     },
     {
       "name": "Input J",
-      "description": "Tenth set of signals to crossfade."
+      "description": "The first bus for input J."
     },
     {
       "name": "Input K",
-      "description": "Eleventh set of signals to crossfade."
+      "description": "The first bus for input K."
     },
     {
       "name": "Input L",
-      "description": "Twelfth set of signals to crossfade."
-    },
-    {
-      "name": "Crossfade input",
-      "description": "CV input to drive the crossfade position."
+      "description": "The first bus for input L."
     },
     {
       "name": "Crossfade input",
       "description": "The CV input to drive the crossfade, scaled so that 5V covers the range 0-100%."
+    },
+    {
+      "name": "Crossfade input",
+      "description": ""
     }
   ],
   "output_ports": [
     {
       "name": "Output",
-      "description": "The combined crossfaded output signals."
+      "description": "The first bus for the output."
     },
     {
       "name": "Output",
-      "description": "The first bus for the output."
+      "description": ""
     }
   ]
 }

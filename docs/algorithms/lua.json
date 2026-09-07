@@ -1,17 +1,13 @@
 {
   "guid": "lua ",
   "name": "Lua Script",
-  "description": "This algorithm allows you to run what are effectively scripted “plug-ins”, loaded from the MicroSD card.\n\nSuch scripts are ideal for CV processing, especially for quirky little sequencers or generative things that are never going to be implemented as official algorithms because they’re so specific to your particular use case.\n\nScripts are not intended for audio processing. If you want to implement custom DSP code, look at the Three Pot algorithm (below) or the C++ API (above).",
-  "categories": [
-    "CV Processing",
-    "Generative",
-    "Sequencing"
-  ],
   "short_description": "Algorithm defined by a Lua script",
-  "use_cases": [
-    "CV processing",
-    "quirky little sequencers",
-    "generative things"
+  "description": "This algorithm allows you to run what are effectively scripted \"plug-ins\", loaded from the MicroSD card. Such scripts are ideal for CV processing, especially for quirky little sequencers or generative things that are never going to be implemented as official algorithms because they're so specific to your particular use case. Scripts are not intended for audio processing. If you want to implement custom DSP code, look at the Three Pot algorithm (below) or the C++ API (above). Scripts are text files with the extension '.lua'. They should be placed on the MicroSD card in the folder /programs/lua. One level of subdirectories is allowed.",
+  "categories": [
+    "Scripting",
+    "CV Processing",
+    "Sequencing",
+    "Generative"
   ],
   "parameters": [
     {
@@ -19,11 +15,14 @@
       "min": 0,
       "max": 999,
       "default": 0,
-      "description": "Selects the program to run.",
-      "type": "string",
-      "channelCountRef": ""
+      "description": "Selects the program to run."
     }
   ],
   "input_ports": [],
-  "output_ports": []
+  "output_ports": [
+    {
+      "name": "Script Outputs",
+      "description": "Defined by the script, related to system busses via routing parameters."
+    }
+  ]
 }

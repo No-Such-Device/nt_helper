@@ -1,12 +1,13 @@
 {
   "guid": "esx8",
   "name": "ESX-8CV Combiner",
-  "description": "This algorithm allows you to drive the outputs of an ESX-8CV module attached to an ES-5 expander which is in turn attached to the disting NT.",
-  "categories": [
-    "Utility",
-    "Hardware Interface"
-  ],
   "short_description": "Drives ESX-8CV outputs",
+  "description": "This algorithm allows you to drive the outputs of an ESX-8CV module attached to an ES-5 expander which is in turn attached to the disting NT. The 'Adaptive' parameter controls whether the algorithm will update all eight of the hardware outputs continuously (non-adaptive mode), or only those outputs that are changing (adaptive mode). In general the best performance will be in adaptive mode, unless you want the precise timing of the output updates to be predictable, in which case you may prefer non-adaptive mode. As an example, assume that the system is running at a sample rate of 48kHz. In non-adaptive mode, each output is continuously updated in turn, and each update takes three samples. So, 24 samples are required to update all eight outputs, and so each output effectively runs at 2kHz. In adaptive mode, the update rate depends on the number of channels that are changing. Each output update again takes 3 cycles, so if only one output of the ESX-8CV is changing, its update rate will be 16kHz. If two outputs are changing, they will be updated at 8kHz, and so on, down to 2kHz (as in non-adaptive mode) for eight outputs all changing all the time.",
+  "categories": [
+    "CV",
+    "Hardware",
+    "Output"
+  ],
   "parameters": [
     {
       "name": "Expander",
@@ -20,7 +21,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Controls whether the algorithm will update all eight of the hardware outputs continuously (non-adaptive mode), or only those outputs that are changing (adaptive mode). In general the best performance will be in adaptive mode, unless you want the precise timing of the output updates to be predictable, in which case you may prefer non-adaptive mode."
+      "description": "Controls whether the algorithm will update all eight of the hardware outputs continuously (non-adaptive mode), or only those outputs that are changing (adaptive mode)."
     },
     {
       "name": "1",
@@ -62,11 +63,7 @@
       "min": 0,
       "max": 64,
       "default": 6,
-      "description": "The bus from which to drive output 6.",
-      "enum_values": [
-        "Col5"
-      ],
-      "type": "bus"
+      "description": "The bus from which to drive output 6."
     },
     {
       "name": "7",
@@ -84,5 +81,38 @@
     }
   ],
   "input_ports": [],
-  "output_ports": []
+  "output_ports": [
+    {
+      "name": "Output 1",
+      "description": "Hardware CV output 1 of the ESX-8CV"
+    },
+    {
+      "name": "Output 2",
+      "description": "Hardware CV output 2 of the ESX-8CV"
+    },
+    {
+      "name": "Output 3",
+      "description": "Hardware CV output 3 of the ESX-8CV"
+    },
+    {
+      "name": "Output 4",
+      "description": "Hardware CV output 4 of the ESX-8CV"
+    },
+    {
+      "name": "Output 5",
+      "description": "Hardware CV output 5 of the ESX-8CV"
+    },
+    {
+      "name": "Output 6",
+      "description": "Hardware CV output 6 of the ESX-8CV"
+    },
+    {
+      "name": "Output 7",
+      "description": "Hardware CV output 7 of the ESX-8CV"
+    },
+    {
+      "name": "Output 8",
+      "description": "Hardware CV output 8 of the ESX-8CV"
+    }
+  ]
 }

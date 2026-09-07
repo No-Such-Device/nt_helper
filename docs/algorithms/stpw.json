@@ -1,14 +1,12 @@
 {
   "guid": "stpw",
   "name": "Stopwatch",
-  "description": "This algorithm is simply a clock, for timing how long things (for example, your performance) have been going on, or for showing a countdown (for example, until you should stop your performance and get off the stage).\n\nIt has no effect on any input/output bus and consumes almost no CPU.",
+  "short_description": "Real-time clock for timing things",
+  "description": "This algorithm is simply a clock, for timing how long things (for example, your performance) have been going on, or for showing a countdown (for example, until you should stop your performance and get off the stage). It has no effect on any input/output bus and consumes almost no CPU.",
   "categories": [
     "Utility",
-    "Clock"
+    "Timing"
   ],
-  "short_description": "Real-time clock for timing things",
-  "gui_description": "The display shows the stopwatch time. While the stopwatch is visible and running the screensaver is prevented from activating.",
-  "specifications": [],
   "parameters": [
     {
       "name": "Mode",

@@ -1,30 +1,51 @@
 {
   "guid": "loop",
   "name": "Looper",
-  "description": "This algorithm is a looper, based on the disting EX algorithm of the same name, but significantly extended. Loops can have crossfades, they can fade in and out, and overdubbing can fade in and out, all of which is designed to make it easy to achieve smooth, ambient looping.\n\nAll looping operations can also be synchronised to a clock input, if tight rhythmic looping is more your thing. The looper can also generate clocks (analogue and/or MIDI), if you prefer the looper to be the source of tempo in your setup.\n\nLoops may also be reversed, and played at half speed (an octave down).\n\nA ‘layers’ system is also implemented, which is like the ‘undo/redo’ found on some loopers but more powerful.\n\nThe core control setup is a two button record/play/overdub paradigm in the manner of many stompbox loopers, though many more controls are available. These can be mapped to CV, MIDI, or I2C as usual; a dedicated MIDI-note based interface is also provided for ease of use with MIDI pedalboards which send notes when footswitches are pressed.",
-  "categories": [
-    "Looper",
-    "Utility",
-    "MIDI"
-  ],
   "short_description": "A looper",
+  "description": "This algorithm is a looper, based on the disting EX algorithm of the same name, but significantly extended. Loops can have crossfades, they can fade in and out, and overdubbing can fade in and out, all of which is designed to make it easy to achieve smooth, ambient looping. All looping operations can also be synchronised to a clock input, if tight rhythmic looping is more your thing. The looper can also generate clocks (analogue and/or MIDI), if you prefer the looper to be the source of tempo in your setup. Loops may also be reversed, and played at half speed (an octave down). A 'layers' system is also implemented, which is like the 'undo/redo' found on some loopers but more powerful. The core control setup is a two button record/play/overdub paradigm in the manner of many stompbox loopers, though many more controls are available. These can be mapped to CV, MIDI, or I2C as usual; a dedicated MIDI-note based interface is also provided for ease of use with MIDI pedalboards which send notes when footswitches are pressed.",
+  "categories": [
+    "Looping",
+    "Recording",
+    "Time-based"
+  ],
+  "use_cases": [
+    "Ambient looping",
+    "Rhythmic looping",
+    "Layered overdubbing",
+    "Clock-synchronised looping",
+    "MIDI pedalboard integration"
+  ],
+  "gui_description": "The display shows a considerable amount of information about the loop(s). A special large version of the GUI is shown if there is only a single loop. The target loops are indicated with a box drawn around their section of the display. Each loop shows an icon to indicate its state: Square (Empty), Circle (Record), Triangle (Play), Triangle and circle (Overdub), Two vertical lines (Stop), Two vertical lines with downward triangle (Fade to stop/clear). 'M' instead of two vertical lines indicates 'mute' rather than 'pause'. The length of the loop, and the position within the loop, are shown top right (both in seconds). The loop's envelope level is indicated by the vertical bar at the right side.",
   "specifications": [
     {
       "name": "Loops",
-      "value": "1-4",
-      "description": "The number of simultaneous loops."
+      "min": 1,
+      "max": 4
     },
     {
       "name": "Max time",
-      "value": "1-90",
-      "description": "The maximum total loop time."
+      "min": 1,
+      "max": 90
     }
   ],
   "parameters": [
     {
+      "name": "Loops",
+      "min": 1,
+      "max": 4,
+      "description": "The number of simultaneous loops."
+    },
+    {
+      "name": "Max time",
+      "min": 1,
+      "max": 90,
+      "description": "The maximum total loop time."
+    },
+    {
       "name": "Target loop",
       "min": 0,
-      "default": 1,
+      "max": 1,
+      "default": 0,
       "description": "Sets the target loop(s)."
     },
     {
@@ -46,14 +67,14 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Activates ‘reverse’ (toggles the target loops between playing forwards and backwards)."
+      "description": "Activates 'reverse' (toggles the target loops between playing forwards and backwards)."
     },
     {
       "name": "Octave down",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Activates ‘octave down’ (toggles the target loops between playing at normal speed and half speed)."
+      "description": "Activates 'octave down' (toggles the target loops between playing at normal speed and half speed)."
     },
     {
       "name": "Retrigger",
@@ -67,28 +88,28 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Activates ‘stop all’. All currently playing loops are selected as targets and stopped."
+      "description": "Activates 'stop all'."
     },
     {
       "name": "Bypass clock",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "While this parameter is held, commands such as Record, Play, etc. behave as if the ‘Clock source’ parameters were ‘None’."
+      "description": "While this parameter is held, commands such as Record, Play, etc. behave as if the 'Clock source' parameters were 'None'."
     },
     {
       "name": "Undo",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Activates ‘Undo’. See Layers, above."
+      "description": "Activates 'Undo'. See Layers."
     },
     {
       "name": "Redo",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Activates ‘Redo’. See Layers, above."
+      "description": "Activates 'Redo'. See Layers."
     },
     {
       "name": "Target 1",
@@ -130,7 +151,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Activates ‘fade to clear’ – the same as pressing Play to stop the loops, except that the loops will be automatically cleared when the fade out has completed."
+      "description": "Activates 'fade to clear' – the same as pressing Play to stop the loops, except that the loops will be automatically cleared when the fade out has completed."
     },
     {
       "name": "Pause/mute",
@@ -164,10 +185,10 @@
       "max": 100,
       "default": 0,
       "description": "The loop envelope attack stage shape.",
-      "type": "string",
-      "channelCountRef": "percentage",
-      "is_per_channel": false,
-      "is_bus": false
+      "enum_values": [
+        "Linear",
+        "Exponential"
+      ]
     },
     {
       "name": "Decay shape",
@@ -175,8 +196,10 @@
       "max": 100,
       "default": 0,
       "description": "The loop envelope decay stage shape.",
-      "type": "string",
-      "channelCountRef": "percentage"
+      "enum_values": [
+        "Linear",
+        "Exponential"
+      ]
     },
     {
       "name": "Overdub attack time",
@@ -197,68 +220,56 @@
       "min": -24.0,
       "max": 0.0,
       "default": 0.0,
-      "description": "Sets how much the previous loop content will fade out on each pass while overdubbing.",
-      "type": "string",
-      "channelCountRef": "dB"
+      "description": "Sets how much the previous loop content will fade out on each pass while overdubbing."
     },
     {
       "name": "Retrigger fade",
       "min": 0.5,
       "max": 100.0,
       "default": 2.0,
-      "description": "Sets the duration of the crossfade applied when retriggering.",
-      "type": "string",
-      "channelCountRef": "ms"
+      "description": "Sets the duration of the crossfade applied when retriggering."
     },
     {
       "name": "Layer fade",
       "min": 1,
       "max": 1000,
       "default": 10,
-      "description": "Sets the duration of the crossfade when changing layers.",
-      "type": "string",
-      "channelCountRef": "ms"
+      "description": "Sets the duration of the crossfade when changing layers."
     },
     {
       "name": "Clear hold time",
       "min": 0.5,
       "max": 5.0,
       "default": 1.0,
-      "description": "Sets how long Record needs to be held before a Clear happens.",
-      "type": "string",
-      "channelCountRef": "s"
+      "description": "Sets how long Record needs to be held before a Clear happens."
     },
     {
       "name": "Record hold time",
       "min": 0.5,
       "max": 5.0,
       "default": 1.0,
-      "description": "Sets how long Record needs to be held before releasing it is treated as pressing it again.",
-      "type": "string",
-      "channelCountRef": "s"
+      "description": "Sets how long Record needs to be held before releasing it is treated as pressing it again."
     },
     {
       "name": "Next hold time",
       "min": 0.1,
       "max": 5.0,
       "default": 0.3,
-      "description": "Sets how long ‘Target next’ needs to be held before the target loop is set to None (or all loops, if it is already None).",
-      "type": "string",
-      "channelCountRef": "s"
+      "description": "Sets how long 'Target next' needs to be held before the target loop is set to None (or all loops, if it is already None)."
     },
     {
       "name": "Next hold order",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "If set, reverses the order of targetting none or all loops by holding ‘Target next’."
+      "description": "If set, reverses the order of targetting none or all loops by holding 'Target next'."
     },
     {
       "name": "Mixed play/stop",
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "Sets what happens when you hit ‘Play’ and some targetted loops are playing while others are stopped.",
+      "description": "Sets what happens when you hit 'Play' and some targetted loops are playing while others are stopped.",
       "enum_values": [
         "Toggle",
         "All play",
@@ -277,7 +288,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "If enabled, only loops set as targets are able to record. Other loops’ inputs are muted."
+      "description": "If enabled, only loops set as targets are able to record. Other loops' inputs are muted."
     },
     {
       "name": "Clock source",
@@ -297,14 +308,14 @@
       "min": 0,
       "max": 19,
       "default": 9,
-      "description": "The MIDI clock divisor to sync to, if the ‘Clock source’ is ‘MIDI clock’."
+      "description": "The MIDI clock divisor to sync to, if the 'Clock source' is 'MIDI clock'."
     },
     {
       "name": "MIDI numerator",
       "min": 1,
       "max": 16,
       "default": 1,
-      "description": "A multiplier for the MIDI clock."
+      "description": "A multiplier for the MIDI clock. For example, if your song is in 5/4 time, and you want to sync the loops to whole bars, you could set the divisor to 1/4 and the numerator to 5."
     },
     {
       "name": "MIDI transport",
@@ -318,9 +329,7 @@
       "min": 0,
       "max": 1000,
       "default": 0,
-      "description": "Specifies a time window around the clock – if a loop would naturally loop during this window, it is retriggered so that it begins exactly on the clock pulse.",
-      "type": "string",
-      "channelCountRef": "ms"
+      "description": "Activates automatic re-triggering of the loops to keep them locked to the clock. The parameter specifies a time window around the clock."
     },
     {
       "name": "2nd press cancels",
@@ -334,7 +343,7 @@
       "min": 1,
       "max": 48,
       "default": 1,
-      "description": "The number of pulses per quarter note for output clocks. Set this to ‘24’ when generating MIDI clock."
+      "description": "The number of pulses per quarter note for output clocks. Set this to '24' when generating MIDI clock."
     },
     {
       "name": "Output to breakout",
@@ -380,7 +389,7 @@
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "Selects bit depth.",
+      "description": "Selects the bit depth for the loop.",
       "enum_values": [
         "32 bit (float)",
         "24 bit",
@@ -399,7 +408,7 @@
       "min": 0,
       "max": 8,
       "default": 0,
-      "description": "The minimum number of layers the loop should have, or ‘0’ for ‘Layers disabled’."
+      "description": "The minimum number of layers the loop should have, or '0' for 'Layers disabled'."
     },
     {
       "name": "Current layer",
@@ -477,129 +486,133 @@
       "min": 0,
       "max": 127,
       "default": 48,
-      "description": "The MIDI note to automate ‘Target 1’."
+      "description": "The MIDI note to automate 'Target 1'."
     },
     {
       "name": "MIDI Target 2",
       "min": 0,
       "max": 127,
       "default": 50,
-      "description": "The MIDI note to automate ‘Target 2’."
+      "description": "The MIDI note to automate 'Target 2'."
     },
     {
       "name": "MIDI Target 3",
       "min": 0,
       "max": 127,
       "default": 52,
-      "description": "The MIDI note to automate ‘Target 3’."
+      "description": "The MIDI note to automate 'Target 3'."
     },
     {
       "name": "MIDI Target 4",
       "min": 0,
       "max": 127,
       "default": 53,
-      "description": "The MIDI note to automate ‘Target 4’."
+      "description": "The MIDI note to automate 'Target 4'."
     },
     {
       "name": "MIDI Target next",
       "min": 0,
       "max": 127,
       "default": 54,
-      "description": "The MIDI note to automate ‘Target next’."
+      "description": "The MIDI note to automate 'Target next'."
     },
     {
       "name": "MIDI Record",
       "min": 0,
       "max": 127,
       "default": 55,
-      "description": "The MIDI note to automate ‘Record’."
+      "description": "The MIDI note to automate 'Record'."
     },
     {
       "name": "MIDI Play",
       "min": 0,
       "max": 127,
       "default": 57,
-      "description": "The MIDI note to automate ‘Play’."
+      "description": "The MIDI note to automate 'Play'."
     },
     {
       "name": "MIDI Reverse",
       "min": 0,
       "max": 127,
       "default": 59,
-      "description": "The MIDI note to automate ‘Reverse’."
+      "description": "The MIDI note to automate 'Reverse'."
     },
     {
       "name": "MIDI Octave down",
       "min": 0,
       "max": 127,
       "default": 60,
-      "description": "The MIDI note to automate ‘Octave down’."
+      "description": "The MIDI note to automate 'Octave down'."
     },
     {
       "name": "MIDI Retrigger",
       "min": 0,
       "max": 127,
       "default": 58,
-      "description": "The MIDI note to automate ‘Retrigger’."
+      "description": "The MIDI note to automate 'Retrigger'."
     },
     {
       "name": "MIDI Stop all",
       "min": 0,
       "max": 127,
       "default": 62,
-      "description": "The MIDI note to automate ‘Stop all’."
+      "description": "The MIDI note to automate 'Stop all'."
     },
     {
       "name": "MIDI Bypass clock",
       "min": 0,
       "max": 127,
       "default": 71,
-      "description": "The MIDI note to automate ‘Bypass clock’."
+      "description": "The MIDI note to automate 'Bypass clock'."
     },
     {
       "name": "MIDI Undo",
       "min": 0,
       "max": 127,
       "default": 72,
-      "description": "The MIDI note to automate ‘Undo’."
+      "description": "The MIDI note to automate 'Undo'."
     },
     {
       "name": "MIDI Redo",
       "min": 0,
       "max": 127,
       "default": 74,
-      "description": "The MIDI note to automate ‘Redo’."
+      "description": "The MIDI note to automate 'Redo'."
     },
     {
       "name": "MIDI Fade to clear",
       "min": 0,
       "max": 127,
       "default": 76,
-      "description": "The MIDI note to automate ‘Fade to clear’."
+      "description": "The MIDI note to automate 'Fade to clear'."
     }
   ],
   "input_ports": [
     {
-      "name": "Input signal",
-      "description": "Audio input for recording into loops."
+      "name": "Input left/mono",
+      "description": "The input bus for the left (if stereo) or mono signal."
+    },
+    {
+      "name": "Input right",
+      "description": "The input bus for the right signal, if stereo."
     },
     {
       "name": "Clock input",
-      "description": "External clock signal for synchronization."
-    },
-    {
-      "name": "Clock input",
-      "description": "The input bus to use as clock if the ‘Clock source’ is ‘Clock input’."
+      "description": "The input bus to use as clock if the 'Clock source' is 'Clock input'."
     }
   ],
   "output_ports": [
     {
-      "name": "Output clocks",
-      "description": "Trigger/clock pulses synced to loop length."
+      "name": "Output left/mono",
+      "description": "The output bus for the left (if stereo) or mono signal."
     },
     {
-      "name": "MIDI output",
-      "description": "MIDI clock and data output to breakout, Select Bus, or USB."
+      "name": "Output right",
+      "description": "The output bus for the right signal, if stereo."
+    },
+    {
+      "name": "Trigger output",
+      "description": "The output bus for an end-of-loop trigger pulse or clock."
     },
     {
       "name": "Trigger output",

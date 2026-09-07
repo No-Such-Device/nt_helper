@@ -1,18 +1,12 @@
 {
   "guid": "delm",
   "name": "Delay (Mono)",
-  "description": "This algorithm is a simple delay effect. The delay time can be set manually, via a clock pulse, or via MIDI clock. It can also be modulated via its ‘V/oct input’, which halves the delay time for every 1V rise in CV (conversely, doubles it for every 1V fall in CV). The ‘Fractional’ parameter allows for delay times that are not integer multiples of the sample rate. This slightly increases CPU load but will sound significantly better if the delay time is being modulated, for example for chorus or flange type sounds. Conversely, turning it off makes for an extremely clean digital delay, with no colouration in the repeats.",
+  "short_description": "A simple mono delay effect",
+  "description": "This algorithm is a simple delay effect. The delay time can be set manually, via a clock pulse, or via MIDI clock. It can also be modulated via its 'V/oct input', which halves the delay time for every 1V rise in CV (conversely, doubles it for every 1V fall in CV). The 'Fractional' parameter allows for delay times that are not integer multiples of the sample rate. This slightly increases CPU load but will sound significantly better if the delay time is being modulated, for example for chorus or flange type sounds. Conversely, turning it off makes for an extremely clean digital delay, with no colouration in the repeats.",
   "categories": [
     "Delay",
-    "Audio Effects"
-  ],
-  "short_description": "A simple mono delay effect",
-  "specifications": [
-    {
-      "name": "Max delay time",
-      "value": "1-30 seconds",
-      "description": "The maximum delay time."
-    }
+    "Effect",
+    "Time-based"
   ],
   "parameters": [
     {
@@ -20,21 +14,8 @@
       "min": 0,
       "max": 100,
       "default": 100,
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
-      "is_bus": false
-    },
-    {
-      "name": "Mix",
-      "min": 0,
-      "max": 100,
-      "default": 100,
-      "description": "The wet/dry mix.",
-      "enum_values": [],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -42,11 +23,8 @@
       "min": -40,
       "max": 0,
       "default": 0,
-      "description": "The gain applied to the delay/wet signal.",
-      "enum_values": [],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -54,11 +32,8 @@
       "min": 1,
       "max": 32767,
       "default": 250,
-      "description": "The delay time.",
-      "enum_values": [],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -66,11 +41,8 @@
       "min": 0,
       "max": 100,
       "default": 50,
-      "description": "The delay feedback.",
-      "enum_values": [],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -78,11 +50,8 @@
       "min": 0,
       "max": 23,
       "default": 15,
-      "description": "Sets a multiplier to apply to the delay time. Affects both the ‘Time’ parameter and the delay time set by the clock.",
-      "enum_values": [],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -90,14 +59,8 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets how changes of delay time will be handled. The options are ‘Slew’ (the delay time is smoothly interpolated, sounding a bit like a tape being played slower or faster) and ‘Crossfade’ (the effect rapidly crossfades from one time setting to the other).",
-      "enum_values": [
-        "Slew",
-        "Crossfade"
-      ],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -105,11 +68,8 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables fractional delay times. See above.",
-      "enum_values": [],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -117,11 +77,8 @@
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "Enables a DC blocker at the delay input. Recommended for audio use; disable when processing CVs.",
-      "enum_values": [],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -129,15 +86,8 @@
       "min": 0,
       "max": 2,
       "default": 1,
-      "description": "Chooses the clock source: ‘None’, ‘Clock input’, or ‘MIDI clock’.",
-      "enum_values": [
-        "None",
-        "Clock input",
-        "MIDI clock"
-      ],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -145,11 +95,8 @@
       "min": 0,
       "max": 19,
       "default": 9,
-      "description": "The MIDI divisor, if the clock source is ‘MIDI clock’.",
-      "enum_values": [],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -157,11 +104,8 @@
       "min": 1,
       "max": 16,
       "default": 1,
-      "description": "The MIDI numerator, if the clock source is ‘MIDI clock’.",
-      "enum_values": [],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -169,31 +113,12 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above.",
-      "enum_values": [],
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_per_channel": false,
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     }
   ],
   "input_ports": [
-    {
-      "name": "Audio Input",
-      "description": "The audio input signal"
-    },
-    {
-      "name": "Clock Input",
-      "description": "Input for clock pulse synchronization"
-    },
-    {
-      "name": "V/oct Input",
-      "description": "CV input for 1V/octave modulation of delay time"
-    },
-    {
-      "name": "Clock input",
-      "description": "The input bus to use for the clock, if the source is ‘Clock input’."
-    },
     {
       "name": "Input",
       "description": "The audio input bus."
@@ -201,13 +126,17 @@
     {
       "name": "V/oct input",
       "description": "The input bus to use for 1V/octave modulation of the delay time."
+    },
+    {
+      "name": "Clock input",
+      "description": "The input bus to use for the clock, if the source is 'Clock input'."
+    },
+    {
+      "name": "Clock input",
+      "description": ""
     }
   ],
   "output_ports": [
-    {
-      "name": "Audio Output",
-      "description": "The processed delay signal output"
-    },
     {
       "name": "Output",
       "description": "The audio output bus."

@@ -1,161 +1,167 @@
 {
   "guid": "env2",
   "name": "Envelope (AR/AD)",
-  "description": "This algorithm generates simple attack/release or attack/decay envelopes. It is based on the disting mk4 algorithm “E-1 AR Envelope”.\n\nIn the disting mk4 version the envelope times were always set together from a single knob; this version adds the option of setting them independently.\n\nThe envelope times and shapes are set globally; each output channel can however be independently scaled and offset.\n\nIn “Attack/release” mode, the envelope will rise to full level and stay there as long as the input is high. In “Attack/decay” mode, the envelope will execute one full attack/decay cycle in response to a trigger input. In “Looped AD” mode, the envelope will continually execute attack/decay cycles as long as the trigger input is high.\n\nIn “Macro (asymmetric)” mode, the “Joint time” parameter sweeps from short A & D, through short A & long D, through long A & D, through long A & short D, and finally back to short A & D. In “Macro (symmetric)” mode, the “Joint time” parameter sets the A & D times to the same value, from very short times (about 10ms) to very long times (about 8s). Note that the actual times are heavily dependent on the shape parameters.",
+  "short_description": "A simple attack/release envelope",
+  "description": "This algorithm generates simple attack/release or attack/decay envelopes. It is based on the disting mk4 algorithm \"E-1 AR Envelope\". In the disting mk4 version the envelope times were always set together from a single knob; this version adds the option of setting them independently. The envelope times and shapes are set globally; each output channel can however be independently scaled and offset. In \"Attack/release\" mode, the envelope will rise to full level and stay there as long as the input is high. In \"Attack/decay\" mode, the envelope will execute one full attack/decay cycle in response to a trigger input. In \"Looped AD\" mode, the envelope will continually execute attack/decay cycles as long as the trigger input is high. In \"Macro (asymmetric)\" mode, the \"Joint time\" parameter sweeps from short A & D, through short A & long D, through long A & D, through long A & short D, and finally back to short A & D. In \"Macro (symmetric)\" mode, the \"Joint time\" parameter sets the A & D times to the same value, from very short times (about 10ms) to very long times (about 8s). Note that the actual times are heavily dependent on the shape parameters.",
   "categories": [
     "Envelope",
-    "Modulation"
+    "Modulation",
+    "Signal Processing"
   ],
-  "short_description": "A simple attack/release envelope",
+  "use_cases": [
+    "Generating attack/release envelopes for gating signals",
+    "Creating attack/decay envelopes for percussive modulation",
+    "Looped AD envelopes for continuous modulation",
+    "MIDI/I2C note-triggered envelope generation"
+  ],
   "gui_description": "The display shows the envelope shape. If the visible parameter page is one of the Channel pages, it also shows the current envelope level.",
-  "specifications": [
-    {
-      "name": "Channels",
-      "value": "1-8",
-      "description": "The number of envelopes to generate."
-    }
-  ],
   "parameters": [
     {
       "name": "Trigger mode",
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "The trigger mode. The options are: Attack/release, Attack/decay, Looped AD",
-      "enum_values": [
-        "Attack/release",
-        "Attack/decay",
-        "Looped AD"
-      ]
+      "type": "enum",
+      "is_per_channel": false,
+      "is_bus": false
     },
     {
       "name": "Time mode",
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "The envelope time mode. The options are: Macro (asymmetric), Macro (symmetric), Independent",
-      "enum_values": [
-        "Macro (asymmetric)",
-        "Macro (symmetric)",
-        "Independent"
-      ]
+      "type": "enum",
+      "is_per_channel": false,
+      "is_bus": false
     },
     {
       "name": "Joint time",
       "min": 0,
       "max": 1023,
       "default": 0,
-      "description": "Sets the attack and release times if the ‘Time mode’ is one of the two ‘Macro’ options."
+      "type": "enum",
+      "is_per_channel": false,
+      "is_bus": false
     },
     {
       "name": "Attack time",
       "min": 0,
       "max": 1023,
       "default": 64,
-      "description": "Sets the attack time if the ‘Time mode’ is ‘Independent’."
+      "type": "enum",
+      "is_per_channel": false,
+      "is_bus": false
     },
     {
       "name": "Release time",
       "min": 0,
       "max": 1023,
       "default": 64,
-      "description": "Sets the release time if the ‘Time mode’ is ‘Independent’."
+      "type": "enum",
+      "is_per_channel": false,
+      "is_bus": false
     },
     {
       "name": "Attack shape",
       "min": 0,
       "max": 128,
       "default": 104,
-      "description": "Sets the attack shape, from an exaggerated exponential curve at 0 to an almost linear shape at 128."
+      "type": "enum",
+      "is_per_channel": false,
+      "is_bus": false
     },
     {
       "name": "Release shape",
       "min": 0,
       "max": 128,
       "default": 40,
-      "description": "Sets the release shape, from an exaggerated exponential curve at 0 to an almost linear shape at 128."
+      "type": "enum",
+      "is_per_channel": false,
+      "is_bus": false
     },
     {
       "name": "Enable",
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "per-channel",
-      "description": "Enables the channel."
+      "type": "enum",
+      "is_per_channel": true,
+      "is_bus": false
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The standard Add/Replace mode selector as described above."
+      "type": "enum",
+      "is_per_channel": true,
+      "is_bus": false
     },
     {
       "name": "Amplitude",
       "min": -10.0,
       "max": 10.0,
       "default": 8.0,
-      "scope": "per-channel",
-      "description": "Sets the amplitude of the envelope. Note that negative values give an inverted envelope.",
-      "type": "string",
-      "channelCountRef": "V"
+      "type": "enum",
+      "is_per_channel": true,
+      "is_bus": false
     },
     {
       "name": "Offset",
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
-      "scope": "per-channel",
-      "description": "Sets a constant voltage offset for the envelope.",
-      "type": "string",
-      "channelCountRef": "V"
+      "type": "enum",
+      "is_per_channel": true,
+      "is_bus": false
     },
     {
       "name": "MIDI channel",
       "min": 0,
       "max": 16,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The MIDI channel on which notes can trigger the envelope."
+      "type": "enum",
+      "is_per_channel": true,
+      "is_bus": false
     },
     {
       "name": "I2C channel",
       "min": 0,
       "max": 255,
       "default": 1,
-      "scope": "per-channel",
-      "description": "The I2C channel on which notes can trigger the envelope."
+      "type": "enum",
+      "is_per_channel": true,
+      "is_bus": false
     },
     {
       "name": "Note number",
       "min": -1,
       "max": 127,
       "default": -1,
-      "scope": "per-channel",
-      "description": "The MIDI or I2C note number that will trigger the envelope, or ‘-1’ for ‘Any’."
+      "type": "enum",
+      "is_per_channel": true,
+      "is_bus": false
     },
     {
       "name": "Velocity depth",
       "min": 0,
       "max": 100,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The amount by which the trigger velocity affects the envelope scale (applies only to MIDI and I2C).",
-      "type": "string",
-      "channelCountRef": "%"
+      "type": "enum",
+      "is_per_channel": true,
+      "is_bus": false
     }
   ],
   "input_ports": [
     {
       "name": "Trigger input",
-      "description": "Sets the trigger input bus."
+      "description": ""
     }
   ],
   "output_ports": [
     {
       "name": "Output",
-      "description": "Sets the envelope output bus."
+      "description": ""
     }
   ]
 }

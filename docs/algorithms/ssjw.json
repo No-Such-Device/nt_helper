@@ -1,16 +1,14 @@
 {
   "guid": "ssjw",
   "name": "Seaside Jawari",
-  "description": "This algorithm is based on the open source Jawari VCV Rack module by Seaside Modular. It is a simulation of the tanpura, the Indian drone instrument. The tanpura is a four-stringed instrument, without frets. The four strings are typically played in sequence, in a continuous loop, and this is what this algorithm does. Each time it gets a strum (from the strum input bus, or via the strum parameter) it advances to and plays the next string. The second, third, and fourth strings of the tanpura are generally tuned in octaves, with the fourth string an octave below the other two. The first string is tuned to another note of the scale, very often the fifth. For a completely authentic sound, you might consider using the microtuning support to tune the strings to just intervals.",
+  "short_description": "Tanpura synth by Seaside Modular",
+  "description": "This algorithm is based on the open source Jawari VCV Rack module by Seaside Modular. It is a simulation of the tanpura, the Indian drone instrument.\n\nThe tanpura is a four-stringed instrument, without frets. The four strings are typically played in sequence, in a continuous loop, and this is what this algorithm does. Each time it gets a strum (from the strum input bus, or via the strum parameter) it advances to and plays the next string.\n\nThe second, third, and fourth strings of the tanpura are generally tuned in octaves, with the fourth string an octave below the other two. The first string is tuned to another note of the scale, very often the fifth. For a completely authentic sound, you might consider using the microtuning support to tune the strings to just intervals.",
   "categories": [
     "Synth",
     "Drone",
-    "Simulation",
-    "World Instruments"
+    "Indian"
   ],
-  "short_description": "Tanpura synth by Seaside Modular",
   "gui_description": "The display shows the tuning of the four strings, with the last string played highlighted.",
-  "specifications": [],
   "parameters": [
     {
       "name": "Bridge shape",
@@ -32,8 +30,7 @@
       "max": 36,
       "default": 0,
       "description": "Transposes the whole instrument.",
-      "type": "string",
-      "channelCountRef": "ST"
+      "type": "string"
     },
     {
       "name": "Fine tune",
@@ -41,8 +38,7 @@
       "max": 100,
       "default": 0,
       "description": "Fine tuning control for the whole instrument.",
-      "type": "string",
-      "channelCountRef": "cents"
+      "type": "string"
     },
     {
       "name": "Strum",
@@ -78,8 +74,7 @@
       "max": 2.0,
       "default": 1.0,
       "description": "The decay time for the string model.",
-      "type": "string",
-      "channelCountRef": "s"
+      "type": "string"
     },
     {
       "name": "Bounce count",
@@ -93,18 +88,14 @@
       "min": 0.0,
       "max": 100.0,
       "default": 25.0,
-      "description": "The relative strength of the strum vs the bounces.",
-      "type": "string",
-      "channelCountRef": "%"
+      "description": "The relative strength of the strum vs the bounces."
     },
     {
       "name": "Bounce level",
       "min": 0.0,
       "max": 1000.0,
       "default": 150.0,
-      "description": "The relative strength of the bounces vs the strum.",
-      "type": "string",
-      "channelCountRef": "%"
+      "description": "The relative strength of the bounces vs the strum."
     },
     {
       "name": "Start harmonic",
@@ -132,39 +123,44 @@
       ]
     },
     {
-      "name": "Strum (Routing)",
+      "name": "Strum",
       "min": 0,
       "max": 64,
       "default": 0,
-      "description": "The bus to use for a strum trigger."
+      "description": "The bus to use for a strum trigger.",
+      "type": "string"
     },
     {
-      "name": "Bridge shape (Routing)",
+      "name": "Bridge shape",
       "min": 0,
       "max": 64,
       "default": 0,
-      "description": "The bus to use for CV control over the ‘bridge shape’."
+      "description": "The bus to use for CV control over the 'bridge shape'.",
+      "type": "string"
     },
     {
-      "name": "Reset (Routing)",
+      "name": "Reset",
       "min": 0,
       "max": 64,
       "default": 0,
-      "description": "The bus to use for a reset trigger."
+      "description": "The bus to use for a reset trigger.",
+      "type": "string"
     },
     {
       "name": "V/oct main",
       "min": 0,
       "max": 64,
       "default": 0,
-      "description": "The bus to use for pitch control over the instrument as a whole."
+      "description": "The bus to use for pitch control over the instrument as a whole.",
+      "type": "string"
     },
     {
       "name": "V/oct 1st string",
       "min": 0,
       "max": 64,
       "default": 0,
-      "description": "The bus to use for pitch control over the tuning of the first string."
+      "description": "The bus to use for pitch control over the tuning of the first string.",
+      "type": "string"
     },
     {
       "name": "Output mode",
@@ -178,8 +174,17 @@
       ]
     }
   ],
-  "input_ports": [],
+  "input_ports": [
+    {
+      "name": "Strum",
+      "description": "Strum trigger input bus"
+    }
+  ],
   "output_ports": [
+    {
+      "name": "Output",
+      "description": "Audio output bus"
+    },
     {
       "name": "Output",
       "description": "The output bus."

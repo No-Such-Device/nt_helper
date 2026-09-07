@@ -1,13 +1,19 @@
 {
   "guid": "pymu",
   "name": "Poly Multisample",
-  "description": "This algorithm is inspired by the original “SD Multisample” algorithm on the disting EX, with hints of the Crossfade Loop Synth 103 VST plug-in, and the “Audio Playback with Crossfade” algorithm on the disting mk4. It is a polyphonic sample playback instrument, playing WAV files from the MicroSD card. It can also record audio (i.e. sample in the traditional sense) and play that. It can apply crossfade looping to make smooth looping pads out of any sample material. It can be played via CV/gate, MIDI, or I2C. It supports both velocity switches and round robins per sample.",
-  "categories": [
-    "Polyphonic",
-    "Sampler",
-    "Instrument"
-  ],
   "short_description": "A polyphonic sample player",
+  "description": "This algorithm is inspired by the original \"SD Multisample\" algorithm on the disting EX, with hints of the Crossfade Loop Synth VST plug-in, and the \"Audio Playback with Crossfade\" algorithm on the disting mk4. It is a polyphonic sample playback instrument, playing WAV files from the MicroSD card. It can also record audio (i.e. sample in the traditional sense) and play that. It can apply crossfade looping to make smooth looping pads out of any sample material. It can be played via CV/gate, MIDI, or I2C. It supports both velocity switches and round robins per sample.",
+  "categories": [
+    "Sample Player",
+    "Polyphonic",
+    "Synthesizer"
+  ],
+  "use_cases": [
+    "Polyphonic sample playback",
+    "Audio recording and sampling",
+    "Crossfade looping pads",
+    "WAV file playback from MicroSD"
+  ],
   "gui_description": "The display shows the notes being played by the various voices, each superimposed on a bar to indicate the note envelope. The folder and filename of the last sample played are also shown. When adjusting the microtuning parameters, more information about the chosen tuning is displayed. When adjusting trim and loop points, this algorithm uses the UI described for the sample players.",
   "specifications": [
     {
@@ -25,264 +31,232 @@
     {
       "name": "Folder",
       "min": 0,
-      "max": null,
       "default": 0,
       "description": "Sets the sample folder to use."
     },
     {
       "name": "Sample",
       "min": -1,
-      "max": null,
       "default": -1,
-      "description": "Allows you to choose a single sample within the folder to play, or “<MULTISAMPLE>” for the usual case where you want the algorithm to choose the sample automatically based on the note pitch."
+      "description": "Allows you to choose a single sample within the folder to play, or \"<MULTISAMPLE>\" for the usual case where you want the algorithm to choose the sample automatically based on the note pitch."
     },
     {
       "name": "Gain",
       "min": -40,
       "max": 24,
       "default": 0,
-      "description": "Sets the output level.",
-      "type": "string",
-      "channelCountRef": "dB"
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Pan",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Sets the stereo pan position.",
-      "type": "string",
-      "channelCountRef": "%"
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Transpose",
       "min": -60,
       "max": 60,
       "default": 0,
-      "description": "Adjusts the tuning in semitones.",
-      "type": "string",
-      "channelCountRef": "ST"
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Fine tune",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Adjusts the tuning in cents.",
-      "type": "string",
-      "channelCountRef": "cents"
+      "type": "file",
+      "is_bus": false
     },
     {
-      "name": "Crossfade Mode",
+      "name": "Crossfade",
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "Sets the crossfade looping mode: Off, Forwards, or Alternating.",
-      "enum_values": [
-        "Off",
-        "Forwards",
-        "Alternating"
-      ]
+      "type": "file",
+      "is_bus": false
     },
     {
-      "name": "Crossfade Length",
+      "name": "Crossfade",
       "min": 0.1,
       "max": 100.0,
       "default": 50.0,
-      "description": "Sets the length of the crossfade, as a percentage of the loop time (the difference between the loop point and end trim point).",
-      "type": "string",
-      "channelCountRef": "%"
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Loop point coarse",
       "min": 0.0,
       "max": 100.0,
       "default": 0.0,
-      "description": "Sets the loop point, as a percentage of the sample length.",
-      "type": "string",
-      "channelCountRef": "%"
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Loop point fine",
       "min": -500,
       "max": 500,
       "default": 0,
-      "description": "Adjusts the loop point, in sample frames."
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Sustain mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard polysynth sustain mode parameter."
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Sustain",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Directly controls the sustain (like a MIDI sustain pedal)."
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Gate offset",
       "min": 0.0,
       "max": 10.0,
       "default": 0.2,
-      "description": "Offsets (delays) the gate inputs relative to the pitch inputs. This is useful to allow pitch CVs to settle before they are sampled on the rising gate, and also to cope with modules which output both a pitch and gate but change their gate first.",
-      "type": "string",
-      "channelCountRef": "ms"
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Round robin mode",
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "The round-robin mode."
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Loop",
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "Sets whether the sample will loop. ‘From WAV file’ will loop if the sample has loop points defined in the file and not otherwise. ‘Off’ and ‘On’ force the sample to loop or not.",
-      "enum_values": [
-        "Off",
-        "On",
-        "From WAV file"
-      ]
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Bend range",
       "min": 0,
       "max": 48,
       "default": 2,
-      "description": "The MIDI pitch bend range.",
-      "type": "string",
-      "channelCountRef": "ST"
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Confirm change",
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "Sets whether the folder and/or sample changes immediately or requires confirmation."
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Envelope",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables an ADSR volume envelope. If the envelope is disabled, the sample simply plays once until the end."
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Attack",
       "min": 0,
       "max": 127,
       "default": 0,
-      "description": "Sets the envelope attack time (from 1ms to 15s, exponential response)."
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Decay",
       "min": 0,
       "max": 127,
       "default": 60,
-      "description": "Sets the envelope decay time (from 20ms to 15s, exponential response)."
+      "type": "file",
+      "is_bus": false
     },
     {
-      "name": "Sustain Level",
+      "name": "Sustain",
       "min": 0,
       "max": 100,
       "default": 100,
-      "description": "Sets the envelope sustain level.",
-      "type": "string",
-      "channelCountRef": "%"
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Release",
       "min": 0,
       "max": 127,
       "default": 77,
-      "description": "Sets the envelope release time (from 10ms to 30s, exponential response)."
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Velocity",
       "min": 0,
       "max": 100,
       "default": 100,
-      "description": "Sets the amount by which the note velocity affects the note volume.",
-      "type": "string",
-      "channelCountRef": "%"
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "Press -> volume",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "The amount by which pressure (per note for MPE) affects the note volume.",
-      "type": "string",
-      "channelCountRef": "%"
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "MPE Y -> volume",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "The amount by which the MPE Y dimension affects the note volume.",
-      "type": "string",
-      "channelCountRef": "%"
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "MIDI channel",
       "min": 0,
       "max": 16,
       "default": 1,
-      "description": "The MIDI channel to listen on."
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "MPE channels",
       "min": 1,
       "max": 16,
       "default": 1,
-      "description": "Controls how the algorithm will respond to MPE."
+      "type": "file",
+      "is_bus": false
     },
     {
       "name": "I2C channel",
       "min": 0,
       "max": 255,
       "default": 1,
-      "description": "Sets the I2C channel."
-    }
-  ],
-  "input_ports": [
-    {
-      "name": "CV/Gate",
-      "description": "Control Voltage and Gate inputs for pitch and triggering."
-    },
-    {
-      "name": "MIDI",
-      "description": "MIDI input for note and control data."
-    },
-    {
-      "name": "I2C",
-      "description": "I2C communication input."
+      "type": "file",
+      "is_bus": false
     }
   ],
   "output_ports": [
     {
-      "name": "Left/Mono Output",
-      "description": "The left or mono audio output bus."
-    },
-    {
-      "name": "Right Output",
-      "description": "The right audio output bus."
-    },
-    {
       "name": "Left/mono output",
-      "description": "The left or mono output bus."
+      "description": ""
     },
     {
       "name": "Right output",
-      "description": "The right output bus."
+      "description": ""
     }
   ]
 }

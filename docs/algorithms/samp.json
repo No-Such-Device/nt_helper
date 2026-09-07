@@ -1,39 +1,41 @@
 {
   "guid": "samp",
   "name": "Sample Player",
-  "description": "This algorithm plays samples from the MicroSD card. It is loosely based on the “SD 6 Triggers” algorithm on the disting EX. Whereas the “Poly Multisample” algorithm is aimed more at playing pitched instruments, this algorithm is mainly designed for playing simple one-shot samples e.g. drums. It supports both velocity switches and round robins per sample. The trigger inputs are velocity sensitive – the voltage of the gate signal is used like the velocity of a MIDI note. 5V corresponds to maximum velocity.",
-  "categories": [
-    "Sample Playback",
-    "Percussion",
-    "Drum Machine"
-  ],
   "short_description": "A simple sample player",
-  "gui_description": "The display shows the MIDI note names of the samples being played by the various triggers, superimposed on a bar indicating the trigger’s envelope. The folder and filename of the most recently triggered sample is also shown.",
+  "description": "This algorithm plays samples from the MicroSD card. It is loosely based on the \"SD 6 Triggers\" algorithm on the disting EX. Whereas the \"Poly Multisample\" algorithm is aimed more at playing pitched instruments, this algorithm is mainly designed for playing simple one-shot samples e.g. drums. It supports both velocity switches and round robins per sample. The trigger inputs are velocity sensitive – the voltage of the gate signal is used like the velocity of a MIDI note. 5V corresponds to maximum velocity.",
+  "categories": [
+    "sample",
+    "playback",
+    "drums",
+    "one-shot"
+  ],
+  "use_cases": [
+    "Playing simple one-shot samples such as drums",
+    "Velocity-sensitive sample triggering",
+    "Round-robin sample playback",
+    "Sample recording and sampling"
+  ],
+  "gui_description": "The display shows the MIDI note names of the samples being played by the various triggers, superimposed on a bar indicating the trigger's envelope. The folder and filename of the most recently triggered sample is also shown.",
   "specifications": [
     {
       "name": "Triggers",
-      "value": "1-8",
-      "description": "The number of individual sample triggers."
-    }
-  ],
-  "parameters": [
-    {
-      "name": "Gain",
-      "min": -40,
-      "max": 24,
-      "default": 0,
-      "scope": "global",
-      "type": "file",
-      "channelCountRef": "",
-      "is_per_channel": false,
-      "is_common": false,
-      "is_bus": false
+      "description": "The number of individual sample triggers",
+      "min": 1,
+      "max": 8
     }
   ],
   "input_ports": [
     {
       "name": "Trigger input",
-      "description": "The input bus to use as the gate/trigger."
+      "description": "The input bus to use as the gate/trigger. Velocity sensitive – the voltage of the gate signal is used like the velocity of a MIDI note. 5V corresponds to maximum velocity."
+    },
+    {
+      "name": "Record input L",
+      "description": "The bus to use for the left, or mono, audio input for recording."
+    },
+    {
+      "name": "Record input R",
+      "description": "The bus to use for the right audio input for recording."
     }
   ],
   "output_ports": [

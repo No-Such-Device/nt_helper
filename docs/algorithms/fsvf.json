@@ -1,12 +1,17 @@
 {
   "guid": "fsvf",
   "name": "VCF (State Variable)",
-  "description": "This algorithm is a voltage controlled filter using the common ‘State Variable’ topology, which yields simultaneous low-, band-, and highpass filter responses.\n\nAll three filter outputs are available individually, plus an output which can be blended from lowpass, through bandpass, to highpass.\n\nThe input and the various outputs use a contiguous range of busses, starting with the one set via the parameters, and with the channel count set by the ‘Width’ parameter. For example, to filter stereo signals, set the Width to 2.",
+  "short_description": "Second order LP/BP/HP filter",
+  "description": "This algorithm is a voltage controlled filter using the common 'State Variable' topology, which yields simultaneous low-, band-, and highpass filter responses. All three filter outputs are available individually, plus an output which can be blended from lowpass, through bandpass, to highpass. The input and the various outputs use a contiguous range of busses, starting with the one set via the parameters, and with the channel count set by the 'Width' parameter. For example, to filter stereo signals, set the Width to 2.",
   "categories": [
     "Filter",
-    "Synthesis"
+    "VCF"
   ],
-  "short_description": "Second order LP/BP/HP filter",
+  "use_cases": [
+    "Voltage controlled filtering",
+    "Simultaneous LP/BP/HP filtering",
+    "Blended filter output"
+  ],
   "gui_description": "The display simply shows the filter centre frequency, in Hz and as a MIDI note number.",
   "specifications": [],
   "parameters": [
@@ -22,9 +27,8 @@
       "min": -36.0,
       "max": 84.0,
       "default": 0.0,
-      "description": "A manual frequency sweep control; offsets the frequency CV.",
       "type": "string",
-      "channelCountRef": "ST"
+      "is_bus": false
     },
     {
       "name": "Resonance",
@@ -45,36 +49,32 @@
       "min": -40,
       "max": 6,
       "default": 0,
-      "description": "Level control for the blended output.",
       "type": "string",
-      "channelCountRef": "dB"
+      "is_bus": false
     },
     {
       "name": "Lowpass gain",
       "min": -40,
       "max": 6,
       "default": 0,
-      "description": "Level control for the lowpass output.",
       "type": "string",
-      "channelCountRef": "dB"
+      "is_bus": false
     },
     {
       "name": "Bandpass gain",
       "min": -40,
       "max": 6,
       "default": 0,
-      "description": "Level control for the bandpass output.",
       "type": "string",
-      "channelCountRef": "dB"
+      "is_bus": false
     },
     {
       "name": "Highpass gain",
       "min": -40,
       "max": 6,
       "default": 0,
-      "description": "Level control for the highpass output.",
       "type": "string",
-      "channelCountRef": "dB"
+      "is_bus": false
     },
     {
       "name": "Width",
@@ -123,69 +123,40 @@
       "min": 0,
       "max": 100,
       "default": 100,
-      "description": "Sets the amount by which the pitch of received MIDI notes affects the filter cutoff.",
       "type": "string",
-      "channelCountRef": "%"
+      "is_bus": false
     }
   ],
   "input_ports": [
     {
       "name": "Audio input",
-      "description": "The audio input bus."
+      "description": ""
     },
     {
       "name": "Frequency input",
-      "description": "The frequency CV input bus (1V/octave)."
+      "description": ""
     },
     {
       "name": "Resonance input",
-      "description": "The resonance CV input bus."
-    },
-    {
-      "name": "Audio input",
-      "description": "The audio input bus."
-    },
-    {
-      "name": "Frequency input",
-      "description": "The frequency CV input bus (1V/octave)."
-    },
-    {
-      "name": "Resonance input",
-      "description": "The resonance CV input bus. Scaled such that 5V corresponds to the full range."
+      "description": ""
     }
   ],
   "output_ports": [
     {
       "name": "Blended output",
-      "description": "The output bus for the blended signal."
+      "description": ""
     },
     {
       "name": "Lowpass output",
-      "description": "The output bus for the lowpass signal."
+      "description": ""
     },
     {
       "name": "Bandpass output",
-      "description": "The output bus for the bandpass signal."
+      "description": ""
     },
     {
       "name": "Highpass output",
-      "description": "The output bus for the highpass signal."
-    },
-    {
-      "name": "Blended output",
-      "description": "The output bus for the blended signal."
-    },
-    {
-      "name": "Lowpass output",
-      "description": "The output bus for the lowpass signal."
-    },
-    {
-      "name": "Bandpass output",
-      "description": "The output bus for the bandpass signal."
-    },
-    {
-      "name": "Highpass output",
-      "description": "The output bus for the highpass signal."
+      "description": ""
     }
   ]
 }

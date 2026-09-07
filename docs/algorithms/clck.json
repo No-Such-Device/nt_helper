@@ -1,28 +1,26 @@
 {
   "guid": "clck",
   "name": "Clock",
+  "short_description": "Generates clocks",
   "description": "This algorithm produces and/or receives analogue clock pulses and/or MIDI clock. It is designed to synchronise the module with others, or with other devices that it communicates with via MIDI, or simply to be a source of clock pulses for other algorithms within the module.\n\nIt can generate its own BPM-based clock, or sync to external clock pulses, or sync to MIDI.\n\nIt can output clock pulses, or send MIDI clock, or both.\n\nIf syncing to external clock, the algorithm expects a 24ppqn DINsync style clock. If you only have a slower clock available, use the Clock multiplier algorithm to get the clock up to the right speed before this algorithm sees it.",
   "categories": [
     "Clock",
-    "Synchronization",
+    "Timing",
     "MIDI"
   ],
-  "short_description": "Generates clocks",
-  "gui_description": "The display shows the current tempo, and the transport location in bars, beats, and sixteenths. It also shows the clock source, and whether the transport is running or stopped. The GUI can also show information about the swing settings.",
-  "specifications": [
-    {
-      "name": "Outputs",
-      "value": "1-8",
-      "description": "The number of clock outputs to generate."
-    }
+  "use_cases": [
+    "Synchronising the module with other modules",
+    "Synchronising with external devices via MIDI",
+    "Generating clock pulses for other algorithms within the module"
   ],
+  "gui_description": "The display shows the current tempo, and the transport location in bars, beats, and sixteenths. It also shows the clock source, and whether the transport is running or stopped. The GUI can also show information about the swing settings.",
   "parameters": [
     {
       "name": "Source",
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "The clock source.",
+      "description": "The clock source. The options are \"Internal\", \"External\", and \"MIDI\".",
       "enum_values": [
         "Internal",
         "External",
@@ -35,10 +33,7 @@
       "max": 240.0,
       "default": 120.0,
       "description": "The internal clock tempo.",
-      "type": "string",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "type": "bus"
     },
     {
       "name": "Run",
@@ -101,13 +96,7 @@
       "min": 0,
       "max": 7,
       "default": 0,
-      "description": "The type of swing to apply.",
-      "enum_values": [
-        "16ths",
-        "8ths",
-        "Pentuplet",
-        "etc"
-      ]
+      "description": "The type of swing to apply."
     },
     {
       "name": "Swing",
@@ -115,10 +104,7 @@
       "max": 100.0,
       "default": 0.0,
       "description": "The amount of swing to apply.",
-      "type": "string",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "type": "bus"
     },
     {
       "name": "16th note 1",
@@ -146,21 +132,26 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables the output."
+      "description": "Enables the output.",
+      "type": "bus"
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above."
+      "description": "The standard Add/Replace mode selector.",
+      "enum_values": [
+        "Add",
+        "Replace"
+      ]
     },
     {
       "name": "Type",
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "The output type, one of “Clock”, “Run/stop”, “Reset”, or “Trigger”.",
+      "description": "The output type.",
       "enum_values": [
         "Clock",
         "Run/stop",
@@ -203,10 +194,7 @@
       "max": 10.0,
       "default": 0.0,
       "description": "The output voltage when the clock is low/inactive.",
-      "type": "string",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "type": "bus"
     },
     {
       "name": "High voltage",
@@ -214,17 +202,14 @@
       "max": 10.0,
       "default": 5.0,
       "description": "The output voltage when the clock is high/active.",
-      "type": "string",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "type": "bus"
     },
     {
       "name": "Ratchet mode",
       "min": 0,
       "max": 2,
       "default": 1,
-      "description": "The ratchet mode, one of “Off”, “Twos”, and “Twos and threes”.",
+      "description": "The ratchet mode.",
       "enum_values": [
         "Off",
         "Twos",
@@ -236,35 +221,32 @@
       "min": 0,
       "max": 7,
       "default": 0,
-      "description": "The ratchet division for the clock. If mode is “Twos”, selects from 1, 2, 4, 8, 16. If mode is “Twos and threes”, selects from 1, 2, 3, 4, 6, 8, 12, 16."
+      "description": "The ratchet division for the clock. If mode is \"Twos\", selects from 1, 2, 4, 8, 16. If mode is \"Twos and threes\", selects from 1, 2, 3, 4, 6, 8, 12, 16."
     },
     {
       "name": "Trigger length",
       "min": 1,
       "max": 100,
       "default": 10,
-      "description": "The length of the trigger pulse, if the type is “Reset” or “Trigger”.",
-      "type": "string",
-      "is_per_channel": false,
-      "is_common": true,
-      "is_bus": false
+      "description": "The length of the trigger pulse, if the type is \"Reset\" or \"Trigger\".",
+      "type": "bus"
     },
     {
       "name": "ES-5 Expander",
       "min": 0,
       "max": 6,
       "default": 0,
-      "description": "If set, the ES-5 expander header to use for output instead of the bus specified by the Output parameter. “1” means the ES-5 itself."
+      "description": "If set, the ES-5 expander header to use for output instead of the bus specified by the Output parameter. \"1\" means the ES-5 itself."
     }
   ],
   "input_ports": [
     {
       "name": "Clock input",
-      "description": "External clock input (expects 24ppqn DINsync style clock)."
+      "description": "External clock signal input"
     },
     {
       "name": "Run/stop input",
-      "description": "Run/stop input for the external clock."
+      "description": "Run/stop signal input for the external clock"
     },
     {
       "name": "Clock input",
@@ -277,24 +259,36 @@
   ],
   "output_ports": [
     {
-      "name": "Clock Outputs",
-      "description": "1-8 clock outputs to generate."
+      "name": "Clock output 1",
+      "description": "Clock output 1"
     },
     {
-      "name": "MIDI Breakout",
-      "description": "MIDI output to the breakout."
+      "name": "Clock output 2",
+      "description": "Clock output 2"
     },
     {
-      "name": "MIDI Select Bus",
-      "description": "MIDI output to the Select Bus."
+      "name": "Clock output 3",
+      "description": "Clock output 3"
     },
     {
-      "name": "MIDI USB",
-      "description": "MIDI output to USB."
+      "name": "Clock output 4",
+      "description": "Clock output 4"
     },
     {
-      "name": "MIDI Internal",
-      "description": "Internal MIDI output sent to other algorithms."
+      "name": "Clock output 5",
+      "description": "Clock output 5"
+    },
+    {
+      "name": "Clock output 6",
+      "description": "Clock output 6"
+    },
+    {
+      "name": "Clock output 7",
+      "description": "Clock output 7"
+    },
+    {
+      "name": "Clock output 8",
+      "description": "Clock output 8"
     },
     {
       "name": "Output",

@@ -1,24 +1,10 @@
 {
   "guid": "mix1",
   "name": "Mixer Mono",
+  "short_description": "A mono mixer",
   "description": "This algorithm is a mono mixer - it mixes mono inputs to a mono output. Up to four aux send busses are available, which can be switched to pre- or post-fade.",
   "categories": [
-    "Mixer",
-    "Audio Routing"
-  ],
-  "short_description": "A mono mixer",
-  "gui_description": "The display shows a level meter for each channel. The thin line at the top indicates 0dBFS; if a channel goes over this, a clip indicator will show (a small rectangle over the 0dBFS line). The chevrons to the right of the level meters indicate the mixer gains. Mute and Solo are indicated with a small ‘M’ and ‘S’ respectively. Muted level meters are grayed out.",
-  "specifications": [
-    {
-      "name": "Channels",
-      "value": "1-12",
-      "description": "The number of mixer channels."
-    },
-    {
-      "name": "Sends",
-      "value": "0-4",
-      "description": "The number of aux sends per channel."
-    }
+    "Mixer"
   ],
   "parameters": [
     {
@@ -27,7 +13,8 @@
       "max": 1,
       "default": 0,
       "description": "The standard Add/Replace mode selector as described above.",
-      "type": "enum"
+      "type": "enum",
+      "is_common": true
     },
     {
       "name": "Output gain",
@@ -35,10 +22,8 @@
       "max": 6.0,
       "default": 0.0,
       "description": "The mixer output gain.",
-      "type": "file",
-      "channelCountRef": "common",
-      "is_common": true,
-      "is_bus": false
+      "type": "folder",
+      "is_common": true
     },
     {
       "name": "Destination",
@@ -47,9 +32,8 @@
       "default": 13,
       "description": "The output bus for the send.",
       "type": "bus",
-      "is_per_channel": false,
-      "is_common": false,
-      "is_bus": false
+      "is_per_channel": true,
+      "is_common": true
     },
     {
       "name": "Pre/post",
@@ -57,15 +41,19 @@
       "max": 1,
       "default": 1,
       "description": "Whether the send is Pre-fade or Post-fade.",
-      "type": "enum"
+      "type": "enum",
+      "is_per_channel": true,
+      "is_common": true
     },
     {
-      "name": "Output mode (send)",
+      "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
       "description": "The standard Add/Replace mode selector as described above.",
-      "type": "enum"
+      "type": "enum",
+      "is_per_channel": true,
+      "is_common": true
     },
     {
       "name": "Gain",
@@ -73,9 +61,8 @@
       "max": 6.0,
       "default": -70.0,
       "description": "The channel gain.",
-      "type": "file",
-      "channelCountRef": "per-channel",
-      "is_bus": false
+      "type": "folder",
+      "is_per_channel": true
     },
     {
       "name": "Mute",
@@ -83,7 +70,8 @@
       "max": 1,
       "default": 0,
       "description": "Mutes the channel.",
-      "type": "enum"
+      "type": "enum",
+      "is_per_channel": true
     },
     {
       "name": "Solo",
@@ -91,12 +79,14 @@
       "max": 1,
       "default": 0,
       "description": "Solos the channel.",
-      "type": "enum"
+      "type": "enum",
+      "is_per_channel": true
     },
     {
       "name": "Name",
       "description": "A text name for the channel for identification.",
-      "type": "string"
+      "type": "string",
+      "is_per_channel": true
     },
     {
       "name": "Send gain",
@@ -104,9 +94,9 @@
       "max": 6.0,
       "default": -70.0,
       "description": "The send gain.",
-      "type": "file",
-      "channelCountRef": "per-channel-per-send",
-      "is_bus": false
+      "type": "folder",
+      "is_per_channel": true,
+      "is_common": true
     }
   ],
   "input_ports": [

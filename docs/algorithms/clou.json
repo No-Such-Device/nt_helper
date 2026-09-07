@@ -1,28 +1,33 @@
 {
   "guid": "clou",
   "name": "Texture Synthesizer",
-  "description": "This algorithm is an implementation of the open source Clouds module by Émilie Gillet. This implementation should behave and sound identical to the original. Any demos or tutorials you may find online should apply just as well to this version. The user manual for the original module is here. The documentation below assumes some familiarity with this.",
+  "short_description": "It's Clouds!",
+  "description": "This algorithm is an implementation of the open source Clouds module by Émilie Gillet. This implementation should behave and sound identical to the original. Any demos or tutorials you may find online should apply just as well to this version. The user manual for the original module is available online. The documentation below assumes some familiarity with this.",
   "categories": [
     "Granular",
     "Synthesis",
-    "Effects"
+    "Effect"
   ],
-  "short_description": "It's Clouds!",
-  "specifications": [],
   "parameters": [
     {
       "name": "Sample rate",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Allows you to run the algorithm at the disting NT’s own sample rate (‘Native’) or the sample rate of a real Clouds module (‘Authentic (32kHz)’)."
+      "description": "Allows you to run the algorithm at the disting NT's own sample rate ('Native') or the sample rate of a real Clouds module ('Authentic (32kHz)')."
     },
     {
       "name": "Mode",
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "The effect mode: Granular, Stretch, Looping delay, or Spectral."
+      "description": "The effect mode: Granular, Stretch, Looping delay, or Spectral.",
+      "enum_values": [
+        "Granular",
+        "Stretch",
+        "Looping delay",
+        "Spectral"
+      ]
     },
     {
       "name": "Buffer channels",
@@ -43,25 +48,22 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables “lo-fi” mode (8 bit and reduced sample rate)."
+      "description": "Enables \"lo-fi\" mode (8 bit and reduced sample rate)."
     },
     {
       "name": "Freeze",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "“This latching [parameter] stops the recording of incoming audio. Granularization is now performed on the last few seconds of audio kept in memory in the module.”"
+      "description": "This latching parameter stops the recording of incoming audio. Granularization is now performed on the last few seconds of audio kept in memory in the module."
     },
     {
       "name": "Position",
       "min": 0,
       "max": 100,
       "default": 50,
-      "description": "“Selects from which part of the recording buffer the audio grains are played. Turn the knob clockwise to travel back in time.”",
-      "type": "string",
-      "channelCountRef": "percentage",
-      "is_per_channel": false,
-      "is_bus": false
+      "description": "Selects from which part of the recording buffer the audio grains are played. Turn the knob clockwise to travel back in time.",
+      "type": "folder"
     },
     {
       "name": "Size",
@@ -69,8 +71,7 @@
       "max": 100,
       "default": 50,
       "description": "Sets the grain size.",
-      "type": "string",
-      "channelCountRef": "percentage"
+      "type": "folder"
     },
     {
       "name": "Pitch",
@@ -78,8 +79,7 @@
       "max": 100,
       "default": 0,
       "description": "Sets the grain transposition.",
-      "type": "string",
-      "channelCountRef": "percentage"
+      "type": "folder"
     },
     {
       "name": "Coarse tune",
@@ -87,8 +87,7 @@
       "max": 48,
       "default": 0,
       "description": "Sets the grain pitch in semitones.",
-      "type": "string",
-      "channelCountRef": "ST"
+      "type": "folder"
     },
     {
       "name": "Fine tune",
@@ -96,69 +95,58 @@
       "max": 100,
       "default": 0,
       "description": "Sets the grain pitch in cents.",
-      "type": "string",
-      "channelCountRef": "cents"
+      "type": "folder"
     },
     {
       "name": "Density",
       "min": -100,
       "max": 100,
       "default": 50,
-      "description": "“At 12 o'clock, no grains are generated. Turn clockwise and grains will be sown randomly, counter-clockwise and they will be played at a constant rate. The further you turn, the higher the overlap between grains.”",
-      "type": "string",
-      "channelCountRef": "percentage"
+      "description": "At 12 o'clock, no grains are generated. Turn clockwise and grains will be sown randomly, counter-clockwise and they will be played at a constant rate. The further you turn, the higher the overlap between grains.",
+      "type": "folder"
     },
     {
       "name": "Texture",
       "min": 0,
       "max": 100,
       "default": 50,
-      "description": "“Morphs through various shapes of grain envelopes: square (boxcar), triangle, and then Hann window. Past 2 o'clock, activates a diffuser which smears transients.”",
-      "type": "string",
-      "channelCountRef": "percentage"
+      "description": "Morphs through various shapes of grain envelopes: square (boxcar), triangle, and then Hann window. Past 2 o'clock, activates a diffuser which smears transients.",
+      "type": "folder"
     },
     {
       "name": "Wet/dry",
       "min": 0,
       "max": 100,
       "default": 50,
-      "description": "Wet/dry mix balance.",
-      "type": "string",
-      "channelCountRef": "percentage"
+      "description": "Wet/dry mix balance."
     },
     {
       "name": "Spread",
       "min": 0,
       "max": 100,
       "default": 50,
-      "description": "“Stereo spread (amount of random panning/balance applied to the grains).”",
-      "type": "string",
-      "channelCountRef": "percentage"
+      "description": "Stereo spread (amount of random panning/balance applied to the grains)."
     },
     {
       "name": "Feedback",
       "min": 0,
       "max": 100,
       "default": 50,
-      "description": "Sets the amount of feedback.",
-      "type": "string",
-      "channelCountRef": "percentage"
+      "description": "Sets the amount of feedback."
     },
     {
       "name": "Reverb",
       "min": 0,
       "max": 100,
       "default": 50,
-      "description": "Sets the amount of reverb applied to the output.",
-      "type": "string",
-      "channelCountRef": "percentage"
+      "description": "Sets the amount of reverb applied to the output."
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "description": "The standard Add/Replace mode selector."
     }
   ],
   "input_ports": [
@@ -177,33 +165,9 @@
     {
       "name": "Trigger input",
       "description": "The bus to use for a trigger input."
-    },
-    {
-      "name": "Left input",
-      "description": "The left audio input bus."
-    },
-    {
-      "name": "Right input",
-      "description": "The right audio input bus."
-    },
-    {
-      "name": "V/Oct input",
-      "description": "The bus to use for a V/octave pitch CV."
-    },
-    {
-      "name": "Trigger input",
-      "description": "The bus to use for a trigger input."
     }
   ],
   "output_ports": [
-    {
-      "name": "Left output",
-      "description": "The left audio output bus."
-    },
-    {
-      "name": "Right output",
-      "description": "The right audio output bus."
-    },
     {
       "name": "Left output",
       "description": "The left audio output bus."

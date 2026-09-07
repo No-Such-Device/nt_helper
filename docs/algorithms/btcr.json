@@ -1,14 +1,13 @@
 {
   "guid": "btcr",
   "name": "Bit Crusher",
-  "description": "This algorithm is an implementation of the disting mk4 algorithm of the same name. The algorithm is a 'bit crusher' – it applies sample rate and sample depth reduction to deliberately introduce quantisation and aliasing artefacts. It also optionally applies bitwise modification of the samples for non-linear distortion effects.\n\nThe ‘Bit reduce’ parameter sets the bit depth reduction. There are two types of bit reduction available:\n- Type I: the signal is quantised to a 16 bit word, and the low bits thrown away. The resulting signal uses a power of 2 bits. Changing between bit depths is therefore discontinuous.\n- Type II: quantisation is achieved via the limited precision of integer maths when dividing the signal by a factor. Since the factor can be continuously varied, this offers a smooth variation between 'bit depths'.\n\nFurthermore, you may choose symmetric or asymmetric bit reduction via the ‘Symmetric’ parameter. Asymmetric bit reduction treats the whole signal range as one number to be quantised. Symmetric bit reduction treats positive and negative sections of the input signal differently. Negative sections are flipped positive, quantized, and flipped back.",
+  "short_description": "Sample rate and bit depth reduction",
+  "description": "This algorithm is an implementation of the disting mk4 algorithm of the same name. The algorithm is a 'bit crusher' – it applies sample rate and sample depth reduction to deliberately introduce quantisation and aliasing artefacts. It also optionally applies bitwise modification of the samples for non-linear distortion effects. The 'Bit reduce' parameter sets the bit depth reduction. There are two types of bit reduction available: Type I - the signal is quantised to a 16 bit word, and the low bits thrown away. The resulting signal uses a power of 2 bits. Changing between bit depths is therefore discontinuous. Type II - quantisation is achieved via the limited precision of integer maths when dividing the signal by a factor. Since the factor can be continuously varied, this offers a smooth variation between 'bit depths'. Furthermore, you may choose symmetric or asymmetric bit reduction via the 'Symmetric' parameter. Asymmetric bit reduction treats the whole signal range as one number to be quantised. Symmetric bit reduction treats positive and negative sections of the input signal differently. Negative sections are flipped positive, quantized, and flipped back. The 'Reduction' parameter selects the type of bit reduction. The positive and negative sections of the input signal can have different types of reduction applied. The 'Mangling' parameter selects the bit mangling mode.",
   "categories": [
     "Distortion",
-    "Lo-fi",
-    "Wave-shaping"
+    "Bit Manipulation",
+    "Sample Rate Reduction"
   ],
-  "short_description": "Sample rate and bit depth reduction",
-  "specifications": [],
   "parameters": [
     {
       "name": "Bit reduce",
@@ -16,7 +15,7 @@
       "max": 100.0,
       "default": 0.0,
       "type": "folder",
-      "channelCountRef": "1",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -24,54 +23,35 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Chooses symmetric or asymmetric bit reduction.",
-      "enum_values": [
-        "Asymmetric",
-        "Symmetric"
-      ]
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Reduction",
       "min": 0,
       "max": 7,
       "default": 0,
-      "description": "Sets the bit reduction type.",
-      "enum_values": [
-        "Positive: Type I, Negative: Type I",
-        "Positive: Type II, Negative: Type II",
-        "Positive: Type I, Negative: Type II",
-        "Positive: Type II, Negative: Type I",
-        "Positive: Type I, Negative: None",
-        "Positive: Type II, Negative: None",
-        "Positive: None, Negative: Type I",
-        "Positive: None, Negative: Type II"
-      ]
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Mangling",
       "min": 0,
       "max": 7,
       "default": 0,
-      "description": "Sets the mangling mode.",
-      "enum_values": [
-        "None",
-        "Bit swap variant 1",
-        "Bit swap variant 2",
-        "Bit swap variant 3",
-        "Bit rotation",
-        "Previous sample XOR variant 1",
-        "Previous sample XOR variant 2",
-        "Previous sample XOR variant 3"
-      ]
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Downsample",
       "min": 0.0,
       "max": 10.0,
       "default": 0.0,
-      "description": "Controls the downsampling (sample rate reduction), scaled at 0.8V/octave.",
       "type": "folder",
-      "channelCountRef": "1",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -79,42 +59,34 @@
       "min": 1,
       "max": 8,
       "default": 1,
-      "description": "The number of busses to process, starting from the Input. For example, for a stereo signal, set this to 2."
+      "type": "folder",
+      "is_common": false,
+      "is_bus": true
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "type": "folder",
+      "is_common": false,
+      "is_bus": true
     }
   ],
   "input_ports": [
     {
-      "name": "Audio Input",
-      "description": "The primary audio signal to be crushed."
-    },
-    {
-      "name": "Downsample CV",
-      "description": "Control voltage to modulate the sample rate reduction."
-    },
-    {
       "name": "Input",
-      "description": "The first input bus to process."
+      "description": ""
     },
     {
       "name": "Downsample input",
-      "description": "The bus to use for the downsample CV, which is added to the Downsample parameter value. (This corresponds to the Y input on the disting mk4 algorithm.)"
+      "description": ""
     }
   ],
   "output_ports": [
     {
-      "name": "Audio Output",
-      "description": "The processed bit-crushed signal."
-    },
-    {
       "name": "Output",
-      "description": "The first output bus."
+      "description": ""
     }
   ]
 }

@@ -1,12 +1,12 @@
 {
   "guid": "phas",
   "name": "Phaser",
-  "description": "This algorithm is based on the Phaser algorithm on the disting mk4. It’s a classic phaser effect, using a number of all-pass filters to introduce notches into the audio’s frequency spectrum. You may like to apply an LFO to the sweep CV input.",
+  "short_description": "Classic phaser effect",
+  "description": "This algorithm is based on the Phaser algorithm on the disting mk4. It's a classic phaser effect, using a number of all-pass filters to introduce notches into the audio's frequency spectrum. You may like to apply an LFO to the sweep CV input.",
   "categories": [
     "Modulation",
-    "Audio Effect"
+    "Filter"
   ],
-  "short_description": "Classic phaser effect",
   "parameters": [
     {
       "name": "Sweep",
@@ -27,66 +27,46 @@
       "min": -100.0,
       "max": 100.0,
       "default": 0.0,
-      "description": "Sets the amount of feedback around the effect.\nNegative values invert the signal.",
-      "enum_values": [],
-      "type": "string",
-      "channelCountRef": "",
-      "is_bus": false
+      "defaultValue": 0.0,
+      "description": "Sets the amount of feedback around the effect. Negative values invert the signal."
     },
     {
       "name": "Warp",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "If enabled, warps the sweep parameter/CV for a\nmore perceptually linear sweep."
+      "description": "If enabled, warps the sweep parameter/CV for a more perceptually linear sweep."
     },
     {
       "name": "Input scale",
       "min": -100,
       "max": 100,
       "default": 20,
-      "description": "Sets the scaling of the sweep CV input.",
-      "type": "string",
-      "channelCountRef": "",
-      "is_bus": false
+      "description": "Sets the scaling of the sweep CV input."
     },
     {
       "name": "Mix",
       "min": 0,
       "max": 100,
       "default": 50,
-      "description": "The output wet/dry mix.",
-      "type": "string",
-      "channelCountRef": "",
-      "is_bus": false
+      "description": "The output wet/dry mix."
     },
     {
       "name": "Level",
       "min": -40,
       "max": 0,
       "default": 0,
-      "description": "The output gain applied to the effected signal.",
-      "type": "string",
-      "channelCountRef": "",
-      "is_bus": false
+      "description": "The output gain applied to the effected signal."
     },
     {
       "name": "Width",
       "min": 1,
       "max": 8,
       "default": 1,
-      "description": "The number of busses to process, starting from the\nInput. For example, for a stereo signal, set this to 2."
+      "description": "The number of busses to process, starting from the Input. For example, for a stereo signal, set this to 2."
     }
   ],
   "input_ports": [
-    {
-      "name": "Audio Input",
-      "description": "The first audio input bus."
-    },
-    {
-      "name": "Sweep CV",
-      "description": "Control voltage input for sweeping the all-pass filters."
-    },
     {
       "name": "Sweep input",
       "description": "The bus to use for the sweep CV."
@@ -97,10 +77,6 @@
     }
   ],
   "output_ports": [
-    {
-      "name": "Audio Output",
-      "description": "The first output bus."
-    },
     {
       "name": "Output",
       "description": "The first output bus."

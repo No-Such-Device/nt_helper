@@ -1,19 +1,12 @@
 {
   "guid": "logi",
   "name": "Logic",
-  "description": "This algorithm is based on the disting mk4 algorithm of the same name. It includes comparator functions, thus fulfilling the role of the disting mk4 Comparator algorithm. Each channel of the algorithm is independent and performs logical operations on its X & Y inputs. Complex logical operations can be constructed by combining operations. The inputs of each channel can be set to the outputs of other channels, allowing you to chain them internally to the algorithm.",
+  "short_description": "Performs various logical operations",
+  "description": "This algorithm is based on the disting mk4 algorithm of the same name. Each channel of the algorithm is independent and performs logical operations on its X & Y inputs. The following operations are available: AND, OR, XOR, NAND, NOR, XNOR, SR flip-flop, D flip-flop, greater than, less than. The SR flip-flop is set high by a rising edge on input X, and cleared low by a rising edge on input Y. The D flip-flop takes the level of input X on a rising edge on input Y. The global parameters set the threshold and hysteresis of the input comparators which generate logical signals from arbitrary CVs. Complex logical operations can be constructed by combining operations. The inputs of each channel can be set to the outputs of other channels, allowing you to chain them internally to the algorithm.",
   "categories": [
     "Logic",
-    "Utility",
-    "Comparator"
-  ],
-  "short_description": "Performs various logical operations",
-  "specifications": [
-    {
-      "name": "Channels",
-      "value": "1-8",
-      "description": "The number of channels to process."
-    }
+    "Comparator",
+    "Digital"
   ],
   "parameters": [
     {
@@ -21,10 +14,8 @@
       "min": 0.0,
       "max": 10.0,
       "default": 1.0,
-      "type": "string",
-      "channelCountRef": "global",
-      "is_per_channel": false,
-      "is_common": true,
+      "scope": "global",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -32,10 +23,8 @@
       "min": 0.0,
       "max": 10.0,
       "default": 0.5,
-      "type": "string",
-      "channelCountRef": "global",
-      "is_per_channel": false,
-      "is_common": true,
+      "scope": "global",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -43,10 +32,8 @@
       "min": -10.0,
       "max": 10.0,
       "default": 5.0,
-      "type": "string",
-      "channelCountRef": "global",
-      "is_per_channel": false,
-      "is_common": true,
+      "scope": "global",
+      "type": "folder",
       "is_bus": false
     },
     {
@@ -54,90 +41,86 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables the channel.",
-      "is_per_channel": true
+      "scope": "channel",
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Operation",
       "min": 0,
       "max": 9,
       "default": 0,
-      "description": "Selects the logical operation from the table above.",
-      "enum_values": [
-        "AND",
-        "OR",
-        "XOR",
-        "NAND",
-        "NOR",
-        "XNOR",
-        "SR flip-flop",
-        "D flip-flop",
-        "> (greater than)",
-        "< (less than)"
-      ],
-      "is_per_channel": true
+      "scope": "channel",
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Invert X",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Inverts the X input (before it is used by the logical operation).",
-      "is_per_channel": true
+      "scope": "channel",
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Invert Y",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Inverts the Y input (before it is used by the logical operation).",
-      "is_per_channel": true
+      "scope": "channel",
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Input X",
       "min": 1,
       "default": 1,
-      "description": "Chooses the X input bus or channel for the operation.",
-      "is_per_channel": true
+      "scope": "channel",
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Input Y",
       "min": 1,
-      "default": 2,
-      "description": "Chooses the Y input bus or channel for the operation.",
-      "is_per_channel": true
+      "max": 2,
+      "default": 1,
+      "scope": "channel",
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above.",
-      "is_per_channel": true
+      "scope": "channel",
+      "type": "folder",
+      "is_bus": false
     }
   ],
   "input_ports": [
     {
-      "name": "Input X",
-      "description": "Input signal for logical operations"
+      "name": "X",
+      "description": "X input for logical operations"
     },
     {
-      "name": "Input Y",
-      "description": "Input signal for logical operations"
+      "name": "Y",
+      "description": "Y input for logical operations"
     }
   ],
   "output_ports": [
     {
       "name": "Output",
-      "description": "The result of the logical operation"
+      "description": "Logical operation output"
     },
     {
       "name": "Invert output",
-      "description": "Inverts the output."
+      "description": ""
     },
     {
       "name": "Output",
-      "description": "Chooses the output bus."
+      "description": ""
     }
   ]
 }

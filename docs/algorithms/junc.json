@@ -1,31 +1,31 @@
 {
   "guid": "junc",
   "name": "Chorus (Vintage)",
+  "short_description": "Chorus effect based on an 80s polysynth",
   "description": "This algorithm is a stereo chorus effect, modelled on that of the classic Juno-6 polysynth, based on measurements of the author's own unit.\n\nThose with keen ears may recognise it as the chorus that is built into the Poly Wavetable algorithm on the disting EX.",
   "categories": [
-    "Effects",
-    "Chorus"
+    "Modulation",
+    "Effect"
   ],
-  "short_description": "Chorus effect based on an 80s polysynth",
   "parameters": [
-    {
-      "name": "Mode",
-      "min": 0,
-      "max": 2,
-      "default": 2,
-      "description": "The chorus effect to apply. The options are “None”, “Mode 1”, and “Mode 2”.",
-      "enum_values": [
-        "None",
-        "Mode 1",
-        "Mode 2"
-      ]
-    },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
       "description": "The standard Add/Replace mode selector as described above."
+    },
+    {
+      "name": "Mode",
+      "min": 0,
+      "max": 2,
+      "default": 2,
+      "description": "The chorus effect to apply.",
+      "enum_values": [
+        "None",
+        "Mode 1",
+        "Mode 2"
+      ]
     }
   ],
   "input_ports": [

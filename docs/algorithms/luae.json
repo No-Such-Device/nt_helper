@@ -1,60 +1,64 @@
 {
   "guid": "luae",
   "name": "Lua Expression",
-  "description": "This algorithm allows you to define an arbitrary CV or audio process by simply entering a line of text on the module, for example “a + b” to add two signals together. It is designed to catch those little corner cases where stringing together, say, a bunch of attenuverters would be tedious, and writing a full blown Lua script seems like overkill (or, if you’re out and about without a computer on which to write the script).",
-  "categories": [
-    "Utility",
-    "Math",
-    "Logic",
-    "CV Processing"
-  ],
   "short_description": "A single line of Lua",
-  "gui_description": "The display shows any errors encountered when parsing or running the expression, or “No errors” if everything is OK.",
-  "specifications": [
+  "description": "This algorithm allows you to define an arbitrary CV or audio process by simply entering a line of text on the module, for example \"a + b\" to add two signals together.\n\nIt is designed to catch those little corner cases where stringing together, say, a bunch of attenuverters would be tedious, and writing a full blown Lua script seems like overkill (or, if you're out and about without a computer on which to write the script).\n\nFor more extensive discussion of Lua on the disting NT, see the Lua Script algorithm (below) and the UI Scripts (below).\n\nThe expressions are interpreted as Lua. All built-in language features (e.g. simple maths +, -, *, /) and the math library (e.g. math.floor()) are available.\n\nThe inputs to the algorithm are represented by the variables a-h.",
+  "categories": [
+    "Scripting",
+    "Processing",
+    "CV",
+    "Audio"
+  ],
+  "parameters": [
     {
-      "name": "Expressions",
-      "value": "1-8",
-      "description": "The number of independent expressions to evaluate."
+      "name": "Input A-H",
+      "min": 1,
+      "max": 64,
+      "description": "The bus to use for the correspondingly named expression variable.",
+      "type": "bus"
+    },
+    {
+      "name": "Input A-H mode",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "description": "Whether the input is interpreted as a voltage (a floating point number in the expression) or a logic input (a boolean value in the expression).",
+      "type": "toggle"
+    },
+    {
+      "name": "Output mode",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "description": "The standard Add/Replace mode selector as described above.",
+      "type": "toggle"
+    },
+    {
+      "name": "Enable",
+      "min": 0,
+      "max": 1,
+      "description": "Enables evaluation of the expression.",
+      "type": "toggle"
+    },
+    {
+      "name": "Expression",
+      "description": "The expression text.",
+      "type": "string"
+    },
+    {
+      "name": "Rate",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "description": "Whether the expression is evaluated at control rate or audio rate.",
+      "type": "toggle"
     }
   ],
-  "input_ports": [
-    {
-      "name": "Input A",
-      "description": "Input variable a"
-    },
-    {
-      "name": "Input B",
-      "description": "Input variable b"
-    },
-    {
-      "name": "Input C",
-      "description": "Input variable c"
-    },
-    {
-      "name": "Input D",
-      "description": "Input variable d"
-    },
-    {
-      "name": "Input E",
-      "description": "Input variable e"
-    },
-    {
-      "name": "Input F",
-      "description": "Input variable f"
-    },
-    {
-      "name": "Input G",
-      "description": "Input variable g"
-    },
-    {
-      "name": "Input H",
-      "description": "Input variable h"
-    }
-  ],
+  "input_ports": [],
   "output_ports": [
     {
       "name": "Output",
-      "description": "The expression output"
+      "description": "The bus to use for the expression output."
     }
   ]
 }

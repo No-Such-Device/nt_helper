@@ -1,15 +1,19 @@
 {
   "guid": "auto",
   "name": "Auto-sampler",
-  "description": "This algorithm allows you to automatically create multi-sampled instruments in a format that can be used by the Poly Multisample algorithm, by triggering an external synth (by MIDI or CV/gate) and recording the resulting audio.\n\nYou can set the range of notes to be sampled, and the step size (e.g. every note, every fourth note etc.). You can also choose to sample multiple velocity levels per note, and multiple round-robins of each note.\n\nThe samples are stored on the MicroSD card, in a folder within the root ‘samples’ folder.",
+  "short_description": "Creates multisamples",
+  "description": "This algorithm allows you to automatically create multi-sampled instruments in a format that can be used by the Poly Multisample algorithm, by triggering an external synth (by MIDI or CV/gate) and recording the resulting audio.\n\nYou can set the range of notes to be sampled, and the step size (e.g. every note, every fourth note etc.). You can also choose to sample multiple velocity levels per note, and multiple round-robins of each note.\n\nThe samples are stored on the MicroSD card, in a folder within the root 'samples' folder.",
   "categories": [
     "Sampling",
-    "Utility",
-    "MIDI"
+    "Recording",
+    "Multisampling"
   ],
-  "short_description": "Creates multisamples",
+  "use_cases": [
+    "Creating multi-sampled instruments from external synths",
+    "Recording multisamples for use with the Poly Multisample algorithm",
+    "Triggering external synths via MIDI or CV/gate for sampling"
+  ],
   "gui_description": "While sampling, the display shows a level meter, the filename of the sample currently being recorded, and the elapsed time. It also shows a gauge of the pressure on the MicroSD card.",
-  "specifications": [],
   "parameters": [
     {
       "name": "Folder name",
@@ -64,7 +68,7 @@
       "min": 1,
       "max": 127,
       "default": 1,
-      "description": "The number of notes to increment by after each sample (e.g. ‘1’ samples every note, ‘12’ samples every octave etc.)."
+      "description": "The number of notes to increment by after each sample (e.g. '1' samples every note, '12' samples every octave etc.)."
     },
     {
       "name": "Vel switches",
@@ -100,8 +104,8 @@
       "max": 60.0,
       "default": 1.0,
       "description": "The note length (i.e. how long the gate is held high, or between MIDI note on and note off).",
-      "type": "string",
-      "channelCountRef": "s"
+      "type": "scaled",
+      "is_common": true
     },
     {
       "name": "Gap",
@@ -109,15 +113,15 @@
       "max": 60.0,
       "default": 0.1,
       "description": "The time to keep recording after the note is released.",
-      "type": "string",
-      "channelCountRef": "s"
+      "type": "scaled",
+      "is_common": true
     },
     {
       "name": "Latency",
       "min": 0,
       "max": 2048,
       "default": 0,
-      "description": "Adjusts for latency. See below."
+      "description": "Adjusts for latency. When you activate the Test note, the module listens for incoming audio and measures the delay between generating the note and receiving audio. Set this parameter to something close to the shown value to avoid a silence at the start of every recorded sample."
     },
     {
       "name": "Preview note",

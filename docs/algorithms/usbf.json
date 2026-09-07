@@ -1,158 +1,158 @@
 {
   "guid": "usbf",
   "name": "USB audio (from host)",
-  "description": "This algorithm exposes USB audio from the host, if one is connected.\n\nThe host sees 8 output channels. Each one of these can be output to any of the disting NT’s busses, or to the ES-5 output channels (which you would use in conjunction with the Silent Way plug-ins that drive the ES-5 and attached expanders).\n\nNote that the signals from the USB host don’t just have to emerge directly from the module’s outputs; they could just as well be the inputs to other algorithms, allowing you to process audio from the host through the disting.\n\nNote also that “USB audio” doesn’t mean that the signals have to be audio; they could also be CVs, if you’d like to exchange signals with, say, VCV Rack or similar.",
-  "categories": [
-    "USB",
-    "Audio",
-    "Routing",
-    "Utility"
-  ],
   "short_description": "Receives audio from USB host",
+  "description": "This algorithm exposes USB audio from the host, if one is connected. The host sees 8 output channels. Each one of these can be output to any of the disting NT's busses, or to the ES-5 output channels (which you would use in conjunction with the Silent Way plug-ins that drive the ES-5 and attached expanders). Note that the signals from the USB host don't just have to emerge directly from the module's outputs; they could just as well be the inputs to other algorithms, allowing you to process audio from the host through the disting. Note also that \"USB audio\" doesn't mean that the signals have to be audio; they could also be CVs, if you'd like to exchange signals with, say, VCV Rack or similar.",
+  "categories": [
+    "Audio",
+    "Input",
+    "Routing",
+    "USB"
+  ],
   "parameters": [
     {
-      "name": "to (Channel 1)",
+      "name": "to_1",
       "min": 0,
       "max": 66,
       "description": "The bus on which to output USB channel 1."
     },
     {
-      "name": "mode (Channel 1)",
+      "name": "mode_1",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for channel 1."
+      "description": "The standard Add/Replace mode selector, for channel 1."
     },
     {
-      "name": "to (Channel 2)",
+      "name": "to_2",
       "min": 0,
       "max": 66,
       "description": "The bus on which to output USB channel 2."
     },
     {
-      "name": "mode (Channel 2)",
+      "name": "mode_2",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for channel 2."
+      "description": "The standard Add/Replace mode selector, for channel 2."
     },
     {
-      "name": "to (Channel 3)",
+      "name": "to_3",
       "min": 0,
       "max": 66,
       "description": "The bus on which to output USB channel 3."
     },
     {
-      "name": "mode (Channel 3)",
+      "name": "mode_3",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for channel 3."
+      "description": "The standard Add/Replace mode selector, for channel 3."
     },
     {
-      "name": "to (Channel 4)",
+      "name": "to_4",
       "min": 0,
       "max": 66,
       "description": "The bus on which to output USB channel 4."
     },
     {
-      "name": "mode (Channel 4)",
+      "name": "mode_4",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for channel 4."
+      "description": "The standard Add/Replace mode selector, for channel 4."
     },
     {
-      "name": "to (Channel 5)",
+      "name": "to_5",
       "min": 0,
       "max": 66,
       "description": "The bus on which to output USB channel 5."
     },
     {
-      "name": "mode (Channel 5)",
+      "name": "mode_5",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for channel 5."
+      "description": "The standard Add/Replace mode selector, for channel 5."
     },
     {
-      "name": "to (Channel 6)",
+      "name": "to_6",
       "min": 0,
       "max": 66,
       "description": "The bus on which to output USB channel 6."
     },
     {
-      "name": "mode (Channel 6)",
+      "name": "mode_6",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for channel 6."
+      "description": "The standard Add/Replace mode selector, for channel 6."
     },
     {
-      "name": "to (Channel 7)",
+      "name": "to_7",
       "min": 0,
       "max": 66,
       "description": "The bus on which to output USB channel 7."
     },
     {
-      "name": "mode (Channel 7)",
+      "name": "mode_7",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for channel 7."
+      "description": "The standard Add/Replace mode selector, for channel 7."
     },
     {
-      "name": "to (Channel 8)",
+      "name": "to_8",
       "min": 0,
       "max": 66,
       "description": "The bus on which to output USB channel 8."
     },
     {
-      "name": "mode (Channel 8)",
+      "name": "mode_8",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "The standard Add/Replace mode selector as described above, for channel 8."
+      "description": "The standard Add/Replace mode selector, for channel 8."
     }
   ],
   "input_ports": [
     {
-      "name": "USB Channel 1",
-      "description": "Audio or CV signal from USB host"
-    },
-    {
-      "name": "USB Channel 2",
-      "description": "Audio or CV signal from USB host"
-    },
-    {
-      "name": "USB Channel 3",
-      "description": "Audio or CV signal from USB host"
-    },
-    {
-      "name": "USB Channel 4",
-      "description": "Audio or CV signal from USB host"
-    },
-    {
-      "name": "USB Channel 5",
-      "description": "Audio or CV signal from USB host"
-    },
-    {
-      "name": "USB Channel 6",
-      "description": "Audio or CV signal from USB host"
-    },
-    {
-      "name": "USB Channel 7",
-      "description": "Audio or CV signal from USB host"
-    },
-    {
-      "name": "USB Channel 8",
-      "description": "Audio or CV signal from USB host"
+      "name": "USB Audio",
+      "description": "Receives 8 channels of audio or CV from the USB host."
     }
   ],
   "output_ports": [
     {
-      "name": "Internal Bus Routing",
-      "description": "Signals are routed to internal busses or ES-5 output channels via the 'to' parameters."
+      "name": "USB Channel 1",
+      "description": "USB channel 1 output, routable to any bus or ES-5 output."
+    },
+    {
+      "name": "USB Channel 2",
+      "description": "USB channel 2 output, routable to any bus or ES-5 output."
+    },
+    {
+      "name": "USB Channel 3",
+      "description": "USB channel 3 output, routable to any bus or ES-5 output."
+    },
+    {
+      "name": "USB Channel 4",
+      "description": "USB channel 4 output, routable to any bus or ES-5 output."
+    },
+    {
+      "name": "USB Channel 5",
+      "description": "USB channel 5 output, routable to any bus or ES-5 output."
+    },
+    {
+      "name": "USB Channel 6",
+      "description": "USB channel 6 output, routable to any bus or ES-5 output."
+    },
+    {
+      "name": "USB Channel 7",
+      "description": "USB channel 7 output, routable to any bus or ES-5 output."
+    },
+    {
+      "name": "USB Channel 8",
+      "description": "USB channel 8 output, routable to any bus or ES-5 output."
     }
   ]
 }

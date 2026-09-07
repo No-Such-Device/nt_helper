@@ -1,26 +1,19 @@
 {
   "guid": "conv",
   "name": "Convolver",
-  "description": "This algorithm performs real-time convolution of the input signal and another signal (often called an 'impulse response'), which is loaded from the MicroSD card. This is often used for realistic reverb effects, since the required impulse responses can be sampled from a physical location, but the technique is much more general and can be a very creative way to mangle and combine sounds. Convolution is notoriously CPU-intensive, and the disting NT is a resource-constrained embedded system – you should not expect to achieve the same results as you might in the latest new fangled convolution reverb plug-in in your DAW, with orders of magnitude more CPU power and RAM. However, this algorithm remains a useful tool within the context of a modular synth.",
+  "short_description": "Computes audio convolutions",
+  "description": "This algorithm performs real-time convolution of the input signal and another signal (often called an 'impulse response'), which is loaded from the MicroSD card. This is often used for realistic reverb effects, since the required impulse responses can be sampled from a physical location, but the technique is much more general and can be a very creative way to mangle and combine sounds. Convolution is notoriously CPU-intensive, and the disting NT is a resource-constrained embedded system – you should not expect to achieve the same results as you might in the latest new fangled convolution reverb plug-in in your DAW, with orders of magnitude more CPU power and RAM. However, this algorithm remains a useful tool within the context of a modular synth. The algorithm is based on the disting EX algorithm of the same name.",
   "categories": [
-    "Reverb",
     "Effects",
+    "Reverb",
     "Convolution"
   ],
-  "short_description": "Computes audio convolutions",
   "use_cases": [
-    "realistic reverb effects",
-    "mangle and combine sounds",
-    "master bus insert effect"
+    "Realistic reverb effects",
+    "Creative sound mangling and combining",
+    "Master bus insert effect"
   ],
   "gui_description": "The display shows a graphical representation of the impulse sample on the left of the screen. On the right side, it shows the mono/stereo processing mode, the maximum impulse time (as a result of the current parameter values), the actual length of the sample file, and the current overall CPU usage.",
-  "specifications": [
-    {
-      "name": "Max impulse",
-      "value": "1-10 seconds",
-      "description": "The maximum length of the impulse sample."
-    }
-  ],
   "parameters": [
     {
       "name": "Folder",
@@ -37,26 +30,21 @@
       "min": 0,
       "max": 3,
       "default": 2,
-      "description": "Sets the processing latency (5ms, 11ms, 22ms, or 43ms).",
-      "enum_values": [
-        "5ms",
-        "11ms",
-        "22ms",
-        "43ms"
-      ]
+      "type": "enum",
+      "channelCountRef": "Col5",
+      "isCommon": true,
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Sample rate",
       "min": 0,
       "max": 3,
       "default": 0,
-      "description": "Sets the processing sample rate (48kHz, 24kHz, 12kHz, or 6kHz).",
-      "enum_values": [
-        "48kHz",
-        "24kHz",
-        "12kHz",
-        "6kHz"
-      ]
+      "type": "enum",
+      "isCommon": true,
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Partitions",
@@ -68,9 +56,9 @@
       "min": -40,
       "max": 12,
       "default": 0,
-      "description": "The output level of the dry signal.",
-      "type": "string",
-      "channelCountRef": "dB",
+      "type": "enum",
+      "isCommon": true,
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -78,9 +66,9 @@
       "min": -40,
       "max": 12,
       "default": 0,
-      "description": "The output level of the convolution result.",
-      "type": "string",
-      "channelCountRef": "dB",
+      "type": "enum",
+      "isCommon": true,
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -88,11 +76,10 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above.",
-      "enum_values": [
-        "Add",
-        "Replace"
-      ]
+      "type": "enum",
+      "isCommon": true,
+      "is_common": true,
+      "is_bus": false
     }
   ],
   "input_ports": [
@@ -103,6 +90,14 @@
     {
       "name": "Right input",
       "description": "The right audio input bus."
+    },
+    {
+      "name": "Left/mono input",
+      "description": ""
+    },
+    {
+      "name": "Right input",
+      "description": ""
     }
   ],
   "output_ports": [
@@ -113,6 +108,14 @@
     {
       "name": "Right output",
       "description": "The right audio output bus."
+    },
+    {
+      "name": "Left output",
+      "description": ""
+    },
+    {
+      "name": "Right output",
+      "description": ""
     }
   ]
 }

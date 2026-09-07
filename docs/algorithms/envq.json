@@ -1,23 +1,30 @@
 {
   "guid": "envq",
   "name": "Envelope (DAHDSR)",
-  "description": "This algorithm is based on the disting EX “Quad Envelope” algorithm. It is a complex (DAHDSR) envelope generator. Various trigger modes include gated, triggered (oneshot) and looping. The envelopes can be synced to clocks (analogue pulses, or MIDI).",
-  "categories": [
-    "Envelope Generator",
-    "Modulation"
-  ],
   "short_description": "A versatile envelope generator",
-  "gui_description": "The display shows a graphical representation of the envelope(s). If the current parameter is one of the shape parameters, the relevant part of the envelope is highlighted. Otherwise, the current envelope is shown, with a horizontal line overlaid to indicate the current output level, and the currently active section is highlighted. When there are many envelopes, the display is subdivided into regions for each one.",
+  "description": "This algorithm is based on the disting EX \"Quad Envelope\" algorithm. It is a complex (DAHDSR) envelope generator. Various trigger modes include gated, triggered (oneshot) and looping. The envelopes can be synced to clocks (analogue pulses, or MIDI). This algorithm separates the concepts of an envelope shape (its attack etc. times, sustain level) and the envelope generator itself. You can share shapes between the generators. For example, in the case of a four voice polyphonic synth, you might want four envelopes, all using the same shape. By sharing the shape between the generators, you only need to edit e.g. one attack time to change the attack time for all four voices. At the other extreme, you might want to have four different shapes, but share a common trigger – for example, to modulate four different parts of a monophonic patch.",
+  "categories": [
+    "Envelope",
+    "Modulation",
+    "Generator"
+  ],
+  "use_cases": [
+    "Polyphonic synth envelopes with shared shapes",
+    "Modulating multiple parts of a monophonic patch",
+    "Gated, triggered, and looping envelope generation",
+    "Clock-synced envelope generation"
+  ],
+  "gui_description": "The display shows a graphical representation of the envelope(s). If the current parameter is one of the shape parameters, the relevant part of the envelope is highlighted. Otherwise, the current envelope is shown, with a horizontal line overlaid to indicate the current output level, and the currently active section is highlighted. When there are many envelopes, the display is subdivided into regions for each one. When showing shape parameters, the relevant section will be highlighted in all envelopes that share that shape.",
   "specifications": [
     {
       "name": "Channels",
-      "value": "1-8",
-      "description": "The number of envelopes to generate."
+      "min": 1,
+      "max": 8
     },
     {
       "name": "Shapes",
-      "value": "1-8",
-      "description": "The number of envelope shapes shared between the envelopes."
+      "min": 1,
+      "max": 8
     }
   ],
   "parameters": [
@@ -26,292 +33,297 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "per-channel",
-      "description": "Enables the envelope."
+      "description": "Enables the envelope.",
+      "type": "toggle",
+      "channelCountRef": "Channels"
     },
     {
       "name": "Shape",
       "min": 1,
       "max": 8,
       "default": 1,
-      "scope": "per-channel",
-      "description": "Chooses the shape used by the envelope generator."
+      "description": "Chooses the shape used by the envelope generator.",
+      "type": "enum",
+      "channelCountRef": "Channels"
     },
     {
       "name": "Trigger mode",
       "min": 0,
       "max": 5,
       "default": 0,
-      "scope": "per-channel",
-      "enum_values": [
-        "Gate",
-        "Trigger",
-        "Gated loop",
-        "Looping",
-        "Trigger by clock",
-        "Trigger no retrigger"
-      ],
+      "description": "See 'Trigger modes', below.",
       "type": "enum",
-      "is_per_channel": true,
-      "is_bus": false
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "Clock mode",
       "min": 0,
       "max": 3,
       "default": 0,
-      "scope": "per-channel",
-      "enum_values": [
-        "Off",
-        "No stretch",
-        "Stretch all",
-        "Stretch sustain"
-      ],
+      "description": "See 'Clock modes', below.",
       "type": "enum",
-      "is_per_channel": true,
-      "is_bus": false
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "Clock source",
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The clock source, one of ‘Input’ or ‘MIDI’."
+      "description": "The clock source, one of 'Input' or 'MIDI'.",
+      "type": "enum",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "MIDI divisor",
       "min": 0,
       "max": 19,
       "default": 4,
-      "scope": "per-channel",
-      "description": "The MIDI clock divisor, if the source is MIDI."
+      "description": "The MIDI clock divisor, if the source is MIDI.",
+      "type": "enum",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "Scale",
       "min": -10.0,
       "max": 10.0,
       "default": 8.0,
-      "scope": "per-channel",
       "description": "The magnitude of the output envelope.",
-      "type": "file",
-      "is_per_channel": true,
-      "is_bus": false
+      "type": "folder",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "Offset",
       "min": -10.0,
       "max": 10.0,
       "default": 0.0,
-      "scope": "per-channel",
       "description": "The offset (starting/ending value) of the envelope.",
-      "type": "file",
-      "is_per_channel": true,
-      "is_bus": false
+      "type": "folder",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "Vel -> scale",
       "min": 0,
       "max": 100,
       "default": 100,
-      "scope": "per-channel",
       "description": "The amount by which the trigger velocity affects the envelope scale.",
-      "type": "file",
-      "is_per_channel": true,
-      "is_bus": false
+      "type": "folder",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "Vel -> attack",
       "min": -100,
       "max": 100,
       "default": 0,
-      "scope": "per-channel",
       "description": "The amount by which the trigger velocity affects the envelope attack time.",
-      "type": "file",
-      "is_per_channel": true,
-      "is_bus": false
+      "type": "folder",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The standard Add/Replace mode selector as described above, for the envelope’s output."
+      "description": "The standard Add/Replace mode selector as described above, for the envelope's output.",
+      "type": "enum",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "End of cycle mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The standard Add/Replace mode selector as described above, for the envelope’s end of cycle output."
+      "description": "The standard Add/Replace mode selector as described above, for the envelope's end of cycle output.",
+      "type": "enum",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "Active mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The standard Add/Replace mode selector as described above, for the envelope’s active output."
+      "description": "The standard Add/Replace mode selector as described above, for the envelope's active output.",
+      "type": "enum",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "MIDI channel",
       "min": 0,
       "max": 16,
       "default": 0,
-      "scope": "per-channel",
-      "description": "The MIDI channel on which notes can trigger the envelope."
+      "description": "The MIDI channel on which notes can trigger the envelope.",
+      "type": "enum",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "I2C channel",
       "min": 0,
       "max": 255,
       "default": 1,
-      "scope": "per-channel",
-      "description": "The I2C channel on which notes can trigger the envelope."
+      "description": "The I2C channel on which notes can trigger the envelope.",
+      "type": "enum",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "Note number",
       "min": -1,
       "max": 127,
       "default": -1,
-      "scope": "per-channel",
-      "description": "The MIDI or I2C note number that will trigger the envelope, or ‘-1’ for ‘Any’."
+      "description": "The MIDI or I2C note number that will trigger the envelope, or '-1' for 'Any'.",
+      "type": "enum",
+      "channelCountRef": "Channels",
+      "isPerChannel": true
     },
     {
       "name": "Delay",
       "min": 0,
       "max": 1000,
       "default": 0,
-      "scope": "per-channel",
       "description": "Sets the delay time. In milliseconds, multiplied by the Range parameter.",
-      "type": "file",
-      "is_per_channel": false,
-      "is_bus": false
+      "type": "folder",
+      "channelCountRef": "Shapes",
+      "isPerChannel": true
     },
     {
       "name": "Attack",
       "min": 0,
       "max": 1000,
       "default": 500,
-      "scope": "per-channel",
       "description": "Sets the attack time.",
-      "type": "file",
-      "is_per_channel": false,
-      "is_bus": false
+      "type": "folder",
+      "channelCountRef": "Shapes",
+      "isPerChannel": true
     },
     {
       "name": "Hold",
       "min": 0,
       "max": 1000,
       "default": 0,
-      "scope": "per-channel",
       "description": "Sets the hold time.",
-      "type": "file",
-      "is_per_channel": false,
-      "is_bus": false
+      "type": "folder",
+      "channelCountRef": "Shapes",
+      "isPerChannel": true
     },
     {
       "name": "Decay",
       "min": 0,
       "max": 1000,
       "default": 500,
-      "scope": "per-channel",
       "description": "Sets the decay time.",
-      "type": "file",
-      "is_per_channel": false,
-      "is_bus": false
+      "type": "folder",
+      "channelCountRef": "Shapes",
+      "isPerChannel": true
     },
     {
       "name": "Sustain",
       "min": -100.0,
       "max": 100.0,
       "default": 0.0,
-      "scope": "per-channel",
       "description": "Sets the sustain level.",
-      "type": "file",
-      "is_per_channel": false,
-      "is_bus": false
+      "type": "folder",
+      "channelCountRef": "Shapes",
+      "isPerChannel": true
     },
     {
       "name": "Release",
       "min": 0,
       "max": 1000,
       "default": 500,
-      "scope": "per-channel",
       "description": "Sets the release time.",
-      "type": "file",
-      "is_per_channel": false,
-      "is_bus": false
+      "type": "folder",
+      "channelCountRef": "Shapes",
+      "isPerChannel": true
     },
     {
       "name": "Attack shape",
       "min": 0,
       "max": 127,
       "default": 64,
-      "scope": "per-channel",
-      "description": "Sets the attack curve shape. Low values are more exponential; high values more linear."
+      "description": "Sets the attack curve shape. Low values are more exponential; high values more linear.",
+      "type": "folder",
+      "channelCountRef": "Shapes",
+      "isPerChannel": true
     },
     {
       "name": "Decay shape",
       "min": 0,
       "max": 127,
       "default": 64,
-      "scope": "per-channel",
-      "description": "Sets the decay and release curve shapes. Low values are more exponential; high values more linear."
+      "description": "Sets the decay and release curve shapes. Low values are more exponential; high values more linear.",
+      "type": "folder",
+      "channelCountRef": "Shapes",
+      "isPerChannel": true
     },
     {
       "name": "Range",
       "min": 0,
       "max": 4,
       "default": 2,
-      "scope": "per-channel",
-      "description": "The time range (multiplier), from ‘x 0.01’ to ‘x 100’."
+      "description": "The time range (multiplier), from 'x 0.01' to 'x 100'.",
+      "type": "enum",
+      "channelCountRef": "Shapes",
+      "isPerChannel": true
     }
   ],
   "input_ports": [
     {
       "name": "Trigger input",
-      "description": "The bus to use for the envelope’s trigger input."
+      "description": "The bus to use for the envelope's trigger input."
     },
     {
       "name": "Clock input",
-      "description": "The bus to use for the envelope’s clock input."
+      "description": "The bus to use for the envelope's clock input."
     },
     {
       "name": "Trigger input",
-      "description": "The bus to use for the envelope’s trigger input."
+      "description": "The bus to use for the envelope's trigger input.",
+      "isPerChannel": true
     },
     {
       "name": "Clock input",
-      "description": "The bus to use for the envelope’s clock input."
+      "description": "The bus to use for the envelope's clock input.",
+      "isPerChannel": true
     }
   ],
   "output_ports": [
     {
       "name": "Output",
-      "description": "The bus to use for the envelope’s output."
+      "description": "The bus to use for the envelope's output."
     },
     {
       "name": "End of cycle output",
-      "description": "Outputs a 5V trigger when the envelope becomes idle."
+      "description": "The bus to use for the envelope's end of cycle trigger output. Outputs a 5V trigger when the envelope becomes idle."
     },
     {
       "name": "Active output",
-      "description": "Outputs 5V while the envelope is not idle."
+      "description": "The bus to use for the envelope's active output. Outputs 5V while the envelope is not idle."
     },
     {
       "name": "Output",
-      "description": "The bus to use for the envelope’s output."
+      "description": "The bus to use for the envelope's output.",
+      "isPerChannel": true
     },
     {
       "name": "End of cycle output",
-      "description": "The bus to use for the envelope’s end of cycle trigger output. Outputs a 5V trigger when the envelope becomes idle."
+      "description": "The bus to use for the envelope's end of cycle trigger output. Outputs a 5V trigger when the envelope becomes idle.",
+      "isPerChannel": true
     },
     {
       "name": "Active output",
-      "description": "The bus to use for the envelope’s active output. Outputs 5V while the envelope is not idle."
+      "description": "The bus to use for the envelope's active output. Outputs 5V while the envelope is not idle.",
+      "isPerChannel": true
     }
   ]
 }

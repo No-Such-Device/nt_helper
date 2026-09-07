@@ -1,21 +1,27 @@
 {
   "guid": "arpg",
   "name": "Arpeggiator",
-  "description": "This algorithm is a very flexible arpeggiator, in some respects an interactive, performance-oriented sequencer. It is based on the arpeggiator in our FH-2 module. It takes MIDI or CV/gate input and generates MIDI and/or CV/gate output. The key to using this as an interactive sequencer is to map the ‘Commands’ parameters, so you can use them alongside playing notes to manipulate your patterns.",
+  "short_description": "Makes sequences from held chords",
+  "description": "This algorithm is a very flexible arpeggiator, in some respects an interactive, performance-oriented sequencer. It is based on the arpeggiator in the FH-2 module. It takes MIDI or CV/gate input and generates MIDI and/or CV/gate output. The key to using this as an interactive sequencer is to map the 'Commands' parameters, so you can use them alongside playing notes to manipulate your patterns. When using it as a MIDI-to-MIDI arpeggiator, and sending the MIDI internally to other algorithms, remember that algorithms in the disting NT do not 'consume' their input MIDI – the MIDI entering the arpeggiator will still arrive at the other algorithms as well. So, set the output channel of the arpeggiator to a different channel than the input, and have the other algorithms listen to that channel. For the purposes of MIDI and CV/gate input this algorithm is a polysynth.",
   "categories": [
     "Sequencer",
     "Arpeggiator",
-    "MIDI Utility"
+    "MIDI"
   ],
-  "short_description": "Makes sequences from held chords",
-  "gui_description": "The display shows various information relating to the current arpeggiation pattern. On the left you see the current output note, whether the pattern is currently latched, and the current root note. The three lines in the main section of the display show, from top to bottom, a representation of the entire arpeggiation pattern, the octaves of the pattern (when ‘Range’ is used), and the note within a single octave of the pattern. For the ‘as played’ modes, the lowest line instead shows actual note numbers. A ‘--’ represents a rest added with the ‘Rest’ command. When ‘Truncate’ is used, the omitted steps are greyed out.",
+  "use_cases": [
+    "Interactive performance sequencing",
+    "Arpeggiation of held chords",
+    "MIDI-to-MIDI arpeggiation",
+    "Pattern manipulation during performance"
+  ],
+  "gui_description": "The display shows various information relating to the current arpeggiation pattern. On the left you see the current output note, whether the pattern is currently latched, and the current root note. The three lines in the main section of the display show, from top to bottom, a representation of the entire arpeggiation pattern, the octaves of the pattern (when 'Range' is used), and the note within a single octave of the pattern. For the 'as played' modes, the lowest line instead shows actual note numbers. A '--' represents a rest added with the 'Rest' command. When 'Truncate' is used, the omitted steps are greyed out.",
   "parameters": [
     {
       "name": "Mode",
       "min": 0,
       "max": 11,
       "default": 0,
-      "description": "The arpeggiation mode",
+      "description": "The arpeggiation mode.",
       "enum_values": [
         "Off",
         "Up",
@@ -43,17 +49,18 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables latching. Notes are held until all keys are released and a new note played."
+      "description": "Enables latching. When enabled, notes are held until all keys are released and a new note played."
     },
     {
       "name": "Truncate",
       "min": 0,
       "max": 100,
       "default": 100,
+      "defaultValue": 100,
       "description": "Shortens the arpeggiation pattern by only playing the first portion, according to the percentage set.",
-      "type": "string",
-      "channelCountRef": "percentage",
-      "is_per_channel": false,
+      "type": "enum",
+      "isPerChannel": false,
+      "isCommon": false,
       "is_bus": false
     },
     {
@@ -61,7 +68,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Sets the gate type: “Trigger” or “% of clock”.",
+      "description": "Sets the gate type: 'Trigger' or '% of clock'.",
       "enum_values": [
         "Trigger",
         "% of clock"
@@ -72,10 +79,11 @@
       "min": 1,
       "max": 100,
       "default": 10,
-      "description": "Sets the length of the gate output if the type is “Trigger”.",
-      "type": "string",
-      "channelCountRef": "ms",
-      "is_per_channel": false,
+      "defaultValue": 10,
+      "description": "Sets the length of the gate output if the type is 'Trigger'.",
+      "type": "enum",
+      "isPerChannel": false,
+      "isCommon": false,
       "is_bus": false
     },
     {
@@ -83,10 +91,11 @@
       "min": 1,
       "max": 100,
       "default": 50,
-      "description": "Sets the length of the gate output if the type is “% of clock”.",
-      "type": "string",
-      "channelCountRef": "percentage",
-      "is_per_channel": false,
+      "defaultValue": 50,
+      "description": "Sets the length of the gate output if the type is '% of clock'.",
+      "type": "enum",
+      "isPerChannel": false,
+      "isCommon": false,
       "is_bus": false
     },
     {
@@ -94,14 +103,14 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "While enabled, incoming notes will be added to the arpeggiation pattern. This is most useful when the Mode is ‘As Played’ and Latch is on."
+      "description": "While enabled, incoming notes will be added to the arpeggiation pattern. This is most useful when the Mode is 'As Played' and Latch is on. It allows you to have repeated notes in the pattern."
     },
     {
       "name": "Remove",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "While enabled, incoming notes will be removed from the pattern (if the note in question is actually in the pattern already)."
+      "description": "While enabled, incoming notes will be removed from the pattern (if the note in question is actually in the pattern already). If the same note appears multiple times, the last occurrence will be removed."
     },
     {
       "name": "Rest",
@@ -115,7 +124,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "While enabled, incoming notes will transpose the current pattern, by the amount of the difference between the incoming note and the root note of the pattern."
+      "description": "While enabled, incoming notes will transpose the current pattern, by the amount of the difference between the incoming note and the root note of the pattern. The root note is by default the lowest note of the pattern."
     },
     {
       "name": "Transpose in key",
@@ -143,11 +152,7 @@
       "min": 1,
       "max": 16,
       "default": 1,
-      "description": "Controls how the algorithm will respond to MPE.",
-      "type": "string",
-      "channelCountRef": "Col5",
-      "is_per_channel": false,
-      "is_bus": false
+      "description": "Controls how the algorithm will respond to MPE."
     },
     {
       "name": "I2C channel",
@@ -175,7 +180,7 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The reset mode, one of ‘Trigger’ or ‘Run/stop’.",
+      "description": "The reset mode, one of 'Trigger' or 'Run/stop'.",
       "enum_values": [
         "Trigger",
         "Run/stop"
@@ -203,7 +208,7 @@
       "description": "Sets a number of quarter notes after which the arpeggiator will automatically reset to step 1 (only available when following MIDI clock)."
     },
     {
-      "name": "MIDI channel (out)",
+      "name": "MIDI channel out",
       "min": 0,
       "max": 16,
       "default": 0,
@@ -262,19 +267,11 @@
   "input_ports": [
     {
       "name": "MIDI input",
-      "description": "MIDI input for notes and control"
+      "description": "MIDI or CV/gate input (polysynth)"
     },
     {
       "name": "CV/gate input",
       "description": "Standard polysynth CV/gate input"
-    },
-    {
-      "name": "Clock input",
-      "description": "External clock signal input"
-    },
-    {
-      "name": "Reset input",
-      "description": "External reset signal input"
     },
     {
       "name": "Clock input",
@@ -288,19 +285,19 @@
   "output_ports": [
     {
       "name": "MIDI output",
-      "description": "MIDI output to breakout, USB, or internal algorithms"
+      "description": "MIDI output to breakout, Select Bus, USB, or internal"
     },
     {
       "name": "Gate output",
-      "description": "CV gate output"
+      "description": "CV gate output bus"
     },
     {
       "name": "Pitch output",
-      "description": "CV pitch output"
+      "description": "CV pitch output bus"
     },
     {
       "name": "Velocity output",
-      "description": "CV velocity output"
+      "description": "CV velocity output bus"
     },
     {
       "name": "Gate output",

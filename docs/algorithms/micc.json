@@ -1,22 +1,12 @@
 {
   "guid": "micc",
   "name": "MIDI CC Generator",
-  "description": "This simple utility generates MIDI CCs. These can be sent to the various external MIDI destinations, and/or routed to other algorithms within the module. Some example uses include:\n\n- CV to MIDI conversion: by mapping the Value parameter to a CV, you can generate a MIDI CC from a control voltage.\n\n- Macro control: you can send the CCs from this algorithm to other algorithms, and map parameters in those algorithms to be controlled by the CC. Then, by changing the Value parameter in this algorithm, you can change many parameters in other algorithms at once. This is particularly useful in combination with the Performance Page.",
+  "short_description": "Generates MIDI CCs",
+  "description": "This simple utility generates MIDI CCs. These can be sent to the various external MIDI destinations, and/or routed to other algorithms within the module. Some example uses include: CV to MIDI conversion: by mapping the Value parameter to a CV, you can generate a MIDI CC from a control voltage. Macro control: you can send the CCs from this algorithm to other algorithms, and map parameters in those algorithms to be controlled by the CC. Then, by changing the Value parameter in this algorithm, you can change many parameters in other algorithms at once. This is particularly useful in combination with the Performance Page.",
   "categories": [
     "MIDI",
-    "Utility"
-  ],
-  "short_description": "Generates MIDI CCs",
-  "use_cases": [
-    "CV to MIDI conversion",
-    "Macro control"
-  ],
-  "specifications": [
-    {
-      "name": "CCs",
-      "value": "1-8",
-      "description": "The number of CCs to generate."
-    }
+    "Utility",
+    "Generator"
   ],
   "parameters": [
     {
@@ -24,90 +14,89 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables MIDI output to the breakout.",
-      "type": "toggle",
-      "is_per_channel": false
+      "scope": "global",
+      "description": "Enables MIDI output to the breakout."
     },
     {
       "name": "Output to Select Bus",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables MIDI output to the Select Bus.",
-      "type": "toggle",
-      "is_per_channel": false
+      "scope": "global",
+      "description": "Enables MIDI output to the Select Bus."
     },
     {
       "name": "Output to USB",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables MIDI output to USB.",
-      "type": "toggle",
-      "is_per_channel": false
+      "scope": "global",
+      "description": "Enables MIDI output to USB."
     },
     {
       "name": "Output to internal",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables internal MIDI output – that is, MIDI is sent to the other algorithms.",
-      "type": "toggle",
-      "is_per_channel": false
+      "scope": "global",
+      "description": "Enables internal MIDI output – that is, MIDI is sent to the other algorithms."
     },
     {
       "name": "Enable",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Enables the CC generator.",
-      "type": "toggle",
-      "is_per_channel": true
+      "scope": "channel",
+      "description": "Enables the CC generator."
     },
     {
       "name": "MIDI channel",
       "min": 1,
       "max": 16,
       "default": 1,
-      "description": "The MIDI channel for the CC.",
-      "is_per_channel": true
+      "scope": "channel",
+      "description": "The MIDI channel for the CC."
     },
     {
       "name": "MIDI CC",
       "min": 0,
       "max": 127,
       "default": 1,
-      "description": "The CC number to generate.",
-      "is_per_channel": true
+      "scope": "channel",
+      "description": "The CC number to generate."
     },
     {
       "name": "CC",
       "min": 0,
       "max": 127,
       "default": 0,
-      "description": "The CC value.",
-      "is_per_channel": true
+      "scope": "channel",
+      "description": "The CC value."
     },
     {
       "name": "Name",
-      "description": "A text name for the channel for identification.",
-      "type": "string",
-      "is_per_channel": true
+      "scope": "channel",
+      "description": "A text name for the channel for identification."
     },
     {
       "name": "Mode",
       "min": 0,
       "max": 2,
       "default": 0,
-      "description": "The type of CC to send – one of ‘7 bit’, ‘14 bit - low first’, or ‘14 bit - high first’. Note that for 14 bit CCs, the CC number should be in the range 0-31.",
+      "scope": "channel",
+      "description": "The type of CC to send – one of '7 bit', '14 bit - low first', or '14 bit - high first'. Note that for 14 bit CCs, the CC number should be in the range 0-31.",
       "enum_values": [
         "7 bit",
         "14 bit - low first",
         "14 bit - high first"
-      ],
-      "is_per_channel": true
+      ]
     }
   ],
   "input_ports": [],
-  "output_ports": []
+  "output_ports": [
+    {
+      "name": "CCs",
+      "description": "The number of CCs to generate, 1-8."
+    }
+  ]
 }

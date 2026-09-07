@@ -1,25 +1,12 @@
 {
   "guid": "spvc",
   "name": "Spectral Vocoder",
+  "short_description": "Spectral (FFT) based vocoder",
   "description": "This algorithm implements a vocoder. The spectral characteristics of the modulator input are applied to the carrier input. In classic usage, the modulator might be a human voice, and the carrier might be a synth sound, or simply noise.\n\nThis version uses a digital, FFT-based, method. There is also the Vocoder (below) which uses a more traditional bandpass filter approach.",
   "categories": [
     "Vocoder",
     "Spectral",
-    "FFT",
-    "Effects"
-  ],
-  "short_description": "Spectral (FFT) based vocoder",
-  "gui_description": "The display shows the frequency spectrum of the output signal. It also shows the current FFT size, and the module’s total CPU usage (NB not the algorithm’s CPU usage, the total usage).",
-  "specifications": [
-    {
-      "name": "Max block size",
-      "value": "6-11",
-      "description": "The maximum processing block size."
-    },
-    {
-      "name": "Stereo",
-      "description": "Whether the algorithm is mono or stereo."
-    }
+    "Effect"
   ],
   "parameters": [
     {
@@ -63,8 +50,8 @@
       "max": 24,
       "default": -40,
       "description": "The output level of the dry signal.",
-      "type": "string",
-      "channelCountRef": "dB"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Wet gain",
@@ -72,15 +59,17 @@
       "max": 24,
       "default": 0,
       "description": "The output level of the wet (vocoder) signal.",
-      "type": "string",
-      "channelCountRef": "dB"
+      "type": "folder",
+      "is_bus": false
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "description": "The standard Add/Replace mode selector as described above.",
+      "type": "folder",
+      "is_bus": false
     }
   ],
   "input_ports": [

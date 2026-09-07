@@ -1,150 +1,57 @@
 {
   "guid": "lexp",
   "name": "Linear/Exponential",
-  "description": "This algorithm implements a linear-to-exponential converter and an exponential-to-linear converter, typically used when interfacing between Volt/octave and Hz/Volt CV standards.\n\nThe 0V point for the V/octave signals is taken as C3 (130.8Hz approximately).",
-  "categories": [
-    "CV Conversion",
-    "Utility"
-  ],
   "short_description": "Converts e.g. V/Oct <-> Hz/V",
+  "description": "This algorithm implements a linear-to-exponential converter and an exponential-to-linear converter, typically used when interfacing between Volt/octave and Hz/Volt CV standards. The 0V point for the V/octave signals is taken as C3 (130.8Hz approximately).",
+  "categories": [
+    "CV",
+    "Conversion",
+    "Signal Processing"
+  ],
+  "use_cases": [
+    "Converting between V/oct and Hz/V CV standards",
+    "Interfacing between different CV conventions"
+  ],
   "gui_description": "The display shows the input and output voltages, and the internal calculated frequency, for each converter.",
-  "specifications": [],
   "parameters": [
     {
-      "name": "Hz/V (Linear/Expo)",
+      "name": "Hz/V",
       "min": 1,
       "max": 2000,
       "default": 1000,
-      "type": "scaled",
-      "channelCountRef": "",
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
-      "name": "Hz/V (Linear/Expo) Description",
-      "description": "The Hz/Volt scaling.",
-      "type": "string"
-    },
-    {
-      "name": "Offset (Linear/Expo)",
+      "name": "Offset",
       "min": -1000,
       "max": 1000,
       "default": 0,
-      "type": "scaled",
-      "channelCountRef": "",
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
-      "name": "Offset (Linear/Expo) Description",
-      "description": "A voltage offset subtracted from the input.",
-      "type": "string"
-    },
-    {
-      "name": "Input (Linear/Expo)",
-      "min": 0,
-      "max": 64,
-      "default": 0,
-      "type": "bus",
-      "is_bus": true
-    },
-    {
-      "name": "Input (Linear/Expo) Description",
-      "description": "The input (linear, Hz/V) bus.",
-      "type": "string"
-    },
-    {
-      "name": "Output (Linear/Expo)",
-      "min": 0,
-      "max": 64,
-      "default": 0,
-      "type": "bus",
-      "is_bus": true
-    },
-    {
-      "name": "Output (Linear/Expo) Description",
-      "description": "The output (exponential, V/octave) bus.",
-      "type": "string"
-    },
-    {
-      "name": "Output mode (Linear/Expo)",
+      "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 1,
-      "type": "enum",
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
-    },
-    {
-      "name": "Output mode (Linear/Expo) Description",
-      "description": "The standard Add/Replace mode selector as described above.",
-      "type": "string"
-    },
-    {
-      "name": "Hz/V (Expo/Linear)",
-      "min": 1,
-      "max": 2000,
-      "default": 1000,
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_bus": false
-    },
-    {
-      "name": "Hz/V (Expo/Linear) Description",
-      "description": "The Hz/Volt scaling.",
-      "type": "string"
-    },
-    {
-      "name": "Offset (Expo/Linear)",
-      "min": -1000,
-      "max": 1000,
-      "default": 0,
-      "type": "scaled",
-      "channelCountRef": "",
-      "is_bus": false
-    },
-    {
-      "name": "Offset (Expo/Linear) Description",
-      "description": "A voltage offset added to the output.",
-      "type": "string"
-    },
-    {
-      "name": "Input (Expo/Linear)",
-      "min": 0,
-      "max": 64,
-      "default": 0,
-      "type": "bus",
-      "is_bus": true
-    },
-    {
-      "name": "Input (Expo/Linear) Description",
-      "description": "The input (exponential, V/octave) bus.",
-      "type": "string"
-    },
-    {
-      "name": "Output (Expo/Linear)",
-      "min": 0,
-      "max": 64,
-      "default": 0,
-      "type": "bus",
-      "is_bus": true
-    },
-    {
-      "name": "Output (Expo/Linear) Description",
-      "description": "The output (linear, Hz/V) bus.",
-      "type": "string"
-    },
-    {
-      "name": "Output mode (Expo/Linear)",
-      "min": 0,
-      "max": 1,
-      "default": 1,
-      "type": "enum",
-      "is_bus": false
-    },
-    {
-      "name": "Output mode (Expo/Linear) Description",
-      "description": "The standard Add/Replace mode selector as described above.",
-      "type": "string"
     }
   ],
-  "input_ports": [],
-  "output_ports": []
+  "input_ports": [
+    {
+      "name": "Input",
+      "description": ""
+    }
+  ],
+  "output_ports": [
+    {
+      "name": "Output",
+      "description": ""
+    }
+  ]
 }

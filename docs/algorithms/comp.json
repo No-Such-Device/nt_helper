@@ -1,27 +1,32 @@
 {
   "guid": "comp",
   "name": "Compressor",
-  "description": "This algorithm is a multi-channel compressor. Each channel is fully independent – this being a multichannel algorithm is simply a convenience so that if you, say, want a compressor on all 12 module inputs, you don’t need to add 12 copies of the algorithm to do so.\n\nA sidechain input is available, to compress one signal according to the envelope of another.\n\nThe algorithm always works as an insert effect i.e. the output replaces the input.",
+  "short_description": "A simple compressor",
+  "description": "This algorithm is a multi-channel compressor. Each channel is fully independent – this being a multichannel algorithm is simply a convenience so that if you, say, want a compressor on all 12 module inputs, you don't need to add 12 copies of the algorithm to do so. A sidechain input is available, to compress one signal according to the envelope of another. The algorithm always works as an insert effect i.e. the output replaces the input.",
   "categories": [
     "Dynamics",
-    "Compressor",
+    "Multichannel",
     "Insert Effect"
   ],
-  "short_description": "A simple compressor",
+  "use_cases": [
+    "Compressing multiple bus channels simultaneously",
+    "Sidechain compression",
+    "Insert compression on module inputs"
+  ],
   "gui_description": "The display shows a graph of the signal level (travelling from right to left). Superimposed on this is the gain reduction amount. To the right of the graph, the bar represents the gain reduction currently being applied.",
-  "specifications": [
+  "parameters": [
     {
       "name": "Channels",
-      "value": "1-12",
+      "min": 1,
+      "max": 12,
       "description": "The number of bus channels to process."
-    }
-  ],
-  "parameters": [
+    },
     {
       "name": "Enable",
       "min": 0,
       "max": 1,
       "default": 0,
+      "scope": "per-channel",
       "description": "Enables the channel."
     },
     {
@@ -29,109 +34,10 @@
       "min": -60.0,
       "max": 0.0,
       "default": -12.0,
-      "description": "The threshold at which gain reduction starts.",
-      "type": "string",
-      "channelCountRef": "dB"
-    },
-    {
-      "name": "Ratio",
-      "min": 0,
-      "max": 1023,
-      "default": 100,
-      "description": "The compression ratio. Exponential scaling from 1:1 up to 1000:1."
-    },
-    {
-      "name": "Attack",
-      "min": 0,
-      "max": 1023,
-      "default": 100,
-      "description": "The attack time of the compressor. Exponential scaling from 0.1ms to 1000ms."
-    },
-    {
-      "name": "Release",
-      "min": 0,
-      "max": 1023,
-      "default": 100,
-      "description": "The release time of the compressor. Exponential scaling from 1ms to 3000ms."
-    },
-    {
-      "name": "Auto make-up",
-      "min": 0,
-      "max": 1,
-      "default": 0,
-      "description": "Enables auto make-up gain, raising the gain automatically according to the threshold and ratio."
-    },
-    {
-      "name": "Make-up gain",
-      "description": "The make-up gain, if “Auto make-up” is off."
-    },
-    {
-      "name": "Lookahead",
-      "min": 0.0,
-      "max": 10.0,
-      "default": 1.0,
-      "description": "The lookahead time. Increase this to prevent the compressor from missing sharp attack transients. Note that the audio is delayed by the amount of the lookahead time i.e. this adds latency.",
-      "type": "string",
-      "channelCountRef": "ms"
-    },
-    {
-      "name": "Sidechain mix",
-      "min": -40.0,
-      "max": 12.0,
-      "default": -40.0,
-      "description": "Sets the amount of the sidechain signal mixed into the output.",
-      "type": "string",
-      "channelCountRef": "dB"
-    },
-    {
-      "name": "Sidechain solo",
-      "min": 0,
-      "max": 1,
-      "default": 0,
-      "description": "If enabled, the sidechain signal is passed through to the output and the main signal muted."
-    },
-    {
-      "name": "Reduction mode",
-      "min": 0,
-      "max": 1,
-      "default": 0,
-      "description": "The standard Add/Replace mode selector as described above, for the gain reduction output."
-    }
-  ],
-  "input_ports": [
-    {
-      "name": "Left/mono input",
-      "description": "The left or mono input bus."
-    },
-    {
-      "name": "Right input",
-      "description": "The right input bus, if stereo."
-    },
-    {
-      "name": "Sidechain input",
-      "description": "The sidechain input bus."
-    },
-    {
-      "name": "Left/mono input",
-      "description": "The left or mono input bus."
-    },
-    {
-      "name": "Right input",
-      "description": "The right input bus, if stereo."
-    },
-    {
-      "name": "Sidechain input",
-      "description": "The sidechain input bus."
-    }
-  ],
-  "output_ports": [
-    {
-      "name": "Reduction output",
-      "description": "The bus to use for the gain reduction output, scaled as 1V per 6dB of gain reduction."
-    },
-    {
-      "name": "Reduction output",
-      "description": "The bus to use for the gain reduction output, scaled as 1V per 6dB of gain reduction."
+      "scope": "per-channel",
+      "type": "folder",
+      "is_common": true,
+      "is_bus": true
     }
   ]
 }

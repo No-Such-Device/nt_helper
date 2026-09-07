@@ -1,14 +1,20 @@
 {
   "guid": "es5e",
   "name": "ES-5 Encoder",
+  "short_description": "Converts gates into ES-5 outputs",
   "description": "This algorithm allows you to drive the outputs of an attached ES-5 expansion module, or of an ESX-8GT expander attached to the ES-5.",
   "categories": [
-    "Encoder",
-    "Expansion",
-    "Utility"
+    "Routing",
+    "Conversion",
+    "MIDI"
   ],
-  "short_description": "Converts gates into ES-5 outputs",
   "parameters": [
+    {
+      "name": "Channels",
+      "min": 1,
+      "max": 8,
+      "description": "The number of gates to process."
+    },
     {
       "name": "Enable",
       "min": 0,

@@ -1,14 +1,13 @@
 {
   "guid": "vcot",
   "name": "VCO - Wavetable",
+  "short_description": "A wavetable VCO",
   "description": "This algorithm is a simple VCO which uses wavetables for its wave shapes. Please see the section above on how wavetables are formatted and arranged on the MicroSD card.",
   "categories": [
     "Oscillator",
     "Wavetable"
   ],
-  "short_description": "A wavetable VCO",
-  "gui_description": "The display shows a single cycle of the current wavetable waveform, and the VCO’s pitch as a MIDI note name plus cents and as a frequency in Hz.",
-  "specifications": [],
+  "gui_description": "The display shows a single cycle of the current wavetable waveform, and the VCO's pitch as a MIDI note name plus cents and as a frequency in Hz.",
   "parameters": [
     {
       "name": "Wavetable",
@@ -20,10 +19,7 @@
       "min": -100.0,
       "max": 100.0,
       "default": 0.0,
-      "description": "Sets the position within the wavetable.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "description": "Sets the position within the wavetable."
     },
     {
       "name": "Octave",
@@ -37,40 +33,28 @@
       "min": -60,
       "max": 60,
       "default": 0,
-      "description": "Adjusts the VCO tuning in semitones.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "description": "Adjusts the VCO tuning in semitones."
     },
     {
       "name": "Fine tune",
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "Adjusts the VCO tuning in cents.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "description": "Adjusts the VCO tuning in cents."
     },
     {
       "name": "Amplitude",
       "min": 0.0,
       "max": 10.0,
       "default": 10.0,
-      "description": "Sets the amplitude of the output (before it’s affected by the gain).",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "description": "Sets the amplitude of the output (before it's affected by the gain)."
     },
     {
       "name": "Gain",
       "min": -40,
       "max": 6,
       "default": 0,
-      "description": "Sets the level of the output.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "description": "Sets the level of the output."
     },
     {
       "name": "MIDI channel",

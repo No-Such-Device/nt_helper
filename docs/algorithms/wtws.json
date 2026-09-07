@@ -1,15 +1,13 @@
 {
   "guid": "wtws",
   "name": "Wavetable Waveshaper",
+  "short_description": "Waveshaper that uses a wavetable",
   "description": "This algorithm is based on the Wavetable Waveshaper algorithm on the disting mk4. Applied to audio, this algorithm is a wavetable-based waveshaper effect. More generally, considering the input as a CV lookup, this algorithm provides a wavetable-based transfer function. As such it offers a great way to roll your own phase distortion synthesis.",
   "categories": [
-    "Waveshaper",
-    "Audio Effect",
-    "Synthesis"
+    "Distortion",
+    "Wavetable",
+    "Effect"
   ],
-  "short_description": "Waveshaper that uses a wavetable",
-  "gui_description": "The display shows the current wavetable.",
-  "specifications": [],
   "parameters": [
     {
       "name": "Wavetable",
@@ -21,9 +19,8 @@
       "min": -100.0,
       "max": 100.0,
       "default": 0.0,
-      "description": "Sets the position within the wavetable.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -31,16 +28,17 @@
       "min": -32.0,
       "max": 32.0,
       "default": 1.0,
-      "description": "The input gain. Negative values invert the signal."
+      "type": "folder",
+      "is_common": true,
+      "is_bus": false
     },
     {
       "name": "Mix",
       "min": 0,
       "max": 100,
       "default": 100,
-      "description": "The output wet/dry mix.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -48,9 +46,8 @@
       "min": -40,
       "max": 0,
       "default": 0,
-      "description": "The output gain applied to the shaped signal.",
-      "type": "string",
-      "channelCountRef": "1",
+      "type": "folder",
+      "is_common": true,
       "is_bus": false
     },
     {
@@ -58,56 +55,38 @@
       "min": 1,
       "max": 8,
       "default": 1,
-      "description": "The number of busses to process, starting from the Input. For example, for a stereo signal, set this to 2.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "type": "bus",
+      "is_common": true,
+      "is_bus": true
     },
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above.",
-      "type": "string",
-      "channelCountRef": "1",
-      "is_bus": false
+      "type": "bus",
+      "is_common": true,
+      "is_bus": true
     }
   ],
   "input_ports": [
     {
-      "name": "Input",
-      "description": "The first input bus to process."
-    },
-    {
       "name": "Gain input",
-      "description": "The bus to use to control the input gain."
+      "description": ""
     },
     {
       "name": "Wave input",
-      "description": "Input bus to modulate the wave offset."
-    },
-    {
-      "name": "Gain input",
-      "description": "The bus to use to control the input gain. Scaled such that a 5V CV gives 32x gain."
-    },
-    {
-      "name": "Wave input",
-      "description": "Sets an input bus to modulate the wave offset."
+      "description": ""
     },
     {
       "name": "Input",
-      "description": "The first input bus to process."
+      "description": ""
     }
   ],
   "output_ports": [
     {
       "name": "Output",
-      "description": "The first output bus."
-    },
-    {
-      "name": "Output",
-      "description": "The first output bus."
+      "description": ""
     }
   ]
 }

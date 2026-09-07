@@ -1,15 +1,13 @@
 {
   "guid": "voco",
   "name": "Vocoder",
+  "short_description": "A classic vocoder",
   "description": "This algorithm implements a vocoder. The spectral characteristics of the modulator input are applied to the carrier input. In classic usage, the modulator might be a human voice, and the carrier might be a synth sound, or simply noise.\n\nThis version emulates an analogue vocoder inasmuch as it uses a number of bandpass filters to do the analysis and synthesis. There is also the Spectral Vocoder (above) which uses an FFT method.",
   "categories": [
-    "Vocoder",
-    "Spectral Processing",
-    "Dynamics"
+    "Effects",
+    "Modulation",
+    "Analysis"
   ],
-  "short_description": "A classic vocoder",
-  "gui_description": "The display shows the current level of the modulator bands.",
-  "specifications": [],
   "parameters": [
     {
       "name": "Bands",
@@ -23,33 +21,31 @@
       "min": 50,
       "max": 1000,
       "default": 200,
-      "description": "The centre frequency of the lowest band.",
-      "type": "string",
-      "channelCountRef": "Hz"
+      "defaultValue": 200,
+      "description": "The centre frequency of the lowest band."
     },
     {
       "name": "Max frequency",
       "min": 1000,
       "max": 10000,
       "default": 3200,
-      "description": "The centre frequency of the highest band.",
-      "type": "string",
-      "channelCountRef": "Hz"
+      "defaultValue": 3200,
+      "description": "The centre frequency of the highest band."
     },
     {
       "name": "Bandwidth",
       "min": 25,
       "max": 400,
       "default": 100,
-      "description": "Applies a scaling to the width of the bandpass filters.",
-      "type": "string",
-      "channelCountRef": "%"
+      "defaultValue": 100,
+      "description": "Applies a scaling to the width of the bandpass filters."
     },
     {
       "name": "Attack",
       "min": 0,
       "max": 1000,
       "default": 303,
+      "defaultValue": 303,
       "description": "Sets the attack time of the band envelope trackers. Exponential scaling from 0.5ms to 1000ms."
     },
     {
@@ -57,6 +53,7 @@
       "min": 0,
       "max": 1000,
       "default": 394,
+      "defaultValue": 394,
       "description": "Sets the decay time of the band envelope trackers. Exponential scaling from 0.5ms to 1000ms."
     },
     {
@@ -64,33 +61,31 @@
       "min": 10,
       "max": 1000,
       "default": 50,
-      "description": "Sets the frequency of a high-pass filter applied to both the modulator and carrier.",
-      "type": "string",
-      "channelCountRef": "Hz"
+      "defaultValue": 50,
+      "description": "Sets the frequency of a high-pass filter applied to both the modulator and carrier."
     },
     {
       "name": "Gain",
       "min": -40,
       "max": 24,
       "default": 0,
-      "description": "Applies an overall gain.",
-      "type": "string",
-      "channelCountRef": "dB"
+      "defaultValue": 0,
+      "description": "Applies an overall gain."
     },
     {
       "name": "Noise",
       "min": -40,
       "max": 24,
       "default": -40,
-      "description": "Sets the level of noise added to the carrier input, which can improve speech intelligibility. The noise is high-pass filtered at the frequency of the highest vocoder band.",
-      "type": "string",
-      "channelCountRef": "dB"
+      "defaultValue": -40,
+      "description": "Sets the level of noise added to the carrier input, which can improve speech intelligibility. The noise is high-pass filtered at the frequency of the highest vocoder band."
     },
     {
       "name": "Carrier width",
       "min": 1,
       "max": 8,
       "default": 1,
+      "defaultValue": 1,
       "description": "The number of carrier busses to process. For example, for a stereo signal, set this to 2."
     },
     {
@@ -98,7 +93,12 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "defaultValue": 0,
+      "description": "The standard Add/Replace mode selector as described above.",
+      "enum_values": [
+        "Add",
+        "Replace"
+      ]
     }
   ],
   "input_ports": [
@@ -109,21 +109,9 @@
     {
       "name": "Carrier input",
       "description": "The first carrier bus to process."
-    },
-    {
-      "name": "Modulator input",
-      "description": "The bus to use for the modulator signal."
-    },
-    {
-      "name": "Carrier input",
-      "description": "The first carrier bus to process."
     }
   ],
   "output_ports": [
-    {
-      "name": "Output",
-      "description": "The first output bus."
-    },
     {
       "name": "Output",
       "description": "The first output bus."

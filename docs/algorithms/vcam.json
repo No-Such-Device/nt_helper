@@ -1,19 +1,12 @@
 {
   "guid": "vcam",
   "name": "VCA/Multiplier",
-  "description": "This algorithm is a voltage multiplier, which can be used as a VCA. The CV on the common channel is used to multiply the voltages on the other channels. The algorithm supports zero-cross detection, in the manner of our Persephone analogue VCA module.",
+  "short_description": "Four quadrant multiplier",
+  "description": "This algorithm is a voltage multiplier, which can be used as a VCA. The CV on the common channel is used to multiply the voltages on the other channels. The algorithm supports zero-cross detection, in the manner of our Persephone 134 analogue VCA module.",
   "categories": [
     "VCA",
     "Multiplier",
-    "Utility"
-  ],
-  "short_description": "Four quadrant multiplier",
-  "specifications": [
-    {
-      "name": "Channels",
-      "value": "1-8",
-      "description": "The number of bus channels to process."
-    }
+    "Mixer"
   ],
   "parameters": [
     {
@@ -30,9 +23,14 @@
       "max": 12,
       "default": 8,
       "scope": "common",
-      "description": "Sets the scaling of the input CV that corresponds to “unity gain”.",
-      "type": "scaled",
-      "channelCountRef": "V"
+      "description": "Sets the scaling of the input CV that corresponds to 'unity gain'.",
+      "enum_values": [
+        "1V",
+        "2V",
+        "4V",
+        "8V",
+        "12V"
+      ]
     },
     {
       "name": "Output mode",
@@ -40,7 +38,11 @@
       "max": 1,
       "default": 1,
       "scope": "per-channel",
-      "description": "The standard Add/Replace mode selector as described above."
+      "description": "The standard Add/Replace mode selector as described above.",
+      "enum_values": [
+        "Add",
+        "Replace"
+      ]
     },
     {
       "name": "Zero cross",
@@ -64,7 +66,11 @@
   "output_ports": [
     {
       "name": "Output",
-      "description": "The output bus. If set to ‘None’, the input bus is used as output, and the mode is always ‘Replace’."
+      "description": "The output bus for each channel."
+    },
+    {
+      "name": "Output",
+      "description": "The output bus. If set to 'None', the input bus is used as output, and the mode is always 'Replace'."
     }
   ]
 }

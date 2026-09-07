@@ -1,43 +1,35 @@
 {
   "guid": "mix2",
   "name": "Mixer Stereo",
+  "short_description": "A stereo mixer",
   "description": "This algorithm is a stereo mixer – it mixes mono or stereo inputs to a stereo output. Up to four aux send busses are available, which can be switched to pre- or post-fade. Sends may also be set to be mono or stereo.",
   "categories": [
     "Mixer",
-    "Utility",
-    "Routing"
+    "Routing",
+    "Utility"
   ],
-  "short_description": "A stereo mixer",
-  "gui_description": "The display shows a level meter for each channel. The thin line at the top indicates 0dBFS; if a channel goes over this, a clip indicator will show (a small rectangle over the 0dBFS line). The chevrons to the right of the level meters indicate the mixer gains. Mute and Solo are indicated with a small ‘M’ and ‘S’ respectively. Muted level meters are grayed out.",
-  "specifications": [
-    {
-      "name": "Channels",
-      "value": "1-12",
-      "description": "The number of mixer channels."
-    },
-    {
-      "name": "Sends",
-      "value": "0-4",
-      "description": "The number of aux sends per channel."
-    }
+  "use_cases": [
+    "Mixing multiple mono or stereo audio sources into a stereo output",
+    "Routing audio between buses with aux sends",
+    "Creating pre-fade or post-fade send configurations"
   ],
+  "gui_description": "The display shows a level meter for each channel. The thin line at the top indicates 0dBFS; if a channel goes over this, a clip indicator will show (a small rectangle over the 0dBFS line). The chevrons to the right of the level meters indicate the mixer gains. Mute and Solo are indicated with a small 'M' and 'S' respectively. Muted level meters are grayed out.",
   "parameters": [
     {
       "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above."
+      "scope": "common",
+      "description": "The standard Add/Replace mode selector."
     },
     {
       "name": "Output gain",
       "min": -70.0,
       "max": 6.0,
       "default": 0.0,
-      "description": "The mixer output gain.",
-      "type": "file",
-      "channelCountRef": "common",
-      "is_per_channel": false,
+      "scope": "common",
+      "type": "folder",
       "is_common": true,
       "is_bus": false
     },
@@ -46,69 +38,56 @@
       "min": 1,
       "max": 64,
       "default": 13,
-      "description": "The output bus for the send.",
-      "is_per_channel": false,
-      "is_common": false,
-      "is_bus": true
+      "scope": "send",
+      "description": "The output bus for the send."
     },
     {
       "name": "Pre/post",
       "min": 0,
       "max": 1,
       "default": 1,
-      "description": "Whether the send is Pre-fade or Post-fade.",
-      "is_per_channel": false,
-      "is_common": false,
-      "is_bus": true
+      "scope": "send",
+      "description": "Whether the send is Pre-fade or Post-fade."
     },
     {
       "name": "Width",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Whether the send is mono or stereo. Stereo sends use the destination bus and the next one up.",
-      "is_per_channel": false,
-      "is_common": false,
-      "is_bus": true
+      "scope": "send",
+      "description": "Whether the send is mono or stereo. Stereo sends use the destination bus and the next one up."
     },
     {
-      "name": "Output mode (send)",
+      "name": "Output mode",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "The standard Add/Replace mode selector as described above.",
-      "is_per_channel": false,
-      "is_common": false,
-      "is_bus": true
+      "scope": "send",
+      "description": "The standard Add/Replace mode selector."
     },
     {
       "name": "Input left/mono",
       "min": 0,
       "max": 64,
       "default": 1,
-      "description": "The channel left input bus.",
-      "is_per_channel": true,
-      "is_common": false,
-      "is_bus": false
+      "scope": "channel",
+      "description": "The channel left input bus."
     },
     {
       "name": "Input right",
       "min": 0,
       "max": 64,
       "default": 1,
-      "description": "The channel right input bus (if stereo).",
-      "is_per_channel": true,
-      "is_common": false,
-      "is_bus": false
+      "scope": "channel",
+      "description": "The channel right input bus (if stereo)."
     },
     {
       "name": "Gain",
       "min": -70.0,
       "max": 6.0,
       "default": -70.0,
-      "description": "The channel gain.",
-      "type": "file",
-      "is_per_channel": true,
+      "scope": "channel",
+      "type": "folder",
       "is_common": false,
       "is_bus": false
     },
@@ -117,8 +96,8 @@
       "min": -100,
       "max": 100,
       "default": 0,
-      "description": "The channel stereo pan.",
-      "is_per_channel": true,
+      "scope": "channel",
+      "type": "folder",
       "is_common": false,
       "is_bus": false
     },
@@ -127,25 +106,21 @@
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Mutes the channel.",
-      "is_per_channel": true,
-      "is_common": false,
-      "is_bus": false
+      "scope": "channel",
+      "description": "Mutes the channel."
     },
     {
       "name": "Solo",
       "min": 0,
       "max": 1,
       "default": 0,
-      "description": "Solos the channel.",
-      "is_per_channel": true,
-      "is_common": false,
-      "is_bus": false
+      "scope": "channel",
+      "description": "Solos the channel."
     },
     {
       "name": "Name",
-      "description": "A text name for the channel for identification.",
-      "is_per_channel": true,
+      "scope": "channel",
+      "type": "folder",
       "is_common": false,
       "is_bus": false
     },
@@ -154,34 +129,21 @@
       "min": -70.0,
       "max": 6.0,
       "default": -70.0,
-      "description": "The send gain.",
-      "is_per_channel": true,
+      "scope": "channel-send",
+      "type": "folder",
       "is_common": false,
-      "is_bus": true
+      "is_bus": false
     }
   ],
-  "input_ports": [
-    {
-      "name": "Input left/mono",
-      "description": "The left or mono input signal for a channel."
-    },
-    {
-      "name": "Input right",
-      "description": "The right input signal for a stereo channel."
-    }
-  ],
+  "input_ports": [],
   "output_ports": [
     {
       "name": "Left output",
-      "description": "The main stereo left output."
+      "description": "The left output bus."
     },
     {
       "name": "Right output",
-      "description": "The main stereo right output."
-    },
-    {
-      "name": "Aux Sends",
-      "description": "Auxiliary send busses for routing signals to other destinations."
+      "description": "The right output bus."
     },
     {
       "name": "Left output",

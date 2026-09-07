@@ -1,14 +1,13 @@
 {
   "guid": "tuns",
   "name": "Tuner (simple)",
-  "description": "This algorithm provides four simultaneous tuners.\n\nIt uses a simple pitch detection method which will only work reliably for simple tones, but happily\n“simple tones” covers most of those that you will get from an analogue VCO, which in a Eurorack\nenvironment you might find yourself tuning quite often.\n\nBeing simple, it consumes little CPU.\n\nMicrotuning via Scala or MTS is supported.\n\nFor a more sophisticated tuner, please see the “Tuner (fancy)” algorithm.",
-  "categories": [
-    "Utility",
-    "Tuner"
-  ],
   "short_description": "A basic tuner for simple tones",
-  "gui_description": "The display shows the detected pitch of the active channels, as a MIDI note number and cents, and as a value in Hz. It also shows a bar which grows to the left or right depending on how flat or sharp the note is relative to the ‘true’ pitch of the detected note.",
-  "specifications": [],
+  "description": "This algorithm provides four simultaneous tuners.\n\nIt uses a simple pitch detection method which will only work reliably for simple tones, but happily \"simple tones\" covers most of those that you will get from an analogue VCO, which in a Eurorack environment you might find yourself tuning quite often.\n\nBeing simple, it consumes little CPU.\n\nMicrotuning via Scala or MTS is supported.\n\nFor a more sophisticated tuner, please see the \"Tuner (fancy)\" algorithm.",
+  "categories": [
+    "Tuning",
+    "Pitch Detection",
+    "Analysis"
+  ],
   "parameters": [
     {
       "name": "Channel 1",
