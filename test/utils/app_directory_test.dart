@@ -10,6 +10,28 @@ import 'package:path_provider/path_provider.dart';
 
 class _UnavailableDirectory extends Mock implements Directory {}
 
+class _UnavailableFile extends Mock implements File {}
+
+final class _UnavailableMarker extends IOOverrides {
+  _UnavailableMarker(this.markerPath) {
+    when(() => marker.existsSync()).thenReturn(false);
+    when(() => marker.createSync()).thenThrow(
+      PathNotFoundException(
+        markerPath,
+        const OSError('Path not found', 2),
+        'Cannot create file',
+      ),
+    );
+  }
+
+  final String markerPath;
+  final marker = _UnavailableFile();
+
+  @override
+  File createFile(String path) =>
+      path == markerPath ? marker : super.createFile(path);
+}
+
 final class _UnavailableDocuments extends IOOverrides {
   _UnavailableDocuments(this.appPath) {
     when(() => directory.existsSync()).thenReturn(false);
@@ -46,6 +68,82 @@ void main() {
   });
 
   group('getAppDirectory', () {
+    test(
+      'Windows starts when Documents exists but marker creation fails',
+      () async {
+        final docs = Directory(p.join(tempRoot.path, 'OneDrive', 'Dokumente'));
+        final app = Directory(p.join(docs.path, 'nt_helper'))
+          ..createSync(recursive: true);
+        final support = Directory(p.join(tempRoot.path, 'AppData'));
+
+        await IOOverrides.runWithIOOverrides(() async {
+          final result = await getAppDirectory(
+            docsProvider: () async => docs,
+            supportProvider: () async => support,
+            isWindows: true,
+          );
+          expect(result.path, p.join(support.path, 'nt_helper'));
+          expect(File(p.join(result.path, '.migrated')).existsSync(), isTrue);
+          final integrity = await DatabaseIntegrityService.checkIntegrity();
+          expect(integrity.fileExists, isFalse);
+        }, _UnavailableMarker(p.join(app.path, '.migrated')));
+      },
+    );
+
+    test(
+      'marker failure never hides a migrated database in an empty fallback',
+      () async {
+        final docs = Directory(p.join(tempRoot.path, 'Documents'))
+          ..createSync();
+        final source = File(p.join(docs.path, 'nt_helper_db.sqlite'))
+          ..writeAsStringSync('existing-db');
+        final app = Directory(p.join(docs.path, 'nt_helper'));
+        final support = Directory(p.join(tempRoot.path, 'AppData'));
+
+        await IOOverrides.runWithIOOverrides(() async {
+          await expectLater(
+            getAppDirectory(
+              docsProvider: () async => docs,
+              supportProvider: () async => support,
+              isWindows: true,
+            ),
+            throwsA(isA<PathNotFoundException>()),
+          );
+          expect(
+            File(p.join(app.path, 'nt_helper_db.sqlite')).readAsStringSync(),
+            'existing-db',
+          );
+          expect(source.existsSync(), isFalse);
+          expect(support.existsSync(), isFalse);
+        }, _UnavailableMarker(p.join(app.path, '.migrated')));
+      },
+    );
+
+    test(
+      'marker failure in the fallback is reported and allows retry',
+      () async {
+        final support = Directory(p.join(tempRoot.path, 'AppData'));
+        await IOOverrides.runWithIOOverrides(() async {
+          await expectLater(
+            getAppDirectory(
+              docsProvider: () async =>
+                  throw MissingPlatformDirectoryException('Documents missing'),
+              supportProvider: () async => support,
+              isWindows: true,
+            ),
+            throwsA(isA<PathNotFoundException>()),
+          );
+        }, _UnavailableMarker(p.join(support.path, 'nt_helper', '.migrated')));
+
+        final result = await getAppDirectory(
+          docsProvider: () async => throw StateError('must keep fallback'),
+          supportProvider: () async => support,
+          isWindows: true,
+        );
+        expect(File(p.join(result.path, '.migrated')).existsSync(), isTrue);
+      },
+    );
+
     test(
       'Windows starts when redirected Documents cannot be created',
       () async {

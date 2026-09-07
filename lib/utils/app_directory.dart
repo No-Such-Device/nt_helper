@@ -20,8 +20,10 @@ Completer<Directory>? _initCompleter;
 /// directory, creating it if needed. On first run, copies any existing files
 /// (database, gallery cache) from the parent documents directory.
 /// On Windows, unavailable Documents folders (including OneDrive redirects)
-/// fall back to application support. Once created, that fallback stays in use
-/// across launches so restoring Documents cannot hide newly saved data.
+/// fall back to application support, including when an empty Documents app
+/// directory exists but cannot create its migration marker. Once created, the
+/// fallback stays in use across launches so restoring Documents cannot hide
+/// newly saved data.
 ///
 /// Uses a [Completer] to ensure the initialization logic runs only once, even
 /// if called concurrently.
@@ -81,7 +83,23 @@ Future<Directory> getAppDirectory({
       if (docsDir != null) {
         migrateExistingFiles(docsDir, appDir);
       }
-      marker.createSync();
+      try {
+        marker.createSync();
+      } on FileSystemException {
+        // Directory creation can succeed while file creation is blocked. Only
+        // fall back from an empty Documents store: migration may already have
+        // moved a database here, and opening an empty store would hide it.
+        if (fallbackDir == null ||
+            docsDir == null ||
+            filesToMigrate.any(
+              (name) => File(p.join(appDir.path, name)).existsSync(),
+            )) {
+          rethrow;
+        }
+        appDir = fallbackDir;
+        appDir.createSync(recursive: true);
+        File(p.join(appDir.path, _markerFile)).createSync();
+      }
     }
 
     completer.complete(appDir);
