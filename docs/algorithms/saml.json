@@ -227,31 +227,6 @@
     {
       "name": "Run/stop input",
       "description": "Run/stop input"
-    },
-    {
-      "name": "Slice input",
-      "description": "",
-      "isPerChannel": false
-    },
-    {
-      "name": "Clock input",
-      "description": "",
-      "isPerChannel": false
-    },
-    {
-      "name": "Run/stop input",
-      "description": "",
-      "isPerChannel": false
-    },
-    {
-      "name": "Advance input",
-      "description": "",
-      "isPerChannel": false
-    },
-    {
-      "name": "Reset input",
-      "description": "",
-      "isPerChannel": false
     }
   ],
   "output_ports": [

@@ -150,10 +150,6 @@
     {
       "name": "Input",
       "description": "The audio input bus."
-    },
-    {
-      "name": "Input",
-      "description": ""
     }
   ],
   "output_ports": [
@@ -196,42 +192,6 @@
     {
       "name": "Shift 3 output",
       "description": "The pitch shift CV output bus for the third pitch shifter."
-    },
-    {
-      "name": "Pitch output",
-      "description": ""
-    },
-    {
-      "name": "Env output",
-      "description": ""
-    },
-    {
-      "name": "Chord 1 output",
-      "description": ""
-    },
-    {
-      "name": "Chord 2 output",
-      "description": ""
-    },
-    {
-      "name": "Chord 3 output",
-      "description": ""
-    },
-    {
-      "name": "Chord 4 output",
-      "description": ""
-    },
-    {
-      "name": "Shift 1 output",
-      "description": ""
-    },
-    {
-      "name": "Shift 2 output",
-      "description": ""
-    },
-    {
-      "name": "Shift 3 output",
-      "description": ""
     }
   ]
 }

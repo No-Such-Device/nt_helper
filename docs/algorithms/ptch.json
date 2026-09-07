@@ -70,10 +70,6 @@
     {
       "name": "Output",
       "description": "The output bus."
-    },
-    {
-      "name": "Output",
-      "description": "The output bus."
     }
   ]
 }

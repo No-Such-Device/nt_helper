@@ -148,18 +148,6 @@
     {
       "name": "Wave input",
       "description": "Sets an input bus to modulate the wave offset."
-    },
-    {
-      "name": "Pitch input",
-      "description": ""
-    },
-    {
-      "name": "Formant input",
-      "description": ""
-    },
-    {
-      "name": "Wave input",
-      "description": ""
     }
   ],
   "output_ports": [
@@ -170,14 +158,6 @@
     {
       "name": "Inverse output",
       "description": "The output bus with inverse masking – emits a pulsaret when the main output does not."
-    },
-    {
-      "name": "Output",
-      "description": ""
-    },
-    {
-      "name": "Inverse output",
-      "description": ""
     }
   ]
 }

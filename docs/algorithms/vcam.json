@@ -57,20 +57,12 @@
     {
       "name": "Input",
       "description": "The common input bus."
-    },
-    {
-      "name": "Input",
-      "description": "The channel input bus."
     }
   ],
   "output_ports": [
     {
       "name": "Output",
       "description": "The output bus for each channel."
-    },
-    {
-      "name": "Output",
-      "description": "The output bus. If set to 'None', the input bus is used as output, and the mode is always 'Replace'."
     }
   ]
 }

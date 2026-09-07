@@ -187,26 +187,6 @@
     {
       "name": "Clock input",
       "description": "The input bus to use for the clock, if the source is 'Clock input'."
-    },
-    {
-      "name": "Clock input",
-      "description": "",
-      "isPerChannel": false
-    },
-    {
-      "name": "Left input",
-      "description": "",
-      "isPerChannel": false
-    },
-    {
-      "name": "Right input",
-      "description": "",
-      "isPerChannel": false
-    },
-    {
-      "name": "V/oct input",
-      "description": "",
-      "isPerChannel": false
     }
   ],
   "output_ports": [
@@ -217,16 +197,6 @@
     {
       "name": "Right output",
       "description": "The right output bus."
-    },
-    {
-      "name": "Left output",
-      "description": "",
-      "isPerChannel": false
-    },
-    {
-      "name": "Right output",
-      "description": "",
-      "isPerChannel": false
     }
   ]
 }

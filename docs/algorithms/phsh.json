@@ -74,14 +74,6 @@
     {
       "name": "Shift input",
       "description": "The bus to use for the phase shift CV, scaled as 5V per 360°."
-    },
-    {
-      "name": "Shift input",
-      "description": ""
-    },
-    {
-      "name": "Input",
-      "description": ""
     }
   ],
   "output_ports": [
@@ -96,18 +88,6 @@
     {
       "name": "-ve shift output",
       "description": "The bus to use for the negative shifted output."
-    },
-    {
-      "name": "Unshifted output",
-      "description": ""
-    },
-    {
-      "name": "+ve shift output",
-      "description": ""
-    },
-    {
-      "name": "-ve shift output",
-      "description": ""
     }
   ]
 }

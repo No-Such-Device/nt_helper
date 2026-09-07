@@ -78,21 +78,9 @@
     {
       "name": "Gain input",
       "description": "The bus to use to control the input gain. Scaled such that a 5V CV gives 32x gain."
-    },
-    {
-      "name": "Gain input",
-      "description": "The bus to use to control the input gain. Scaled such that a 5V CV gives 32x gain."
-    },
-    {
-      "name": "Input",
-      "description": "The first input bus to process."
     }
   ],
   "output_ports": [
-    {
-      "name": "Output",
-      "description": "The first output bus."
-    },
     {
       "name": "Output",
       "description": "The first output bus."

@@ -285,16 +285,6 @@
     {
       "name": "Clock input",
       "description": "The bus to use for the envelope's clock input."
-    },
-    {
-      "name": "Trigger input",
-      "description": "The bus to use for the envelope's trigger input.",
-      "isPerChannel": true
-    },
-    {
-      "name": "Clock input",
-      "description": "The bus to use for the envelope's clock input.",
-      "isPerChannel": true
     }
   ],
   "output_ports": [
@@ -309,21 +299,6 @@
     {
       "name": "Active output",
       "description": "The bus to use for the envelope's active output. Outputs 5V while the envelope is not idle."
-    },
-    {
-      "name": "Output",
-      "description": "The bus to use for the envelope's output.",
-      "isPerChannel": true
-    },
-    {
-      "name": "End of cycle output",
-      "description": "The bus to use for the envelope's end of cycle trigger output. Outputs a 5V trigger when the envelope becomes idle.",
-      "isPerChannel": true
-    },
-    {
-      "name": "Active output",
-      "description": "The bus to use for the envelope's active output. Outputs 5V while the envelope is not idle.",
-      "isPerChannel": true
     }
   ]
 }

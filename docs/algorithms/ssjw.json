@@ -184,10 +184,6 @@
     {
       "name": "Output",
       "description": "Audio output bus"
-    },
-    {
-      "name": "Output",
-      "description": "The output bus."
     }
   ]
 }

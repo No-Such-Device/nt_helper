@@ -186,25 +186,9 @@
     {
       "name": "Reset input",
       "description": "The bus to use as the reset input."
-    },
-    {
-      "name": "Clock input",
-      "description": "The bus to use as the clock input."
-    },
-    {
-      "name": "Reset input",
-      "description": "The bus to use as the reset input."
     }
   ],
   "output_ports": [
-    {
-      "name": "1-4 Pitch output",
-      "description": "Bus for the MIDI/CV converter pitch output."
-    },
-    {
-      "name": "1-4 Gate output",
-      "description": "Bus for the MIDI/CV converter gate output."
-    },
     {
       "name": "1-4 Pitch output",
       "description": "Bus for the MIDI/CV converter pitch output."

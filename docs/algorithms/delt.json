@@ -68,18 +68,6 @@
     {
       "name": "Speed input",
       "description": "The tape speed CV input bus."
-    },
-    {
-      "name": "Left/mono input",
-      "description": ""
-    },
-    {
-      "name": "Right input",
-      "description": ""
-    },
-    {
-      "name": "Speed input",
-      "description": ""
     }
   ],
   "output_ports": [
@@ -90,14 +78,6 @@
     {
       "name": "Right output",
       "description": "The right output bus."
-    },
-    {
-      "name": "Left/mono output",
-      "description": ""
-    },
-    {
-      "name": "Right output",
-      "description": ""
     }
   ]
 }

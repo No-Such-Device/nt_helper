@@ -202,24 +202,12 @@
     {
       "name": "Reset input",
       "description": "The bus to use as the reset input."
-    },
-    {
-      "name": "Clock input",
-      "description": ""
-    },
-    {
-      "name": "Reset input",
-      "description": ""
     }
   ],
   "output_ports": [
     {
       "name": "Output",
       "description": "The LFO output bus."
-    },
-    {
-      "name": "Output",
-      "description": ""
     }
   ]
 }

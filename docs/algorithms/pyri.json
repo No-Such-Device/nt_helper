@@ -281,10 +281,6 @@
     {
       "name": "Audio input",
       "description": "The audio input to the resonator."
-    },
-    {
-      "name": "Audio input",
-      "description": ""
     }
   ],
   "output_ports": [
@@ -295,14 +291,6 @@
     {
       "name": "Even output",
       "description": "The Even output of the resonator."
-    },
-    {
-      "name": "Odd output",
-      "description": ""
-    },
-    {
-      "name": "Even output",
-      "description": ""
     }
   ]
 }

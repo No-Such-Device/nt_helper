@@ -54,24 +54,12 @@
     {
       "name": "Input",
       "description": "The signal input bus to sample/track."
-    },
-    {
-      "name": "Gate input",
-      "description": ""
-    },
-    {
-      "name": "Input",
-      "description": ""
     }
   ],
   "output_ports": [
     {
       "name": "Output",
       "description": "The output bus."
-    },
-    {
-      "name": "Output",
-      "description": ""
     }
   ]
 }

@@ -238,17 +238,9 @@
     {
       "name": "Audio input",
       "description": "The first audio input bus."
-    },
-    {
-      "name": "Audio input",
-      "description": "The first audio input bus."
     }
   ],
   "output_ports": [
-    {
-      "name": "Output",
-      "description": "The filter's (first) output bus."
-    },
     {
       "name": "Output",
       "description": "The filter's (first) output bus."

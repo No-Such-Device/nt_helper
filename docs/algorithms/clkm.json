@@ -51,17 +51,9 @@
     {
       "name": "Clock input",
       "description": "The clock input bus."
-    },
-    {
-      "name": "Clock input",
-      "description": "The clock input bus."
     }
   ],
   "output_ports": [
-    {
-      "name": "Clock output",
-      "description": "The clock output bus."
-    },
     {
       "name": "Clock output",
       "description": "The clock output bus."

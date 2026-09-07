@@ -110,10 +110,6 @@
       "description": "The CV input for the comparator threshold"
     },
     {
-      "name": "Input",
-      "description": ""
-    },
-    {
       "name": "Threshold input",
       "description": ""
     }
@@ -122,10 +118,6 @@
     {
       "name": "Output",
       "description": "The processed audio output signal"
-    },
-    {
-      "name": "Output",
-      "description": ""
     }
   ]
 }

@@ -167,29 +167,9 @@
     {
       "name": "Gate input",
       "description": "The (optional) gate input bus."
-    },
-    {
-      "name": "CV input",
-      "description": "The pitch CV input bus."
-    },
-    {
-      "name": "Gate input",
-      "description": "The (optional) gate input bus."
     }
   ],
   "output_ports": [
-    {
-      "name": "CV output",
-      "description": "The pitch CV output bus. Always uses 'Replace' output mode."
-    },
-    {
-      "name": "Gate output",
-      "description": "The gate output bus, according to the 'Output gate mode' parameter. Always uses 'Replace' output mode."
-    },
-    {
-      "name": "Change output",
-      "description": "The 'change trigger' output bus. Fires a trigger pulse when the quantized note changes. Always uses 'Replace' output mode."
-    },
     {
       "name": "CV output",
       "description": "The pitch CV output bus. Always uses 'Replace' output mode."

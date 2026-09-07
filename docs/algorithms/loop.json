@@ -613,10 +613,6 @@
     {
       "name": "Trigger output",
       "description": "The output bus for an end-of-loop trigger pulse or clock."
-    },
-    {
-      "name": "Trigger output",
-      "description": "The output bus for an end-of-loop trigger pulse or clock."
     }
   ]
 }

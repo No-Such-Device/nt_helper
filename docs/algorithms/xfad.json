@@ -240,20 +240,12 @@
     {
       "name": "Crossfade input",
       "description": "The CV input to drive the crossfade, scaled so that 5V covers the range 0-100%."
-    },
-    {
-      "name": "Crossfade input",
-      "description": ""
     }
   ],
   "output_ports": [
     {
       "name": "Output",
       "description": "The first bus for the output."
-    },
-    {
-      "name": "Output",
-      "description": ""
     }
   ]
 }

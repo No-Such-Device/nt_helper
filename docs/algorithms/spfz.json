@@ -163,17 +163,9 @@
     {
       "name": "Input",
       "description": "Sets the input audio bus."
-    },
-    {
-      "name": "Input",
-      "description": "Sets the input audio bus."
     }
   ],
   "output_ports": [
-    {
-      "name": "Output",
-      "description": "Sets the output bus for the voice."
-    },
     {
       "name": "Output",
       "description": "Sets the output bus for the voice."

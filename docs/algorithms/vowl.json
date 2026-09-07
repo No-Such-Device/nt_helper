@@ -67,24 +67,12 @@
     {
       "name": "Vowel input",
       "description": "CV input to control the vowel. Scaled such that 0-5V covers the full range of vowels."
-    },
-    {
-      "name": "Audio input",
-      "description": "The first input bus to process."
-    },
-    {
-      "name": "Vowel input",
-      "description": "The bus to use to control the vowel. Scaled such that 0-5V covers the full range of vowels."
     }
   ],
   "output_ports": [
     {
       "name": "Output",
       "description": "The filtered audio output."
-    },
-    {
-      "name": "Output",
-      "description": "The first output bus."
     }
   ]
 }

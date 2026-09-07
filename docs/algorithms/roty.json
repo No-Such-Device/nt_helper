@@ -90,10 +90,6 @@
     {
       "name": "Input",
       "description": "The input bus."
-    },
-    {
-      "name": "Input",
-      "description": ""
     }
   ],
   "output_ports": [
@@ -104,14 +100,6 @@
     {
       "name": "Right output",
       "description": "The right output bus."
-    },
-    {
-      "name": "Left output",
-      "description": ""
-    },
-    {
-      "name": "Right output",
-      "description": ""
     }
   ]
 }

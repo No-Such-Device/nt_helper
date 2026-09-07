@@ -83,25 +83,9 @@
     {
       "name": "Sync input",
       "description": "The oscillator sync input. A rising edge on this input resets the VCO phase to zero."
-    },
-    {
-      "name": "Pitch input",
-      "description": "The pitch CV input (1V/octave)."
-    },
-    {
-      "name": "Wave input",
-      "description": "Sets an input bus to modulate the wave offset."
-    },
-    {
-      "name": "Sync input",
-      "description": "The oscillator sync input. A rising edge on this input resets the VCO phase to zero."
     }
   ],
   "output_ports": [
-    {
-      "name": "Output",
-      "description": "The output bus."
-    },
     {
       "name": "Output",
       "description": "The output bus."

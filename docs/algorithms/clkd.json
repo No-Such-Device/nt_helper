@@ -115,16 +115,8 @@
       "description": "The reset input bus. If active, the channel is reset."
     },
     {
-      "name": "Reset input",
-      "description": "The shared reset input bus."
-    },
-    {
       "name": "Input",
       "description": "The clock input bus to divide."
-    },
-    {
-      "name": "Reset input",
-      "description": "The reset input bus for this channel."
     }
   ],
   "output_ports": [

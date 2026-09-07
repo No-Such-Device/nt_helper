@@ -247,14 +247,6 @@
     {
       "name": "Run/stop input",
       "description": "Run/stop signal input for the external clock"
-    },
-    {
-      "name": "Clock input",
-      "description": "The external clock input."
-    },
-    {
-      "name": "Run/stop input",
-      "description": "The run/stop input for the external clock."
     }
   ],
   "output_ports": [

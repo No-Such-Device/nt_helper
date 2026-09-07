@@ -84,29 +84,9 @@
     {
       "name": "Carrier right input",
       "description": "The right input audio bus for the carrier (if the algorithm is set to stereo in the specifications)."
-    },
-    {
-      "name": "Modulator input",
-      "description": "The bus to use for the modulator signal."
-    },
-    {
-      "name": "Carrier left/mono input",
-      "description": "The left or mono input audio bus for the carrier signal."
-    },
-    {
-      "name": "Carrier right input",
-      "description": "The right input audio bus for the carrier (if the algorithm is set to stereo in the specifications)."
     }
   ],
   "output_ports": [
-    {
-      "name": "Left/mono output",
-      "description": "The left or mono output audio bus."
-    },
-    {
-      "name": "Right output",
-      "description": "The right output audio bus (if the algorithm is set to stereo in the specifications)."
-    },
     {
       "name": "Left/mono output",
       "description": "The left or mono output audio bus."

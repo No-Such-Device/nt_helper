@@ -130,10 +130,6 @@
     {
       "name": "Clock input",
       "description": "The input bus to use for the clock, if the source is 'Clock input'."
-    },
-    {
-      "name": "Clock input",
-      "description": ""
     }
   ],
   "output_ports": [

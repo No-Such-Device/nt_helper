@@ -185,10 +185,6 @@
       "description": ""
     },
     {
-      "name": "Output",
-      "description": ""
-    },
-    {
       "name": "ES-5 Output",
       "description": "If using an ES-5 expander output, sets which of the 8 outputs on the expander to use."
     }

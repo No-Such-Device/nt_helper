@@ -51,21 +51,9 @@
     {
       "name": "Input",
       "description": "The input bus to process."
-    },
-    {
-      "name": "Input",
-      "description": "The input bus to process."
     }
   ],
   "output_ports": [
-    {
-      "name": "Trigger output",
-      "description": "The output bus for the trigger signal."
-    },
-    {
-      "name": "Level output",
-      "description": "The output bus for the level (velocity) signal."
-    },
     {
       "name": "Trigger output",
       "description": "The output bus for the trigger signal."

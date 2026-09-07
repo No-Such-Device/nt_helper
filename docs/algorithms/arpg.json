@@ -298,18 +298,6 @@
     {
       "name": "Velocity output",
       "description": "CV velocity output bus"
-    },
-    {
-      "name": "Gate output",
-      "description": "The bus to use for the gate output."
-    },
-    {
-      "name": "Pitch output",
-      "description": "The bus to use for the pitch output."
-    },
-    {
-      "name": "Velocity output",
-      "description": "The bus to use for the velocity output."
     }
   ]
 }

@@ -90,14 +90,6 @@
     {
       "name": "Right input",
       "description": "The right audio input bus."
-    },
-    {
-      "name": "Left/mono input",
-      "description": ""
-    },
-    {
-      "name": "Right input",
-      "description": ""
     }
   ],
   "output_ports": [
@@ -108,14 +100,6 @@
     {
       "name": "Right output",
       "description": "The right audio output bus."
-    },
-    {
-      "name": "Left output",
-      "description": ""
-    },
-    {
-      "name": "Right output",
-      "description": ""
     }
   ]
 }

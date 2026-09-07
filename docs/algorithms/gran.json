@@ -428,18 +428,6 @@
     {
       "name": "Delay mean input",
       "description": "The input bus to use to control the grain delay. A CV of 5V corresponds to 100% of the buffer size"
-    },
-    {
-      "name": "Left input",
-      "description": ""
-    },
-    {
-      "name": "Right input",
-      "description": ""
-    },
-    {
-      "name": "Delay mean input",
-      "description": ""
     }
   ],
   "output_ports": [
@@ -450,14 +438,6 @@
     {
       "name": "Right output",
       "description": "The right audio output bus"
-    },
-    {
-      "name": "Left output",
-      "description": ""
-    },
-    {
-      "name": "Right output",
-      "description": ""
     }
   ]
 }
