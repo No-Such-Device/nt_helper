@@ -43,6 +43,82 @@ void main() {
     );
   });
 
+  test('quad Spinner and Orbiter ranges track the channel count', () async {
+    final four = await resolver.resolve('quad', [4]);
+    final one = await resolver.resolve('quad', [1]);
+
+    expect(four.usedGrammar, isTrue);
+    expect(one.usedGrammar, isTrue);
+    final spinners = four.snapshot.parameters
+        .where((parameter) => parameter.name.endsWith(':Spinner'))
+        .toList();
+    expect(spinners.map((parameter) => parameter.max), [4, 4, 4, 4]);
+    expect(spinners.map((parameter) => parameter.defaultValue), [1, 2, 3, 4]);
+    final orbiter = one.snapshot.parameters.singleWhere(
+      (parameter) => parameter.name == '1:Orbiter',
+    );
+    expect(orbiter.max, 1);
+    expect(orbiter.defaultValue, 1);
+  });
+
+  test('logi Input X enumerates every channel', () async {
+    final three = await resolver.resolve('logi', [3]);
+
+    expect(three.usedGrammar, isTrue);
+    final inputs = three.snapshot.parameters
+        .where((parameter) => parameter.name.endsWith(':Input X'))
+        .toList();
+    expect(inputs, hasLength(3));
+    for (final input in inputs) {
+      expect(input.max, 67);
+      expect(input.enumStrings.length, 68);
+      expect(input.enumStrings.sublist(65), [
+        'Channel 1',
+        'Channel 2',
+        'Channel 3',
+      ]);
+    }
+    final enables = three.snapshot.parameters
+        .where((parameter) => parameter.name.endsWith(':Enable'))
+        .map((parameter) => parameter.defaultValue);
+    expect(enables, [1, 0, 0]);
+  });
+
+  test('spfz and tpfz freeze targets track the voice count', () async {
+    final spfz = await resolver.resolve('spfz', [4, 128, 11]);
+    final tpfz = await resolver.resolve('tpfz', [8, 4]);
+
+    expect(spfz.usedGrammar, isTrue);
+    expect(tpfz.usedGrammar, isTrue);
+    final freeze = spfz.snapshot.parameters.singleWhere(
+      (parameter) => parameter.name == 'Freeze target',
+    );
+    expect(freeze.max, 4);
+    expect(freeze.defaultValue, 2);
+    final autoVoices = tpfz.snapshot.parameters.singleWhere(
+      (parameter) => parameter.name == 'Auto voices',
+    );
+    expect(autoVoices.max, 8);
+    expect(autoVoices.defaultValue, 8);
+  });
+
+  test('lisp Stereo toggles the right channel memberships', () async {
+    final mono = await resolver.resolve('lisp', [0]);
+    final stereo = await resolver.resolve('lisp', [1]);
+
+    expect(mono.usedGrammar, isTrue);
+    expect(stereo.usedGrammar, isTrue);
+    expect(
+      mono.snapshot.parameters,
+      hasLength(stereo.snapshot.parameters.length),
+    );
+    expect(
+      stereo.snapshot.pageMemberships.length -
+          mono.snapshot.pageMemberships.length,
+      2,
+    );
+  });
+
   test('quan expands Channels 1, 4, and 12', () async {
     final one = await resolver.resolve('quan', [1]);
     final four = await resolver.resolve('quan', [4]);
