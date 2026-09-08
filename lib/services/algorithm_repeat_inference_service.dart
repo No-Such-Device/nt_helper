@@ -613,7 +613,9 @@ final class AlgorithmRepeatInferenceService {
     if (exactText) return 2;
     if (!_ordinalCompatibleText(a.name, b.name)) return 0;
     for (var index = 0; index < a.enumStrings.length; index++) {
-      if (!_ordinalCompatibleText(a.enumStrings[index], b.enumStrings[index])) {
+      final aValue = a.enumStrings[index];
+      final bValue = b.enumStrings[index];
+      if (aValue != bValue && !_ordinalCompatibleText(aValue, bValue)) {
         return 0;
       }
     }

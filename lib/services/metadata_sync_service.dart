@@ -245,14 +245,16 @@ class MetadataSyncService {
           case NoAlgorithmRepeats():
             status =
                 'No repeat topology found across ${snapshots.length} hardware shapes.';
-          case UnprovenAlgorithmRepeats():
+          case UnprovenAlgorithmRepeats(reason: final reason):
             status =
-                'Repeat topology unproven across ${snapshots.length} hardware shapes.';
+                'Repeat topology unproven across ${snapshots.length} hardware shapes: $reason';
         }
-      } catch (_) {
-        status = 'Repeat topology unproven; using a conservative flat shape.';
+      } catch (error) {
+        status =
+            'Repeat topology unproven; using a conservative flat shape ($error).';
         grammar = null;
       }
+      debugPrint('[metadata-sync] ${algoInfo.guid}: $status');
     }
 
     if (canonical == null || grammar == null) {
@@ -316,14 +318,9 @@ class MetadataSyncService {
         );
       }
       final instantiated = await _distingManager.requestAlgorithmGuid(0);
-      if (instantiated == null ||
-          instantiated.guid != algoInfo.guid ||
-          !_sameSpecificationVector(
-            instantiated.specifications,
-            specificationValues,
-          )) {
+      if (instantiated == null || instantiated.guid != algoInfo.guid) {
         throw const _MetadataProbeException(
-          'Hardware did not instantiate the requested GUID/specification vector',
+          'Hardware did not instantiate the requested GUID',
         );
       }
       final algorithmToQuery = await _resolveAlgorithmForQuery(algoInfo);

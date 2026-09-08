@@ -89,6 +89,30 @@ void main() {
       expect(grammar.expand(_quantizer(2), [12]).parameters.last.name, 'Ch 12');
     });
 
+    test('numbered rows with identical bus enum strings prove a grammar', () {
+      // Mirrors the LFO hardware shape: "1:Output"/"2:Output" share the
+      // same bus enum ("None", "Input 1", ... "Aux 44").
+      final specs = [_spec('Channels', min: 1, max: 4)];
+      final plan = service.buildInitialPlan(specs);
+      final snapshots = <SpecificationVector, AlgorithmShapeSnapshot>{
+        plan.canonical: _busOutputRows(2),
+        plan.lowerWitnessByAxis[0]!: _busOutputRows(1),
+      };
+
+      final result = service.compile(
+        analysis: service.analyzeInitial(
+          specifications: specs,
+          plan: plan,
+          snapshots: snapshots,
+        ),
+        snapshots: snapshots,
+      );
+
+      expect(result, isA<ProvenAlgorithmRepeatGrammar>());
+      final grammar = (result as ProvenAlgorithmRepeatGrammar).grammar;
+      expect(grammar.expand(_busOutputRows(2), [4]), _busOutputRows(4));
+    });
+
     test('Quantizer relationship streams follow repeated logical rows', () {
       final specs = [_spec('Channels', min: 1, max: 12)];
       final plan = service.buildInitialPlan(specs);
@@ -352,6 +376,53 @@ AlgorithmShapeSnapshot _quantizerWithRelationships(int channels) {
       ShapeOutputUsageAtom(
         parameterNumber: firstParameter,
         affectedParameterNumber: firstParameter + 1,
+      ),
+    );
+  }
+  return AlgorithmShapeSnapshot(
+    specificationValues: [channels],
+    parameters: parameters,
+    pages: pages,
+    pageMemberships: memberships,
+    outputUsage: outputUsage,
+  );
+}
+
+const _busEnum = ['None', 'Input 1', 'Input 2', 'Output 1', 'Aux 1'];
+
+AlgorithmShapeSnapshot _busOutputRows(int channels) {
+  final parameters = <ShapeParameterAtom>[_parameter('Bypass')];
+  final pages = <ShapePageAtom>[const ShapePageAtom(name: 'Globals')];
+  final memberships = <ShapePageMembershipAtom>[
+    const ShapePageMembershipAtom(pageIndex: 0, parameterNumber: 0),
+  ];
+  final outputUsage = <ShapeOutputUsageAtom>[];
+  for (var channel = 1; channel <= channels; channel++) {
+    final firstParameter = parameters.length;
+    parameters.addAll([
+      _parameter(
+        '$channel:Output',
+        max: _busEnum.length - 1,
+        enumStrings: _busEnum,
+      ),
+      _parameter('$channel:Output mode', enumStrings: const ['Add', 'Replace']),
+    ]);
+    final pageIndex = pages.length;
+    pages.add(ShapePageAtom(name: 'Channel $channel'));
+    memberships.addAll([
+      ShapePageMembershipAtom(
+        pageIndex: pageIndex,
+        parameterNumber: firstParameter,
+      ),
+      ShapePageMembershipAtom(
+        pageIndex: pageIndex,
+        parameterNumber: firstParameter + 1,
+      ),
+    ]);
+    outputUsage.add(
+      ShapeOutputUsageAtom(
+        parameterNumber: firstParameter + 1,
+        affectedParameterNumber: firstParameter,
       ),
     );
   }

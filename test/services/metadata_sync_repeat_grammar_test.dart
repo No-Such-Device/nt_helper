@@ -126,6 +126,35 @@ void main() {
     );
   });
 
+  test(
+    'probe succeeds when the slot response omits specification values',
+    () async {
+      final algorithm = _algorithm('quan', [_spec('Channels', 1, 12)]);
+      final manager = _ShapeProbeManager(
+        algorithm,
+        (specs) => [
+          _parameter(0, 'Mode'),
+          for (var channel = 1; channel <= specs[0]; channel++)
+            _parameter(channel, 'Ch $channel'),
+        ],
+      );
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await _seedAlgorithm(database, algorithm);
+
+      await MetadataSyncService(
+        manager,
+        database,
+      ).rescanSingleAlgorithm(algorithm);
+
+      expect(await database.metadataDao.getAllParameters(), hasLength(3));
+      expect(
+        await database.metadataDao.getAlgorithmRepeatGrammar('quan'),
+        isNotNull,
+      );
+    },
+  );
+
   test('an unproven rescan removes a stale grammar', () async {
     final algorithm = _algorithm('flat', [_spec('Channels', 1, 8)]);
     final manager = _ShapeProbeManager(
@@ -189,15 +218,15 @@ final class _ShapeProbeManager implements IDistingMidiManager {
     int? maxRetries,
   }) async => _activeSpecifications == null ? 0 : 1;
 
+  /// Mirrors the firmware's algorithm-in-slot response, which carries the
+  /// slot index, GUID and name but never the specification values.
   @override
   Future<Algorithm?> requestAlgorithmGuid(int algorithmIndex) async {
-    final specifications = _activeSpecifications;
-    if (algorithmIndex != 0 || specifications == null) return null;
+    if (algorithmIndex != 0 || _activeSpecifications == null) return null;
     return Algorithm(
       algorithmIndex: 0,
       guid: algorithm.guid,
       name: algorithm.name,
-      specifications: List<int>.from(specifications),
     );
   }
 
