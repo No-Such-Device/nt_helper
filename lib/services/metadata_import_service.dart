@@ -100,13 +100,13 @@ class MetadataImportService {
       final data = row as Map<String, dynamic>;
       final grammarVersion = data['grammarVersion'] as int;
       final compact = data['grammar'];
-      if (grammarVersion != AlgorithmRepeatGrammar.currentVersion) {
+      if (!AlgorithmRepeatGrammar.supportedVersions.contains(grammarVersion)) {
         throw FormatException('Unsupported grammar version $grammarVersion');
       }
       final grammar = AlgorithmRepeatGrammar.fromCompactJson(compact);
       return AlgorithmRepeatGrammarEntry(
         algorithmGuid: data['algorithmGuid'] as String,
-        grammarVersion: grammarVersion,
+        grammarVersion: AlgorithmRepeatGrammar.currentVersion,
         grammarJson: jsonEncode(grammar.toCompactJson()),
       );
     }).toList();

@@ -17,6 +17,94 @@ void main() {
       );
     });
 
+    test('version 1 JSON without fixed substitutions still parses', () {
+      final legacy = [
+        1,
+        [2],
+        [
+          [
+            'r',
+            0,
+            0,
+            0,
+            [
+              [0, 1, 2],
+            ],
+            [
+              [
+                'i',
+                0,
+                0,
+                5,
+                -1,
+                1,
+                [
+                  [0, 1],
+                ],
+              ],
+            ],
+            [],
+          ],
+        ],
+      ];
+
+      final grammar = AlgorithmRepeatGrammar.fromCompactJson(legacy);
+
+      expect(grammar.baselineSpecifications, [2]);
+      expect(
+        grammar.sections.single.substitutions.single,
+        isA<AffineIntegerSubstitution>(),
+      );
+      expect(grammar.fixedSubstitutions, isEmpty);
+    });
+
+    test('count-dependent substitutions round-trip and expand', () {
+      final grammar = _countDependentGrammar();
+      final canonical = _countDependentSnapshot();
+
+      expect(
+        AlgorithmRepeatGrammar.fromCompactJson(grammar.toCompactJson()),
+        grammar,
+      );
+      expect(grammar.expand(canonical, [2]), canonical);
+
+      final one = grammar.expand(canonical, [1]);
+      expect(one.parameters[0].max, 1);
+      expect(one.parameters[1].enumStrings, ['None', 'Channel 1']);
+      expect(one.parameters[1].max, 1);
+      expect(one.parameters[2].max, 1);
+      expect(one.parameters[2].defaultValue, 1);
+      expect(one.parameters.length, 3);
+
+      final four = grammar.expand(canonical, [4]);
+      expect(four.parameters[0].max, 4);
+      expect(four.parameters[1].enumStrings, [
+        'None',
+        'Channel 1',
+        'Channel 2',
+        'Channel 3',
+        'Channel 4',
+      ]);
+      expect(four.parameters[1].max, 4);
+      expect(four.parameters.length, 6);
+      expect(four.parameters.sublist(2).map((parameter) => parameter.name), [
+        '1:Spinner',
+        '2:Spinner',
+        '3:Spinner',
+        '4:Spinner',
+      ]);
+      expect(four.parameters.sublist(2).map((parameter) => parameter.max), [
+        4,
+        4,
+        4,
+        4,
+      ]);
+      expect(
+        four.parameters.sublist(2).map((parameter) => parameter.defaultValue),
+        [1, 2, 3, 4],
+      );
+    });
+
     test('fixed-only grammar preserves topology with requested vector', () {
       final canonical = _fixedSnapshot();
       final grammar = AlgorithmRepeatGrammar(
@@ -327,6 +415,103 @@ AlgorithmRepeatGrammar _quantizerGrammar() {
   );
 }
 
+AlgorithmRepeatGrammar _countDependentGrammar() => AlgorithmRepeatGrammar(
+  baselineSpecifications: [2],
+  sections: [
+    RepeatSection(
+      specificationIndex: 0,
+      countBias: 0,
+      sourceOrdinal: 0,
+      runs: const [
+        ShapeStreamRun(
+          stream: ShapeStream.parameters,
+          firstStart: 2,
+          itemCount: 1,
+        ),
+      ],
+      substitutions: [
+        OrdinalTextSubstitution(
+          stream: ShapeStream.parameters,
+          rowOffset: 0,
+          field: OrdinalField.parameterName,
+          parts: const [
+            OrdinalTextPlaceholder(specificationIndex: 0, displayBias: 1),
+            LiteralTextPart(':Spinner'),
+          ],
+        ),
+        AffineIntegerSubstitution(
+          stream: ShapeStream.parameters,
+          rowOffset: 0,
+          field: OrdinalField.parameterDefault,
+          constant: 1,
+          coefficients: const [
+            AffineCoefficient(specificationIndex: 0, coefficient: 1),
+          ],
+        ),
+        CountDeltaSubstitution(
+          stream: ShapeStream.parameters,
+          rowOffset: 0,
+          field: OrdinalField.parameterMax,
+          coefficients: const [
+            AffineCoefficient(specificationIndex: 0, coefficient: 1),
+          ],
+        ),
+      ],
+      children: const [],
+    ),
+  ],
+  fixedSubstitutions: [
+    CountDeltaSubstitution(
+      stream: ShapeStream.parameters,
+      rowOffset: 0,
+      field: OrdinalField.parameterMax,
+      coefficients: const [
+        AffineCoefficient(specificationIndex: 0, coefficient: 1),
+      ],
+    ),
+    CountDeltaSubstitution(
+      stream: ShapeStream.parameters,
+      rowOffset: 1,
+      field: OrdinalField.parameterMax,
+      coefficients: const [
+        AffineCoefficient(specificationIndex: 0, coefficient: 1),
+      ],
+    ),
+    EnumRepeatSubstitution(
+      stream: ShapeStream.parameters,
+      rowOffset: 1,
+      field: OrdinalField.parameterEnumString,
+      elementIndex: 1,
+      specificationIndex: 0,
+      countBias: 0,
+      sourceOrdinal: 0,
+      items: const [
+        [
+          LiteralTextPart('Channel '),
+          OrdinalTextPlaceholder(specificationIndex: 0, displayBias: 1),
+        ],
+      ],
+    ),
+  ],
+);
+
+AlgorithmShapeSnapshot _countDependentSnapshot() => AlgorithmShapeSnapshot(
+  specificationValues: [2],
+  parameters: [
+    _parameter('Freeze target', max: 2),
+    _parameter(
+      'Input X',
+      max: 2,
+      enumStrings: const ['None', 'Channel 1', 'Channel 2'],
+    ),
+    _parameter('1:Spinner', min: 1, max: 2, defaultValue: 1),
+    _parameter('2:Spinner', min: 1, max: 2, defaultValue: 2),
+  ],
+  pages: const [],
+  pageMemberships: const [],
+  outputUsage: const [],
+);
+
 AlgorithmShapeSnapshot _fixedSnapshot() => AlgorithmShapeSnapshot(
   specificationValues: [2],
   parameters: [_parameter('Mode')],
@@ -364,13 +549,19 @@ AlgorithmShapeSnapshot _quantizerSnapshot() => AlgorithmShapeSnapshot(
   ],
 );
 
-ShapeParameterAtom _parameter(String name) => ShapeParameterAtom(
+ShapeParameterAtom _parameter(
+  String name, {
+  int min = 0,
+  int max = 64,
+  int defaultValue = 0,
+  List<String> enumStrings = const [],
+}) => ShapeParameterAtom(
   name: name,
-  min: 0,
-  max: 64,
-  defaultValue: 0,
+  min: min,
+  max: max,
+  defaultValue: defaultValue,
   rawUnitIndex: 0,
   powerOfTen: 0,
   ioFlags: 0,
-  enumStrings: const [],
+  enumStrings: enumStrings,
 );

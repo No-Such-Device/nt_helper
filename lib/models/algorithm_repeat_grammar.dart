@@ -142,6 +142,8 @@ sealed class OrdinalSubstitution {
     return switch (values.first) {
       't' => OrdinalTextSubstitution.fromCompactJson(values),
       'i' => AffineIntegerSubstitution.fromCompactJson(values),
+      'c' => CountDeltaSubstitution.fromCompactJson(values),
+      'e' => EnumRepeatSubstitution.fromCompactJson(values),
       _ => throw FormatException(
         'Unknown ordinal substitution tag: ${values.first}',
       ),
@@ -174,15 +176,7 @@ final class OrdinalTextSubstitution extends OrdinalSubstitution {
     if (values.length != 6) {
       throw const FormatException('Text substitution must have 6 values');
     }
-    final partsJson = _array(values[5], label: 'text parts');
-    final parts = partsJson.map<OrdinalTextPart>((part) {
-      if (part is String) return LiteralTextPart(part);
-      final placeholder = _array(part, length: 2, label: 'text placeholder');
-      return OrdinalTextPlaceholder(
-        specificationIndex: _integer(placeholder[0], 'placeholder spec index'),
-        displayBias: _integer(placeholder[1], 'placeholder display bias'),
-      );
-    }).toList();
+    final parts = _textParts(values[5], 'text parts');
     return OrdinalTextSubstitution(
       stream: ShapeStream.fromCode(values[1]),
       rowOffset: _integer(values[2], 'text row offset'),
@@ -262,15 +256,7 @@ final class AffineIntegerSubstitution extends OrdinalSubstitution {
     if (values.length != 7) {
       throw const FormatException('Integer substitution must have 7 values');
     }
-    final coefficients = _array(values[6], label: 'affine coefficients').map((
-      coefficient,
-    ) {
-      final pair = _array(coefficient, length: 2, label: 'affine coefficient');
-      return AffineCoefficient(
-        specificationIndex: _integer(pair[0], 'coefficient spec index'),
-        coefficient: _integer(pair[1], 'coefficient'),
-      );
-    }).toList();
+    final coefficients = _affineCoefficients(values[6]);
     return AffineIntegerSubstitution(
       stream: ShapeStream.fromCode(values[1]),
       rowOffset: _integer(values[2], 'integer row offset'),
@@ -305,6 +291,172 @@ final class AffineIntegerSubstitution extends OrdinalSubstitution {
     const ListEquality<AffineCoefficient>().hash(coefficients),
   );
 }
+
+/// Adds `coefficient * (requested - baseline)` per specification to an
+/// integer field, so the value at the baseline is always the canonical one.
+final class CountDeltaSubstitution extends OrdinalSubstitution {
+  CountDeltaSubstitution({
+    required super.stream,
+    required super.rowOffset,
+    required super.field,
+    super.elementIndex,
+    required List<AffineCoefficient> coefficients,
+  }) : coefficients = List.unmodifiable(coefficients);
+
+  final List<AffineCoefficient> coefficients;
+
+  @override
+  Object toCompactJson() => [
+    'c',
+    stream.code,
+    rowOffset,
+    field.code,
+    elementIndex,
+    coefficients.map((coefficient) => coefficient.toCompactJson()).toList(),
+  ];
+
+  static CountDeltaSubstitution fromCompactJson(List<Object?> values) {
+    if (values.length != 6) {
+      throw const FormatException(
+        'Count delta substitution must have 6 values',
+      );
+    }
+    return CountDeltaSubstitution(
+      stream: ShapeStream.fromCode(values[1]),
+      rowOffset: _integer(values[2], 'count delta row offset'),
+      field: OrdinalField.fromCode(values[3]),
+      elementIndex: _integer(values[4], 'count delta element index'),
+      coefficients: _affineCoefficients(values[5]),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CountDeltaSubstitution &&
+          stream == other.stream &&
+          rowOffset == other.rowOffset &&
+          field == other.field &&
+          elementIndex == other.elementIndex &&
+          const ListEquality<AffineCoefficient>().equals(
+            coefficients,
+            other.coefficients,
+          );
+
+  @override
+  int get hashCode => Object.hash(
+    stream,
+    rowOffset,
+    field,
+    elementIndex,
+    const ListEquality<AffineCoefficient>().hash(coefficients),
+  );
+}
+
+/// Replaces a run of enum strings that repeats once per counted item.
+///
+/// The canonical run starts at [elementIndex] and holds
+/// `(baseline + countBias) * items.length` strings; expansion renders
+/// [items] once per requested ordinal and keeps the strings around the run.
+final class EnumRepeatSubstitution extends OrdinalSubstitution {
+  EnumRepeatSubstitution({
+    required super.stream,
+    required super.rowOffset,
+    required super.field,
+    required super.elementIndex,
+    required this.specificationIndex,
+    required this.countBias,
+    required this.sourceOrdinal,
+    required List<List<OrdinalTextPart>> items,
+  }) : items = List.unmodifiable(
+         items.map((item) => List<OrdinalTextPart>.unmodifiable(item)),
+       );
+
+  final int specificationIndex;
+  final int countBias;
+  final int sourceOrdinal;
+  final List<List<OrdinalTextPart>> items;
+
+  @override
+  Object toCompactJson() => [
+    'e',
+    stream.code,
+    rowOffset,
+    field.code,
+    elementIndex,
+    specificationIndex,
+    countBias,
+    sourceOrdinal,
+    items
+        .map((item) => item.map((part) => part.toCompactJson()).toList())
+        .toList(),
+  ];
+
+  static EnumRepeatSubstitution fromCompactJson(List<Object?> values) {
+    if (values.length != 9) {
+      throw const FormatException(
+        'Enum repeat substitution must have 9 values',
+      );
+    }
+    return EnumRepeatSubstitution(
+      stream: ShapeStream.fromCode(values[1]),
+      rowOffset: _integer(values[2], 'enum repeat row offset'),
+      field: OrdinalField.fromCode(values[3]),
+      elementIndex: _integer(values[4], 'enum repeat element index'),
+      specificationIndex: _integer(values[5], 'enum repeat spec index'),
+      countBias: _integer(values[6], 'enum repeat count bias'),
+      sourceOrdinal: _integer(values[7], 'enum repeat source ordinal'),
+      items: _array(
+        values[8],
+        label: 'enum repeat items',
+      ).map((item) => _textParts(item, 'enum repeat item')).toList(),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is EnumRepeatSubstitution &&
+          stream == other.stream &&
+          rowOffset == other.rowOffset &&
+          field == other.field &&
+          elementIndex == other.elementIndex &&
+          specificationIndex == other.specificationIndex &&
+          countBias == other.countBias &&
+          sourceOrdinal == other.sourceOrdinal &&
+          const DeepCollectionEquality().equals(items, other.items);
+
+  @override
+  int get hashCode => Object.hash(
+    stream,
+    rowOffset,
+    field,
+    elementIndex,
+    specificationIndex,
+    countBias,
+    sourceOrdinal,
+    const DeepCollectionEquality().hash(items),
+  );
+}
+
+List<AffineCoefficient> _affineCoefficients(Object? json) =>
+    _array(json, label: 'affine coefficients').map((coefficient) {
+      final pair = _array(coefficient, length: 2, label: 'affine coefficient');
+      return AffineCoefficient(
+        specificationIndex: _integer(pair[0], 'coefficient spec index'),
+        coefficient: _integer(pair[1], 'coefficient'),
+      );
+    }).toList();
+
+List<OrdinalTextPart> _textParts(Object? json, String label) =>
+    _array(json, label: label).map<OrdinalTextPart>((part) {
+      if (part is String) return LiteralTextPart(part);
+      final placeholder = _array(part, length: 2, label: 'text placeholder');
+      return OrdinalTextPlaceholder(
+        specificationIndex: _integer(placeholder[0], 'placeholder spec index'),
+        displayBias: _integer(placeholder[1], 'placeholder display bias'),
+      );
+    }).toList();
 
 final class RepeatSection {
   RepeatSection({
@@ -391,13 +543,22 @@ final class AlgorithmRepeatGrammar {
   AlgorithmRepeatGrammar({
     required List<int> baselineSpecifications,
     required List<RepeatSection> sections,
+    List<OrdinalSubstitution> fixedSubstitutions = const [],
   }) : baselineSpecifications = List.unmodifiable(baselineSpecifications),
-       sections = List.unmodifiable(sections);
+       sections = List.unmodifiable(sections),
+       fixedSubstitutions = List.unmodifiable(fixedSubstitutions);
 
-  static const currentVersion = 1;
+  /// Version 2 adds count-delta and enum-repeat substitutions plus
+  /// [fixedSubstitutions]; version 1 JSON is still readable.
+  static const currentVersion = 2;
+  static const supportedVersions = {1, currentVersion};
 
   final List<int> baselineSpecifications;
   final List<RepeatSection> sections;
+
+  /// Substitutions keyed by absolute canonical row that apply to every
+  /// generated copy of that row, inside or outside repeat sections.
+  final List<OrdinalSubstitution> fixedSubstitutions;
 
   AlgorithmShapeSnapshot expand(
     AlgorithmShapeSnapshot canonical,
@@ -494,12 +655,23 @@ final class AlgorithmRepeatGrammar {
     currentVersion,
     baselineSpecifications,
     sections.map((section) => section.toCompactJson()).toList(),
+    fixedSubstitutions
+        .map((substitution) => substitution.toCompactJson())
+        .toList(),
   ];
 
   static AlgorithmRepeatGrammar fromCompactJson(Object? json) {
-    final values = _array(json, length: 3, label: 'repeat grammar');
-    if (values[0] != currentVersion) {
-      throw FormatException('Unknown repeat grammar version: ${values[0]}');
+    final values = _array(json, label: 'repeat grammar');
+    if (values.isEmpty || !supportedVersions.contains(values[0])) {
+      throw FormatException(
+        'Unknown repeat grammar version: ${values.firstOrNull}',
+      );
+    }
+    final expectedLength = values[0] == 1 ? 3 : 4;
+    if (values.length != expectedLength) {
+      throw FormatException(
+        'Repeat grammar version ${values[0]} must have $expectedLength values',
+      );
     }
     return AlgorithmRepeatGrammar(
       baselineSpecifications: _array(
@@ -510,6 +682,12 @@ final class AlgorithmRepeatGrammar {
         values[2],
         label: 'grammar sections',
       ).map(RepeatSection.fromCompactJson).toList(),
+      fixedSubstitutions: values.length == 4
+          ? _array(
+              values[3],
+              label: 'fixed substitutions',
+            ).map(OrdinalSubstitution.fromCompactJson).toList()
+          : const [],
     );
   }
 
@@ -560,7 +738,14 @@ final class AlgorithmRepeatGrammar {
       }
       for (var row = cursor; row < runStart; row++) {
         output.add(
-          _generateRow(stream, rows[row], row, activeOrdinals, activeSections),
+          _generateRow(
+            stream,
+            rows[row],
+            row,
+            activeOrdinals,
+            activeSections,
+            requestedSpecifications,
+          ),
         );
       }
 
@@ -597,7 +782,14 @@ final class AlgorithmRepeatGrammar {
     }
     for (var row = cursor; row < scopeEnd; row++) {
       output.add(
-        _generateRow(stream, rows[row], row, activeOrdinals, activeSections),
+        _generateRow(
+          stream,
+          rows[row],
+          row,
+          activeOrdinals,
+          activeSections,
+          requestedSpecifications,
+        ),
       );
     }
     return output;
@@ -609,16 +801,48 @@ final class AlgorithmRepeatGrammar {
     int sourceRow,
     Map<int, int> ordinals,
     List<_ActiveSection> activeSections,
+    List<int> requestedSpecifications,
   ) {
     Object value = original as Object;
+    var ordinalDefault = false;
+    void apply(OrdinalSubstitution substitution) {
+      value = _applySubstitution(
+        value,
+        substitution,
+        ordinals,
+        requestedSpecifications,
+      );
+      ordinalDefault |=
+          substitution is AffineIntegerSubstitution &&
+          substitution.field == OrdinalField.parameterDefault;
+    }
+
+    for (final substitution in fixedSubstitutions) {
+      if (substitution.stream == stream &&
+          substitution.rowOffset == sourceRow) {
+        apply(substitution);
+      }
+    }
     for (final context in activeSections) {
       final offset = sourceRow - context.sourceStart;
       for (final substitution in context.section.substitutions) {
-        if (substitution.stream != stream || substitution.rowOffset != offset) {
-          continue;
+        if (substitution.stream == stream && substitution.rowOffset == offset) {
+          apply(substitution);
         }
-        value = _applySubstitution(value, substitution, ordinals);
       }
+    }
+    // An ordinal-driven default fitted from two witnesses cannot tell
+    // "1, 0, 0, ..." from "1, 0, -1, ...", so it stays inside the range.
+    final parameter = value;
+    if (ordinalDefault &&
+        parameter is ShapeParameterAtom &&
+        parameter.min <= parameter.max) {
+      value = parameter.copyWith(
+        defaultValue: parameter.defaultValue.clamp(
+          parameter.min,
+          parameter.max,
+        ),
+      );
     }
     return _Generated<T>(
       sourceRow: sourceRow,
@@ -631,15 +855,60 @@ final class AlgorithmRepeatGrammar {
     Object value,
     OrdinalSubstitution substitution,
     Map<int, int> ordinals,
+    List<int> requestedSpecifications,
   ) {
+    if (substitution is EnumRepeatSubstitution) {
+      if (value is! ShapeParameterAtom) {
+        throw const FormatException('Enum repeat requires a parameter');
+      }
+      final itemCount = substitution.items.length;
+      final canonicalCount =
+          baselineSpecifications[substitution.specificationIndex] +
+          substitution.countBias;
+      final requestedCount =
+          requestedSpecifications[substitution.specificationIndex] +
+          substitution.countBias;
+      final runEnd = substitution.elementIndex + canonicalCount * itemCount;
+      if (substitution.elementIndex < 0 ||
+          runEnd > value.enumStrings.length ||
+          requestedCount < 0) {
+        throw const FormatException('Enum repeat is outside its parameter');
+      }
+      final enums = <String>[
+        ...value.enumStrings.sublist(0, substitution.elementIndex),
+        for (var ordinal = 0; ordinal < requestedCount; ordinal++)
+          for (final item in substitution.items)
+            _renderText(item, {
+              ...ordinals,
+              substitution.specificationIndex: ordinal,
+            }),
+        ...value.enumStrings.sublist(runEnd),
+      ];
+      return value.copyWith(enumStrings: enums);
+    }
+    if (substitution is CountDeltaSubstitution) {
+      if (value is! ShapeParameterAtom) {
+        throw const FormatException('Count delta requires a parameter');
+      }
+      final delta = substitution.coefficients.fold<int>(0, (sum, coefficient) {
+        final axis = coefficient.specificationIndex;
+        return sum +
+            coefficient.coefficient *
+                (requestedSpecifications[axis] - baselineSpecifications[axis]);
+      });
+      return switch (substitution.field) {
+        OrdinalField.parameterMin => value.copyWith(min: value.min + delta),
+        OrdinalField.parameterMax => value.copyWith(max: value.max + delta),
+        OrdinalField.parameterDefault => value.copyWith(
+          defaultValue: value.defaultValue + delta,
+        ),
+        _ => throw const FormatException(
+          'Count delta targets an invalid field',
+        ),
+      };
+    }
     if (substitution is OrdinalTextSubstitution) {
-      final text = substitution.parts.map((part) {
-        return switch (part) {
-          LiteralTextPart() => part.value,
-          OrdinalTextPlaceholder() =>
-            '${_ordinal(ordinals, part.specificationIndex) + part.displayBias}',
-        };
-      }).join();
+      final text = _renderText(substitution.parts, ordinals);
       if (value is ShapeParameterAtom &&
           substitution.field == OrdinalField.parameterName) {
         return value.copyWith(name: text);
@@ -681,6 +950,15 @@ final class AlgorithmRepeatGrammar {
       ),
     };
   }
+
+  String _renderText(List<OrdinalTextPart> parts, Map<int, int> ordinals) =>
+      parts.map((part) {
+        return switch (part) {
+          LiteralTextPart() => part.value,
+          OrdinalTextPlaceholder() =>
+            '${_ordinal(ordinals, part.specificationIndex) + part.displayBias}',
+        };
+      }).join();
 
   int _ordinal(Map<int, int> ordinals, int specificationIndex) {
     final ordinal = ordinals[specificationIndex];
@@ -778,6 +1056,13 @@ final class AlgorithmRepeatGrammar {
     }
 
     validateLevel(sections, streamLengths, const {});
+    for (final substitution in fixedSubstitutions) {
+      if (substitution.rowOffset < 0 ||
+          substitution.rowOffset >= streamLengths[substitution.stream]!) {
+        throw const FormatException('Fixed substitution is outside the shape');
+      }
+      _validateSubstitution(substitution);
+    }
   }
 
   void _validateSubstitution(OrdinalSubstitution substitution) {
@@ -804,18 +1089,48 @@ final class AlgorithmRepeatGrammar {
       }
       return;
     }
-    final integer = substitution as AffineIntegerSubstitution;
-    if (integer.stream != ShapeStream.parameters ||
-        integer.elementIndex != -1 ||
+    if (substitution is EnumRepeatSubstitution) {
+      if (substitution.stream != ShapeStream.parameters ||
+          substitution.field != OrdinalField.parameterEnumString ||
+          substitution.elementIndex < 0 ||
+          substitution.specificationIndex < 0 ||
+          substitution.specificationIndex >= baselineSpecifications.length ||
+          substitution.items.isEmpty ||
+          substitution.items.any((item) => item.isEmpty) ||
+          baselineSpecifications[substitution.specificationIndex] +
+                  substitution.countBias <=
+              0 ||
+          substitution.sourceOrdinal < 0 ||
+          substitution.sourceOrdinal >=
+              baselineSpecifications[substitution.specificationIndex] +
+                  substitution.countBias) {
+        throw const FormatException('Invalid enum repeat substitution');
+      }
+      for (final part in substitution.items.expand((item) => item)) {
+        if (part is OrdinalTextPlaceholder &&
+            (part.specificationIndex < 0 ||
+                part.specificationIndex >= baselineSpecifications.length)) {
+          throw const FormatException('Invalid enum repeat placeholder axis');
+        }
+      }
+      return;
+    }
+    final coefficients = switch (substitution) {
+      AffineIntegerSubstitution() => substitution.coefficients,
+      CountDeltaSubstitution() => substitution.coefficients,
+      _ => throw const FormatException('Unknown substitution'),
+    };
+    if (substitution.stream != ShapeStream.parameters ||
+        substitution.elementIndex != -1 ||
         !{
           OrdinalField.parameterMin,
           OrdinalField.parameterMax,
           OrdinalField.parameterDefault,
-        }.contains(integer.field) ||
-        integer.coefficients.isEmpty ||
-        integer.coefficients.map((e) => e.specificationIndex).toSet().length !=
-            integer.coefficients.length ||
-        integer.coefficients.any(
+        }.contains(substitution.field) ||
+        coefficients.isEmpty ||
+        coefficients.map((e) => e.specificationIndex).toSet().length !=
+            coefficients.length ||
+        coefficients.any(
           (coefficient) =>
               coefficient.specificationIndex < 0 ||
               coefficient.specificationIndex >= baselineSpecifications.length,
@@ -878,12 +1193,20 @@ final class AlgorithmRepeatGrammar {
             baselineSpecifications,
             other.baselineSpecifications,
           ) &&
-          const ListEquality<RepeatSection>().equals(sections, other.sections);
+          const ListEquality<RepeatSection>().equals(
+            sections,
+            other.sections,
+          ) &&
+          const ListEquality<OrdinalSubstitution>().equals(
+            fixedSubstitutions,
+            other.fixedSubstitutions,
+          );
 
   @override
   int get hashCode => Object.hash(
     const ListEquality<int>().hash(baselineSpecifications),
     const ListEquality<RepeatSection>().hash(sections),
+    const ListEquality<OrdinalSubstitution>().hash(fixedSubstitutions),
   );
 }
 

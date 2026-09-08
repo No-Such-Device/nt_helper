@@ -37,6 +37,7 @@ final class AdjacentRepeatAnalysis {
     required this.plan,
     required this.snapshots,
     required this.sections,
+    required this.fixedSubstitutions,
     required this.interactionAxisGroups,
     this.failureReason,
   });
@@ -45,6 +46,7 @@ final class AdjacentRepeatAnalysis {
   final AlgorithmRepeatProbePlan plan;
   final Map<SpecificationVector, AlgorithmShapeSnapshot> snapshots;
   final List<RepeatSection> sections;
+  final List<OrdinalSubstitution> fixedSubstitutions;
   final List<Set<int>> interactionAxisGroups;
   final String? failureReason;
 }
@@ -124,6 +126,7 @@ final class AlgorithmRepeatInferenceService {
     }
 
     final sections = <RepeatSection>[];
+    final fixedSubstitutions = <OrdinalSubstitution>[];
     for (final entry in plan.lowerWitnessByAxis.entries) {
       final lower = snapshots[entry.value];
       if (lower == null ||
@@ -139,14 +142,14 @@ final class AlgorithmRepeatInferenceService {
         );
       }
       try {
-        sections.addAll(
-          _inferAxisSections(
-            entry.key,
-            specifications[entry.key],
-            canonical,
-            lower,
-          ),
+        final inference = _inferAxisSections(
+          entry.key,
+          specifications[entry.key],
+          canonical,
+          lower,
         );
+        sections.addAll(inference.sections);
+        fixedSubstitutions.addAll(inference.fixedSubstitutions);
       } on FormatException catch (error) {
         return _failed(
           specifications,
@@ -163,6 +166,9 @@ final class AlgorithmRepeatInferenceService {
       plan: plan,
       snapshots: Map.unmodifiable(snapshots),
       sections: List.unmodifiable(sections),
+      fixedSubstitutions: List.unmodifiable(
+        _mergeCountDeltas(fixedSubstitutions),
+      ),
       interactionAxisGroups: List.unmodifiable(groups),
     );
   }
@@ -191,7 +197,9 @@ final class AlgorithmRepeatInferenceService {
     if (analysis.failureReason case final reason?) {
       return UnprovenAlgorithmRepeats(reason);
     }
-    if (analysis.sections.isEmpty) return const NoAlgorithmRepeats();
+    if (analysis.sections.isEmpty && analysis.fixedSubstitutions.isEmpty) {
+      return const NoAlgorithmRepeats();
+    }
     if (analysis.interactionAxisGroups.any((group) => group.length > 2)) {
       return const UnprovenAlgorithmRepeats(
         'Version 1 cannot prove three interacting count axes',
@@ -225,6 +233,7 @@ final class AlgorithmRepeatInferenceService {
     final grammar = AlgorithmRepeatGrammar(
       baselineSpecifications: analysis.plan.canonical.values,
       sections: compiledSections,
+      fixedSubstitutions: analysis.fixedSubstitutions,
     );
     try {
       final witnesses = <SpecificationVector>{
@@ -263,11 +272,12 @@ final class AlgorithmRepeatInferenceService {
     plan: plan,
     snapshots: Map.unmodifiable(snapshots),
     sections: const [],
+    fixedSubstitutions: const [],
     interactionAxisGroups: const [],
     failureReason: reason,
   );
 
-  List<RepeatSection> _inferAxisSections(
+  _AxisInference _inferAxisSections(
     int axis,
     Specification specification,
     AlgorithmShapeSnapshot canonical,
@@ -381,7 +391,219 @@ final class AlgorithmRepeatInferenceService {
     if (topologyChanged && sections.isEmpty) {
       throw const FormatException('unsupported topology change');
     }
-    return sections;
+    return _AxisInference(
+      sections: sections,
+      fixedSubstitutions: _countDependentSubstitutions(
+        axis,
+        specification,
+        canonical,
+        lower,
+        parameterAlignment,
+        pageAlignment,
+        sections,
+      ),
+    );
+  }
+
+  /// Aligned rows that survive the count change but differ in range or enum
+  /// content are count-dependent; the deltas apply per unit of the axis.
+  List<OrdinalSubstitution> _countDependentSubstitutions(
+    int axis,
+    Specification specification,
+    AlgorithmShapeSnapshot canonical,
+    AlgorithmShapeSnapshot lower,
+    _Alignment parameterAlignment,
+    _Alignment pageAlignment,
+    List<RepeatSection> sections,
+  ) {
+    for (final entry in pageAlignment.canonicalToLower.entries) {
+      if (canonical.pages[entry.key].name != lower.pages[entry.value].name) {
+        throw const FormatException('count-dependent page name');
+      }
+    }
+    final canonicalSpecification = canonicalSpecificationValue(specification);
+    // Expansion reads repeated rows from each section's source occurrence,
+    // so a delta seen on an aligned copy is recorded against that source row.
+    int sourceRowFor(int row) {
+      for (final section in sections) {
+        final run = section.runFor(ShapeStream.parameters);
+        if (run == null) continue;
+        final occurrenceCount = canonicalSpecification + section.countBias;
+        final end = run.firstStart + occurrenceCount * run.itemCount;
+        if (row < run.firstStart || row >= end) continue;
+        return run.firstStart +
+            section.sourceOrdinal * run.itemCount +
+            (row - run.firstStart) % run.itemCount;
+      }
+      return row;
+    }
+
+    final result = <OrdinalSubstitution>[];
+    final seen = <OrdinalSubstitution>{};
+    void record(OrdinalSubstitution substitution) {
+      if (seen.any(
+        (existing) =>
+            existing.rowOffset == substitution.rowOffset &&
+            existing.field == substitution.field &&
+            existing.runtimeType == substitution.runtimeType &&
+            existing != substitution,
+      )) {
+        throw const FormatException('inconsistent count dependence');
+      }
+      if (seen.add(substitution)) result.add(substitution);
+    }
+
+    for (final entry in parameterAlignment.canonicalToLower.entries) {
+      final row = sourceRowFor(entry.key);
+      final upper = canonical.parameters[entry.key];
+      final base = lower.parameters[entry.value];
+      if (upper.name != base.name) {
+        throw const FormatException('count-dependent parameter name');
+      }
+      if (upper.enumStrings.length == base.enumStrings.length) {
+        if (!const ListEquality<String>().equals(
+          upper.enumStrings,
+          base.enumStrings,
+        )) {
+          throw const FormatException('count-dependent enum text');
+        }
+      } else {
+        record(
+          _inferEnumRepeat(
+            row,
+            axis,
+            specification,
+            upper.enumStrings,
+            base.enumStrings,
+          ),
+        );
+      }
+      for (final (field, delta) in [
+        (OrdinalField.parameterMin, upper.min - base.min),
+        (OrdinalField.parameterMax, upper.max - base.max),
+        (OrdinalField.parameterDefault, upper.defaultValue - base.defaultValue),
+      ]) {
+        if (delta == 0) continue;
+        record(
+          CountDeltaSubstitution(
+            stream: ShapeStream.parameters,
+            rowOffset: row,
+            field: field,
+            coefficients: [
+              AffineCoefficient(specificationIndex: axis, coefficient: delta),
+            ],
+          ),
+        );
+      }
+    }
+    return result;
+  }
+
+  EnumRepeatSubstitution _inferEnumRepeat(
+    int row,
+    int axis,
+    Specification specification,
+    List<String> upper,
+    List<String> base,
+  ) {
+    final itemCount = upper.length - base.length;
+    final insertion = _enumInsertionPoints(upper, base);
+    if (itemCount <= 0 || insertion.isEmpty) {
+      throw const FormatException('enum list is not a count repeat');
+    }
+    final start = insertion.last;
+    bool blocksCompatible(int first, int second) {
+      if (first < 0 || second + itemCount > upper.length) return false;
+      for (var offset = 0; offset < itemCount; offset++) {
+        final a = upper[first + offset];
+        final b = upper[second + offset];
+        if (a != b && !_ordinalCompatibleText(a, b)) return false;
+      }
+      return true;
+    }
+
+    var firstStart = start;
+    while (blocksCompatible(firstStart - itemCount, firstStart)) {
+      firstStart -= itemCount;
+    }
+    var end = start + itemCount;
+    while (blocksCompatible(start, end)) {
+      end += itemCount;
+    }
+    final occurrenceCount = (end - firstStart) ~/ itemCount;
+    final sourceOrdinal = (start - firstStart) ~/ itemCount;
+    final countBias =
+        occurrenceCount - canonicalSpecificationValue(specification);
+    if (specification.min + countBias < 0) {
+      throw const FormatException('negative enum repeat count');
+    }
+    final items = <List<OrdinalTextPart>>[
+      for (var offset = 0; offset < itemCount; offset++)
+        _inferTextParts(
+              [
+                for (var ordinal = 0; ordinal < occurrenceCount; ordinal++)
+                  upper[firstStart + ordinal * itemCount + offset],
+              ],
+              axis,
+              sourceOrdinal,
+            ) ??
+            [LiteralTextPart(upper[start + offset])],
+    ];
+    return EnumRepeatSubstitution(
+      stream: ShapeStream.parameters,
+      rowOffset: row,
+      field: OrdinalField.parameterEnumString,
+      elementIndex: firstStart,
+      specificationIndex: axis,
+      countBias: countBias,
+      sourceOrdinal: sourceOrdinal,
+      items: items,
+    );
+  }
+
+  /// Positions where removing `upper.length - base.length` items from
+  /// [upper] yields [base].
+  List<int> _enumInsertionPoints(List<String> upper, List<String> base) {
+    final itemCount = upper.length - base.length;
+    if (itemCount <= 0) return const [];
+    final points = <int>[];
+    for (var start = 0; start <= base.length; start++) {
+      var matches = true;
+      for (var index = 0; index < base.length && matches; index++) {
+        final upperIndex = index < start ? index : index + itemCount;
+        matches = upper[upperIndex] == base[index];
+      }
+      if (matches) points.add(start);
+    }
+    return points;
+  }
+
+  List<OrdinalSubstitution> _mergeCountDeltas(
+    List<OrdinalSubstitution> substitutions,
+  ) {
+    final merged = <OrdinalSubstitution>[];
+    final deltaIndexes = <(int, OrdinalField), int>{};
+    for (final substitution in substitutions) {
+      if (substitution is! CountDeltaSubstitution) {
+        merged.add(substitution);
+        continue;
+      }
+      final key = (substitution.rowOffset, substitution.field);
+      final existing = deltaIndexes[key];
+      if (existing == null) {
+        deltaIndexes[key] = merged.length;
+        merged.add(substitution);
+        continue;
+      }
+      final previous = merged[existing] as CountDeltaSubstitution;
+      merged[existing] = CountDeltaSubstitution(
+        stream: previous.stream,
+        rowOffset: previous.rowOffset,
+        field: previous.field,
+        coefficients: [...previous.coefficients, ...substitution.coefficients],
+      );
+    }
+    return merged;
   }
 
   List<RepeatSection> _sectionsForUnmatched<T>({
@@ -594,8 +816,29 @@ final class AlgorithmRepeatInferenceService {
       }
       cursor = runEnd;
     }
-    if (!consumed.containsAll(unmatchedSet)) {
-      throw const FormatException('unresolved relationship ownership');
+    final unresolved = unmatchedSet.difference(consumed).toList();
+    if (unresolved.isNotEmpty) {
+      if (specification.max - specification.min != 1) {
+        throw const FormatException('unresolved relationship ownership');
+      }
+      for (final range in _contiguousRanges(unresolved)) {
+        sections.add(
+          RepeatSection(
+            specificationIndex: axis,
+            countBias: 1 - canonicalSpecification,
+            sourceOrdinal: 0,
+            runs: [
+              ShapeStreamRun(
+                stream: stream,
+                firstStart: range.start,
+                itemCount: range.end - range.start,
+              ),
+            ],
+            substitutions: const [],
+            children: const [],
+          ),
+        );
+      }
     }
     return sections;
   }
@@ -603,9 +846,20 @@ final class AlgorithmRepeatInferenceService {
   int _parameterMatch(ShapeParameterAtom a, ShapeParameterAtom b) {
     if (a.rawUnitIndex != b.rawUnitIndex ||
         a.powerOfTen != b.powerOfTen ||
-        a.ioFlags != b.ioFlags ||
-        a.enumStrings.length != b.enumStrings.length) {
+        a.ioFlags != b.ioFlags) {
       return 0;
+    }
+    if (a.enumStrings.length != b.enumStrings.length) {
+      final longer = a.enumStrings.length > b.enumStrings.length ? a : b;
+      final shorter = identical(longer, a) ? b : a;
+      if (_enumInsertionPoints(
+        longer.enumStrings,
+        shorter.enumStrings,
+      ).isEmpty) {
+        return 0;
+      }
+      if (a.name == b.name) return 2;
+      return _ordinalCompatibleText(a.name, b.name) ? 1 : 0;
     }
     final exactText =
         a.name == b.name &&
@@ -1397,6 +1651,16 @@ final class AlgorithmRepeatInferenceService {
     ranges.add((start: start, end: previous + 1));
     return ranges;
   }
+}
+
+final class _AxisInference {
+  const _AxisInference({
+    required this.sections,
+    required this.fixedSubstitutions,
+  });
+
+  final List<RepeatSection> sections;
+  final List<OrdinalSubstitution> fixedSubstitutions;
 }
 
 final class _Alignment {

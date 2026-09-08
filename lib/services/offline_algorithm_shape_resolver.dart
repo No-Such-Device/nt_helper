@@ -67,7 +67,9 @@ final class OfflineAlgorithmShapeResolver {
     try {
       final row = await dao.getAlgorithmRepeatGrammar(algorithmGuid);
       if (row != null &&
-          row.grammarVersion == AlgorithmRepeatGrammar.currentVersion) {
+          AlgorithmRepeatGrammar.supportedVersions.contains(
+            row.grammarVersion,
+          )) {
         grammar = AlgorithmRepeatGrammar.fromCompactJson(
           jsonDecode(row.grammarJson),
         );

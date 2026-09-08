@@ -84,6 +84,7 @@ void main() {
       );
 
       expect(result, isA<ProvenAlgorithmRepeatGrammar>());
+      if (result is UnprovenAlgorithmRepeats) fail(result.reason);
       final grammar = (result as ProvenAlgorithmRepeatGrammar).grammar;
       expect(grammar.expand(_quantizer(2), [4]).parameters.length, 5);
       expect(grammar.expand(_quantizer(2), [12]).parameters.last.name, 'Ch 12');
@@ -109,6 +110,7 @@ void main() {
       );
 
       expect(result, isA<ProvenAlgorithmRepeatGrammar>());
+      if (result is UnprovenAlgorithmRepeats) fail(result.reason);
       final grammar = (result as ProvenAlgorithmRepeatGrammar).grammar;
       expect(grammar.expand(_busOutputRows(2), [4]), _busOutputRows(4));
     });
@@ -131,6 +133,7 @@ void main() {
       );
 
       expect(result, isA<ProvenAlgorithmRepeatGrammar>());
+      if (result is UnprovenAlgorithmRepeats) fail(result.reason);
       final grammar = (result as ProvenAlgorithmRepeatGrammar).grammar;
       expect(
         grammar.expand(_quantizerWithRelationships(2), [4]),
@@ -250,6 +253,7 @@ void main() {
       final result = service.compile(analysis: analysis, snapshots: snapshots);
 
       expect(result, isA<ProvenAlgorithmRepeatGrammar>());
+      if (result is UnprovenAlgorithmRepeats) fail(result.reason);
       final grammar = (result as ProvenAlgorithmRepeatGrammar).grammar;
       expect(
         grammar.expand(_mixerWithRelationships(2, 1), [4, 2]),
@@ -257,27 +261,115 @@ void main() {
       );
     });
 
-    test('scalar-only fixed-row change contributes no repeat section', () {
-      final specs = [_spec('Channels', min: 1, max: 4)];
+    test('fixed row whose range tracks the count proves a grammar', () {
+      final specs = [_spec('Voices', min: 1, max: 8)];
       final plan = service.buildInitialPlan(specs);
-      final canonical = _shape([2], [_parameter('Gain', max: 10)]);
-      final lower = _shape([1], [_parameter('Gain', max: 9)]);
+      final canonical = _shape(
+        [2],
+        [
+          _parameter('Freeze target', max: 2, defaultValue: 2),
+          _parameter('Auto voices', min: 2, max: 2, defaultValue: 2),
+        ],
+      );
+      final lower = _shape(
+        [1],
+        [
+          _parameter('Freeze target', max: 1, defaultValue: 2),
+          _parameter('Auto voices', min: 2, max: 1, defaultValue: 1),
+        ],
+      );
       final snapshots = <SpecificationVector, AlgorithmShapeSnapshot>{
         plan.canonical: canonical,
         plan.lowerWitnessByAxis[0]!: lower,
       };
 
-      expect(
-        service.compile(
-          analysis: service.analyzeInitial(
-            specifications: specs,
-            plan: plan,
-            snapshots: snapshots,
-          ),
+      final result = service.compile(
+        analysis: service.analyzeInitial(
+          specifications: specs,
+          plan: plan,
           snapshots: snapshots,
         ),
-        isA<NoAlgorithmRepeats>(),
+        snapshots: snapshots,
       );
+
+      if (result is UnprovenAlgorithmRepeats) fail(result.reason);
+      final grammar = (result as ProvenAlgorithmRepeatGrammar).grammar;
+      expect(grammar.sections, isEmpty);
+      final eight = grammar.expand(canonical, [8]);
+      expect(eight.parameters[0].max, 8);
+      expect(eight.parameters[0].defaultValue, 2);
+      expect(eight.parameters[1].min, 2);
+      expect(eight.parameters[1].max, 8);
+      expect(eight.parameters[1].defaultValue, 8);
+    });
+
+    test('repeated rows whose range tracks the count expand with it', () {
+      final specs = [_spec('Channels', min: 1, max: 12)];
+      final plan = service.buildInitialPlan(specs);
+      final snapshots = <SpecificationVector, AlgorithmShapeSnapshot>{
+        plan.canonical: _spinners(2),
+        plan.lowerWitnessByAxis[0]!: _spinners(1),
+      };
+
+      final result = service.compile(
+        analysis: service.analyzeInitial(
+          specifications: specs,
+          plan: plan,
+          snapshots: snapshots,
+        ),
+        snapshots: snapshots,
+      );
+
+      if (result is UnprovenAlgorithmRepeats) fail(result.reason);
+      final grammar = (result as ProvenAlgorithmRepeatGrammar).grammar;
+      expect(grammar.expand(_spinners(2), [4]), _spinners(4));
+      expect(grammar.expand(_spinners(2), [12]), _spinners(12));
+    });
+
+    test('enum strings that list every channel expand with the count', () {
+      final specs = [_spec('Channels', min: 1, max: 8)];
+      final plan = service.buildInitialPlan(specs);
+      final snapshots = <SpecificationVector, AlgorithmShapeSnapshot>{
+        plan.canonical: _logic(2),
+        plan.lowerWitnessByAxis[0]!: _logic(1),
+      };
+
+      final result = service.compile(
+        analysis: service.analyzeInitial(
+          specifications: specs,
+          plan: plan,
+          snapshots: snapshots,
+        ),
+        snapshots: snapshots,
+      );
+
+      if (result is UnprovenAlgorithmRepeats) fail(result.reason);
+      final grammar = (result as ProvenAlgorithmRepeatGrammar).grammar;
+      expect(grammar.expand(_logic(2), [3]), _logic(3));
+      expect(grammar.expand(_logic(2), [8]), _logic(8));
+    });
+
+    test('boolean axis that only toggles memberships proves a grammar', () {
+      final specs = [_spec('Stereo', min: 0, max: 1, type: 2)];
+      final plan = service.buildInitialPlan(specs);
+      final snapshots = <SpecificationVector, AlgorithmShapeSnapshot>{
+        plan.canonical: _stereoRouting(true),
+        plan.lowerWitnessByAxis[0]!: _stereoRouting(false),
+      };
+
+      final result = service.compile(
+        analysis: service.analyzeInitial(
+          specifications: specs,
+          plan: plan,
+          snapshots: snapshots,
+        ),
+        snapshots: snapshots,
+      );
+
+      if (result is UnprovenAlgorithmRepeats) fail(result.reason);
+      final grammar = (result as ProvenAlgorithmRepeatGrammar).grammar;
+      expect(grammar.expand(_stereoRouting(true), [0]), _stereoRouting(false));
+      expect(grammar.expand(_stereoRouting(true), [1]), _stereoRouting(true));
     });
 
     test('tied alignment and missing interaction witness are unproven', () {
@@ -435,6 +527,81 @@ AlgorithmShapeSnapshot _busOutputRows(int channels) {
   );
 }
 
+AlgorithmShapeSnapshot _spinners(int channels) => _shape(
+  [channels],
+  [
+    _parameter('Bypass'),
+    for (var channel = 1; channel <= channels; channel++) ...[
+      _parameter('$channel:Gain', max: 60),
+      _parameter(
+        '$channel:Spinner',
+        min: 1,
+        max: channels,
+        defaultValue: channel,
+      ),
+      _parameter(
+        '$channel:Orbiter',
+        min: 1,
+        max: channels,
+        defaultValue: channel,
+      ),
+    ],
+  ],
+);
+
+AlgorithmShapeSnapshot _logic(int channels) {
+  final inputEnum = [
+    ..._busEnum,
+    for (var channel = 1; channel <= channels; channel++) 'Channel $channel',
+  ];
+  return _shape(
+    [channels],
+    [
+      _parameter('Bypass'),
+      for (var channel = 1; channel <= channels; channel++) ...[
+        _parameter('$channel:Enable', defaultValue: channel == 1 ? 1 : 0),
+        _parameter(
+          '$channel:Input X',
+          min: 1,
+          max: inputEnum.length - 1,
+          defaultValue: 1,
+          enumStrings: inputEnum,
+        ),
+        _parameter(
+          '$channel:Input Y',
+          min: 1,
+          max: inputEnum.length - 1,
+          defaultValue: 2,
+          enumStrings: inputEnum,
+        ),
+      ],
+    ],
+  );
+}
+
+AlgorithmShapeSnapshot _stereoRouting(bool stereo) => AlgorithmShapeSnapshot(
+  specificationValues: [stereo ? 1 : 0],
+  parameters: [
+    _parameter('Left/mono input', max: 64, enumStrings: _busEnum),
+    _parameter('Right input', max: 64, enumStrings: _busEnum),
+    _parameter('Left/mono output', max: 64, enumStrings: _busEnum),
+    _parameter('Right output', max: 64, enumStrings: _busEnum),
+    _parameter('Output mode', enumStrings: const ['Add', 'Replace']),
+  ],
+  pages: const [ShapePageAtom(name: 'Routing')],
+  pageMemberships: [
+    const ShapePageMembershipAtom(pageIndex: 0, parameterNumber: 0),
+    if (stereo) const ShapePageMembershipAtom(pageIndex: 0, parameterNumber: 1),
+    const ShapePageMembershipAtom(pageIndex: 0, parameterNumber: 2),
+    if (stereo) const ShapePageMembershipAtom(pageIndex: 0, parameterNumber: 3),
+    const ShapePageMembershipAtom(pageIndex: 0, parameterNumber: 4),
+  ],
+  outputUsage: const [
+    ShapeOutputUsageAtom(parameterNumber: 4, affectedParameterNumber: 2),
+    ShapeOutputUsageAtom(parameterNumber: 4, affectedParameterNumber: 3),
+  ],
+);
+
 AlgorithmShapeSnapshot _mixer(int channels, int sends) => _shape(
   [channels, sends],
   [
@@ -507,13 +674,15 @@ AlgorithmShapeSnapshot _shape(
 
 ShapeParameterAtom _parameter(
   String name, {
+  int min = 0,
   int max = 1,
+  int defaultValue = 0,
   List<String> enumStrings = const [],
 }) => ShapeParameterAtom(
   name: name,
-  min: 0,
+  min: min,
   max: max,
-  defaultValue: 0,
+  defaultValue: defaultValue,
   rawUnitIndex: 0,
   powerOfTen: 0,
   ioFlags: 0,
