@@ -1,25 +1,41 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/algorithm_controller/algorithm_controller.dart';
 import 'package:nt_helper/algorithm_controller/lua_algorithm_controller_engine.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
+import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/services/metadata_import_service.dart';
+import 'package:nt_helper/services/offline_algorithm_shape_resolver.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const engine = LuaAlgorithmControllerEngine();
-  late Map<String, dynamic> tables;
+  late _BundledMetadata tables;
+  late AppDatabase database;
 
   setUpAll(() async {
-    final bundle =
-        jsonDecode(
-              await File('assets/metadata/full_metadata.json').readAsString(),
-            )
-            as Map<String, dynamic>;
-    tables = Map<String, dynamic>.from(bundle['tables'] as Map);
+    final source = await File(
+      'assets/metadata/full_metadata.json',
+    ).readAsString();
+    final bundle = jsonDecode(source) as Map<String, dynamic>;
+    database = AppDatabase.forTesting(NativeDatabase.memory());
+    expect(
+      await MetadataImportService(database).importFromJson(source),
+      isTrue,
+    );
+    tables = _BundledMetadata(
+      Map<String, dynamic>.from(bundle['tables'] as Map),
+      OfflineAlgorithmShapeResolver(database.metadataDao),
+    );
+  });
+
+  tearDownAll(() async {
+    await database.close();
   });
 
   test(
@@ -121,7 +137,7 @@ void main() {
         final source = await File(testCase.asset).readAsString();
         final document = engine.evaluate(
           source: source,
-          slot: _slotFromMetadata(
+          slot: await _slotFromMetadata(
             tables,
             guid: testCase.guid,
             name: testCase.name,
@@ -148,7 +164,7 @@ void main() {
       ) async {
         final document = engine.evaluate(
           source: await File(asset).readAsString(),
-          slot: _slotFromMetadata(tables, guid: guid, name: name),
+          slot: await _slotFromMetadata(tables, guid: guid, name: name),
           slotIndex: 7,
           units: const [],
         );
@@ -262,7 +278,12 @@ void main() {
     }) async {
       final document = engine.evaluate(
         source: await File(asset).readAsString(),
-        slot: _slotFromMetadata(tables, guid: guid, name: name, values: values),
+        slot: await _slotFromMetadata(
+          tables,
+          guid: guid,
+          name: name,
+          values: values,
+        ),
         slotIndex: 7,
         units: const [],
       );
@@ -592,7 +613,7 @@ void main() {
       ];
 
       for (final testCase in cases) {
-        final slot = _slotFromMetadata(
+        final slot = await _slotFromMetadata(
           tables,
           guid: testCase.guid,
           name: testCase.name,
@@ -641,7 +662,7 @@ void main() {
         source: await File(
           'assets/algorithm_controllers/dream_machine.lua',
         ).readAsString(),
-        slot: _slotFromMetadata(
+        slot: await _slotFromMetadata(
           tables,
           guid: 'drea',
           name: 'Dream Machine',
@@ -692,7 +713,7 @@ void main() {
           source: await File(
             'assets/algorithm_controllers/filter_bank.lua',
           ).readAsString(),
-          slot: _slotFromMetadata(
+          slot: await _slotFromMetadata(
             tables,
             guid: 'fbnk',
             name: 'Filter bank',
@@ -756,7 +777,7 @@ void main() {
         source: await File(
           'assets/algorithm_controllers/quantizer.lua',
         ).readAsString(),
-        slot: _slotFromMetadata(
+        slot: await _slotFromMetadata(
           tables,
           guid: 'quan',
           name: 'Quantizer',
@@ -813,7 +834,7 @@ void main() {
     }) async {
       final document = engine.evaluate(
         source: await File(asset).readAsString(),
-        slot: _slotFromMetadata(
+        slot: await _slotFromMetadata(
           tables,
           guid: guid,
           name: name,
@@ -884,126 +905,101 @@ void main() {
   });
 }
 
-Slot _slotFromMetadata(
-  Map<String, dynamic> tables, {
+final class _BundledMetadata {
+  const _BundledMetadata(this.tables, this.resolver);
+
+  final Map<String, dynamic> tables;
+  final OfflineAlgorithmShapeResolver resolver;
+}
+
+/// Builds a slot at the algorithm's default specifications, expanding through
+/// its bundled repeat grammar exactly as the offline app does.
+Future<Slot> _slotFromMetadata(
+  _BundledMetadata metadata, {
   required String guid,
   required String name,
   Map<String, int> values = const {},
   Map<String, String> displayValues = const {},
   Set<int> disabledParameters = const {},
-}) {
+}) async {
   const algorithmIndex = 7;
-  final parameterRows =
-      _rows(
-        tables,
-        'parameters',
-      ).where((row) => row['algorithmGuid'] == guid).toList()..sort(
-        (left, right) => _int(
-          left['parameterNumber'],
-        ).compareTo(_int(right['parameterNumber'])),
-      );
-  final enumRows = _rows(
-    tables,
-    'parameterEnums',
-  ).where((row) => row['algorithmGuid'] == guid).toList();
-  final enumsByParameter = <int, List<String>>{};
-  for (final row in enumRows) {
-    final parameterNumber = _int(row['parameterNumber']);
-    final enumIndex = _int(row['enumIndex']);
-    final values = enumsByParameter.putIfAbsent(
-      parameterNumber,
-      () => <String>[],
-    );
-    while (values.length <= enumIndex) {
-      values.add('');
-    }
-    values[enumIndex] = (row['enumString'] as String? ?? '').trim();
-  }
-
   final specificationRows =
       _rows(
-        tables,
+        metadata.tables,
         'specifications',
       ).where((row) => row['algorithmGuid'] == guid).toList()..sort(
         (left, right) =>
             _int(left['specIndex']).compareTo(_int(right['specIndex'])),
       );
-  final pageRows =
-      _rows(
-        tables,
-        'parameterPages',
-      ).where((row) => row['algorithmGuid'] == guid).toList()..sort(
-        (left, right) =>
-            _int(left['pageIndex']).compareTo(_int(right['pageIndex'])),
-      );
-  final pageItemRows = _rows(
-    tables,
-    'parameterPageItems',
-  ).where((row) => row['algorithmGuid'] == guid).toList();
+  final specifications = [
+    for (final row in specificationRows) _int(row['defaultValue']),
+  ];
+  final resolved = await metadata.resolver.resolve(guid, specifications);
+  final snapshot = resolved.snapshot;
+  final parameters = snapshot.parameters;
 
   return Slot(
     algorithm: Algorithm(
       algorithmIndex: algorithmIndex,
       guid: guid,
       name: name,
-      specifications: [
-        for (final row in specificationRows) _int(row['defaultValue']),
-      ],
+      specifications: specifications,
     ),
     routing: RoutingInfo.filler(),
     pages: ParameterPages(
       algorithmIndex: algorithmIndex,
       pages: [
-        for (final page in pageRows)
+        for (var pageIndex = 0; pageIndex < snapshot.pages.length; pageIndex++)
           ParameterPage(
-            name: page['name'] as String? ?? '',
+            name: snapshot.pages[pageIndex].name,
             parameters: [
-              for (final item in pageItemRows)
-                if (_int(item['pageIndex']) == _int(page['pageIndex']))
-                  _int(item['parameterNumber']),
+              for (final membership in snapshot.pageMemberships)
+                if (membership.pageIndex == pageIndex)
+                  membership.parameterNumber,
             ]..sort(),
           ),
       ],
     ),
     parameters: [
-      for (final row in parameterRows)
+      for (var number = 0; number < parameters.length; number++)
         ParameterInfo(
           algorithmIndex: algorithmIndex,
-          parameterNumber: _int(row['parameterNumber']),
-          min: _int(row['minValue']),
-          max: _int(row['maxValue']),
-          defaultValue: _int(row['defaultValue']),
-          unit: _int(row['rawUnitIndex']),
-          name: row['name'] as String? ?? '',
-          powerOfTen: _int(row['powerOfTen']),
-          ioFlags: _int(row['ioFlags']),
+          parameterNumber: number,
+          min: parameters[number].min,
+          max: parameters[number].max,
+          defaultValue: parameters[number].defaultValue,
+          unit: parameters[number].rawUnitIndex,
+          name: parameters[number].name,
+          powerOfTen: parameters[number].powerOfTen,
+          ioFlags: parameters[number].ioFlags,
         ),
     ],
     values: [
-      for (final row in parameterRows)
+      for (var number = 0; number < parameters.length; number++)
         ParameterValue(
           algorithmIndex: algorithmIndex,
-          parameterNumber: _int(row['parameterNumber']),
+          parameterNumber: number,
           value:
-              values[row['name'] as String? ?? ''] ?? _int(row['defaultValue']),
-          isDisabled: disabledParameters.contains(_int(row['parameterNumber'])),
+              values[parameters[number].name] ??
+              parameters[number].defaultValue,
+          isDisabled: disabledParameters.contains(number),
         ),
     ],
     enums: [
-      for (final row in parameterRows)
+      for (var number = 0; number < parameters.length; number++)
         ParameterEnumStrings(
           algorithmIndex: algorithmIndex,
-          parameterNumber: _int(row['parameterNumber']),
-          values: enumsByParameter[_int(row['parameterNumber'])] ?? const [],
+          parameterNumber: number,
+          values: parameters[number].enumStrings,
         ),
     ],
-    mappings: [for (final _ in parameterRows) Mapping.filler()],
+    mappings: [for (final _ in parameters) Mapping.filler()],
     valueStrings: [
-      for (final row in parameterRows)
+      for (var number = 0; number < parameters.length; number++)
         ParameterValueString(
           algorithmIndex: algorithmIndex,
-          parameterNumber: _int(row['parameterNumber']),
-          value: displayValues[row['name'] as String? ?? ''] ?? '',
+          parameterNumber: number,
+          value: displayValues[parameters[number].name] ?? '',
         ),
     ],
   );
