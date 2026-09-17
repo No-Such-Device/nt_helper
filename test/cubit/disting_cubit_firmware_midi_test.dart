@@ -151,6 +151,31 @@ void main() {
   );
 
   test(
+    'uses the Disting fallback when no endpoint names were selected',
+    () async {
+      final input = device(
+        'returning-input',
+        'Expert Sleepers Disting NT Input',
+        MidiPortType.IN,
+      );
+      final output = device(
+        'returning-output',
+        'Expert Sleepers Disting NT Output',
+        MidiPortType.OUT,
+      );
+      var snapshots = 0;
+      when(() => midiCommand.devices).thenAnswer((_) async {
+        snapshots++;
+        return snapshots == 1 ? [input] : [input, output];
+      });
+
+      expect(await cubit.firmwareMidiDevicesAvailable(null, null), isFalse);
+      expect(await cubit.firmwareMidiDevicesAvailable(null, null), isTrue);
+      expect(snapshots, 2);
+    },
+  );
+
+  test(
     'recreates the native MIDI client after firmware release off Windows',
     () async {
       final input = device('input', 'Disting NT', MidiPortType.IN);
@@ -191,16 +216,51 @@ void main() {
   );
 
   test(
-    'reacquires the exact MIDI names saved by the last connection',
+    'saved endpoint names take precedence and retain directional matching',
     () async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('selectedInputMidiDevice', 'Saved NT Input');
       await prefs.setString('selectedOutputMidiDevice', 'Saved NT Output');
       await prefs.setInt('selectedSysExId', 7);
-      final input = device('input', 'Saved NT Input', MidiPortType.IN);
-      final output = device('output', 'Saved NT Output', MidiPortType.OUT);
-      when(() => midiCommand.devices).thenAnswer((_) async => [input, output]);
+      final wrongDirectionInput = device(
+        'wrong-input',
+        'Saved NT Input',
+        MidiPortType.OUT,
+      );
+      final wrongDirectionOutput = device(
+        'wrong-output',
+        'Saved NT Output',
+        MidiPortType.IN,
+      );
+      final fallbackInput = device(
+        'fallback-input',
+        'Disting NT',
+        MidiPortType.IN,
+      );
+      final fallbackOutput = device(
+        'fallback-output',
+        'Disting NT',
+        MidiPortType.OUT,
+      );
+      final savedInput = device('input', 'Saved NT Input', MidiPortType.IN);
+      final savedOutput = device('output', 'Saved NT Output', MidiPortType.OUT);
+      var snapshots = 0;
+      when(() => midiCommand.devices).thenAnswer((_) async {
+        snapshots++;
+        return snapshots == 1
+            ? [
+                wrongDirectionInput,
+                wrongDirectionOutput,
+                fallbackInput,
+                fallbackOutput,
+              ]
+            : [savedInput, savedOutput];
+      });
 
+      expect(
+        await cubit.firmwareMidiDevicesAvailable('Disting NT', 'Disting NT'),
+        isFalse,
+      );
       expect(
         await cubit.firmwareMidiDevicesAvailable(
           'Wrong Fallback Input',
@@ -208,6 +268,7 @@ void main() {
         ),
         isTrue,
       );
+      expect(snapshots, 2);
     },
   );
 

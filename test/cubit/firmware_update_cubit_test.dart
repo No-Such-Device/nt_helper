@@ -852,6 +852,46 @@ void main() {
         );
       }
 
+      test(
+        'stays in verification until a later complete endpoint check succeeds',
+        () async {
+          final firstCheckObserved = Completer<void>();
+          final allowCompleteEndpoints = Completer<void>();
+          var checks = 0;
+          final cubit = await launchSuccessfulFlash(
+            checkMidiDevices: () async {
+              checks++;
+              if (checks == 1) {
+                firstCheckObserved.complete();
+                return false;
+              }
+              await allowCompleteEndpoints.future;
+              return true;
+            },
+            attempts: 2,
+          );
+          addTearDown(cubit.close);
+
+          await firstCheckObserved.future;
+          await Future<void>.delayed(Duration.zero);
+
+          expect(
+            cubit.state,
+            isA<FirmwareUpdateStateVerifyingMidi>().having(
+              (state) => state.completedAttempts,
+              'completedAttempts',
+              1,
+            ),
+          );
+          expect(cubit.state, isNot(isA<FirmwareUpdateStateSuccess>()));
+
+          allowCompleteEndpoints.complete();
+          await waitForState<FirmwareUpdateStateSuccess>(cubit);
+
+          expect(checks, 2);
+        },
+      );
+
       for (final platform in const [
         ('Windows', true),
         ('macOS', false),
