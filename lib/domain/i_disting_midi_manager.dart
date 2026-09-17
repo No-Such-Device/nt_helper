@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:nt_helper/db/daos/presets_dao.dart' show FullPresetDetails;
 
 import 'package:nt_helper/domain/memory_query_input.dart';
+import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:nt_helper/models/performance_page_item.dart';
@@ -77,6 +78,8 @@ abstract class IDistingMidiManager {
     int algorithmIndex, {
     Duration? timeout,
     int? maxRetries,
+    DistingRequestCancellation? cancellation,
+    bool rejectAmbiguousResponse = false,
   });
   Future<OutputModeUsage?> requestOutputModeUsage(
     int algorithmIndex,

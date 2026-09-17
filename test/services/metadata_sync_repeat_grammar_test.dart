@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/algorithm_repeat_grammar.dart';
 import 'package:nt_helper/models/algorithm_shape_snapshot.dart';
@@ -225,6 +226,8 @@ final class _ShapeProbeManager implements IDistingMidiManager {
     int algorithmIndex, {
     Duration? timeout,
     int? maxRetries,
+    DistingRequestCancellation? cancellation,
+    bool rejectAmbiguousResponse = false,
   }) async {
     if (algorithmIndex != 0 || _activeSpecifications == null) return null;
     return Algorithm(

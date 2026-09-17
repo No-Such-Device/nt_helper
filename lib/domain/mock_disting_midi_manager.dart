@@ -12,6 +12,7 @@ import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart'; // Added import for Slot, etc.
 import 'package:flutter/foundation.dart'; // Remove unused
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/memory_query_input.dart';
 import 'package:nt_helper/models/cpu_usage.dart';
 import 'package:nt_helper/models/memory_usage.dart';
@@ -818,6 +819,8 @@ class MockDistingMidiManager implements IDistingMidiManager {
     int algorithmIndex, {
     Duration? timeout,
     int? maxRetries,
+    DistingRequestCancellation? cancellation,
+    bool rejectAmbiguousResponse = false,
   }) async {
     if (algorithmIndex >= 0 && algorithmIndex < _state.presetSlots.length) {
       // Ensure the returned algorithm's index matches the requested index,

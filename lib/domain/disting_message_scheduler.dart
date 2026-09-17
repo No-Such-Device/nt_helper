@@ -17,6 +17,7 @@ import 'package:flutter_midi_command/flutter_midi_command.dart';
 
 // Domain classes
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/request_key.dart';
 import 'package:nt_helper/domain/sd_card_operation.dart';
 import 'package:nt_helper/domain/sysex/response_factory.dart';
@@ -33,7 +34,11 @@ enum ResponseExpectation {
   none, // Fire-and-forget
 }
 
-enum ResponseAttributionPolicy { bestEffort, failWhenAmbiguous }
+enum ResponseAttributionPolicy {
+  bestEffort,
+  failWhenAmbiguous,
+  rejectAmbiguousResponse,
+}
 
 final class AmbiguousResponseAttributionException extends StateError {
   AmbiguousResponseAttributionException()
@@ -84,6 +89,7 @@ class _ScheduledRequest {
   int matchingResponseCount = 0;
   bool attributionStarted = false;
   Timer? timeoutTimer;
+  void Function()? removeCancellationListener;
 
   /// Stopwatch to measure round-trip time from send to response
   final Stopwatch stopwatch = Stopwatch();
@@ -95,7 +101,11 @@ class _ScheduledRequest {
     }
   }
 
-  void dispose() => timeoutTimer?.cancel();
+  void dispose() {
+    timeoutTimer?.cancel();
+    removeCancellationListener?.call();
+    removeCancellationListener = null;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -103,10 +113,15 @@ class _ScheduledRequest {
 // -----------------------------------------------------------------------------
 
 class _ActiveHandler {
-  _ActiveHandler({required this.key, required this.onMatch});
+  _ActiveHandler({
+    required this.key,
+    required this.onMatch,
+    required this.onAmbiguous,
+  });
 
   final RequestKey key;
   final void Function(DistingNTParsedMessage) onMatch;
+  final void Function() onAmbiguous;
 }
 
 class _ExpiredHandler {
@@ -147,7 +162,11 @@ final class _StrictResponseAttribution {
   final List<RequestKey> _responseDebt = [];
 
   bool begin(_ScheduledRequest request) {
-    if (_activeRequest != null || _responseDebt.contains(request.key)) {
+    final blocksBeforeSend =
+        request.attributionPolicy ==
+        ResponseAttributionPolicy.failWhenAmbiguous;
+    if (_activeRequest != null ||
+        (blocksBeforeSend && _responseDebt.contains(request.key))) {
       return false;
     }
     _activeRequest = request;
@@ -176,8 +195,29 @@ final class _StrictResponseAttribution {
     _activeRequest = null;
   }
 
+  bool consumeAmbiguousForActive(DistingNTParsedMessage parsed) {
+    final activeRequest = _activeRequest;
+    if (activeRequest == null ||
+        activeRequest.attributionPolicy !=
+            ResponseAttributionPolicy.rejectAmbiguousResponse ||
+        !activeRequest.key.matchesStrict(parsed)) {
+      return false;
+    }
+
+    final debtIndex = _responseDebt.indexWhere(
+      (key) => key.matchesStrict(parsed),
+    );
+    if (debtIndex == -1) return false;
+
+    _responseDebt.removeAt(debtIndex);
+    return true;
+  }
+
   bool consumeUnattributed(DistingNTParsedMessage parsed) {
-    if (_activeRequest != null) return false;
+    final activeRequest = _activeRequest;
+    if (activeRequest != null && activeRequest.key.matchesStrict(parsed)) {
+      return false;
+    }
 
     final debtIndex = _responseDebt.indexWhere(
       (key) => key.matchesStrict(parsed),
@@ -223,9 +263,14 @@ class _ResponseDemux {
 
   void registerActive(
     RequestKey key,
-    void Function(DistingNTParsedMessage) onMatch,
-  ) {
-    _activeHandler = _ActiveHandler(key: key, onMatch: onMatch);
+    void Function(DistingNTParsedMessage) onMatch, {
+    required void Function() onAmbiguous,
+  }) {
+    _activeHandler = _ActiveHandler(
+      key: key,
+      onMatch: onMatch,
+      onAmbiguous: onAmbiguous,
+    );
   }
 
   void expireActive() {
@@ -258,13 +303,26 @@ class _ResponseDemux {
       } catch (_) {}
     }
 
-    // 2. Strict requests carry response debt across scheduler replacement.
+    // 2. A strict verification request may be sent while an older response is
+    // still owed. The first indistinguishable response is rejected rather than
+    // being attributed to the active request.
+    if (_strictAttribution.consumeAmbiguousForActive(parsed)) {
+      staleResponsesAbsorbed++;
+      final handler = _activeHandler;
+      _activeHandler = null;
+      handler?.onAmbiguous();
+      return;
+    }
+
+    // 3. Strict requests carry response debt across scheduler replacement.
     if (_strictAttribution.consumeUnattributed(parsed)) {
       staleResponsesAbsorbed++;
       return;
     }
 
-    // 3. Check active handler first — active request always takes priority
+    // 4. Check the active handler. Best-effort requests retain the historical
+    // active-first behavior; strict verification requests reached here only
+    // when no indistinguishable response debt exists.
     if (_activeHandler != null && _activeHandler!.key.matches(parsed)) {
       final handler = _activeHandler!;
       _activeHandler = null;
@@ -272,7 +330,7 @@ class _ResponseDemux {
       return;
     }
 
-    // 4. Check expired handlers (oldest first) — absorb stale responses
+    // 5. Check expired handlers (oldest first) — absorb stale responses
     final expiredMatch = _expiredHandlers.indexWhere(
       (h) => h.key.matchesStrict(parsed),
     );
@@ -282,7 +340,7 @@ class _ResponseDemux {
       return;
     }
 
-    // 5. No match — discard cleanly
+    // 6. No match — discard cleanly
     unmatchedResponsesDiscarded++;
 
     // Lazy cleanup of old expired handlers
@@ -756,6 +814,7 @@ class DistingMessageScheduler {
     Duration? retryDelay,
     ResponseAttributionPolicy attributionPolicy =
         ResponseAttributionPolicy.bestEffort,
+    DistingRequestCancellation? cancellation,
   }) {
     final completer = Completer<T?>();
     final request = _ScheduledRequest(
@@ -771,6 +830,9 @@ class DistingMessageScheduler {
     );
 
     _queue.add(request);
+    request.removeCancellationListener = cancellation?.addListener(
+      () => _cancelRequest(request),
+    );
     _diag(
       'queued #${request.id} ${request.expectation.name} '
       'timeout=${request.timeout.inMilliseconds}ms '
@@ -804,6 +866,7 @@ class DistingMessageScheduler {
       if (!request.completer.isCompleted) {
         request.completer.completeError(StateError('Scheduler disposed'));
       }
+      request.dispose();
     }
     _queue.clear();
   }
@@ -836,8 +899,7 @@ class DistingMessageScheduler {
       return;
     }
 
-    if (request.attributionPolicy ==
-            ResponseAttributionPolicy.failWhenAmbiguous &&
+    if (request.attributionPolicy != ResponseAttributionPolicy.bestEffort &&
         !request.attributionStarted) {
       if (!_strictAttribution.begin(request)) {
         request.completer.completeError(
@@ -873,9 +935,15 @@ class DistingMessageScheduler {
     // Register handler with demux BEFORE sending (first attempt only).
     // Handler persists across retries — only moved to expired on final timeout.
     if (request.expectation != ResponseExpectation.none) {
-      _demux.registerActive(request.key, (parsed) {
-        _onResponseMatched(request, parsed);
-      });
+      _demux.registerActive(
+        request.key,
+        (parsed) {
+          _onResponseMatched(request, parsed);
+        },
+        onAmbiguous: () {
+          _onResponseAttributionAmbiguous(request);
+        },
+      );
     }
 
     // Send the message
@@ -900,6 +968,45 @@ class DistingMessageScheduler {
       _state = _SchedulerState.waitingForResponse;
       request.startTimeout(() => _onTimeout());
     }
+  }
+
+  void _cancelRequest(_ScheduledRequest request) {
+    if (request.completer.isCompleted) return;
+
+    if (identical(_currentRequest, request)) {
+      request.timeoutTimer?.cancel();
+      _retryTimer?.cancel();
+      _retryTimer = null;
+      request.stopwatch.stop();
+      if (_isBufferingSysEx) {
+        _sysExBuffer.clear();
+        _isBufferingSysEx = false;
+      }
+      if (request.attributionStarted) {
+        _demux.discardActive();
+      } else {
+        _demux.expireActive();
+      }
+      request.completer.completeError(const DistingRequestCancelledException());
+      _finishCurrentRequest();
+      return;
+    }
+
+    if (_queue.remove(request)) {
+      request.completer.completeError(const DistingRequestCancelledException());
+      request.dispose();
+    }
+  }
+
+  void _onResponseAttributionAmbiguous(_ScheduledRequest request) {
+    if (!identical(_currentRequest, request) || request.completer.isCompleted) {
+      return;
+    }
+
+    request.timeoutTimer?.cancel();
+    request.stopwatch.stop();
+    request.completer.completeError(AmbiguousResponseAttributionException());
+    _finishCurrentRequest();
   }
 
   /// Called by the demux when a response matches the active handler.

@@ -33,6 +33,7 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
   static const _respecificationRequestMaxRetries = 1;
   CancelableOperation<void>? _moveVerificationOperation;
   Future<AlgorithmRespecificationStatus>? _respecificationOperation;
+  DistingRequestCancellation? _respecificationCancellation;
 
   DistingStateSynchronized _requireRespecificationState() {
     final currentState = state;
@@ -219,34 +220,60 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
     );
   }
 
+  Future<bool> _waitForRespecificationDelay(
+    Duration delay,
+    DistingRequestCancellation cancellation,
+  ) {
+    if (cancellation.isCancelled) return Future<bool>.value(false);
+
+    final completer = Completer<bool>();
+    late final Timer timer;
+    void Function()? removeCancellationListener;
+
+    void complete(bool elapsed) {
+      if (completer.isCompleted) return;
+      timer.cancel();
+      removeCancellationListener?.call();
+      completer.complete(elapsed);
+    }
+
+    timer = Timer(delay, () => complete(true));
+    removeCancellationListener = cancellation.addListener(
+      () => complete(false),
+    );
+    return completer.future;
+  }
+
   Future<AlgorithmRespecificationStatus> _observeRespecification(
     IDistingMidiManager disting, {
     required int slotIndex,
     required String algorithmGuid,
     required List<int> submittedValues,
   }) async {
-    final deadlineReached = Completer<void>();
-    final deadlineTimer = Timer(_respecificationVerificationWindow, () {
-      deadlineReached.complete();
-    });
+    final cancellation = DistingRequestCancellation();
+    _respecificationCancellation = cancellation;
+    final deadlineTimer = Timer(
+      _respecificationVerificationWindow,
+      cancellation.cancel,
+    );
 
     try {
-      await Future.any<void>([
-        Future<void>.delayed(_respecificationInitialSettleDelay),
-        deadlineReached.future,
-      ]);
+      final settled = await _waitForRespecificationDelay(
+        _respecificationInitialSettleDelay,
+        cancellation,
+      );
+      if (!settled) return AlgorithmRespecificationStatus.unverifiable;
 
-      while (!deadlineReached.isCompleted) {
+      while (!cancellation.isCancelled) {
         try {
-          final readback = await Future.any<Algorithm?>([
-            disting.requestAlgorithmGuid(
-              slotIndex,
-              timeout: _respecificationRequestTimeout,
-              maxRetries: _respecificationRequestMaxRetries,
-            ),
-            deadlineReached.future.then<Algorithm?>((_) => null),
-          ]);
-          if (deadlineReached.isCompleted) {
+          final readback = await disting.requestAlgorithmGuid(
+            slotIndex,
+            timeout: _respecificationRequestTimeout,
+            maxRetries: _respecificationRequestMaxRetries,
+            cancellation: cancellation,
+            rejectAmbiguousResponse: true,
+          );
+          if (cancellation.isCancelled) {
             return AlgorithmRespecificationStatus.unverifiable;
           }
 
@@ -264,20 +291,27 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
                 : AlgorithmRespecificationStatus.observedDifferingState;
           }
         } catch (_) {
-          if (deadlineReached.isCompleted) {
+          if (cancellation.isCancelled) {
             return AlgorithmRespecificationStatus.unverifiable;
           }
         }
 
-        await Future.any<void>([
-          Future<void>.delayed(_respecificationPollInterval),
-          deadlineReached.future,
-        ]);
+        final pollDelayElapsed = await _waitForRespecificationDelay(
+          _respecificationPollInterval,
+          cancellation,
+        );
+        if (!pollDelayElapsed) {
+          return AlgorithmRespecificationStatus.unverifiable;
+        }
       }
 
       return AlgorithmRespecificationStatus.unverifiable;
     } finally {
       deadlineTimer.cancel();
+      cancellation.cancel();
+      if (identical(_respecificationCancellation, cancellation)) {
+        _respecificationCancellation = null;
+      }
     }
   }
 

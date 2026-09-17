@@ -3,6 +3,7 @@ import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/services/metadata_sync_service.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:drift/native.dart';
 
 // Mock DistingMidiManager
@@ -58,6 +59,8 @@ class MockDistingMidiManager implements IDistingMidiManager {
     int algorithmIndex, {
     Duration? timeout,
     int? maxRetries,
+    DistingRequestCancellation? cancellation,
+    bool rejectAmbiguousResponse = false,
   }) async {
     if (algorithmIndex != 0 || _numAlgorithmsInPreset == 0) return null;
     return Algorithm(

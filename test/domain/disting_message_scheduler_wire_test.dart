@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/domain/disting_message_scheduler.dart';
 import 'package:nt_helper/domain/disting_midi_manager.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/domain/request_key.dart';
 
@@ -1064,6 +1065,115 @@ void main() {
     });
   });
 
+  group('Operation-owned scheduler cancellation', () {
+    late DistingMessageScheduler scheduler;
+    late StreamController<MidiPacket> incoming;
+    late MidiDevice device;
+    late MockMidiCommand midi;
+
+    setUp(() {
+      final setup = _createScheduler();
+      scheduler = setup.scheduler;
+      incoming = setup.incoming;
+      device = setup.device;
+      midi = setup.midi;
+    });
+
+    tearDown(() async {
+      scheduler.dispose();
+      await incoming.close();
+    });
+
+    test('removes a queued read without interrupting active work', () async {
+      final active = scheduler.sendRequest<int>(
+        _buildSysEx(DistingNTRespMessageType.respNumAlgorithms, []),
+        RequestKey(
+          sysExId: _testSysExId,
+          messageType: DistingNTRespMessageType.respNumAlgorithms,
+        ),
+      );
+      final cancellation = DistingRequestCancellation();
+      final queued = scheduler.sendRequest<Algorithm>(
+        _buildSysEx(DistingNTRespMessageType.respAlgorithm, [2]),
+        RequestKey(
+          sysExId: _testSysExId,
+          messageType: DistingNTRespMessageType.respAlgorithm,
+          algorithmIndex: 2,
+        ),
+        timeout: const Duration(seconds: 10),
+        maxRetries: 1,
+        attributionPolicy: ResponseAttributionPolicy.rejectAmbiguousResponse,
+        cancellation: cancellation,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      cancellation.cancel();
+      await expectLater(
+        queued,
+        throwsA(isA<DistingRequestCancelledException>()),
+      );
+      _injectResponse(
+        incoming,
+        device,
+        DistingNTRespMessageType.respNumAlgorithms,
+        [0x00, 0x00, 0x04],
+      );
+      expect(await active, 4);
+
+      final diagnostics = scheduler.getDiagnostics();
+      expect(diagnostics['queueLength'], 0);
+      expect(diagnostics['hasCurrentRequest'], isFalse);
+      verify(() => midi.sendData(any(), deviceId: device.id)).called(1);
+    });
+
+    test('cancels an in-flight read and keeps the scheduler usable', () async {
+      final cancellation = DistingRequestCancellation();
+      final inFlight = scheduler.sendRequest<Algorithm>(
+        _buildSysEx(DistingNTRespMessageType.respAlgorithm, [2]),
+        RequestKey(
+          sysExId: _testSysExId,
+          messageType: DistingNTRespMessageType.respAlgorithm,
+          algorithmIndex: 2,
+        ),
+        timeout: const Duration(seconds: 10),
+        maxRetries: 1,
+        attributionPolicy: ResponseAttributionPolicy.rejectAmbiguousResponse,
+        cancellation: cancellation,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      cancellation.cancel();
+      await expectLater(
+        inFlight,
+        throwsA(isA<DistingRequestCancelledException>()),
+      );
+      var diagnostics = scheduler.getDiagnostics();
+      expect(diagnostics['queueLength'], 0);
+      expect(diagnostics['hasCurrentRequest'], isFalse);
+
+      final unrelated = scheduler.sendRequest<int>(
+        _buildSysEx(DistingNTRespMessageType.respNumAlgorithms, []),
+        RequestKey(
+          sysExId: _testSysExId,
+          messageType: DistingNTRespMessageType.respNumAlgorithms,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      _injectResponse(
+        incoming,
+        device,
+        DistingNTRespMessageType.respNumAlgorithms,
+        [0x00, 0x00, 0x06],
+      );
+      expect(await unrelated, 6);
+
+      diagnostics = scheduler.getDiagnostics();
+      expect(diagnostics['queueLength'], 0);
+      expect(diagnostics['hasCurrentRequest'], isFalse);
+      verify(() => midi.sendData(any(), deviceId: device.id)).called(2);
+    });
+  });
+
   group('Respecify manager/scheduler wire contract', () {
     const configuredSysExId = 0x2A;
     late MockMidiCommand midi;
@@ -1174,6 +1284,76 @@ void main() {
           0x02,
           0xF7,
         ]);
+      },
+    );
+
+    test(
+      'rejects an old same-slot 0x40 response while a newer read is active',
+      () async {
+        const oldResponsePayload = <int>[
+          0x02,
+          0x54,
+          0x45,
+          0x53,
+          0x54,
+          0x46,
+          0x69,
+          0x78,
+          0x74,
+          0x75,
+          0x72,
+          0x65,
+          0x20,
+          0x73,
+          0x6C,
+          0x6F,
+          0x74,
+          0x00,
+          0x01,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
+          0x02,
+          0x00,
+          0x00,
+          0x01,
+          0x00,
+          0x00,
+          0x0C,
+        ];
+
+        await expectLater(
+          manager.requestAlgorithmGuid(
+            2,
+            timeout: const Duration(milliseconds: 25),
+            maxRetries: 1,
+            rejectAmbiguousResponse: true,
+          ),
+          throwsA(isA<TimeoutException>()),
+        );
+
+        final newerRead = manager.requestAlgorithmGuid(
+          2,
+          timeout: const Duration(seconds: 1),
+          maxRetries: 1,
+          rejectAmbiguousResponse: true,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        _injectResponse(
+          incoming,
+          device,
+          DistingNTRespMessageType.respAlgorithm,
+          oldResponsePayload,
+          sysExId: configuredSysExId,
+        );
+
+        await expectLater(
+          newerRead,
+          throwsA(isA<AmbiguousResponseAttributionException>()),
+        );
+        verify(() => midi.sendData(any(), deviceId: device.id)).called(2);
       },
     );
 

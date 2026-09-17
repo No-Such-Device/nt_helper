@@ -13,6 +13,7 @@ import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:flutter/foundation.dart';
 import '../db/daos/presets_dao.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/memory_query_input.dart';
 import 'package:nt_helper/models/cpu_usage.dart';
 import 'package:nt_helper/models/memory_usage.dart';
@@ -195,6 +196,8 @@ class OfflineDistingMidiManager
     int algorithmIndex, {
     Duration? timeout,
     int? maxRetries,
+    DistingRequestCancellation? cancellation,
+    bool rejectAmbiguousResponse = false,
   }) async {
     if (algorithmIndex < 0 || algorithmIndex >= _presetAlgorithmGuids.length) {
       return null;

@@ -7,6 +7,7 @@ import 'package:nt_helper/db/daos/presets_dao.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/disting_message_scheduler.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/domain/memory_query_input.dart';
 import 'package:nt_helper/domain/request_key.dart';
@@ -455,6 +456,8 @@ class DistingMidiManager
     int algorithmIndex, {
     Duration? timeout,
     int? maxRetries,
+    DistingRequestCancellation? cancellation,
+    bool rejectAmbiguousResponse = false,
   }) async {
     final message = RequestAlgorithmGuidMessage(
       sysExId: sysExId,
@@ -473,6 +476,10 @@ class DistingMidiManager
       responseExpectation: ResponseExpectation.required,
       timeout: timeout,
       maxRetries: maxRetries,
+      attributionPolicy: rejectAmbiguousResponse
+          ? ResponseAttributionPolicy.rejectAmbiguousResponse
+          : ResponseAttributionPolicy.bestEffort,
+      cancellation: cancellation,
     );
   }
 

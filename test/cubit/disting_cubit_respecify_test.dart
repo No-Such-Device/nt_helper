@@ -8,6 +8,7 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/db/daos/metadata_dao.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/domain/memory_query_input.dart';
 import 'package:nt_helper/domain/sysex/responses/algorithm_info_response.dart';
@@ -34,6 +35,9 @@ final class _RecordingManager extends Mock
   final List<int> readbackSlots = [];
   final List<Duration?> readbackTimeouts = [];
   final List<int?> readbackMaxRetries = [];
+  final List<bool> readbackRejectAmbiguous = [];
+  int activeReadbacks = 0;
+  int cancelledReadbacks = 0;
   int memoryRequests = 0;
 
   @override
@@ -51,12 +55,38 @@ final class _RecordingManager extends Mock
     int algorithmIndex, {
     Duration? timeout,
     int? maxRetries,
+    DistingRequestCancellation? cancellation,
+    bool rejectAmbiguousResponse = false,
   }) {
     final requestNumber = readbackSlots.length;
     readbackSlots.add(algorithmIndex);
     readbackTimeouts.add(timeout);
     readbackMaxRetries.add(maxRetries);
-    return onRequestAlgorithm?.call(requestNumber) ?? Future.value();
+    readbackRejectAmbiguous.add(rejectAmbiguousResponse);
+    final source = onRequestAlgorithm?.call(requestNumber) ?? Future.value();
+    if (cancellation == null) return source;
+
+    activeReadbacks++;
+    final completer = Completer<Algorithm?>();
+    void Function()? removeCancellationListener;
+    void completeValue(Algorithm? value) {
+      if (!completer.isCompleted) completer.complete(value);
+    }
+
+    void completeError(Object error, StackTrace stackTrace) {
+      if (!completer.isCompleted) completer.completeError(error, stackTrace);
+    }
+
+    removeCancellationListener = cancellation.addListener(() {
+      if (completer.isCompleted) return;
+      cancelledReadbacks++;
+      completer.completeError(const DistingRequestCancelledException());
+    });
+    source.then(completeValue, onError: completeError);
+    return completer.future.whenComplete(() {
+      removeCancellationListener?.call();
+      activeReadbacks--;
+    });
   }
 
   @override
@@ -276,6 +306,7 @@ void main() {
       expect(manager.readbackSlots, [2]);
       expect(manager.readbackTimeouts, [const Duration(seconds: 1)]);
       expect(manager.readbackMaxRetries, [1]);
+      expect(manager.readbackRejectAmbiguous, [isTrue]);
       expect(manager.memoryRequests, 0);
       expect(cubit.state, same(synchronized));
       expect(
@@ -284,6 +315,116 @@ void main() {
         ),
         ['ONE ', 'TWO ', 'TEST'],
       );
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('accepts matching state after fractional response latency', () {
+    fakeAsync((async) {
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) => Future<Algorithm?>.delayed(
+          const Duration(milliseconds: 250),
+          () => _fixtureSlotAlgorithm().copyWith(
+            specifications: const [1, 12],
+            hasAuthoritativeSpecifications: true,
+          ),
+        ),
+      );
+      cubit.emit(_synchronizedState(manager));
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+      expect(manager.readbackSlots, [2]);
+      expect(manager.activeReadbacks, 1);
+      expect(status, isNull);
+
+      async.elapse(const Duration(milliseconds: 249));
+      async.flushMicrotasks();
+      expect(status, isNull);
+      async.elapse(const Duration(milliseconds: 1));
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.observedMatchingState);
+      expect(manager.activeReadbacks, 0);
+      expect(manager.cancelledReadbacks, 0);
+      expect(manager.readbackRejectAmbiguous, [isTrue]);
+      expect(manager.mutationCommands, ['respecify']);
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('deadline cancels a polling delay that would span ten seconds', () {
+    fakeAsync((async) {
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) => Future<Algorithm?>.delayed(
+          const Duration(milliseconds: 400),
+          () => null,
+        ),
+      );
+      cubit.emit(_synchronizedState(manager));
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 10));
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.unverifiable);
+      expect(manager.readbackSlots, [2, 2, 2, 2, 2, 2, 2]);
+      expect(manager.activeReadbacks, 0);
+      expect(manager.cancelledReadbacks, 0);
+      expect(manager.mutationCommands, ['respecify']);
+      expect(async.pendingTimers, isEmpty);
+
+      final sendsAtDeadline = manager.readbackSlots.length;
+      async.elapse(const Duration(seconds: 2));
+      async.flushMicrotasks();
+      expect(manager.readbackSlots, hasLength(sendsAtDeadline));
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('deadline cancels an in-flight readback without later sends', () {
+    fakeAsync((async) {
+      final pendingReadback = Completer<Algorithm?>();
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) => pendingReadback.future,
+      );
+      cubit.emit(_synchronizedState(manager));
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+
+      expect(manager.readbackSlots, [2]);
+      expect(manager.activeReadbacks, 1);
+      expect(status, isNull);
+
+      async.elapse(const Duration(seconds: 9));
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.unverifiable);
+      expect(manager.activeReadbacks, 0);
+      expect(manager.cancelledReadbacks, 1);
+      expect(manager.readbackSlots, [2]);
+      expect(manager.mutationCommands, ['respecify']);
+      expect(async.pendingTimers, isEmpty);
+
+      async.elapse(const Duration(seconds: 2));
+      async.flushMicrotasks();
+      expect(manager.readbackSlots, [2]);
       expect(async.pendingTimers, isEmpty);
     });
   });

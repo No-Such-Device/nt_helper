@@ -12,6 +12,7 @@ import 'package:nt_helper/db/daos/presets_dao.dart'; // Added
 import 'package:nt_helper/db/database.dart'; // Added
 import 'package:nt_helper/domain/cc_reverse_lookup.dart';
 import 'package:nt_helper/domain/disting_midi_manager.dart';
+import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/midi_command_factory.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
@@ -231,6 +232,7 @@ class DistingCubit extends _DistingCubitBase
 
   @override
   Future<void> close() async {
+    _respecificationCancellation?.cancel();
     _ccNotificationDelegate.stop();
     await _mappingDelegate.dispose();
     await _memoryDelegate.dispose();
