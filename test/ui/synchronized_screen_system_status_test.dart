@@ -24,6 +24,8 @@ import 'package:nt_helper/ui/widgets/memory_detail.dart';
 import 'package:nt_helper/ui/widgets/wave_cache_troubleshooting_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../test_helpers/mock_midi_command.dart';
+
 class _MockDistingCubit extends Mock implements DistingCubit {}
 
 class _MockDistingMidiManager extends Mock implements IDistingMidiManager {}
@@ -50,6 +52,105 @@ const _secondMemorySample = MemoryUsage(
   dtc: MemoryPoolUsage(total: 8 * 1024, current: 2 * 1024),
   itc: MemoryPoolUsage(total: 1024, current: 256),
 );
+
+class _RealCpuSystemStatusHarness {
+  late final DistingCubit cubit;
+  late final _MockDistingMidiManager midiManager;
+  late final _MockPlatformInteractionService platformService;
+
+  Future<CpuUsage?> Function() onCpuQuery = () async => null;
+  int memoryRefreshCount = 0;
+
+  Future<void> initialize() async {
+    SharedPreferences.setMockInitialValues({
+      'show_debug_panel': false,
+      'cpu_monitor_enabled': true,
+    });
+    await SettingsService().init();
+
+    final database = _MockAppDatabase();
+    final metadataDao = _MockMetadataDao();
+    final presetsDao = _MockPresetsDao();
+    final midiCommand = MockMidiCommand();
+    midiManager = _MockDistingMidiManager();
+    platformService = _MockPlatformInteractionService();
+
+    when(() => database.metadataDao).thenReturn(metadataDao);
+    when(() => database.presetsDao).thenReturn(presetsDao);
+    when(() => presetsDao.getTemplates()).thenAnswer((_) async => []);
+    when(() => midiManager.requestWake()).thenAnswer((_) async {});
+    when(() => midiManager.requestCpuUsage()).thenAnswer((_) => onCpuQuery());
+    when(() => midiManager.requestNumberOfAlgorithms()).thenAnswer((_) async {
+      memoryRefreshCount++;
+      return null;
+    });
+    when(() => midiManager.dispose()).thenReturn(null);
+
+    cubit = DistingCubit(
+      database,
+      midiCommand: midiCommand,
+      isWindowsOverride: true,
+    );
+    cubit.emit(
+      DistingState.synchronized(
+        disting: midiManager,
+        distingVersion: '1.19.0',
+        firmwareVersion: FirmwareVersion('1.19.0'),
+        presetName: 'Test',
+        algorithms: const [],
+        slots: const [],
+        unitStrings: const [],
+      ),
+    );
+    McpServerService.initialize(distingCubit: cubit);
+  }
+
+  Widget app({required double width, double height = 800}) {
+    when(() => platformService.isMobilePlatform()).thenReturn(width <= 900);
+    return MaterialApp(
+      home: BlocProvider<DistingCubit>.value(
+        value: cubit,
+        child: SynchronizedScreen(
+          distingVersion: '1.19.0',
+          firmwareVersion: FirmwareVersion('1.19.0'),
+          slots: const [],
+          algorithms: const [],
+          units: const [],
+          presetName: 'Test',
+          screenshot: Uint8List(0),
+          loading: false,
+          platformService: platformService,
+        ),
+      ),
+    );
+  }
+
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    required double width,
+    double height = 800,
+  }) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = Size(width, height);
+    await tester.pumpWidget(app(width: width, height: height));
+    await tester.pump();
+  }
+
+  Future<void> openSystem(WidgetTester tester) async {
+    await tester.tap(find.bySemanticsLabel('More options'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('System'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('System'));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> dispose(WidgetTester tester) async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 101));
+    await cubit.close();
+  }
+}
 
 class _SystemStatusHarness {
   late final _MockDistingCubit cubit;
@@ -227,6 +328,118 @@ void main() {
 
   tearDown(() async {
     await harness.dispose();
+  });
+
+  testWidgets(
+    'System CPU polling survives disposal of the wide bottom consumer',
+    (tester) async {
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      final realHarness = _RealCpuSystemStatusHarness();
+      await realHarness.initialize();
+      addTearDown(() => realHarness.dispose(tester));
+
+      final firstSample = Completer<CpuUsage?>();
+      var cpuQueryCount = 0;
+      realHarness.onCpuQuery = () {
+        cpuQueryCount++;
+        if (cpuQueryCount == 1) return firstSample.future;
+        return Future.value(CpuUsage(cpu1: 31, cpu2: 43, slotUsages: const []));
+      };
+
+      await realHarness.pumpApp(tester, width: 901);
+      await realHarness.openSystem(tester);
+      expect(cpuQueryCount, 1);
+      expect(realHarness.memoryRefreshCount, 1);
+
+      firstSample.complete(CpuUsage(cpu1: 17, cpu2: 29, slotUsages: const []));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('17%'), findsOneWidget);
+      expect(find.text('29%'), findsOneWidget);
+
+      tester.view.physicalSize = const Size(900, 800);
+      await tester.pump();
+      expect(find.byType(CpuMonitorWidget), findsNothing);
+      expect(find.byType(SimpleDialog), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 11));
+      await tester.pump();
+      expect(cpuQueryCount, 2);
+      expect(find.text('31%'), findsOneWidget);
+      expect(find.text('43%'), findsOneWidget);
+      expect(realHarness.memoryRefreshCount, 1);
+
+      realHarness.cubit.pauseCpuMonitoring();
+      await tester.pump(const Duration(seconds: 11));
+      expect(cpuQueryCount, 2);
+      realHarness.cubit.resumeCpuMonitoring();
+      await tester.pump();
+      await tester.pump();
+      expect(cpuQueryCount, 3);
+      expect(realHarness.memoryRefreshCount, 1);
+
+      await SettingsService().setCpuMonitorEnabled(false);
+      await tester.pump();
+      expect(find.text('Monitoring disabled'), findsNWidgets(2));
+      await tester.pump(const Duration(milliseconds: 101));
+      await tester.pump(const Duration(seconds: 11));
+      expect(cpuQueryCount, 3);
+
+      await SettingsService().setCpuMonitorEnabled(true);
+      await tester.pump();
+      await tester.pump();
+      expect(cpuQueryCount, 4);
+      expect(realHarness.memoryRefreshCount, 1);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 101));
+      await tester.pump(const Duration(seconds: 11));
+      expect(cpuQueryCount, 4);
+    },
+  );
+
+  testWidgets('System CPU consumer retains polling failure backoff', (
+    tester,
+  ) async {
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final realHarness = _RealCpuSystemStatusHarness();
+    await realHarness.initialize();
+    addTearDown(() => realHarness.dispose(tester));
+
+    var cpuQueryCount = 0;
+    realHarness.onCpuQuery = () async {
+      cpuQueryCount++;
+      return null;
+    };
+
+    await realHarness.pumpApp(tester, width: 900);
+    await realHarness.openSystem(tester);
+    expect(cpuQueryCount, 1);
+
+    await tester.pump(const Duration(seconds: 10));
+    await tester.pump();
+    expect(cpuQueryCount, 2);
+    await tester.pump(const Duration(seconds: 10));
+    await tester.pump();
+    expect(cpuQueryCount, 3);
+
+    await tester.pump(const Duration(seconds: 11));
+    expect(cpuQueryCount, 3);
+    await tester.pump(const Duration(seconds: 50));
+    await tester.pump();
+    expect(cpuQueryCount, 4);
+    expect(realHarness.memoryRefreshCount, 1);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 101));
   });
 
   testWidgets(

@@ -106,8 +106,11 @@ class _CpuMonitorWidgetState extends State<CpuMonitorWidget> {
 
   @override
   void dispose() {
-    // Pause monitoring when widget is disposed
-    _updateVisibility(false);
+    // Disposing this widget releases its stream subscription. The monitoring
+    // delegate stops polling when the last listener leaves, so do not issue a
+    // global pause here: another consumer (such as the open System dialog) may
+    // still own an active subscription.
+    _isVisible = false;
     super.dispose();
   }
 
