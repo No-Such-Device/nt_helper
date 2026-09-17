@@ -204,9 +204,12 @@ class SlotEditorActionBar extends StatelessWidget {
           final status = await context
               .read<DistingCubit>()
               .respecifyPreparedAlgorithm(preparation, values);
-          if (status != AlgorithmRespecificationStatus.observedMatchingState) {
-            failureMessage = 'Unable to verify refreshed slot data.';
-          }
+          failureMessage = switch (status) {
+            AlgorithmRespecificationStatus.observedMatchingState => null,
+            AlgorithmRespecificationStatus.observedDifferingState =>
+              'The device did not apply the proposed specifications.',
+            _ => 'Unable to verify refreshed slot data.',
+          };
         } on AlgorithmRespecificationException catch (error) {
           failureMessage = error.message;
         } catch (_) {

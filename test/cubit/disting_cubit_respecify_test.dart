@@ -1479,7 +1479,7 @@ void main() {
     });
   });
 
-  test('polls at one-second intervals and exposes differing fresh state', () {
+  test('polls then hydrates differing authoritative device state', () {
     fakeAsync((async) {
       final manager = _RecordingManager(
         onRequestAlgorithm: (requestNumber) async {
@@ -1490,6 +1490,8 @@ void main() {
           );
         },
       );
+      cubit.fetchSlotOverride = (_, _) async =>
+          _hydratedSlot(specifications: const [0, 8]);
       cubit.emit(_synchronizedState(manager));
 
       AlgorithmRespecificationStatus? status;
@@ -1516,6 +1518,14 @@ void main() {
       expect(manager.readbackMaxRetries, [1, 1]);
       expect(status, AlgorithmRespecificationStatus.observedDifferingState);
       expect(manager.mutationCommands, ['respecify']);
+      expect(
+        (cubit.state as DistingStateSynchronized)
+            .slots[2]
+            .algorithm
+            .specifications,
+        [0, 8],
+      );
+      expect(manager.routingRequests, [0, 1, 2]);
       expect(async.pendingTimers, isEmpty);
     });
   });

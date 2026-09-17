@@ -33,6 +33,7 @@ final class _WidgetRespecificationManager extends Mock
   final List<bool> readbackRejectAmbiguous = [];
   final Completer<Algorithm?> lateReadback = Completer<Algorithm?>();
   Completer<ParameterPages?>? hydrationPagesGate;
+  List<int>? specificationsReturnedAfterMutation;
   bool missingReadback = false;
   bool failHydration = false;
   int hydrationRequests = 0;
@@ -43,7 +44,9 @@ final class _WidgetRespecificationManager extends Mock
     List<int> specifications,
   ) async {
     mutations.add(List<int>.from(specifications));
-    deviceSpecifications = List<int>.from(specifications);
+    deviceSpecifications = List<int>.from(
+      specificationsReturnedAfterMutation ?? specifications,
+    );
   }
 
   @override
@@ -366,6 +369,78 @@ void main() {
   );
 
   testWidgets(
+    'differing device state replaces the proposal and reopens as authoritative',
+    (tester) async {
+      manager.specificationsReturnedAfterMutation = [2];
+      await tester.pumpWidget(_slotEditorHarness(cubit, controllerSections));
+      await tester.pump();
+
+      await _openRespecifyDialog(tester);
+      final fieldKey = ValueKey('${_algorithmGuid}_spec_0');
+      expect(
+        tester
+            .widget<TextField>(
+              find.descendant(
+                of: find.byKey(fieldKey),
+                matching: find.byType(TextField),
+              ),
+            )
+            .controller
+            ?.text,
+        '1',
+      );
+      await tester.enterText(find.byKey(fieldKey), '3');
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Respecify'));
+      await tester.pump();
+
+      expect(manager.mutations, [
+        [3],
+      ]);
+      expect(find.text('Respecifying…'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      final returned = (cubit.state as DistingStateSynchronized).slots.single;
+      expect(returned.algorithm.specifications, [2]);
+      expect(returned.parameters.map((parameter) => parameter.name), [
+        'Existing device value',
+        'Added device default',
+      ]);
+      expect(returned.values.map((value) => value.value), [11, 77]);
+      expect(manager.hydrationRequests, 1);
+      expect(find.text('Respecifying…'), findsNothing);
+      expect(find.text('Respecify Shape fixture'), findsNothing);
+      expect(
+        find.text('The device did not apply the proposed specifications.'),
+        findsOneWidget,
+      );
+
+      await _openRespecifyDialog(tester);
+      expect(
+        tester
+            .widget<TextField>(
+              find.descendant(
+                of: find.byKey(fieldKey),
+                matching: find.byType(TextField),
+              ),
+            )
+            .controller
+            ?.text,
+        '2',
+      );
+      await tester.pump(const Duration(seconds: 2));
+      expect(
+        manager.mutations,
+        [
+          [3],
+        ],
+        reason: 'reopening must not retain or resend the submitted proposal',
+      );
+    },
+  );
+
+  testWidgets(
     'missing and late readback exits waiting at ten seconds without resending',
     (tester) async {
       manager.missingReadback = true;
@@ -521,7 +596,7 @@ DistingStateSynchronized _synchronizedState(
               Specification(
                 name: 'Parameter count',
                 min: 1,
-                max: 2,
+                max: 3,
                 defaultValue: 1,
                 type: 0,
               ),

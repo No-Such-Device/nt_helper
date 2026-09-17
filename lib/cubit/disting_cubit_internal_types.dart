@@ -41,6 +41,18 @@ final class _RespecificationLifetime {
   }
 }
 
+final class _RespecificationObservation {
+  _RespecificationObservation(
+    this.status, {
+    List<int>? authoritativeSpecifications,
+  }) : authoritativeSpecifications = authoritativeSpecifications == null
+           ? null
+           : List<int>.unmodifiable(authoritativeSpecifications);
+
+  final AlgorithmRespecificationStatus status;
+  final List<int>? authoritativeSpecifications;
+}
+
 // Retry request types for background parameter retry queue
 enum _ParameterRetryType { info, enumStrings, mappings, valueStrings }
 

@@ -14,17 +14,19 @@ enum AlgorithmRespecificationStatus {
   /// unchanged submission caused a mutation.
   observedMatchingState,
 
-  /// Fresh extended 0x40 state for the captured slot and GUID differed.
+  /// Fresh extended 0x40 state for the captured slot and GUID differed from
+  /// the proposal, and that authoritative state was fully hydrated before
+  /// routing was refreshed.
   observedDifferingState,
 
-  /// Matching readback was observed, but the target changed before hydration
+  /// Valid readback was observed, but the target changed before hydration
   /// could be installed.
   refreshSkipped,
 
-  /// Matching readback was observed, but required hydrated data was incomplete.
+  /// Valid readback was observed, but required hydrated data was incomplete.
   refreshIncomplete,
 
-  /// Matching readback was observed, but slot or routing refresh failed.
+  /// Valid readback was observed, but slot or routing refresh failed.
   refreshFailed,
 
   /// No valid fresh extended 0x40 state was observed inside the time window.

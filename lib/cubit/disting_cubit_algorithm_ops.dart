@@ -292,8 +292,10 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
         lifetime,
         submittedValues: submittedValues,
       );
-      if (observation != AlgorithmRespecificationStatus.observedMatchingState) {
-        return observation;
+      final authoritativeSpecifications =
+          observation.authoritativeSpecifications;
+      if (authoritativeSpecifications == null) {
+        return observation.status;
       }
       if (!_isCurrentRespecificationLifetime(lifetime)) {
         return AlgorithmRespecificationStatus.unverifiable;
@@ -305,7 +307,7 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
           slotIndex,
           expectation: _SlotHydrationExpectation(
             lifetime: lifetime,
-            specifications: submittedValues,
+            specifications: authoritativeSpecifications,
           ),
         );
       } catch (_) {
@@ -321,7 +323,7 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
           try {
             final refreshed = await _refreshRoutingForRespecification(lifetime);
             return refreshed
-                ? AlgorithmRespecificationStatus.observedMatchingState
+                ? observation.status
                 : AlgorithmRespecificationStatus.refreshSkipped;
           } catch (_) {
             return AlgorithmRespecificationStatus.refreshFailed;
@@ -380,7 +382,7 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
     return completer.future;
   }
 
-  Future<AlgorithmRespecificationStatus> _observeRespecification(
+  Future<_RespecificationObservation> _observeRespecification(
     _RespecificationLifetime lifetime, {
     required List<int> submittedValues,
   }) async {
@@ -395,7 +397,11 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
         _respecificationInitialSettleDelay,
         cancellation,
       );
-      if (!settled) return AlgorithmRespecificationStatus.unverifiable;
+      if (!settled) {
+        return _RespecificationObservation(
+          AlgorithmRespecificationStatus.unverifiable,
+        );
+      }
 
       while (!cancellation.isCancelled) {
         try {
@@ -407,7 +413,9 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
             rejectAmbiguousResponse: true,
           );
           if (!_isCurrentRespecificationLifetime(lifetime)) {
-            return AlgorithmRespecificationStatus.unverifiable;
+            return _RespecificationObservation(
+              AlgorithmRespecificationStatus.unverifiable,
+            );
           }
 
           final isFreshTargetState =
@@ -416,16 +424,26 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
               readback.guid == lifetime.algorithmGuid &&
               readback.hasAuthoritativeSpecifications;
           if (isFreshTargetState) {
-            return const ListEquality<int>().equals(
-                  readback.specifications,
+            final authoritativeSpecifications = List<int>.unmodifiable(
+              readback.specifications,
+            );
+            final status =
+                const ListEquality<int>().equals(
+                  authoritativeSpecifications,
                   submittedValues,
                 )
                 ? AlgorithmRespecificationStatus.observedMatchingState
                 : AlgorithmRespecificationStatus.observedDifferingState;
+            return _RespecificationObservation(
+              status,
+              authoritativeSpecifications: authoritativeSpecifications,
+            );
           }
         } catch (_) {
           if (cancellation.isCancelled) {
-            return AlgorithmRespecificationStatus.unverifiable;
+            return _RespecificationObservation(
+              AlgorithmRespecificationStatus.unverifiable,
+            );
           }
         }
 
@@ -434,11 +452,15 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
           cancellation,
         );
         if (!pollDelayElapsed) {
-          return AlgorithmRespecificationStatus.unverifiable;
+          return _RespecificationObservation(
+            AlgorithmRespecificationStatus.unverifiable,
+          );
         }
       }
 
-      return AlgorithmRespecificationStatus.unverifiable;
+      return _RespecificationObservation(
+        AlgorithmRespecificationStatus.unverifiable,
+      );
     } finally {
       deadlineTimer.cancel();
     }
