@@ -509,7 +509,7 @@ class _SectionParameterListViewState extends State<SectionParameterListView> {
         ? state
         : null;
 
-    return ExpansionTile(
+    return _HeaderShadedExpansionTile(
       initiallyExpanded: !isEmpty,
       title: Text(
         'Performance Parameters (${perfParams.length})',
@@ -632,7 +632,7 @@ class _SectionParameterListViewState extends State<SectionParameterListView> {
 
     return Padding(
       padding: const EdgeInsets.only(left: 8, right: 8),
-      child: ExpansionTile(
+      child: _HeaderShadedExpansionTile(
         initiallyExpanded: !_isCollapsed,
         controller: _tileControllers.elementAt(index),
         title: Text(page.name),
@@ -678,6 +678,49 @@ class _SectionParameterListViewState extends State<SectionParameterListView> {
             unit: unit,
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+/// Paints only the [ExpansionTile] header while preserving the inherited
+/// [ListTileTheme] for every body child.
+///
+/// Flutter renders an ExpansionTile header as a ListTile, while the tile's
+/// backgroundColor is painted behind both its header and expanded body. A
+/// locally merged ListTile tileColor therefore provides the header-only paint.
+class _HeaderShadedExpansionTile extends StatelessWidget {
+  const _HeaderShadedExpansionTile({
+    required this.title,
+    required this.children,
+    required this.initiallyExpanded,
+    this.controller,
+  });
+
+  final Widget title;
+  final List<Widget> children;
+  final bool initiallyExpanded;
+  final ExpansibleController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final inheritedListTileTheme = ListTileTheme.of(context);
+    final headerListTileTheme = inheritedListTileTheme.copyWith(
+      tileColor: Theme.of(
+        context,
+      ).colorScheme.onSurface.withValues(alpha: 0.10),
+    );
+
+    return ListTileTheme(
+      data: headerListTileTheme,
+      child: ExpansionTile(
+        initiallyExpanded: initiallyExpanded,
+        controller: controller,
+        title: title,
+        children: [
+          for (final child in children)
+            ListTileTheme(data: inheritedListTileTheme, child: child),
+        ],
       ),
     );
   }
