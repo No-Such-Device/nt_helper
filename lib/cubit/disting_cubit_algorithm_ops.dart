@@ -28,6 +28,159 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
   static const _addAlgorithmVerificationWindow = Duration(seconds: 10);
   CancelableOperation<void>? _moveVerificationOperation;
 
+  DistingStateSynchronized _requireRespecificationState() {
+    final currentState = state;
+    if (currentState is! DistingStateSynchronized) {
+      throw const AlgorithmRespecificationException(
+        'Respecify requires a connected, synchronized device.',
+      );
+    }
+    if (currentState.offline || currentState.demo) {
+      throw const AlgorithmRespecificationException(
+        'Respecify is unavailable in offline and demo modes.',
+      );
+    }
+    if (!currentState.firmwareVersion.isSupported(
+      ownerProvidedRespecifyMinimumFirmwareVersion,
+    )) {
+      throw const AlgorithmRespecificationException(
+        'Respecify requires confirmed firmware 1.19 beta or later.',
+      );
+    }
+    if (currentState.disting is! AlgorithmRespecificationWriter) {
+      throw const AlgorithmRespecificationException(
+        'Respecify requires a live MIDI connection.',
+      );
+    }
+    return currentState;
+  }
+
+  bool _isSigned16(int value) => value >= -0x8000 && value <= 0x7FFF;
+
+  PreparedAlgorithmRespecification _prepareAlgorithmRespecification(
+    DistingStateSynchronized currentState,
+    int slotIndex,
+  ) {
+    if (slotIndex < 0 ||
+        slotIndex >= currentState.slots.length ||
+        slotIndex > 0x7F) {
+      throw AlgorithmRespecificationException(
+        'Slot ${slotIndex + 1} is unavailable for respecification.',
+      );
+    }
+
+    final algorithm = currentState.slots[slotIndex].algorithm;
+    if (algorithm.algorithmIndex != slotIndex || algorithm.guid.isEmpty) {
+      throw const AlgorithmRespecificationException(
+        'The selected slot identity is inconsistent.',
+      );
+    }
+    if (!algorithm.hasAuthoritativeSpecifications) {
+      throw const AlgorithmRespecificationException(
+        'Current specification values are unavailable from the device.',
+      );
+    }
+
+    final matchingMetadata = currentState.algorithms
+        .where((candidate) => candidate.guid == algorithm.guid)
+        .toList(growable: false);
+    if (matchingMetadata.length != 1) {
+      throw const AlgorithmRespecificationException(
+        'Matching algorithm specification metadata is unavailable.',
+      );
+    }
+
+    final metadata = matchingMetadata.single.specifications;
+    final currentValues = algorithm.specifications;
+    if (metadata.length != currentValues.length || metadata.length > 0x7F) {
+      throw const AlgorithmRespecificationException(
+        'Algorithm specification metadata does not match the current slot.',
+      );
+    }
+
+    final prepared = <PreparedAlgorithmSpecification>[];
+    for (var index = 0; index < metadata.length; index++) {
+      final specification = metadata[index];
+      final currentValue = currentValues[index];
+      final hasValidSignedValues =
+          _isSigned16(specification.min) &&
+          _isSigned16(specification.max) &&
+          _isSigned16(specification.defaultValue) &&
+          _isSigned16(currentValue);
+      final hasConsistentRange =
+          specification.min <= specification.max &&
+          specification.defaultValue >= specification.min &&
+          specification.defaultValue <= specification.max &&
+          currentValue >= specification.min &&
+          currentValue <= specification.max;
+      if (!hasValidSignedValues || !hasConsistentRange) {
+        throw AlgorithmRespecificationException(
+          'Specification ${index + 1} metadata is inconsistent.',
+        );
+      }
+      prepared.add(
+        PreparedAlgorithmSpecification(
+          metadata: specification,
+          currentValue: currentValue,
+        ),
+      );
+    }
+
+    return PreparedAlgorithmRespecification(
+      slotIndex: slotIndex,
+      algorithmGuid: algorithm.guid,
+      algorithmName: algorithm.name,
+      specifications: prepared,
+    );
+  }
+
+  PreparedAlgorithmRespecification prepareAlgorithmRespecificationImpl(
+    int slotIndex,
+  ) {
+    final currentState = _requireRespecificationState();
+    return _prepareAlgorithmRespecification(currentState, slotIndex);
+  }
+
+  Future<AlgorithmRespecificationStatus> respecifyAlgorithmImpl(
+    int slotIndex,
+    List<Object?> proposedSpecifications,
+  ) async {
+    final currentState = _requireRespecificationState();
+    final preparation = _prepareAlgorithmRespecification(
+      currentState,
+      slotIndex,
+    );
+    if (proposedSpecifications.length != preparation.specifications.length) {
+      throw const AlgorithmRespecificationException(
+        'The proposed specification count does not match the current slot.',
+      );
+    }
+
+    final values = <int>[];
+    for (var index = 0; index < proposedSpecifications.length; index++) {
+      final proposedValue = proposedSpecifications[index];
+      if (proposedValue is! int) {
+        throw AlgorithmRespecificationException(
+          'Specification ${index + 1} must be an integer.',
+        );
+      }
+
+      final metadata = preparation.specifications[index].metadata;
+      if (!_isSigned16(proposedValue) ||
+          proposedValue < metadata.min ||
+          proposedValue > metadata.max) {
+        throw AlgorithmRespecificationException(
+          'Specification ${index + 1} must be between '
+          '${metadata.min} and ${metadata.max}.',
+        );
+      }
+      values.add(proposedValue);
+    }
+
+    await currentState.disting.requestRespecifyAlgorithm(slotIndex, values);
+    return AlgorithmRespecificationStatus.sentPendingVerification;
+  }
+
   String _deriveOptimisticAlgorithmNameForAdd({
     required String algorithmGuid,
     required String baseName,

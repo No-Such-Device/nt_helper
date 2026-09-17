@@ -20,6 +20,7 @@ import 'package:nt_helper/domain/mock_disting_midi_manager.dart';
 import 'package:nt_helper/domain/offline_disting_midi_manager.dart';
 import 'package:nt_helper/domain/parameter_update_queue.dart';
 import 'package:nt_helper/domain/sd_card_operation.dart';
+import 'package:nt_helper/models/algorithm_respecification.dart';
 import 'package:nt_helper/models/cpu_usage.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/models/packed_mapping_data.dart';
@@ -531,6 +532,19 @@ class DistingCubit extends _DistingCubitBase
 
   Future<void> onRemoveAlgorithm(int algorithmIndex) async {
     return onRemoveAlgorithmImpl(algorithmIndex);
+  }
+
+  PreparedAlgorithmRespecification prepareAlgorithmRespecification(
+    int slotIndex,
+  ) {
+    return prepareAlgorithmRespecificationImpl(slotIndex);
+  }
+
+  Future<AlgorithmRespecificationStatus> respecifyAlgorithm(
+    int slotIndex,
+    List<Object?> proposedSpecifications,
+  ) {
+    return respecifyAlgorithmImpl(slotIndex, proposedSpecifications);
   }
 
   void renamePreset(String newName) {
