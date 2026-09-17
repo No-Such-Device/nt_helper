@@ -73,7 +73,11 @@ abstract class IDistingMidiManager {
     int algorithmIndex,
     int parameterNumber,
   );
-  Future<Algorithm?> requestAlgorithmGuid(int algorithmIndex);
+  Future<Algorithm?> requestAlgorithmGuid(
+    int algorithmIndex, {
+    Duration? timeout,
+    int? maxRetries,
+  });
   Future<OutputModeUsage?> requestOutputModeUsage(
     int algorithmIndex,
     int parameterNumber,

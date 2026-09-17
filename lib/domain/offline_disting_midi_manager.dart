@@ -191,7 +191,11 @@ class OfflineDistingMidiManager
   }
 
   @override
-  Future<Algorithm?> requestAlgorithmGuid(int algorithmIndex) async {
+  Future<Algorithm?> requestAlgorithmGuid(
+    int algorithmIndex, {
+    Duration? timeout,
+    int? maxRetries,
+  }) async {
     if (algorithmIndex < 0 || algorithmIndex >= _presetAlgorithmGuids.length) {
       return null;
     }

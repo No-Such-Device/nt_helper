@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -23,9 +25,15 @@ class _MockMetadataDao extends Mock implements MetadataDao {}
 
 final class _RecordingManager extends Mock
     implements IDistingMidiManager, AlgorithmRespecificationWriter {
+  _RecordingManager({this.onRequestAlgorithm});
+
+  final Future<Algorithm?> Function(int requestNumber)? onRequestAlgorithm;
   final List<String> mutationCommands = [];
   final List<int> respecifiedSlots = [];
   final List<List<int>> respecifiedValues = [];
+  final List<int> readbackSlots = [];
+  final List<Duration?> readbackTimeouts = [];
+  final List<int?> readbackMaxRetries = [];
   int memoryRequests = 0;
 
   @override
@@ -36,6 +44,19 @@ final class _RecordingManager extends Mock
     mutationCommands.add('respecify');
     respecifiedSlots.add(algorithmIndex);
     respecifiedValues.add(List<int>.unmodifiable(specifications));
+  }
+
+  @override
+  Future<Algorithm?> requestAlgorithmGuid(
+    int algorithmIndex, {
+    Duration? timeout,
+    int? maxRetries,
+  }) {
+    final requestNumber = readbackSlots.length;
+    readbackSlots.add(algorithmIndex);
+    readbackTimeouts.add(timeout);
+    readbackMaxRetries.add(maxRetries);
+    return onRequestAlgorithm?.call(requestNumber) ?? Future.value();
   }
 
   @override
@@ -190,59 +211,267 @@ void main() {
 
   tearDown(() => cubit.close());
 
-  test('uses decoded 0x31 metadata and current 0x40 values, then sends only '
-      'the existing slot 0x3A without memory preflight', () async {
-    final manager = _RecordingManager();
-    final synchronized = _synchronizedState(manager);
-    cubit.emit(synchronized);
+  test('uses decoded metadata, sends 0x3A once, and waits one second for '
+      'matching fresh 0x40 state', () {
+    fakeAsync((async) {
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) async => _fixtureSlotAlgorithm().copyWith(
+          specifications: const [1, 12],
+          hasAuthoritativeSpecifications: true,
+        ),
+      );
+      final synchronized = _synchronizedState(manager);
+      cubit.emit(synchronized);
 
-    final preparation = cubit.prepareAlgorithmRespecification(2);
+      final preparation = cubit.prepareAlgorithmRespecification(2);
 
-    expect(preparation.slotIndex, 2);
-    expect(preparation.algorithmGuid, 'TEST');
-    expect(preparation.algorithmName, 'Fixture slot');
-    expect(preparation.specifications.map((value) => value.currentValue), [
-      -1,
-      8,
-    ]);
-    expect(preparation.specifications.map((value) => value.metadata.name), [
-      'Mode',
-      'Channels',
-    ]);
-    expect(preparation.specifications.map((value) => value.metadata.min), [
-      -1,
-      1,
-    ]);
-    expect(preparation.specifications.map((value) => value.metadata.max), [
-      1,
-      16,
-    ]);
-    expect(
-      preparation.specifications.map((value) => value.metadata.defaultValue),
-      [0, 4],
-    );
-    expect(preparation.specifications.map((value) => value.metadata.type), [
-      2,
-      0,
-    ]);
+      expect(preparation.slotIndex, 2);
+      expect(preparation.algorithmGuid, 'TEST');
+      expect(preparation.algorithmName, 'Fixture slot');
+      expect(preparation.specifications.map((value) => value.currentValue), [
+        -1,
+        8,
+      ]);
+      expect(preparation.specifications.map((value) => value.metadata.name), [
+        'Mode',
+        'Channels',
+      ]);
+      expect(preparation.specifications.map((value) => value.metadata.min), [
+        -1,
+        1,
+      ]);
+      expect(preparation.specifications.map((value) => value.metadata.max), [
+        1,
+        16,
+      ]);
+      expect(
+        preparation.specifications.map((value) => value.metadata.defaultValue),
+        [0, 4],
+      );
+      expect(preparation.specifications.map((value) => value.metadata.type), [
+        2,
+        0,
+      ]);
 
-    final status = await cubit.respecifyAlgorithm(2, const [1, 12]);
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
 
-    expect(status, AlgorithmRespecificationStatus.sentPendingVerification);
-    expect(manager.mutationCommands, ['respecify']);
-    expect(manager.respecifiedSlots, [2]);
-    expect(manager.respecifiedValues, [
-      [1, 12],
-    ]);
-    expect(manager.memoryRequests, 0);
-    expect(cubit.state, same(synchronized));
-    expect(
-      (cubit.state as DistingStateSynchronized).slots.map(
-        (slot) => slot.algorithm.guid,
-      ),
-      ['ONE ', 'TWO ', 'TEST'],
-    );
+      expect(status, isNull, reason: 'send completion is not success');
+      expect(manager.mutationCommands, ['respecify']);
+      expect(manager.respecifiedSlots, [2]);
+      expect(manager.respecifiedValues, [
+        [1, 12],
+      ]);
+      expect(manager.readbackSlots, isEmpty);
+
+      async.elapse(const Duration(milliseconds: 999));
+      expect(manager.readbackSlots, isEmpty);
+      async.elapse(const Duration(milliseconds: 1));
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.observedMatchingState);
+      expect(manager.readbackSlots, [2]);
+      expect(manager.readbackTimeouts, [const Duration(seconds: 1)]);
+      expect(manager.readbackMaxRetries, [1]);
+      expect(manager.memoryRequests, 0);
+      expect(cubit.state, same(synchronized));
+      expect(
+        (cubit.state as DistingStateSynchronized).slots.map(
+          (slot) => slot.algorithm.guid,
+        ),
+        ['ONE ', 'TWO ', 'TEST'],
+      );
+      expect(async.pendingTimers, isEmpty);
+    });
   });
+
+  test('polls at one-second intervals and exposes differing fresh state', () {
+    fakeAsync((async) {
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (requestNumber) async {
+          if (requestNumber == 0) return null;
+          return _fixtureSlotAlgorithm().copyWith(
+            specifications: const [0, 8],
+            hasAuthoritativeSpecifications: true,
+          );
+        },
+      );
+      cubit.emit(_synchronizedState(manager));
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+      expect(manager.readbackSlots, [2]);
+      expect(status, isNull);
+
+      async.elapse(const Duration(milliseconds: 999));
+      expect(manager.readbackSlots, [2]);
+      async.elapse(const Duration(milliseconds: 1));
+      async.flushMicrotasks();
+
+      expect(manager.readbackSlots, [2, 2]);
+      expect(manager.readbackTimeouts, [
+        const Duration(seconds: 1),
+        const Duration(seconds: 1),
+      ]);
+      expect(manager.readbackMaxRetries, [1, 1]);
+      expect(status, AlgorithmRespecificationStatus.observedDifferingState);
+      expect(manager.mutationCommands, ['respecify']);
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('missing, malformed, cached, wrong-target, and late data cannot become '
+      'a valid observation', () {
+    fakeAsync((async) {
+      final lateReadback = Completer<Algorithm?>();
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (requestNumber) {
+          return switch (requestNumber) {
+            0 => Future<Algorithm?>.value(),
+            1 => Future<Algorithm?>.error(
+              const FormatException('malformed extended response'),
+            ),
+            2 => Future<Algorithm?>.value(
+              _fixtureSlotAlgorithm().copyWith(
+                specifications: const [1, 12],
+                hasAuthoritativeSpecifications: false,
+              ),
+            ),
+            3 => Future<Algorithm?>.value(
+              _fixtureSlotAlgorithm().copyWith(
+                algorithmIndex: 1,
+                specifications: const [1, 12],
+                hasAuthoritativeSpecifications: true,
+              ),
+            ),
+            4 => Future<Algorithm?>.value(
+              Algorithm(
+                algorithmIndex: 2,
+                guid: 'NOPE',
+                name: 'Wrong algorithm',
+                specifications: const [1, 12],
+                hasAuthoritativeSpecifications: true,
+              ),
+            ),
+            _ => lateReadback.future,
+          };
+        },
+      );
+      cubit.emit(_synchronizedState(manager));
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+
+      for (var second = 1; second <= 6; second++) {
+        async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
+      }
+      expect(manager.readbackSlots, [2, 2, 2, 2, 2, 2]);
+      expect(status, isNull);
+
+      async.elapse(const Duration(seconds: 4));
+      async.flushMicrotasks();
+      expect(status, AlgorithmRespecificationStatus.unverifiable);
+      expect(manager.mutationCommands, ['respecify']);
+
+      lateReadback.complete(
+        _fixtureSlotAlgorithm().copyWith(
+          specifications: const [1, 12],
+          hasAuthoritativeSpecifications: true,
+        ),
+      );
+      async.flushMicrotasks();
+      expect(status, AlgorithmRespecificationStatus.unverifiable);
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('suppresses duplicate submissions until the bounded operation ends', () {
+    fakeAsync((async) {
+      final pendingReadback = Completer<Algorithm?>();
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (requestNumber) => requestNumber == 0
+            ? pendingReadback.future
+            : Future<Algorithm?>.value(
+                _fixtureSlotAlgorithm().copyWith(
+                  specifications: const [1, 12],
+                  hasAuthoritativeSpecifications: true,
+                ),
+              ),
+      );
+      cubit.emit(_synchronizedState(manager));
+
+      AlgorithmRespecificationStatus? firstStatus;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        firstStatus = value;
+      });
+      async.flushMicrotasks();
+
+      Object? duplicateError;
+      cubit.respecifyAlgorithm(2, const [1, 12]).catchError((Object error) {
+        duplicateError = error;
+        return AlgorithmRespecificationStatus.unverifiable;
+      });
+      async.flushMicrotasks();
+
+      expect(duplicateError, isA<AlgorithmRespecificationException>());
+      expect(manager.mutationCommands, ['respecify']);
+
+      async.elapse(const Duration(seconds: 10));
+      async.flushMicrotasks();
+      expect(firstStatus, AlgorithmRespecificationStatus.unverifiable);
+
+      AlgorithmRespecificationStatus? nextStatus;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        nextStatus = value;
+      });
+      async.flushMicrotasks();
+      expect(manager.mutationCommands, ['respecify', 'respecify']);
+
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+      expect(nextStatus, AlgorithmRespecificationStatus.observedMatchingState);
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test(
+    'matching unchanged values establish current state without hydrating',
+    () {
+      fakeAsync((async) {
+        final manager = _RecordingManager(
+          onRequestAlgorithm: (_) async => _fixtureSlotAlgorithm(),
+        );
+        final synchronized = _synchronizedState(manager);
+        cubit.emit(synchronized);
+
+        AlgorithmRespecificationStatus? status;
+        cubit.respecifyAlgorithm(2, const [-1, 8]).then((value) {
+          status = value;
+        });
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
+
+        expect(status, AlgorithmRespecificationStatus.observedMatchingState);
+        expect(cubit.state, same(synchronized));
+        expect(manager.mutationCommands, ['respecify']);
+        expect(async.pendingTimers, isEmpty);
+      });
+    },
+  );
 
   test(
     'rejects invalid proposal count, integer, and range before sending',

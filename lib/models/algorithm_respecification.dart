@@ -5,10 +5,19 @@ import 'package:nt_helper/domain/disting_nt_sysex.dart';
 /// Public upstream sources have not independently established this threshold.
 const ownerProvidedRespecifyMinimumFirmwareVersion = '1.19.0';
 
-/// The only conclusion available immediately after sending SysEx 0x3A.
+/// The bounded observation available after sending SysEx 0x3A once.
 enum AlgorithmRespecificationStatus {
-  /// The command was sent once and still requires device readback verification.
-  sentPendingVerification,
+  /// Fresh extended 0x40 state for the captured slot and GUID exactly matched.
+  ///
+  /// This establishes current device state only. It does not prove that an
+  /// unchanged submission caused a mutation or that slot hydration completed.
+  observedMatchingState,
+
+  /// Fresh extended 0x40 state for the captured slot and GUID differed.
+  observedDifferingState,
+
+  /// No valid fresh extended 0x40 state was observed inside the time window.
+  unverifiable,
 }
 
 /// One authoritative current value paired with its matching 0x31 metadata.

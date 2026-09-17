@@ -1139,6 +1139,45 @@ void main() {
     );
 
     test(
+      'honors the caller timeout and one-attempt budget for 0x40 readback',
+      () async {
+        const requestTimeout = Duration(milliseconds: 25);
+
+        await expectLater(
+          manager.requestAlgorithmGuid(
+            2,
+            timeout: requestTimeout,
+            maxRetries: 1,
+          ),
+          throwsA(
+            isA<TimeoutException>().having(
+              (error) => error.duration,
+              'duration',
+              requestTimeout,
+            ),
+          ),
+        );
+
+        final captured =
+            verify(
+                  () => midi.sendData(captureAny(), deviceId: device.id),
+                ).captured.single
+                as Uint8List;
+        expect(captured, [
+          0xF0,
+          0x00,
+          0x21,
+          0x27,
+          0x6D,
+          configuredSysExId,
+          0x40,
+          0x02,
+          0xF7,
+        ]);
+      },
+    );
+
+    test(
       'propagates a send error after exactly one mutation attempt',
       () async {
         when(

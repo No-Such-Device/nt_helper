@@ -451,7 +451,11 @@ class DistingMidiManager
   }
 
   @override
-  Future<Algorithm?> requestAlgorithmGuid(int algorithmIndex) async {
+  Future<Algorithm?> requestAlgorithmGuid(
+    int algorithmIndex, {
+    Duration? timeout,
+    int? maxRetries,
+  }) async {
     final message = RequestAlgorithmGuidMessage(
       sysExId: sysExId,
       algorithmIndex: algorithmIndex,
@@ -467,6 +471,8 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.required,
+      timeout: timeout,
+      maxRetries: maxRetries,
     );
   }
 

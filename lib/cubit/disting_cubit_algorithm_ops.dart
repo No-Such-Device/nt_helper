@@ -26,7 +26,13 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
   static const _addAlgorithmPollInterval = Duration(seconds: 1);
   static const _addAlgorithmRequestTimeout = Duration(seconds: 1);
   static const _addAlgorithmVerificationWindow = Duration(seconds: 10);
+  static const _respecificationInitialSettleDelay = Duration(seconds: 1);
+  static const _respecificationPollInterval = Duration(seconds: 1);
+  static const _respecificationRequestTimeout = Duration(seconds: 1);
+  static const _respecificationVerificationWindow = Duration(seconds: 10);
+  static const _respecificationRequestMaxRetries = 1;
   CancelableOperation<void>? _moveVerificationOperation;
+  Future<AlgorithmRespecificationStatus>? _respecificationOperation;
 
   DistingStateSynchronized _requireRespecificationState() {
     final currentState = state;
@@ -144,6 +150,29 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
   Future<AlgorithmRespecificationStatus> respecifyAlgorithmImpl(
     int slotIndex,
     List<Object?> proposedSpecifications,
+  ) {
+    if (_respecificationOperation != null) {
+      return Future<AlgorithmRespecificationStatus>.error(
+        const AlgorithmRespecificationException(
+          'A respecification is already pending verification.',
+        ),
+      );
+    }
+
+    late final Future<AlgorithmRespecificationStatus> guardedOperation;
+    guardedOperation = _runRespecification(slotIndex, proposedSpecifications)
+        .whenComplete(() {
+          if (identical(_respecificationOperation, guardedOperation)) {
+            _respecificationOperation = null;
+          }
+        });
+    _respecificationOperation = guardedOperation;
+    return guardedOperation;
+  }
+
+  Future<AlgorithmRespecificationStatus> _runRespecification(
+    int slotIndex,
+    List<Object?> proposedSpecifications,
   ) async {
     final currentState = _requireRespecificationState();
     final preparation = _prepareAlgorithmRespecification(
@@ -177,8 +206,79 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
       values.add(proposedValue);
     }
 
-    await currentState.disting.requestRespecifyAlgorithm(slotIndex, values);
-    return AlgorithmRespecificationStatus.sentPendingVerification;
+    final submittedValues = List<int>.unmodifiable(values);
+    await currentState.disting.requestRespecifyAlgorithm(
+      slotIndex,
+      submittedValues,
+    );
+    return _observeRespecification(
+      currentState.disting,
+      slotIndex: preparation.slotIndex,
+      algorithmGuid: preparation.algorithmGuid,
+      submittedValues: submittedValues,
+    );
+  }
+
+  Future<AlgorithmRespecificationStatus> _observeRespecification(
+    IDistingMidiManager disting, {
+    required int slotIndex,
+    required String algorithmGuid,
+    required List<int> submittedValues,
+  }) async {
+    final deadlineReached = Completer<void>();
+    final deadlineTimer = Timer(_respecificationVerificationWindow, () {
+      deadlineReached.complete();
+    });
+
+    try {
+      await Future.any<void>([
+        Future<void>.delayed(_respecificationInitialSettleDelay),
+        deadlineReached.future,
+      ]);
+
+      while (!deadlineReached.isCompleted) {
+        try {
+          final readback = await Future.any<Algorithm?>([
+            disting.requestAlgorithmGuid(
+              slotIndex,
+              timeout: _respecificationRequestTimeout,
+              maxRetries: _respecificationRequestMaxRetries,
+            ),
+            deadlineReached.future.then<Algorithm?>((_) => null),
+          ]);
+          if (deadlineReached.isCompleted) {
+            return AlgorithmRespecificationStatus.unverifiable;
+          }
+
+          final isFreshTargetState =
+              readback != null &&
+              readback.algorithmIndex == slotIndex &&
+              readback.guid == algorithmGuid &&
+              readback.hasAuthoritativeSpecifications;
+          if (isFreshTargetState) {
+            return const ListEquality<int>().equals(
+                  readback.specifications,
+                  submittedValues,
+                )
+                ? AlgorithmRespecificationStatus.observedMatchingState
+                : AlgorithmRespecificationStatus.observedDifferingState;
+          }
+        } catch (_) {
+          if (deadlineReached.isCompleted) {
+            return AlgorithmRespecificationStatus.unverifiable;
+          }
+        }
+
+        await Future.any<void>([
+          Future<void>.delayed(_respecificationPollInterval),
+          deadlineReached.future,
+        ]);
+      }
+
+      return AlgorithmRespecificationStatus.unverifiable;
+    } finally {
+      deadlineTimer.cancel();
+    }
   }
 
   String _deriveOptimisticAlgorithmNameForAdd({

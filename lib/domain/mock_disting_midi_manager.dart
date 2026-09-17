@@ -814,7 +814,11 @@ class MockDistingMidiManager implements IDistingMidiManager {
   }
 
   @override
-  Future<Algorithm?> requestAlgorithmGuid(int algorithmIndex) async {
+  Future<Algorithm?> requestAlgorithmGuid(
+    int algorithmIndex, {
+    Duration? timeout,
+    int? maxRetries,
+  }) async {
     if (algorithmIndex >= 0 && algorithmIndex < _state.presetSlots.length) {
       // Ensure the returned algorithm's index matches the requested index,
       // as the internal state should have been updated by move operations.

@@ -221,7 +221,11 @@ final class _ShapeProbeManager implements IDistingMidiManager {
   /// Mirrors the firmware's algorithm-in-slot response, which carries the
   /// slot index, GUID and name but never the specification values.
   @override
-  Future<Algorithm?> requestAlgorithmGuid(int algorithmIndex) async {
+  Future<Algorithm?> requestAlgorithmGuid(
+    int algorithmIndex, {
+    Duration? timeout,
+    int? maxRetries,
+  }) async {
     if (algorithmIndex != 0 || _activeSpecifications == null) return null;
     return Algorithm(
       algorithmIndex: 0,
