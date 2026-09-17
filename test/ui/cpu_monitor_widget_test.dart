@@ -138,6 +138,28 @@ void main() {
     );
   });
 
+  testWidgets(
+    'System CPU status honors chat pause without taking polling ownership',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: BlocProvider<DistingCubit>.value(
+              value: cubit,
+              child: const CpuStatusPanel(paused: true),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Audio thread'), findsOneWidget);
+      expect(find.text('Overall CPU'), findsOneWidget);
+      expect(find.text('Monitoring paused'), findsNWidgets(2));
+      verifyNever(() => cubit.resumeCpuMonitoring());
+      verifyNever(() => cubit.pauseCpuMonitoring());
+    },
+  );
+
   testWidgets('pauses and hides while chat panel is open', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

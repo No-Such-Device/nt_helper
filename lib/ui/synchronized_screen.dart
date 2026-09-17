@@ -2946,80 +2946,88 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
   void _showSystemSubmenu(BuildContext context, DistingCubit cubit) {
     final supportsWaveCacheTroubleshooting =
         widget.firmwareVersion.hasWaveCacheListing;
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (dialogContext) => SimpleDialog(
-        title: const Row(
+      builder: (dialogContext) => BlocProvider<DistingCubit>.value(
+        value: cubit,
+        child: SimpleDialog(
+          title: Semantics(
+            header: true,
+            child: const Row(
+              children: [
+                Icon(Icons.settings_applications),
+                SizedBox(width: 8),
+                Expanded(child: Text('System')),
+              ],
+            ),
+          ),
           children: [
-            Icon(Icons.settings_applications),
-            SizedBox(width: 8),
-            Text('System'),
+            _SystemStatusSection(paused: _showChatPanel),
+            const Divider(key: ValueKey('system-status-actions-divider')),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                cubit.remountSd();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('SD card remount requested'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              child: const ListTile(
+                leading: Icon(Icons.sd_card),
+                title: Text('Remount SD Card'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: supportsWaveCacheTroubleshooting
+                  ? () {
+                      Navigator.of(dialogContext).pop();
+                      _showWaveCacheTroubleshooting(context, cubit);
+                    }
+                  : null,
+              child: ListTile(
+                enabled: supportsWaveCacheTroubleshooting,
+                leading: const Icon(Icons.troubleshoot),
+                title: const Text('Wave Cache Troubleshooting'),
+                subtitle: supportsWaveCacheTroubleshooting
+                    ? const Text('Find and reset corrupted WAV caches')
+                    : const Text('Requires firmware 1.17 or later'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _showRebootConfirmationDialog(context, cubit);
+              },
+              child: const ListTile(
+                leading: Icon(Icons.restart_alt),
+                title: Text('Reboot Device'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                cubit.refreshAlgorithms();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Rescanning algorithms...'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              child: const ListTile(
+                leading: Icon(Icons.refresh),
+                title: Text('Rescan Algorithms'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
           ],
         ),
-        children: [
-          SimpleDialogOption(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              cubit.remountSd();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('SD card remount requested'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            child: const ListTile(
-              leading: Icon(Icons.sd_card),
-              title: Text('Remount SD Card'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-          SimpleDialogOption(
-            onPressed: supportsWaveCacheTroubleshooting
-                ? () {
-                    Navigator.of(dialogContext).pop();
-                    _showWaveCacheTroubleshooting(context, cubit);
-                  }
-                : null,
-            child: ListTile(
-              enabled: supportsWaveCacheTroubleshooting,
-              leading: const Icon(Icons.troubleshoot),
-              title: const Text('Wave Cache Troubleshooting'),
-              subtitle: supportsWaveCacheTroubleshooting
-                  ? const Text('Find and reset corrupted WAV caches')
-                  : const Text('Requires firmware 1.17 or later'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-          SimpleDialogOption(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              _showRebootConfirmationDialog(context, cubit);
-            },
-            child: const ListTile(
-              leading: Icon(Icons.restart_alt),
-              title: Text('Reboot Device'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-          SimpleDialogOption(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              cubit.refreshAlgorithms();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Rescanning algorithms...'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            child: const ListTile(
-              leading: Icon(Icons.refresh),
-              title: Text('Rescan Algorithms'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -3313,6 +3321,59 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
     }
 
     return closest;
+  }
+}
+
+class _SystemStatusSection extends StatelessWidget {
+  const _SystemStatusSection({required this.paused});
+
+  final bool paused;
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<DistingCubit>();
+
+    return Padding(
+      key: const ValueKey('system-status-section'),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              'Status',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          const SizedBox(height: 12),
+          CpuStatusPanel(paused: paused),
+          BlocBuilder<DistingCubit, DistingState>(
+            builder: (context, state) {
+              if (!cubit.supportsMemoryUsage) {
+                return const SizedBox.shrink();
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: MemoryDetailOpeningHook(
+                  key: const ValueKey('system-memory-opening'),
+                  onOpened: cubit.refreshDisplayMemory,
+                  child: StreamBuilder(
+                    initialData: cubit.displayMemoryState,
+                    stream: cubit.displayMemoryStateStream,
+                    builder: (context, snapshot) => MemoryDetailPresenter(
+                      key: const ValueKey('system-memory-status'),
+                      state: snapshot.data ?? cubit.displayMemoryState,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
 

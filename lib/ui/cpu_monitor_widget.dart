@@ -208,3 +208,151 @@ class _CpuMonitorWidgetState extends State<CpuMonitorWidget> {
     return buffer.toString().trim();
   }
 }
+
+/// Read-only CPU values for the System dialog.
+///
+/// This surface listens to the existing CPU stream, so it shares the cubit's
+/// listener-driven polling, retry and backoff behavior. It deliberately does
+/// not call the explicit pause/resume methods owned by the persistent bottom
+/// bar; opening or closing the dialog therefore cannot pause another visible
+/// CPU consumer.
+class CpuStatusPanel extends StatefulWidget {
+  const CpuStatusPanel({super.key, this.paused = false});
+
+  final bool paused;
+
+  @override
+  State<CpuStatusPanel> createState() => _CpuStatusPanelState();
+}
+
+class _CpuStatusPanelState extends State<CpuStatusPanel> {
+  CpuUsage? _lastCpuUsage;
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<DistingCubit>();
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: SettingsService().cpuMonitorEnabledNotifier,
+      builder: (context, cpuMonitorEnabled, _) {
+        if (!cpuMonitorEnabled) {
+          return const _CpuStatusReadings(status: 'Monitoring disabled');
+        }
+        if (widget.paused) {
+          return const _CpuStatusReadings(status: 'Monitoring paused');
+        }
+
+        return BlocBuilder<DistingCubit, DistingState>(
+          buildWhen: (previous, current) {
+            final previousIsLive =
+                previous is DistingStateSynchronized &&
+                !previous.offline &&
+                !previous.demo;
+            final currentIsLive =
+                current is DistingStateSynchronized &&
+                !current.offline &&
+                !current.demo;
+            return previousIsLive != currentIsLive;
+          },
+          builder: (context, state) {
+            final isLive =
+                state is DistingStateSynchronized &&
+                !state.offline &&
+                !state.demo;
+            if (!isLive) {
+              return const _CpuStatusReadings(status: 'Unavailable');
+            }
+
+            return StreamBuilder<CpuUsage?>(
+              stream: cubit.cpuUsageStream,
+              builder: (context, snapshot) {
+                final currentCpuUsage = snapshot.data;
+                if (currentCpuUsage != null) {
+                  _lastCpuUsage = currentCpuUsage;
+                }
+                return _CpuStatusReadings(
+                  usage: currentCpuUsage ?? _lastCpuUsage,
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _CpuStatusReadings extends StatelessWidget {
+  const _CpuStatusReadings({this.usage, this.status = 'Waiting for sample'});
+
+  final CpuUsage? usage;
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final valueStyle = theme.textTheme.bodyMedium?.copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    final statusStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      label: usage == null
+          ? 'CPU status: $status'
+          : 'CPU status: Audio thread ${usage!.cpu1}%, Overall CPU ${usage!.cpu2}%',
+      child: Column(
+        key: const ValueKey('system-cpu-status'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            header: true,
+            child: Text('CPU', style: theme.textTheme.titleSmall),
+          ),
+          const SizedBox(height: 4),
+          _CpuStatusRow(
+            label: 'Audio thread',
+            value: usage == null ? status : '${usage!.cpu1}%',
+            valueStyle: usage == null ? statusStyle : valueStyle,
+          ),
+          _CpuStatusRow(
+            label: 'Overall CPU',
+            value: usage == null ? status : '${usage!.cpu2}%',
+            valueStyle: usage == null ? statusStyle : valueStyle,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CpuStatusRow extends StatelessWidget {
+  const _CpuStatusRow({
+    required this.label,
+    required this.value,
+    required this.valueStyle,
+  });
+
+  final String label;
+  final String value;
+  final TextStyle? valueStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(label)),
+          const SizedBox(width: 16),
+          Flexible(
+            child: Text(value, textAlign: TextAlign.end, style: valueStyle),
+          ),
+        ],
+      ),
+    );
+  }
+}
