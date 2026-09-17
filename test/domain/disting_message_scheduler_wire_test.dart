@@ -5,7 +5,9 @@ import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/domain/disting_message_scheduler.dart';
+import 'package:nt_helper/domain/disting_midi_manager.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/domain/request_key.dart';
 
 // ---------------------------------------------------------------------------
@@ -1060,6 +1062,102 @@ void main() {
       final result = await future;
       expect(result, isNotNull);
     });
+  });
+
+  group('Respecify manager/scheduler wire contract', () {
+    const configuredSysExId = 0x2A;
+    late MockMidiCommand midi;
+    late StreamController<MidiPacket> incoming;
+    late MidiDevice device;
+    late IDistingMidiManager manager;
+
+    setUp(() {
+      midi = MockMidiCommand();
+      incoming = StreamController<MidiPacket>.broadcast();
+      device = _makeDevice('respecify-test-device');
+      when(() => midi.onMidiPacketReceived).thenAnswer((_) => incoming.stream);
+      when(
+        () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
+      ).thenAnswer((_) {});
+      manager = DistingMidiManager(
+        midiCommand: midi,
+        inputDevice: device,
+        outputDevice: device,
+        sysExId: configuredSysExId,
+      );
+    });
+
+    tearDown(() async {
+      manager.dispose();
+      await incoming.close();
+    });
+
+    test(
+      'sends one configured-device mutation without awaiting an ack',
+      () async {
+        await manager.requestRespecifyAlgorithm(2, const [
+          0,
+          8,
+          32767,
+          -32768,
+          -1,
+        ]);
+
+        final captured =
+            verify(
+                  () => midi.sendData(captureAny(), deviceId: device.id),
+                ).captured.single
+                as Uint8List;
+        expect(captured, [
+          0xF0,
+          0x00,
+          0x21,
+          0x27,
+          0x6D,
+          configuredSysExId,
+          0x3A,
+          0x02,
+          0x05,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
+          0x00,
+          0x08,
+          0x01,
+          0x7F,
+          0x7F,
+          0x02,
+          0x00,
+          0x00,
+          0x03,
+          0x7F,
+          0x7F,
+          0xF7,
+        ]);
+      },
+    );
+
+    test(
+      'propagates a send error after exactly one mutation attempt',
+      () async {
+        when(
+          () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
+        ).thenThrow(StateError('send failed'));
+
+        await expectLater(
+          manager.requestRespecifyAlgorithm(2, const [8]),
+          throwsA(
+            isA<StateError>().having(
+              (error) => error.message,
+              'message',
+              contains('Failed to send request after 1 attempts'),
+            ),
+          ),
+        );
+        verify(() => midi.sendData(any(), deviceId: device.id)).called(1);
+      },
+    );
   });
 
   group('Wire coexistence — Stress/integration', () {

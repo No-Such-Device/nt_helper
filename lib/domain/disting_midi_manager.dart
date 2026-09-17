@@ -19,6 +19,7 @@ import 'package:nt_helper/domain/sysex/requests/load_preset.dart';
 import 'package:nt_helper/domain/sysex/requests/move_algorithm.dart';
 import 'package:nt_helper/domain/sysex/requests/new_preset.dart';
 import 'package:nt_helper/domain/sysex/requests/remove_algorithm.dart';
+import 'package:nt_helper/domain/sysex/requests/respecify_algorithm.dart';
 import 'package:nt_helper/domain/sysex/requests/request_all_parameter_values.dart';
 import 'package:nt_helper/domain/sysex/requests/request_algorithm_guid.dart';
 import 'package:nt_helper/domain/sysex/requests/request_algorithm_info.dart';
@@ -83,7 +84,8 @@ class DistingMidiManager
     implements
         IDistingMidiManager,
         SlotCountInfoProvider,
-        AlgorithmVisualStyleWriter {
+        AlgorithmVisualStyleWriter,
+        AlgorithmRespecificationWriter {
   // Implement interface
   final DistingMessageScheduler _scheduler;
   final int sysExId;
@@ -662,6 +664,27 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+    );
+  }
+
+  @override
+  Future<void> requestRespecifyAlgorithm(
+    int algorithmIndex,
+    List<int> specifications,
+  ) {
+    final message = RespecifyAlgorithmMessage(
+      sysExId: sysExId,
+      algorithmIndex: algorithmIndex,
+      specifications: specifications,
+    );
+    final packet = message.encode();
+    final key = RequestKey(sysExId: sysExId);
+
+    return _scheduler.sendRequest<void>(
+      packet,
+      key,
+      responseExpectation: ResponseExpectation.none,
+      maxRetries: 1,
     );
   }
 

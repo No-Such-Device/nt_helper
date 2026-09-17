@@ -28,6 +28,14 @@ abstract interface class AlgorithmVisualStyleWriter {
   );
 }
 
+/// Optional live-MIDI capability for respecifying an occupied slot.
+abstract interface class AlgorithmRespecificationWriter {
+  Future<void> requestRespecifyAlgorithm(
+    int algorithmIndex,
+    List<int> specifications,
+  );
+}
+
 /// Abstract interface for Disting MIDI communication.
 /// Allows for mocking or different implementations.
 abstract class IDistingMidiManager {
@@ -219,6 +227,24 @@ extension AlgorithmVisualStyleRequest on IDistingMidiManager {
     }
     return Future<void>.error(
       UnsupportedError('Algorithm visual styling requires live MIDI'),
+    );
+  }
+}
+
+/// Exposes respecification without requiring mock and offline managers to
+/// implement or simulate a live device mutation.
+extension AlgorithmRespecificationRequest on IDistingMidiManager {
+  Future<void> requestRespecifyAlgorithm(
+    int algorithmIndex,
+    List<int> specifications,
+  ) {
+    final manager = this;
+    if (manager is AlgorithmRespecificationWriter) {
+      return (manager as AlgorithmRespecificationWriter)
+          .requestRespecifyAlgorithm(algorithmIndex, specifications);
+    }
+    return Future<void>.error(
+      UnsupportedError('Algorithm respecification requires live MIDI'),
     );
   }
 }

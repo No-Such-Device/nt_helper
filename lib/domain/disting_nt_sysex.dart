@@ -575,6 +575,7 @@ enum DistingNTRequestMessageType {
   moveAlgorithm(0x37),
   loadPlugin(0x38),
   requestMemoryUsage(0x39),
+  respecifyAlgorithm(0x3A),
   requestAlgorithm(0x40),
   requestPresetName(0x41),
   requestNumParameters(0x42),
