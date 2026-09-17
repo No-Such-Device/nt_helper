@@ -25,10 +25,9 @@ const String _kLastFirmwareDirectoryKey = 'last_firmware_directory';
 
 typedef LocalFirmwareFilePicker = Future<String?> Function();
 
-/// Injectable firmware I/O used by focused screen tests.
+/// Injectable firmware I/O boundary.
 ///
 /// Production callers omit this and retain the platform service defaults.
-@visibleForTesting
 class FirmwareUpdateScreenDependencies {
   final FirmwareVersionService firmwareVersionService;
   final FlashToolManager flashToolManager;

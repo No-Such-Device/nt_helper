@@ -187,7 +187,10 @@ class _DistingAppState extends State<DistingApp> {
 }
 
 class DistingPage extends StatefulWidget {
-  const DistingPage({super.key});
+  @visibleForTesting
+  final FirmwareUpdateScreenDependencies? firmwareUpdateDependencies;
+
+  const DistingPage({super.key, this.firmwareUpdateDependencies});
 
   @override
   State<DistingPage> createState() => _DistingPageState();
@@ -361,6 +364,7 @@ class _DistingPageState extends State<DistingPage> {
                               inputDevice: inputDevice,
                               outputDevice: outputDevice,
                               sysExId: sysExId,
+                              dependencies: widget.firmwareUpdateDependencies,
                             ),
                           ),
                         );
