@@ -1,3 +1,6 @@
+import 'package:nt_helper/models/algorithm_respecification.dart'
+    show ownerProvidedRespecifyMinimumFirmwareVersion;
+
 class FirmwareVersion {
   final String versionString;
   final String? date;
@@ -44,6 +47,15 @@ class FirmwareVersion {
   /// Firmware 1.19+ supports device memory queries via SysEx 0x39.
   bool get hasMemoryUsage {
     return isSupported('1.19.0');
+  }
+
+  /// The owner-provided firmware threshold for in-place respecification.
+  ///
+  /// Public upstream sources have not independently published this minimum.
+  /// Numeric comparison intentionally admits 1.19beta and 1.19.0beta while
+  /// rejecting every earlier numeric firmware line.
+  bool get hasAlgorithmRespecification {
+    return isSupported(ownerProvidedRespecifyMinimumFirmwareVersion);
   }
 
   /// Firmware 1.15+ supports entering bootloader mode via SysEx.

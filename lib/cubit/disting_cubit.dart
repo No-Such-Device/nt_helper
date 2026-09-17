@@ -575,6 +575,15 @@ class DistingCubit extends _DistingCubitBase
     return respecifyAlgorithmImpl(slotIndex, proposedSpecifications);
   }
 
+  /// Submits values from an already-open editor while binding the mutation to
+  /// the slot and algorithm identity that editor was prepared for.
+  Future<AlgorithmRespecificationStatus> respecifyPreparedAlgorithm(
+    PreparedAlgorithmRespecification preparation,
+    List<Object?> proposedSpecifications,
+  ) {
+    return _respecifyPreparedAlgorithmImpl(preparation, proposedSpecifications);
+  }
+
   void renamePreset(String newName) {
     renamePresetAndSave(newName).ignore();
   }

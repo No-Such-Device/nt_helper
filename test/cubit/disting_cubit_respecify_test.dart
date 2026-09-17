@@ -27,6 +27,8 @@ class _MockAppDatabase extends Mock implements AppDatabase {}
 
 class _MockMetadataDao extends Mock implements MetadataDao {}
 
+class _NonWritingManager extends Mock implements IDistingMidiManager {}
+
 final class _TestDistingCubit extends DistingCubit {
   _TestDistingCubit(
     super.database, {
@@ -1773,10 +1775,12 @@ void main() {
       final ineligibleStates = <DistingState>[
         const DistingState.initial(),
         DistingState.connected(disting: manager),
-        _synchronizedState(manager, firmware: '1.18.9'),
+        _synchronizedState(manager, firmware: '1.9.999beta'),
+        _synchronizedState(manager, firmware: '1.18.100beta'),
         _synchronizedState(manager, firmware: 'unknown'),
         _synchronizedState(manager, offline: true),
         _synchronizedState(manager, demo: true),
+        _synchronizedState(_NonWritingManager(), firmware: '1.19beta'),
       ];
 
       for (final ineligibleState in ineligibleStates) {
@@ -1790,6 +1794,97 @@ void main() {
       expect(ownerProvidedRespecifyMinimumFirmwareVersion, '1.19.0');
       expect(manager.mutationCommands, isEmpty);
       expect(manager.memoryRequests, 0);
+    },
+  );
+
+  test('admits owner-provided 1.19 beta spellings and later firmware', () {
+    final manager = _RecordingManager();
+
+    for (final firmware in [
+      '1.19beta',
+      '1.19.0beta',
+      '1.19.0',
+      '1.20beta',
+      '2.0',
+    ]) {
+      cubit.emit(_synchronizedState(manager, firmware: firmware));
+      expect(
+        cubit.prepareAlgorithmRespecification(2).algorithmGuid,
+        'TEST',
+        reason: firmware,
+      );
+    }
+  });
+
+  test(
+    'rejects algorithms without editable specifications before mutation',
+    () async {
+      final manager = _RecordingManager();
+      final emptyAlgorithm = Algorithm(
+        algorithmIndex: 2,
+        guid: 'NONE',
+        name: 'No specifications',
+        specifications: const [],
+        hasAuthoritativeSpecifications: true,
+      );
+      final emptyMetadata = AlgorithmInfo(
+        algorithmIndex: 42,
+        guid: 'NONE',
+        name: 'No specifications',
+        specifications: const [],
+      );
+      cubit.emit(
+        _synchronizedState(
+          manager,
+          selectedAlgorithm: emptyAlgorithm,
+          algorithms: [emptyMetadata],
+        ),
+      );
+
+      expect(
+        () => cubit.prepareAlgorithmRespecification(2),
+        throwsA(isA<AlgorithmRespecificationException>()),
+      );
+      await expectLater(
+        cubit.respecifyAlgorithm(2, const []),
+        throwsA(isA<AlgorithmRespecificationException>()),
+      );
+      expect(manager.mutationCommands, isEmpty);
+    },
+  );
+
+  test(
+    'prepared submission rejects a changed target before mutation',
+    () async {
+      final manager = _RecordingManager();
+      cubit.emit(_synchronizedState(manager));
+      final preparation = cubit.prepareAlgorithmRespecification(2);
+      final replacementAlgorithm = Algorithm(
+        algorithmIndex: 2,
+        guid: 'NEXT',
+        name: 'Replacement',
+        specifications: const [-1, 8],
+        hasAuthoritativeSpecifications: true,
+      );
+      final replacementMetadata = AlgorithmInfo(
+        algorithmIndex: 18,
+        guid: 'NEXT',
+        name: 'Replacement',
+        specifications: _fixtureAlgorithmInfo().specifications,
+      );
+      cubit.emit(
+        _synchronizedState(
+          manager,
+          selectedAlgorithm: replacementAlgorithm,
+          algorithms: [replacementMetadata],
+        ),
+      );
+
+      await expectLater(
+        cubit.respecifyPreparedAlgorithm(preparation, const [1, 12]),
+        throwsA(isA<AlgorithmRespecificationException>()),
+      );
+      expect(manager.mutationCommands, isEmpty);
     },
   );
 }

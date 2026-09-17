@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
+import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/models/algorithm_respecification.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/ui/algorithm_documentation_screen.dart';
 import 'package:nt_helper/ui/reset_outputs_dialog.dart';
+import 'package:nt_helper/ui/widgets/algorithm_specification_dialog.dart';
 import 'package:nt_helper/ui/widgets/algorithm_style_button.dart';
 import 'package:nt_helper/ui/widgets/slot_bypass_control.dart';
 
@@ -63,6 +68,7 @@ class SlotEditorActionBar extends StatelessWidget {
               slot.algorithm.guid,
             );
             final isHelpAvailable = metadata != null;
+            final respecification = _tryPrepareRespecification(context);
             return <PopupMenuEntry<String>>[
               if (isHelpAvailable)
                 PopupMenuItem(
@@ -84,6 +90,20 @@ class SlotEditorActionBar extends StatelessWidget {
                   ),
                 ),
               if (isHelpAvailable) const PopupMenuDivider(),
+              if (respecification != null)
+                PopupMenuItem(
+                  key: const ValueKey('slot-editor-respecify'),
+                  value: 'Respecify',
+                  onTap: () {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!context.mounted) return;
+                      unawaited(
+                        _showRespecificationDialog(context, respecification),
+                      );
+                    });
+                  },
+                  child: const Text('Respecify...'),
+                ),
               PopupMenuItem(
                 value: 'Reset Outputs',
                 onTap: () {
@@ -141,6 +161,55 @@ class SlotEditorActionBar extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  PreparedAlgorithmRespecification? _tryPrepareRespecification(
+    BuildContext context,
+  ) {
+    try {
+      return context.read<DistingCubit>().prepareAlgorithmRespecification(
+        slot.algorithm.algorithmIndex,
+      );
+    } on AlgorithmRespecificationException {
+      return null;
+    }
+  }
+
+  Future<void> _showRespecificationDialog(
+    BuildContext context,
+    PreparedAlgorithmRespecification preparation,
+  ) async {
+    final algorithm = AlgorithmInfo(
+      algorithmIndex: preparation.slotIndex,
+      name: preparation.algorithmName,
+      guid: preparation.algorithmGuid,
+      specifications: preparation.specifications
+          .map((specification) => specification.metadata)
+          .toList(growable: false),
+    );
+    final proposedSpecifications = await AlgorithmSpecificationDialog.show(
+      context: context,
+      algorithm: algorithm,
+      initialValues: preparation.specifications
+          .map((specification) => specification.currentValue)
+          .toList(growable: false),
+      readOnly: false,
+      title: 'Respecify ${preparation.algorithmName}',
+      primaryActionLabel: 'Respecify',
+    );
+    if (proposedSpecifications == null || !context.mounted) return;
+
+    try {
+      await context.read<DistingCubit>().respecifyPreparedAlgorithm(
+        preparation,
+        proposedSpecifications,
+      );
+    } on AlgorithmRespecificationException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   bool _canEditAlgorithmStyle(BuildContext context) {

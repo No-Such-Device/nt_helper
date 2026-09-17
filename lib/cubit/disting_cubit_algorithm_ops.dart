@@ -75,9 +75,7 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
         'Respecify is unavailable in offline and demo modes.',
       );
     }
-    if (!currentState.firmwareVersion.isSupported(
-      ownerProvidedRespecifyMinimumFirmwareVersion,
-    )) {
+    if (!currentState.firmwareVersion.hasAlgorithmRespecification) {
       throw const AlgorithmRespecificationException(
         'Respecify requires confirmed firmware 1.19 beta or later.',
       );
@@ -127,6 +125,11 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
 
     final metadata = matchingMetadata.single.specifications;
     final currentValues = algorithm.specifications;
+    if (metadata.isEmpty) {
+      throw const AlgorithmRespecificationException(
+        'The selected algorithm has no editable specifications.',
+      );
+    }
     if (metadata.length != currentValues.length || metadata.length > 0x7F) {
       throw const AlgorithmRespecificationException(
         'Algorithm specification metadata does not match the current slot.',
@@ -180,6 +183,25 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
     int slotIndex,
     List<Object?> proposedSpecifications,
   ) {
+    return _startRespecification(slotIndex, proposedSpecifications);
+  }
+
+  Future<AlgorithmRespecificationStatus> _respecifyPreparedAlgorithmImpl(
+    PreparedAlgorithmRespecification preparation,
+    List<Object?> proposedSpecifications,
+  ) {
+    return _startRespecification(
+      preparation.slotIndex,
+      proposedSpecifications,
+      expectedAlgorithmGuid: preparation.algorithmGuid,
+    );
+  }
+
+  Future<AlgorithmRespecificationStatus> _startRespecification(
+    int slotIndex,
+    List<Object?> proposedSpecifications, {
+    String? expectedAlgorithmGuid,
+  }) {
     if (_respecificationOperation != null) {
       return Future<AlgorithmRespecificationStatus>.error(
         const AlgorithmRespecificationException(
@@ -189,8 +211,12 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
     }
 
     late final Future<AlgorithmRespecificationStatus> guardedOperation;
-    guardedOperation = _runRespecification(slotIndex, proposedSpecifications)
-        .whenComplete(() {
+    guardedOperation =
+        _runRespecification(
+          slotIndex,
+          proposedSpecifications,
+          expectedAlgorithmGuid: expectedAlgorithmGuid,
+        ).whenComplete(() {
           if (identical(_respecificationOperation, guardedOperation)) {
             _respecificationOperation = null;
           }
@@ -201,13 +227,20 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
 
   Future<AlgorithmRespecificationStatus> _runRespecification(
     int slotIndex,
-    List<Object?> proposedSpecifications,
-  ) async {
+    List<Object?> proposedSpecifications, {
+    String? expectedAlgorithmGuid,
+  }) async {
     final currentState = _requireRespecificationState();
     final preparation = _prepareAlgorithmRespecification(
       currentState,
       slotIndex,
     );
+    if (expectedAlgorithmGuid != null &&
+        preparation.algorithmGuid != expectedAlgorithmGuid) {
+      throw const AlgorithmRespecificationException(
+        'The selected slot changed before respecification was submitted.',
+      );
+    }
     if (proposedSpecifications.length != preparation.specifications.length) {
       throw const AlgorithmRespecificationException(
         'The proposed specification count does not match the current slot.',

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nt_helper/models/algorithm_respecification.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 
 void main() {
@@ -85,6 +86,46 @@ void main() {
       expect(FirmwareVersion('1.19.0-beta.2').hasMemoryUsage, true);
       expect(FirmwareVersion('1.19.0').hasMemoryUsage, true);
       expect(FirmwareVersion('2.0').hasMemoryUsage, true);
+    });
+  });
+
+  group('FirmwareVersion.hasAlgorithmRespecification', () {
+    test('uses the owner-provided 1.19.0 minimum', () {
+      expect(ownerProvidedRespecifyMinimumFirmwareVersion, '1.19.0');
+    });
+
+    test('admits 1.19 beta spellings and later numeric versions', () {
+      for (final version in [
+        '1.19beta',
+        '1.19.0beta',
+        '1.19.0-beta.2',
+        '1.19.0',
+        '1.20beta',
+        '2.0',
+      ]) {
+        expect(
+          FirmwareVersion(version).hasAlgorithmRespecification,
+          isTrue,
+          reason: version,
+        );
+      }
+    });
+
+    test('rejects unknown and every tested earlier numeric version', () {
+      for (final version in [
+        '',
+        'unknown',
+        '1.9.999beta',
+        '1.18.99',
+        '1.18.100beta',
+        '0.99',
+      ]) {
+        expect(
+          FirmwareVersion(version).hasAlgorithmRespecification,
+          isFalse,
+          reason: version,
+        );
+      }
     });
   });
 }
