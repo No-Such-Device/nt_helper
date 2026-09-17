@@ -275,10 +275,12 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
             if (verified.slots[newSlotIndex] != placeholder) return;
 
             final hydrated =
-                fetched.algorithm.guid == placeholder.algorithm.guid
+                fetched.algorithm.guid == placeholder.algorithm.guid &&
+                    !fetched.algorithm.hasAuthoritativeSpecifications
                 ? fetched.copyWith(
                     algorithm: fetched.algorithm.copyWith(
                       specifications: placeholder.algorithm.specifications,
+                      hasAuthoritativeSpecifications: false,
                     ),
                   )
                 : fetched;

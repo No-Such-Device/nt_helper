@@ -47,7 +47,10 @@ mixin _DistingCubitPresetOps on _DistingCubitBase {
         slots: [
           for (final slot in currentState.slots)
             slot.copyWith(
-              algorithm: slot.algorithm.copyWith(specifications: const []),
+              algorithm: slot.algorithm.copyWith(
+                specifications: const [],
+                hasAuthoritativeSpecifications: false,
+              ),
             ),
         ],
       ),

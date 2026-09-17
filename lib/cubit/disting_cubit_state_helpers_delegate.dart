@@ -25,6 +25,7 @@ class _StateHelpersDelegate {
         refreshedSlot.algorithm.algorithmIndex != slotIndex ||
         previousSlot.algorithm.guid != refreshedSlot.algorithm.guid ||
         previousSpecifications.isEmpty ||
+        refreshedSlot.algorithm.hasAuthoritativeSpecifications ||
         refreshedSlot.algorithm.specifications.isNotEmpty) {
       return refreshedSlot;
     }
@@ -39,6 +40,7 @@ class _StateHelpersDelegate {
     return refreshedSlot.copyWith(
       algorithm: refreshedSlot.algorithm.copyWith(
         specifications: List<int>.unmodifiable(previousSpecifications),
+        hasAuthoritativeSpecifications: false,
       ),
     );
   }
@@ -82,7 +84,10 @@ class _StateHelpersDelegate {
       }
 
       final targetSlot = updatedSlots[targetSlotIndex];
-      if (targetSlot.algorithm.guid != sourceSlot.algorithm.guid) continue;
+      if (targetSlot.algorithm.guid != sourceSlot.algorithm.guid ||
+          targetSlot.algorithm.hasAuthoritativeSpecifications) {
+        continue;
+      }
       if (const ListEquality<int>().equals(
         targetSlot.algorithm.specifications,
         sourceSlot.specificationValues,
@@ -95,6 +100,7 @@ class _StateHelpersDelegate {
           specifications: List<int>.unmodifiable(
             sourceSlot.specificationValues,
           ),
+          hasAuthoritativeSpecifications: false,
         ),
       );
       changed = true;

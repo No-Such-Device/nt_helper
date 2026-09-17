@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/db/daos/metadata_dao.dart';
+import 'package:nt_helper/db/daos/presets_dao.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
@@ -360,6 +361,26 @@ void main() {
   });
 
   group('cubit algorithm ops', () {
+    FullPresetSlot cachedQuantizerSlot(List<int> specificationValues) {
+      return FullPresetSlot(
+        slot: const PresetSlotEntry(
+          id: 1,
+          presetId: 1,
+          slotIndex: 0,
+          algorithmGuid: 'quan',
+        ),
+        algorithm: const AlgorithmEntry(
+          guid: 'quan',
+          name: 'Quantizer',
+          numSpecifications: 1,
+        ),
+        specificationValues: specificationValues,
+        parameterValues: const {},
+        parameterStringValues: const {},
+        mappings: const {},
+      );
+    }
+
     test(
       'refresh preserves known specifications for the same preset slot',
       () async {
@@ -395,6 +416,51 @@ void main() {
 
         final state = cubit.state as DistingStateSynchronized;
         expect(state.slots.single.algorithm.specifications, const [4]);
+        expect(
+          state.slots.single.algorithm.hasAuthoritativeSpecifications,
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'refresh does not replace an authoritative empty specification list',
+      () async {
+        final quantizerSlot = makeSlot().copyWith(
+          algorithm: Algorithm(
+            algorithmIndex: 0,
+            guid: 'quan',
+            name: 'Quantizer',
+            specifications: const [4],
+          ),
+        );
+        when(
+          () => mockDisting.requestNumAlgorithmsInPreset(),
+        ).thenAnswer((_) async => 1);
+        when(
+          () => mockDisting.requestPresetName(),
+        ).thenAnswer((_) async => 'Test Preset');
+        when(
+          () => mockDisting.requestNumberOfAlgorithms(),
+        ).thenAnswer((_) async => 0);
+        cubit.fetchSlotsOverride = (_, _) async => [
+          quantizerSlot.copyWith(
+            algorithm: Algorithm(
+              algorithmIndex: 0,
+              guid: 'quan',
+              name: 'Quantizer',
+              hasAuthoritativeSpecifications: true,
+            ),
+          ),
+        ];
+
+        cubit.emit(makeSyncState(slots: [quantizerSlot]));
+        await cubit.refresh();
+
+        final algorithm =
+            (cubit.state as DistingStateSynchronized).slots.single.algorithm;
+        expect(algorithm.specifications, isEmpty);
+        expect(algorithm.hasAuthoritativeSpecifications, isTrue);
       },
     );
 
@@ -490,6 +556,7 @@ void main() {
               guid: 'quan',
               name: 'Quantizer',
               specifications: const [8],
+              hasAuthoritativeSpecifications: true,
             ),
           ),
         ];
@@ -499,8 +566,66 @@ void main() {
 
         final state = cubit.state as DistingStateSynchronized;
         expect(state.slots.single.algorithm.specifications, const [8]);
+        expect(
+          state.slots.single.algorithm.hasAuthoritativeSpecifications,
+          isTrue,
+        );
       },
     );
+
+    test(
+      'cached preset values do not replace authoritative empty readback',
+      () {
+        final authoritativeEmptySlot = makeSlot().copyWith(
+          algorithm: Algorithm(
+            algorithmIndex: 0,
+            guid: 'quan',
+            name: 'Quantizer',
+            hasAuthoritativeSpecifications: true,
+          ),
+        );
+        cubit.emit(makeSyncState(slots: [authoritativeEmptySlot]));
+
+        cubit.restoreSlotSpecificationValues(
+          [
+            cachedQuantizerSlot(const [4]),
+          ],
+          startingSlotIndex: 0,
+          expectedDisting: mockDisting,
+          expectedPresetName: 'Test Preset',
+        );
+
+        final algorithm =
+            (cubit.state as DistingStateSynchronized).slots.single.algorithm;
+        expect(algorithm.specifications, isEmpty);
+        expect(algorithm.hasAuthoritativeSpecifications, isTrue);
+      },
+    );
+
+    test('restored cached preset values remain non-authoritative', () {
+      final unreadSlot = makeSlot().copyWith(
+        algorithm: Algorithm(
+          algorithmIndex: 0,
+          guid: 'quan',
+          name: 'Quantizer',
+        ),
+      );
+      cubit.emit(makeSyncState(slots: [unreadSlot]));
+
+      cubit.restoreSlotSpecificationValues(
+        [
+          cachedQuantizerSlot(const [4]),
+        ],
+        startingSlotIndex: 0,
+        expectedDisting: mockDisting,
+        expectedPresetName: 'Test Preset',
+      );
+
+      final algorithm =
+          (cubit.state as DistingStateSynchronized).slots.single.algorithm;
+      expect(algorithm.specifications, const [4]);
+      expect(algorithm.hasAuthoritativeSpecifications, isFalse);
+    });
 
     test('late refresh does not overwrite newer specification state', () async {
       final fetchedSlots = Completer<List<Slot>>();
@@ -838,6 +963,7 @@ void main() {
             guid: 'quan',
             name: 'Quantizer',
             specifications: const [4],
+            hasAuthoritativeSpecifications: true,
           ),
         );
         when(
@@ -864,6 +990,10 @@ void main() {
 
         final state = cubit.state as DistingStateSynchronized;
         expect(state.slots.single.algorithm.specifications, isEmpty);
+        expect(
+          state.slots.single.algorithm.hasAuthoritativeSpecifications,
+          isFalse,
+        );
       },
     );
 
@@ -1081,7 +1211,62 @@ void main() {
 
       final state = cubit.state as DistingStateSynchronized;
       expect(state.slots.single.algorithm.specifications, const [4]);
+      expect(
+        state.slots.single.algorithm.hasAuthoritativeSpecifications,
+        isFalse,
+      );
     });
+
+    test(
+      'slot hydration does not replace authoritative empty readback',
+      () async {
+        final algorithmInfo = AlgorithmInfo(
+          algorithmIndex: 0,
+          name: 'Quantizer',
+          guid: 'quan',
+          specifications: [
+            Specification(
+              name: 'Channels',
+              min: 1,
+              max: 12,
+              defaultValue: 1,
+              type: 0,
+            ),
+          ],
+        );
+        final fetchedSlot = Completer<Slot>();
+        when(
+          () => mockDisting.requestAddAlgorithm(any(), any()),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockDisting.requestNumAlgorithmsInPreset(
+            timeout: any(named: 'timeout'),
+            maxRetries: any(named: 'maxRetries'),
+          ),
+        ).thenAnswer((_) async => 1);
+        cubit.fetchSlotOverride = (_, _) => fetchedSlot.future;
+
+        cubit.emit(makeSyncState());
+        await cubit.onAlgorithmSelected(algorithmInfo, const [4]);
+        fetchedSlot.complete(
+          makeSlot().copyWith(
+            algorithm: Algorithm(
+              algorithmIndex: 0,
+              guid: 'quan',
+              name: 'Quantizer',
+              hasAuthoritativeSpecifications: true,
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        final algorithm =
+            (cubit.state as DistingStateSynchronized).slots.single.algorithm;
+        expect(algorithm.specifications, isEmpty);
+        expect(algorithm.hasAuthoritativeSpecifications, isTrue);
+      },
+    );
 
     test('onAlgorithmSelected can add bypassed immediately', () async {
       final algorithmInfo = AlgorithmInfo(

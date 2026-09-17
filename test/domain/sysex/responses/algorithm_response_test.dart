@@ -34,6 +34,8 @@ void main() {
           bracket: AlgorithmVisualBracket.openAndClose,
         ),
       );
+      expect(algorithm.specifications, isEmpty);
+      expect(algorithm.hasAuthoritativeSpecifications, isFalse);
     });
 
     test('keeps legacy responses without a style block compatible', () {
@@ -43,6 +45,8 @@ void main() {
 
       expect(algorithm.name, 'Legacy');
       expect(algorithm.visualStyle, isNull);
+      expect(algorithm.specifications, isEmpty);
+      expect(algorithm.hasAuthoritativeSpecifications, isFalse);
     });
 
     test('parses style after a full 24-byte name without a terminator', () {
@@ -69,6 +73,7 @@ void main() {
           bracket: AlgorithmVisualBracket.close,
         ),
       );
+      expect(algorithm.hasAuthoritativeSpecifications, isFalse);
     });
 
     test('ignores unsupported or truncated style versions', () {
@@ -88,6 +93,101 @@ void main() {
 
         expect(algorithm.name, 'Safe');
         expect(algorithm.visualStyle, isNull);
+        expect(algorithm.specifications, isEmpty);
+        expect(algorithm.hasAuthoritativeSpecifications, isFalse);
+      }
+    });
+
+    test('parses ordered variable-count signed specification values', () {
+      final algorithm = AlgorithmResponse(
+        Uint8List.fromList([
+          2,
+          ...'SPEC'.codeUnits,
+          ...'Extended'.codeUnits,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          4,
+          0x00,
+          0x00,
+          0x00,
+          0x01,
+          0x7F,
+          0x7F,
+          0x02,
+          0x00,
+          0x00,
+          0x03,
+          0x7F,
+          0x7F,
+        ]),
+      ).parse();
+
+      expect(algorithm.specifications, const [0, 32767, -32768, -1]);
+      expect(algorithm.hasAuthoritativeSpecifications, isTrue);
+      expect(algorithm.visualStyle, const AlgorithmVisualStyle());
+    });
+
+    test('treats a valid zero count as authoritative readback', () {
+      final algorithm = AlgorithmResponse(
+        Uint8List.fromList([
+          0,
+          ...'TEST'.codeUnits,
+          ...'No specifications'.codeUnits,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+        ]),
+      ).parse();
+
+      expect(algorithm.specifications, isEmpty);
+      expect(algorithm.hasAuthoritativeSpecifications, isTrue);
+    });
+
+    test('rejects truncated, overlong, and noncanonical trailers', () {
+      for (final trailer in <List<int>>[
+        [1],
+        [1, 0x00, 0x00],
+        [1, 0x00, 0x00, 0x01, 0x00],
+        [1, 0x04, 0x00, 0x00],
+        [1, 0x00, 0x80, 0x00],
+      ]) {
+        final algorithm = AlgorithmResponse(
+          Uint8List.fromList([
+            0,
+            ...'TEST'.codeUnits,
+            ...'Malformed'.codeUnits,
+            0,
+            1,
+            2,
+            4,
+            1,
+            0,
+            4,
+            ...trailer,
+          ]),
+        ).parse();
+
+        expect(
+          algorithm.visualStyle,
+          const AlgorithmVisualStyle(
+            leftIndent: 2,
+            rightIndent: 4,
+            lineAbove: true,
+            bracket: AlgorithmVisualBracket.openAndClose,
+          ),
+        );
+        expect(algorithm.specifications, isEmpty);
+        expect(algorithm.hasAuthoritativeSpecifications, isFalse);
       }
     });
   });

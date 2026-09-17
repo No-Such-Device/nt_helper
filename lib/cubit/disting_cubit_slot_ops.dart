@@ -21,13 +21,7 @@ mixin _DistingCubitSlotOps on _DistingCubitBase {
       if (trimmed == currentAlgorithm.name) return;
 
       // 1) Optimistic update for instant UI response
-      final optimisticAlgorithm = Algorithm(
-        algorithmIndex: currentAlgorithm.algorithmIndex,
-        guid: currentAlgorithm.guid,
-        name: trimmed,
-        specifications: currentAlgorithm.specifications,
-        visualStyle: currentAlgorithm.visualStyle,
-      );
+      final optimisticAlgorithm = currentAlgorithm.copyWith(name: trimmed);
       final optimisticSlots = updateSlot(
         algorithmIndex,
         currentState.slots,

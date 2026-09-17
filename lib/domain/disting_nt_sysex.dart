@@ -483,6 +483,12 @@ class Algorithm {
   final String guid;
   final String name;
   final List<int> specifications;
+
+  /// Whether [specifications] came from a complete extended 0x40 response.
+  ///
+  /// Cached values may still be displayed when older firmware omits the
+  /// specification trailer, but they must not be treated as fresh readback.
+  final bool hasAuthoritativeSpecifications;
   final AlgorithmVisualStyle? visualStyle;
 
   Algorithm({
@@ -490,6 +496,7 @@ class Algorithm {
     required this.guid,
     required this.name,
     this.specifications = const [],
+    this.hasAuthoritativeSpecifications = false,
     this.visualStyle,
   });
 
@@ -497,6 +504,7 @@ class Algorithm {
     int? algorithmIndex,
     String? name,
     List<int>? specifications,
+    bool? hasAuthoritativeSpecifications,
     AlgorithmVisualStyle? visualStyle,
   }) {
     return Algorithm(
@@ -504,6 +512,8 @@ class Algorithm {
       guid: guid,
       name: name ?? this.name,
       specifications: specifications ?? this.specifications,
+      hasAuthoritativeSpecifications:
+          hasAuthoritativeSpecifications ?? this.hasAuthoritativeSpecifications,
       visualStyle: visualStyle ?? this.visualStyle,
     );
   }
