@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:clock/clock.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -13,8 +15,10 @@ import 'package:nt_helper/domain/memory_query_input.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/models/memory_display_state.dart';
 import 'package:nt_helper/models/memory_usage.dart';
+import 'package:nt_helper/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../test_helpers/memory_wire_harness.dart';
 import '../test_helpers/mock_midi_command.dart';
 
 class _MockAppDatabase extends Mock implements AppDatabase {}
@@ -72,6 +76,10 @@ final class _ControlledMemoryManager extends Mock
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  setUpAll(() {
+    registerFallbackValue(Uint8List(0));
+  });
+
   late _MockAppDatabase database;
   late _MockMetadataDao metadataDao;
   late MockMidiCommand midiCommand;
@@ -119,8 +127,12 @@ void main() {
     }
   }
 
-  setUp(() {
-    SharedPreferences.setMockInitialValues({});
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({
+      'request_timeout_ms': 10,
+      'inter_message_delay_ms': 0,
+    });
+    await SettingsService().init();
     database = _MockAppDatabase();
     metadataDao = _MockMetadataDao();
     midiCommand = MockMidiCommand();
@@ -197,6 +209,57 @@ void main() {
 
       expect(cubit.displayMemoryState.status, MemoryDisplayStatus.unavailable);
       expect(cubit.displayMemoryState.sample, isNull);
+    },
+  );
+
+  test(
+    'old wire response after former debt expiry is never cached as fresh',
+    () async {
+      var currentTime = DateTime.utc(2026);
+      await withClock(Clock(() => currentTime), () async {
+        final harness = MemoryWireHarness();
+        addTearDown(harness.close);
+        cubit.emit(synchronizedState(harness.manager));
+
+        final timedOutRefresh = cubit.refreshDisplayMemory();
+        await harness.waitForMemoryRequests(5);
+        await timedOutRefresh;
+        expect(
+          cubit.displayMemoryState.status,
+          MemoryDisplayStatus.unavailable,
+        );
+
+        currentTime = currentTime.add(const Duration(seconds: 31));
+        final ambiguousRefresh = cubit.refreshDisplayMemory();
+        await harness.waitForCommandRequests(0x31, 2);
+        await Future<void>.delayed(Duration.zero);
+        harness.injectMemory(
+          values: const [100, 200, 300, 400, 91, 92, 93, 94, 1, 2, 3, 4],
+        );
+        await ambiguousRefresh;
+
+        expect(harness.memoryRequests, hasLength(5));
+        expect(
+          cubit.displayMemoryState.status,
+          MemoryDisplayStatus.unavailable,
+        );
+        expect(cubit.displayMemoryState.sample, isNull);
+
+        for (var i = 1; i < 5; i++) {
+          harness.injectMemory();
+        }
+        await Future<void>.delayed(Duration.zero);
+
+        final recoveredRefresh = cubit.refreshDisplayMemory();
+        await harness.waitForMemoryRequests(6);
+        harness.injectMemory(
+          values: const [500, 600, 700, 800, 50, 60, 70, 80, 5, 6, 7, 8],
+        );
+        await recoveredRefresh;
+
+        expect(cubit.displayMemoryState.status, MemoryDisplayStatus.available);
+        expect(cubit.displayMemoryState.sample?.sram.current, 50);
+      });
     },
   );
 

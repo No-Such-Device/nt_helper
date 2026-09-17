@@ -11,6 +11,7 @@
 
 import 'dart:async';
 import 'dart:collection';
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 
@@ -134,27 +135,19 @@ final class _AttributionEndpointKey {
   int get hashCode => Object.hash(inputDeviceId, sysExId);
 }
 
-final class _UnattributedResponse {
-  const _UnattributedResponse({required this.key, required this.createdAt});
-
-  final RequestKey key;
-  final DateTime createdAt;
-}
-
 /// Tracks response debt for requests whose wire protocol has no transaction ID.
 ///
 /// The tracker is shared by schedulers using the same MIDI command and endpoint,
 /// so disposing and replacing a manager cannot make an old packet attributable
 /// to the replacement. Only callers opting into strict attribution use it.
+/// Debt remains until matching packets drain it; elapsed time alone cannot make
+/// an otherwise indistinguishable packet safe to attribute.
 final class _StrictResponseAttribution {
-  static const _responseDebtMaxAge = Duration(seconds: 30);
-
   _ScheduledRequest? _activeRequest;
-  final List<_UnattributedResponse> _responseDebt = [];
+  final List<RequestKey> _responseDebt = [];
 
   bool begin(_ScheduledRequest request) {
-    _removeExpiredDebt();
-    if (_activeRequest != null || _hasMatchingDebt(request.key)) {
+    if (_activeRequest != null || _responseDebt.contains(request.key)) {
       return false;
     }
     _activeRequest = request;
@@ -177,37 +170,22 @@ final class _StrictResponseAttribution {
     if (!identical(_activeRequest, request)) return;
 
     final unresolved = request.sentRequestCount - request.matchingResponseCount;
-    final now = DateTime.now();
     for (var i = 0; i < unresolved; i++) {
-      _responseDebt.add(
-        _UnattributedResponse(key: request.key, createdAt: now),
-      );
+      _responseDebt.add(request.key);
     }
     _activeRequest = null;
   }
 
   bool consumeUnattributed(DistingNTParsedMessage parsed) {
-    _removeExpiredDebt();
     if (_activeRequest != null) return false;
 
     final debtIndex = _responseDebt.indexWhere(
-      (response) => response.key.matchesStrict(parsed),
+      (key) => key.matchesStrict(parsed),
     );
     if (debtIndex == -1) return false;
 
     _responseDebt.removeAt(debtIndex);
     return true;
-  }
-
-  bool _hasMatchingDebt(RequestKey key) {
-    return _responseDebt.any((response) => response.key == key);
-  }
-
-  void _removeExpiredDebt() {
-    final now = DateTime.now();
-    _responseDebt.removeWhere(
-      (response) => now.difference(response.createdAt) > _responseDebtMaxAge,
-    );
   }
 }
 
@@ -255,7 +233,7 @@ class _ResponseDemux {
     if (handler != null) {
       _activeHandler = null;
       _expiredHandlers.add(
-        _ExpiredHandler(key: handler.key, expiredAt: DateTime.now()),
+        _ExpiredHandler(key: handler.key, expiredAt: clock.now()),
       );
     }
   }
@@ -314,7 +292,7 @@ class _ResponseDemux {
   void _cleanupExpiredHandlers() {
     if (_expiredHandlers.isEmpty) return;
 
-    final now = DateTime.now();
+    final now = clock.now();
     _expiredHandlers.removeWhere(
       (h) => now.difference(h.expiredAt) > _expiredHandlerMaxAge,
     );
@@ -496,7 +474,7 @@ class DistingMessageScheduler {
 
   /// Returns diagnostic information about the scheduler's MIDI stream health.
   Map<String, dynamic> getDiagnostics() {
-    final now = DateTime.now();
+    final now = clock.now();
     final timeSinceLastPacket = _lastPacketTime != null
         ? now.difference(_lastPacketTime!).inMilliseconds
         : -1;
@@ -1149,7 +1127,7 @@ class DistingMessageScheduler {
         message.startsWith('unhandled-error');
     if (!important) return;
     debugPrint(
-      '[NT_DIAG scheduler ${DateTime.now().toIso8601String()}] $message',
+      '[NT_DIAG scheduler ${clock.now().toIso8601String()}] $message',
     );
   }
 
@@ -1214,7 +1192,7 @@ class DistingMessageScheduler {
 
   void _handleIncomingPacket(dynamic packet) {
     _totalPacketsReceived++;
-    _lastPacketTime = DateTime.now();
+    _lastPacketTime = clock.now();
 
     if (packet is MidiPacket) {
       if (packet.device.id != _inputDevice.id) {
