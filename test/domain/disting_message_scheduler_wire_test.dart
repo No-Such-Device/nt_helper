@@ -10,6 +10,7 @@ import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/domain/request_key.dart';
+import 'package:nt_helper/domain/sysex/sysex_parser.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -22,6 +23,42 @@ class MockMidiCommand extends Mock implements MidiCommand {}
 // ---------------------------------------------------------------------------
 
 const int _testSysExId = 0x00;
+
+// Captured-format extended 0x40 payload for wire slot 2. The authoritative
+// specification trailer exactly matches the respecification proposal [1, 12].
+const _matchingAlgorithm40Payload = <int>[
+  0x02,
+  0x54,
+  0x45,
+  0x53,
+  0x54,
+  0x46,
+  0x69,
+  0x78,
+  0x74,
+  0x75,
+  0x72,
+  0x65,
+  0x20,
+  0x73,
+  0x6C,
+  0x6F,
+  0x74,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x02,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x0C,
+];
 
 MidiDevice _makeDevice(String id) =>
     MidiDevice(id, 'Test Device', MidiDeviceType.serial, true);
@@ -1172,6 +1209,89 @@ void main() {
       expect(diagnostics['hasCurrentRequest'], isFalse);
       verify(() => midi.sendData(any(), deviceId: device.id)).called(2);
     });
+
+    test(
+      'keeps rejected stale same-slot 0x40 data outside the observer boundary',
+      () async {
+        final key = RequestKey(
+          sysExId: _testSysExId,
+          messageType: DistingNTRespMessageType.respAlgorithm,
+          algorithmIndex: 2,
+        );
+        await expectLater(
+          scheduler.sendRequest<Algorithm>(
+            _buildSysEx(DistingNTRespMessageType.respAlgorithm, [2]),
+            key,
+            timeout: const Duration(milliseconds: 20),
+            maxRetries: 1,
+          ),
+          throwsA(isA<TimeoutException>()),
+        );
+
+        final observedMessages = <DistingNTParsedMessage>[];
+        void observer(DistingNTParsedMessage message) {
+          observedMessages.add(message);
+        }
+
+        scheduler.addMessageObserver(observer);
+        final strictRead = scheduler.sendRequest<Algorithm>(
+          _buildSysEx(DistingNTRespMessageType.respAlgorithm, [2]),
+          key,
+          timeout: const Duration(seconds: 1),
+          maxRetries: 1,
+          attributionPolicy: ResponseAttributionPolicy.rejectAmbiguousResponse,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        _injectResponse(
+          incoming,
+          device,
+          DistingNTRespMessageType.respAlgorithm,
+          _matchingAlgorithm40Payload,
+        );
+
+        await expectLater(
+          strictRead,
+          throwsA(isA<AmbiguousResponseAttributionException>()),
+        );
+        expect(observedMessages, isEmpty);
+        scheduler.removeMessageObserver(observer);
+      },
+    );
+
+    test('keeps ordinary same-slot reads on active-first behavior', () async {
+      final key = RequestKey(
+        sysExId: _testSysExId,
+        messageType: DistingNTRespMessageType.respAlgorithm,
+        algorithmIndex: 2,
+      );
+      await expectLater(
+        scheduler.sendRequest<Algorithm>(
+          _buildSysEx(DistingNTRespMessageType.respAlgorithm, [2]),
+          key,
+          timeout: const Duration(milliseconds: 20),
+          maxRetries: 1,
+        ),
+        throwsA(isA<TimeoutException>()),
+      );
+
+      final newerBestEffortRead = scheduler.sendRequest<Algorithm>(
+        _buildSysEx(DistingNTRespMessageType.respAlgorithm, [2]),
+        key,
+        timeout: const Duration(seconds: 1),
+        maxRetries: 1,
+      );
+      await Future<void>.delayed(Duration.zero);
+      _injectResponse(
+        incoming,
+        device,
+        DistingNTRespMessageType.respAlgorithm,
+        _matchingAlgorithm40Payload,
+      );
+
+      final result = await newerBestEffortRead;
+      expect(result?.specifications, [1, 12]);
+    });
   });
 
   group('Respecify manager/scheduler wire contract', () {
@@ -1288,48 +1408,13 @@ void main() {
     );
 
     test(
-      'rejects an old same-slot 0x40 response while a newer read is active',
+      'rejects an old default same-slot 0x40 response while a newer strict read is active',
       () async {
-        const oldResponsePayload = <int>[
-          0x02,
-          0x54,
-          0x45,
-          0x53,
-          0x54,
-          0x46,
-          0x69,
-          0x78,
-          0x74,
-          0x75,
-          0x72,
-          0x65,
-          0x20,
-          0x73,
-          0x6C,
-          0x6F,
-          0x74,
-          0x00,
-          0x01,
-          0x00,
-          0x00,
-          0x00,
-          0x00,
-          0x00,
-          0x02,
-          0x00,
-          0x00,
-          0x01,
-          0x00,
-          0x00,
-          0x0C,
-        ];
-
         await expectLater(
           manager.requestAlgorithmGuid(
             2,
             timeout: const Duration(milliseconds: 25),
             maxRetries: 1,
-            rejectAmbiguousResponse: true,
           ),
           throwsA(isA<TimeoutException>()),
         );
@@ -1345,7 +1430,7 @@ void main() {
           incoming,
           device,
           DistingNTRespMessageType.respAlgorithm,
-          oldResponsePayload,
+          _matchingAlgorithm40Payload,
           sysExId: configuredSysExId,
         );
 
@@ -1354,6 +1439,58 @@ void main() {
           throwsA(isA<AmbiguousResponseAttributionException>()),
         );
         verify(() => midi.sendData(any(), deviceId: device.id)).called(2);
+      },
+    );
+
+    test(
+      'retains an ordinary same-slot response still owed after a retry',
+      () async {
+        final sentPackets = <Uint8List>[];
+        when(() => midi.sendData(any(), deviceId: device.id)).thenAnswer((
+          invocation,
+        ) {
+          sentPackets.add(invocation.positionalArguments.single as Uint8List);
+        });
+
+        final olderRead = manager.requestAlgorithmGuid(
+          2,
+          timeout: const Duration(milliseconds: 25),
+          maxRetries: 2,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+        expect(sentPackets, hasLength(2));
+
+        _injectResponse(
+          incoming,
+          device,
+          DistingNTRespMessageType.respAlgorithm,
+          _matchingAlgorithm40Payload,
+          sysExId: configuredSysExId,
+        );
+        final olderResult = await olderRead;
+        expect(olderResult?.specifications, [1, 12]);
+
+        final strictRead = manager.requestAlgorithmGuid(
+          2,
+          timeout: const Duration(seconds: 1),
+          maxRetries: 1,
+          rejectAmbiguousResponse: true,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(sentPackets, hasLength(3));
+
+        _injectResponse(
+          incoming,
+          device,
+          DistingNTRespMessageType.respAlgorithm,
+          _matchingAlgorithm40Payload,
+          sysExId: configuredSysExId,
+        );
+        await expectLater(
+          strictRead,
+          throwsA(isA<AmbiguousResponseAttributionException>()),
+        );
+        expect(sentPackets, hasLength(3));
       },
     );
 

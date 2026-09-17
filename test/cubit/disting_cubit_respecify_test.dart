@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/db/daos/metadata_dao.dart';
 import 'package:nt_helper/db/database.dart';
+import 'package:nt_helper/domain/disting_message_scheduler.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
@@ -469,6 +470,33 @@ void main() {
       expect(async.pendingTimers, isEmpty);
     });
   });
+
+  test(
+    'ambiguous stale readback cannot become matching or differing state',
+    () {
+      fakeAsync((async) {
+        final manager = _RecordingManager(
+          onRequestAlgorithm: (_) =>
+              Future<Algorithm?>.error(AmbiguousResponseAttributionException()),
+        );
+        cubit.emit(_synchronizedState(manager));
+
+        AlgorithmRespecificationStatus? status;
+        cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+          status = value;
+        });
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 10));
+        async.flushMicrotasks();
+
+        expect(status, AlgorithmRespecificationStatus.unverifiable);
+        expect(manager.readbackSlots, isNotEmpty);
+        expect(manager.readbackRejectAmbiguous, everyElement(isTrue));
+        expect(manager.mutationCommands, ['respecify']);
+        expect(async.pendingTimers, isEmpty);
+      });
+    },
+  );
 
   test('missing, malformed, cached, wrong-target, and late data cannot become '
       'a valid observation', () {

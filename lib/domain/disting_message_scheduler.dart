@@ -150,23 +150,34 @@ final class _AttributionEndpointKey {
   int get hashCode => Object.hash(inputDeviceId, sysExId);
 }
 
+/// One response that may still arrive for an earlier request.
+final class _ResponseDebt {
+  const _ResponseDebt({required this.key, required this.fromBestEffortRequest});
+
+  final RequestKey key;
+  final bool fromBestEffortRequest;
+}
+
 /// Tracks response debt for requests whose wire protocol has no transaction ID.
 ///
 /// The tracker is shared by schedulers using the same MIDI command and endpoint,
 /// so disposing and replacing a manager cannot make an old packet attributable
-/// to the replacement. Only callers opting into strict attribution use it.
-/// Debt remains until matching packets drain it; elapsed time alone cannot make
-/// an otherwise indistinguishable packet safe to attribute.
+/// to the replacement. Strict callers are always tracked. Ordinary 0x40 reads
+/// are also tracked because their late same-slot responses are indistinguishable
+/// from a strict respecification readback. Debt remains until matching packets
+/// drain it; elapsed time alone cannot make an otherwise indistinguishable
+/// packet safe to attribute.
 final class _StrictResponseAttribution {
   _ScheduledRequest? _activeRequest;
-  final List<RequestKey> _responseDebt = [];
+  final List<_ResponseDebt> _responseDebt = [];
 
   bool begin(_ScheduledRequest request) {
     final blocksBeforeSend =
         request.attributionPolicy ==
         ResponseAttributionPolicy.failWhenAmbiguous;
     if (_activeRequest != null ||
-        (blocksBeforeSend && _responseDebt.contains(request.key))) {
+        (blocksBeforeSend &&
+            _responseDebt.any((debt) => debt.key == request.key))) {
       return false;
     }
     _activeRequest = request;
@@ -174,25 +185,36 @@ final class _StrictResponseAttribution {
   }
 
   void markSent(_ScheduledRequest request) {
-    if (identical(_activeRequest, request)) {
+    if (_tracksResponseDebt(request)) {
       request.sentRequestCount++;
     }
   }
 
   void markResponse(_ScheduledRequest request) {
-    if (identical(_activeRequest, request)) {
+    if (_tracksResponseDebt(request)) {
       request.matchingResponseCount++;
     }
   }
 
   void finish(_ScheduledRequest request) {
-    if (!identical(_activeRequest, request)) return;
-
-    final unresolved = request.sentRequestCount - request.matchingResponseCount;
-    for (var i = 0; i < unresolved; i++) {
-      _responseDebt.add(request.key);
+    if (_tracksResponseDebt(request)) {
+      final unresolved =
+          request.sentRequestCount - request.matchingResponseCount;
+      for (var i = 0; i < unresolved; i++) {
+        _responseDebt.add(
+          _ResponseDebt(
+            key: request.key,
+            fromBestEffortRequest:
+                request.attributionPolicy ==
+                ResponseAttributionPolicy.bestEffort,
+          ),
+        );
+      }
     }
-    _activeRequest = null;
+
+    if (identical(_activeRequest, request)) {
+      _activeRequest = null;
+    }
   }
 
   bool consumeAmbiguousForActive(DistingNTParsedMessage parsed) {
@@ -205,7 +227,7 @@ final class _StrictResponseAttribution {
     }
 
     final debtIndex = _responseDebt.indexWhere(
-      (key) => key.matchesStrict(parsed),
+      (debt) => debt.key.matchesStrict(parsed),
     );
     if (debtIndex == -1) return false;
 
@@ -213,20 +235,30 @@ final class _StrictResponseAttribution {
     return true;
   }
 
-  bool consumeUnattributed(DistingNTParsedMessage parsed) {
+  bool consumeUnattributed(
+    DistingNTParsedMessage parsed, {
+    required bool allowBestEffortDebt,
+  }) {
     final activeRequest = _activeRequest;
     if (activeRequest != null && activeRequest.key.matchesStrict(parsed)) {
       return false;
     }
 
     final debtIndex = _responseDebt.indexWhere(
-      (key) => key.matchesStrict(parsed),
+      (debt) =>
+          debt.key.matchesStrict(parsed) &&
+          (allowBestEffortDebt || !debt.fromBestEffortRequest),
     );
     if (debtIndex == -1) return false;
 
     _responseDebt.removeAt(debtIndex);
     return true;
   }
+
+  bool _tracksResponseDebt(_ScheduledRequest request) =>
+      request.expectation != ResponseExpectation.none &&
+      (request.attributionPolicy != ResponseAttributionPolicy.bestEffort ||
+          request.key.messageType == DistingNTRespMessageType.respAlgorithm);
 }
 
 final Expando<Map<_AttributionEndpointKey, _StrictResponseAttribution>>
@@ -296,28 +328,35 @@ class _ResponseDemux {
   }
 
   void dispatch(DistingNTParsedMessage parsed) {
-    // 1. Notify all passive observers before any matching
-    for (final observer in _observers) {
-      try {
-        observer(parsed);
-      } catch (_) {}
-    }
-
-    // 2. A strict verification request may be sent while an older response is
-    // still owed. The first indistinguishable response is rejected rather than
-    // being attributed to the active request.
+    // 1. A strict verification request may be sent while an older response is
+    // still owed. Reject an indistinguishable stale packet before it crosses
+    // either the request or passive-observer boundary.
     if (_strictAttribution.consumeAmbiguousForActive(parsed)) {
       staleResponsesAbsorbed++;
+      _removeExpiredMatch(parsed);
       final handler = _activeHandler;
       _activeHandler = null;
       handler?.onAmbiguous();
       return;
     }
 
-    // 3. Strict requests carry response debt across scheduler replacement.
-    if (_strictAttribution.consumeUnattributed(parsed)) {
+    // 2. Drain unattributed strict debt, plus ordinary 0x40 debt when doing so
+    // cannot change the historical active-first behavior of a best-effort read.
+    final activeHandlerMatches = _activeHandler?.key.matches(parsed) ?? false;
+    if (_strictAttribution.consumeUnattributed(
+      parsed,
+      allowBestEffortDebt: !activeHandlerMatches,
+    )) {
       staleResponsesAbsorbed++;
+      _removeExpiredMatch(parsed);
       return;
+    }
+
+    // 3. Notify passive observers only after stale response debt is excluded.
+    for (final observer in _observers) {
+      try {
+        observer(parsed);
+      } catch (_) {}
     }
 
     // 4. Check the active handler. Best-effort requests retain the historical
@@ -345,6 +384,15 @@ class _ResponseDemux {
 
     // Lazy cleanup of old expired handlers
     _cleanupExpiredHandlers();
+  }
+
+  void _removeExpiredMatch(DistingNTParsedMessage parsed) {
+    final expiredMatch = _expiredHandlers.indexWhere(
+      (handler) => handler.key.matchesStrict(parsed),
+    );
+    if (expiredMatch != -1) {
+      _expiredHandlers.removeAt(expiredMatch);
+    }
   }
 
   void _cleanupExpiredHandlers() {
@@ -794,8 +842,9 @@ class DistingMessageScheduler {
     _subscriptionActive = false;
   }
 
-  /// Adds a passive observer that receives ALL parsed Disting NT SysEx messages,
-  /// regardless of whether they match a pending request.
+  /// Adds a passive observer that receives attributable parsed Disting NT SysEx
+  /// messages, regardless of whether they match a pending request. Packets owed
+  /// to an earlier request are excluded.
   void addMessageObserver(void Function(DistingNTParsedMessage) observer) {
     _demux.addObserver(observer);
   }
@@ -853,7 +902,7 @@ class DistingMessageScheduler {
     _retryTimer?.cancel();
     _demux.clear();
     final current = _currentRequest;
-    _finishStrictAttribution(current);
+    _finishResponseAttribution(current);
     if (current != null && !current.completer.isCompleted) {
       current.completer.completeError(StateError('Scheduler disposed'));
     }
@@ -949,9 +998,7 @@ class DistingMessageScheduler {
     // Send the message
     try {
       _midi.sendData(request.packet, deviceId: _outputDevice.id);
-      if (request.attributionStarted) {
-        _strictAttribution.markSent(request);
-      }
+      _strictAttribution.markSent(request);
     } catch (e) {
       request.stopwatch.stop();
       _handleSendFailure(request, e);
@@ -1020,9 +1067,7 @@ class DistingMessageScheduler {
       return;
     }
 
-    if (request.attributionStarted) {
-      _strictAttribution.markResponse(request);
-    }
+    _strictAttribution.markResponse(request);
 
     // Cancel timeout timer since we got a response
     request.timeoutTimer?.cancel();
@@ -1129,8 +1174,9 @@ class DistingMessageScheduler {
     }
 
     if (request.attemptCount >= request.maxRetries) {
-      // Out of retries — strict attribution tracks every sent attempt across
-      // manager replacement; ordinary requests retain the local stale handler.
+      // Out of retries — strict requests use shared response debt across
+      // manager replacement. Ordinary requests retain the local stale handler;
+      // indistinguishable 0x40 attempts are also retained as shared debt.
       if (request.attributionStarted) {
         _demux.discardActive();
       } else {
@@ -1233,9 +1279,7 @@ class DistingMessageScheduler {
         message.startsWith('parameter-pages-raw') ||
         message.startsWith('unhandled-error');
     if (!important) return;
-    debugPrint(
-      '[NT_DIAG scheduler ${clock.now().toIso8601String()}] $message',
-    );
+    debugPrint('[NT_DIAG scheduler ${clock.now().toIso8601String()}] $message');
   }
 
   String _hex(Uint8List bytes) {
@@ -1245,7 +1289,7 @@ class DistingMessageScheduler {
   }
 
   void _finishCurrentRequest() {
-    _finishStrictAttribution(_currentRequest);
+    _finishResponseAttribution(_currentRequest);
     _currentRequest?.dispose();
     _currentRequest = null;
     _state = _SchedulerState.idle;
@@ -1259,8 +1303,8 @@ class DistingMessageScheduler {
     }
   }
 
-  void _finishStrictAttribution(_ScheduledRequest? request) {
-    if (request == null || !request.attributionStarted) return;
+  void _finishResponseAttribution(_ScheduledRequest? request) {
+    if (request == null) return;
     _strictAttribution.finish(request);
     request.attributionStarted = false;
   }
