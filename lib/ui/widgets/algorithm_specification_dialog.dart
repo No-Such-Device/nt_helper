@@ -279,15 +279,22 @@ class AlgorithmSpecificationDialog {
     required bool readOnly,
     String? title,
     String primaryActionLabel = 'Add',
+    Future<void> Function(List<int> values)? onSubmit,
+    String pendingTitle = 'Submitting…',
+    String pendingMessage = 'Waiting for device data…',
   }) {
     return showDialog<List<int>>(
       context: context,
+      barrierDismissible: onSubmit == null,
       builder: (context) => _AlgorithmSpecificationDialogContent(
         algorithm: algorithm,
         initialValues: initialValues,
         readOnly: readOnly,
         title: title ?? 'Configure ${algorithm.name}',
         primaryActionLabel: primaryActionLabel,
+        onSubmit: onSubmit,
+        pendingTitle: pendingTitle,
+        pendingMessage: pendingMessage,
       ),
     );
   }
@@ -300,6 +307,9 @@ class _AlgorithmSpecificationDialogContent extends StatefulWidget {
     required this.readOnly,
     required this.title,
     required this.primaryActionLabel,
+    required this.onSubmit,
+    required this.pendingTitle,
+    required this.pendingMessage,
   });
 
   final AlgorithmInfo algorithm;
@@ -307,6 +317,9 @@ class _AlgorithmSpecificationDialogContent extends StatefulWidget {
   final bool readOnly;
   final String title;
   final String primaryActionLabel;
+  final Future<void> Function(List<int> values)? onSubmit;
+  final String pendingTitle;
+  final String pendingMessage;
 
   @override
   State<_AlgorithmSpecificationDialogContent> createState() =>
@@ -317,6 +330,7 @@ class _AlgorithmSpecificationDialogContentState
     extends State<_AlgorithmSpecificationDialogContent> {
   final _editorKey = GlobalKey<AlgorithmSpecificationEditorState>();
   final _primaryActionFocusNode = FocusNode();
+  bool _pending = false;
 
   @override
   void initState() {
@@ -340,54 +354,90 @@ class _AlgorithmSpecificationDialogContentState
   @override
   Widget build(BuildContext context) {
     final specCount = widget.algorithm.numSpecifications;
-    return FocusTraversalGroup(
-      child: AlertDialog(
-        title: Semantics(header: true, child: Text(widget.title)),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$specCount specification${specCount == 1 ? '' : 's'} required',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                if (widget.readOnly) ...[
-                  const SizedBox(height: 8),
-                  const Text('Defaults are used in offline mode.'),
+    return PopScope(
+      canPop: !_pending,
+      child: FocusTraversalGroup(
+        child: AlertDialog(
+          title: Semantics(
+            header: true,
+            liveRegion: _pending,
+            child: Text(_pending ? widget.pendingTitle : widget.title),
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: _pending
+                ? Semantics(
+                    liveRegion: true,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const LinearProgressIndicator(
+                          semanticsLabel: 'Waiting for slot data',
+                        ),
+                        const SizedBox(height: 16),
+                        Text(widget.pendingMessage),
+                      ],
+                    ),
+                  )
+                : SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$specCount specification${specCount == 1 ? '' : 's'} required',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        if (widget.readOnly) ...[
+                          const SizedBox(height: 8),
+                          const Text('Defaults are used in offline mode.'),
+                        ],
+                        const SizedBox(height: 16),
+                        AlgorithmSpecificationEditor(
+                          key: _editorKey,
+                          algorithm: widget.algorithm,
+                          initialValues: widget.initialValues,
+                          readOnly: widget.readOnly,
+                          onChanged: (_) {},
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+          actions: _pending
+              ? null
+              : [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    focusNode: _primaryActionFocusNode,
+                    onPressed: _submit,
+                    child: Text(widget.primaryActionLabel),
+                  ),
                 ],
-                const SizedBox(height: 16),
-                AlgorithmSpecificationEditor(
-                  key: _editorKey,
-                  algorithm: widget.algorithm,
-                  initialValues: widget.initialValues,
-                  readOnly: widget.readOnly,
-                  onChanged: (_) {},
-                ),
-              ],
-            ),
-          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            focusNode: _primaryActionFocusNode,
-            onPressed: () {
-              final values = _editorKey.currentState?.validateAndGetValues(
-                announceError: true,
-              );
-              if (values == null) return;
-              Navigator.of(context).pop(values);
-            },
-            child: Text(widget.primaryActionLabel),
-          ),
-        ],
       ),
     );
+  }
+
+  Future<void> _submit() async {
+    if (_pending) return;
+    final values = _editorKey.currentState?.validateAndGetValues(
+      announceError: true,
+    );
+    if (values == null) return;
+
+    final onSubmit = widget.onSubmit;
+    if (onSubmit == null) {
+      Navigator.of(context).pop(values);
+      return;
+    }
+
+    setState(() => _pending = true);
+    await onSubmit(values);
+    if (mounted) Navigator.of(context).pop(values);
   }
 }

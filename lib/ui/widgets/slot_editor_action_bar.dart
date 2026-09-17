@@ -187,6 +187,7 @@ class SlotEditorActionBar extends StatelessWidget {
           .map((specification) => specification.metadata)
           .toList(growable: false),
     );
+    String? failureMessage;
     final proposedSpecifications = await AlgorithmSpecificationDialog.show(
       context: context,
       algorithm: algorithm,
@@ -196,20 +197,32 @@ class SlotEditorActionBar extends StatelessWidget {
       readOnly: false,
       title: 'Respecify ${preparation.algorithmName}',
       primaryActionLabel: 'Respecify',
+      pendingTitle: 'Respecifying…',
+      pendingMessage: 'Refreshing slot data…',
+      onSubmit: (values) async {
+        try {
+          final status = await context
+              .read<DistingCubit>()
+              .respecifyPreparedAlgorithm(preparation, values);
+          if (status != AlgorithmRespecificationStatus.observedMatchingState) {
+            failureMessage = 'Unable to verify refreshed slot data.';
+          }
+        } on AlgorithmRespecificationException catch (error) {
+          failureMessage = error.message;
+        } catch (_) {
+          failureMessage = 'Respecification failed.';
+        }
+      },
     );
-    if (proposedSpecifications == null || !context.mounted) return;
-
-    try {
-      await context.read<DistingCubit>().respecifyPreparedAlgorithm(
-        preparation,
-        proposedSpecifications,
-      );
-    } on AlgorithmRespecificationException catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+    if (proposedSpecifications == null ||
+        failureMessage == null ||
+        !context.mounted) {
+      return;
     }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(failureMessage!)));
   }
 
   bool _canEditAlgorithmStyle(BuildContext context) {
