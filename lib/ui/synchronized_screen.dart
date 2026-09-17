@@ -3335,6 +3335,8 @@ class _BottomBarMemoryShortcut extends StatelessWidget {
             initialState: cubit.displayMemoryState,
             stateStream: cubit.displayMemoryStateStream,
             onOpened: cubit.refreshDisplayMemory,
+            targetAnchor: Alignment.topRight,
+            followerAnchor: Alignment.bottomRight,
             childBuilder: (context, state) => MemoryMiniature(state: state),
           ),
         );

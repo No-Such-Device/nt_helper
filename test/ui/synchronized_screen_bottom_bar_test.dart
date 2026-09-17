@@ -282,40 +282,78 @@ void main() {
     );
 
     testWidgets(
-      'supported live shortcut opens accessible device-reported detail',
+      'supported live shortcut keeps all device-reported detail in the viewport',
       (tester) async {
-        tester.view.physicalSize = const Size(1200, 800);
         tester.view.devicePixelRatio = 1;
         addTearDown(() {
           tester.view.resetPhysicalSize();
           tester.view.resetDevicePixelRatio();
         });
         final semantics = tester.ensureSemantics();
+        const valueLabels = [
+          'SRAM current, 16 KiB',
+          'SRAM total, 64 KiB',
+          'SRAM free, 48 KiB',
+          'DRAM current, 2 MiB',
+          'DRAM total, 8 MiB',
+          'DRAM free, 6 MiB',
+          'DTC current, 1 KiB',
+          'DTC total, 4 KiB',
+          'DTC free, 3 KiB',
+          'ITC current, 128 B',
+          'ITC total, 512 B',
+          'ITC free, 384 B',
+        ];
 
-        await tester.pumpWidget(
-          createTestWidget(
-            isMobile: false,
-            isOffline: false,
-            firmware: '1.19beta',
-          ),
-        );
+        for (final width in [901, 1440]) {
+          tester.view.physicalSize = Size(width.toDouble(), 800);
+          await tester.pumpWidget(
+            createTestWidget(
+              isMobile: false,
+              isOffline: false,
+              firmware: '1.19beta',
+            ),
+          );
+          await tester.pump();
 
-        final shortcut = find.byKey(const ValueKey('bottom-memory-shortcut'));
-        expect(shortcut, findsOneWidget);
-        expect(find.byType(MemoryMiniature), findsOneWidget);
-        await tester.tap(shortcut);
-        await tester.pump();
-        await tester.pump();
+          final shortcut = find.byKey(const ValueKey('bottom-memory-shortcut'));
+          expect(shortcut, findsOneWidget, reason: 'width $width');
+          expect(find.byType(MemoryMiniature), findsOneWidget);
+          await tester.tap(shortcut);
+          await tester.pump();
+          await tester.pump();
 
-        expect(find.byType(MemoryDetailPresenter), findsOneWidget);
-        expect(find.bySemanticsLabel('SRAM current, 16 KiB'), findsOneWidget);
-        expect(find.bySemanticsLabel('DRAM total, 8 MiB'), findsOneWidget);
-        expect(find.bySemanticsLabel('DTC free, 3 KiB'), findsOneWidget);
-        expect(find.bySemanticsLabel('ITC free, 384 B'), findsOneWidget);
-        expect(find.text('Used / total · free shown at right'), findsNothing);
-        expect(find.textContaining('fit'), findsNothing);
-        expect(find.textContaining('required'), findsNothing);
-        verify(() => mockCubit.refreshDisplayMemory()).called(1);
+          final viewport = Rect.fromLTWH(0, 0, width.toDouble(), 800);
+          final presenter = find.byType(MemoryDetailPresenter);
+          expect(presenter, findsOneWidget, reason: 'width $width');
+          final presenterRect = tester.getRect(presenter);
+          expect(
+            viewport.contains(presenterRect.topLeft) &&
+                viewport.contains(presenterRect.bottomRight),
+            isTrue,
+            reason:
+                'memory presenter $presenterRect must remain inside '
+                '$viewport at width $width',
+          );
+          for (final label in valueLabels) {
+            final value = find.bySemanticsLabel(label);
+            expect(value, findsOneWidget, reason: 'width $width: $label');
+            expect(
+              viewport.contains(tester.getTopLeft(value)) &&
+                  viewport.contains(tester.getBottomRight(value)),
+              isTrue,
+              reason: 'width $width: $label must remain in the viewport',
+            );
+          }
+
+          expect(find.text('Used / total · free shown at right'), findsNothing);
+          expect(find.textContaining('fit'), findsNothing);
+          expect(find.textContaining('required'), findsNothing);
+          verify(() => mockCubit.refreshDisplayMemory()).called(1);
+
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pump();
+        }
         semantics.dispose();
       },
     );
