@@ -223,7 +223,7 @@ class AlgorithmSpecificationEditorState
         border: const OutlineInputBorder(),
         isDense: true,
       ),
-      keyboardType: TextInputType.number,
+      keyboardType: const TextInputType.numberWithOptions(signed: true),
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[-0-9]'))],
       onChanged: widget.readOnly
           ? null
@@ -277,6 +277,8 @@ class AlgorithmSpecificationDialog {
     required AlgorithmInfo algorithm,
     required List<int> initialValues,
     required bool readOnly,
+    String? title,
+    String primaryActionLabel = 'Add',
   }) {
     return showDialog<List<int>>(
       context: context,
@@ -284,6 +286,8 @@ class AlgorithmSpecificationDialog {
         algorithm: algorithm,
         initialValues: initialValues,
         readOnly: readOnly,
+        title: title ?? 'Configure ${algorithm.name}',
+        primaryActionLabel: primaryActionLabel,
       ),
     );
   }
@@ -294,11 +298,15 @@ class _AlgorithmSpecificationDialogContent extends StatefulWidget {
     required this.algorithm,
     required this.initialValues,
     required this.readOnly,
+    required this.title,
+    required this.primaryActionLabel,
   });
 
   final AlgorithmInfo algorithm;
   final List<int> initialValues;
   final bool readOnly;
+  final String title;
+  final String primaryActionLabel;
 
   @override
   State<_AlgorithmSpecificationDialogContent> createState() =>
@@ -308,7 +316,7 @@ class _AlgorithmSpecificationDialogContent extends StatefulWidget {
 class _AlgorithmSpecificationDialogContentState
     extends State<_AlgorithmSpecificationDialogContent> {
   final _editorKey = GlobalKey<AlgorithmSpecificationEditorState>();
-  final _addButtonFocusNode = FocusNode();
+  final _primaryActionFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -316,7 +324,7 @@ class _AlgorithmSpecificationDialogContentState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (widget.readOnly) {
-        _addButtonFocusNode.requestFocus();
+        _primaryActionFocusNode.requestFocus();
       } else {
         _editorKey.currentState?.focusFirstControl();
       }
@@ -325,7 +333,7 @@ class _AlgorithmSpecificationDialogContentState
 
   @override
   void dispose() {
-    _addButtonFocusNode.dispose();
+    _primaryActionFocusNode.dispose();
     super.dispose();
   }
 
@@ -334,10 +342,7 @@ class _AlgorithmSpecificationDialogContentState
     final specCount = widget.algorithm.numSpecifications;
     return FocusTraversalGroup(
       child: AlertDialog(
-        title: Semantics(
-          header: true,
-          child: Text('Configure ${widget.algorithm.name}'),
-        ),
+        title: Semantics(header: true, child: Text(widget.title)),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: SingleChildScrollView(
@@ -371,7 +376,7 @@ class _AlgorithmSpecificationDialogContentState
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            focusNode: _addButtonFocusNode,
+            focusNode: _primaryActionFocusNode,
             onPressed: () {
               final values = _editorKey.currentState?.validateAndGetValues(
                 announceError: true,
@@ -379,7 +384,7 @@ class _AlgorithmSpecificationDialogContentState
               if (values == null) return;
               Navigator.of(context).pop(values);
             },
-            child: const Text('Add'),
+            child: Text(widget.primaryActionLabel),
           ),
         ],
       ),
