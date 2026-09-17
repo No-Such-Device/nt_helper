@@ -21,11 +21,21 @@ final class _ControlledMemorySource {
 
   MemoryDisplayState state = const MemoryDisplayState.unavailable();
   int refreshCalls = 0;
+  final List<Completer<void>> _pendingRefreshes = [];
 
   Stream<MemoryDisplayState> get states => _states.stream;
 
-  Future<void> refresh() async {
+  Future<void> refresh() {
     refreshCalls += 1;
+    emit(MemoryDisplayState.refreshing(previousSample: state.sample));
+    final completion = Completer<void>();
+    _pendingRefreshes.add(completion);
+    return completion.future;
+  }
+
+  void completeRefresh(MemoryDisplayState nextState) {
+    emit(nextState);
+    _pendingRefreshes.removeAt(0).complete();
   }
 
   void emit(MemoryDisplayState nextState) {
@@ -33,7 +43,12 @@ final class _ControlledMemorySource {
     _states.add(nextState);
   }
 
-  Future<void> close() => _states.close();
+  Future<void> close() async {
+    for (final completion in _pendingRefreshes) {
+      completion.complete();
+    }
+    await _states.close();
+  }
 }
 
 void main() {
@@ -153,28 +168,44 @@ void main() {
       expect(find.byType(MemoryDetailPresenter), findsOneWidget);
     });
 
-    testWidgets('open detail follows controlled connection memory state', (
-      tester,
-    ) async {
-      final source = _ControlledMemorySource();
-      addTearDown(source.close);
-      await tester.pumpWidget(openerHost(source));
+    testWidgets(
+      'synchronous refresh state is safe and completes asynchronously',
+      (tester) async {
+        final source = _ControlledMemorySource();
+        addTearDown(source.close);
+        await tester.pumpWidget(openerHost(source));
 
-      await tester.tap(find.byKey(const ValueKey('memory-trigger')));
-      await tester.pump();
-      expect(find.text('Unavailable'), findsOneWidget);
-      expect(find.text('—'), findsNWidgets(12));
+        await tester.tap(find.byKey(const ValueKey('memory-trigger')));
+        await tester.pump();
+        expect(source.refreshCalls, 1);
+        expect(tester.takeException(), isNull);
 
-      source.emit(const MemoryDisplayState.refreshing(previousSample: _sample));
-      await tester.pump();
-      expect(find.text('Refreshing'), findsOneWidget);
-      expect(find.text('16 KiB'), findsOneWidget);
+        await tester.pump();
+        expect(find.text('Refreshing'), findsOneWidget);
+        expect(find.text('—'), findsNWidgets(12));
+        expect(find.text('0 B'), findsNothing);
 
-      source.emit(const MemoryDisplayState.available(_sample));
-      await tester.pump();
-      expect(find.text('Updated'), findsOneWidget);
-      expect(find.text('2 MiB'), findsOneWidget);
-    });
+        source.completeRefresh(const MemoryDisplayState.available(_sample));
+        await tester.pump();
+        expect(find.text('Updated'), findsOneWidget);
+        expect(find.text('2 MiB'), findsOneWidget);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(find.byType(MemoryDetailPresenter), findsNothing);
+        expect(source.refreshCalls, 1);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        expect(source.refreshCalls, 2);
+        expect(tester.takeException(), isNull);
+
+        await tester.pump();
+        expect(find.text('Refreshing'), findsOneWidget);
+        expect(find.text('16 KiB'), findsOneWidget);
+        expect(source.refreshCalls, 2);
+      },
+    );
   });
 
   group('MemoryDetailOpeningHook', () {
@@ -255,6 +286,31 @@ void main() {
       expect(find.textContaining('fit'), findsNothing);
       expect(find.textContaining('topology'), findsNothing);
       expect(find.textContaining('required'), findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets('formats fractional binary units without losing exact values', (
+      tester,
+    ) async {
+      const fractionalSample = MemoryUsage(
+        sram: MemoryPoolUsage(total: 0, current: 1536),
+        dram: MemoryPoolUsage(total: 3 * 1024 * 1024, current: 1572864),
+        dtc: MemoryPoolUsage(total: 1537, current: 1),
+        itc: MemoryPoolUsage(total: 512, current: 128),
+      );
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        presenterHost(const MemoryDisplayState.available(fractionalSample)),
+      );
+
+      expect(find.text('1.5 KiB'), findsNWidgets(2));
+      expect(find.text('1.5 MiB'), findsNWidgets(2));
+      expect(find.text('1537 B'), findsOneWidget);
+      expect(find.text('-1.5 KiB'), findsOneWidget);
+      expect(find.bySemanticsLabel('SRAM current, 1.5 KiB'), findsOneWidget);
+      expect(find.bySemanticsLabel('SRAM free, -1.5 KiB'), findsOneWidget);
+      expect(find.bySemanticsLabel('DRAM current, 1.5 MiB'), findsOneWidget);
+      expect(find.bySemanticsLabel('DTC total, 1537 B'), findsOneWidget);
       semantics.dispose();
     });
 

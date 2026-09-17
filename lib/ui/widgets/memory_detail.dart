@@ -32,7 +32,9 @@ class _MemoryDetailOpeningHookState extends State<MemoryDetailOpeningHook> {
   @override
   void initState() {
     super.initState();
-    widget.onOpened();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onOpened();
+    });
   }
 
   @override
@@ -510,7 +512,6 @@ String _formatBytes(int? bytes) {
 
 String _formatExactScale(int bytes, int unit) {
   final fixed = (bytes / unit).toStringAsFixed(2);
-  return fixed
-      .replaceFirst(RegExp(r'\.0+$'), '')
-      .replaceFirst(RegExp(r'(\.\d*[1-9])0+$'), r'$1');
+  final withoutTrailingZeroes = fixed.replaceFirst(RegExp(r'0+$'), '');
+  return withoutTrailingZeroes.replaceFirst(RegExp(r'\.$'), '');
 }
