@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:nt_helper/domain/disting_message_scheduler.dart';
 import 'package:nt_helper/domain/disting_midi_manager.dart';
 import 'package:nt_helper/domain/memory_query_input.dart';
 import 'package:nt_helper/services/settings_service.dart';
@@ -145,7 +146,102 @@ void main() {
     harness.injectMemory();
     expect(await second, isNotNull);
   });
+
+  test(
+    'a delayed timed-out response cannot complete the next memory query',
+    () async {
+      final harness = _MemoryWireHarness();
+      addTearDown(harness.close);
+      final input = await harness.catalogueInput();
+
+      final timedOut = harness.manager.requestMemoryUsage(input);
+      await harness.waitForMemoryRequests(5);
+      await expectLater(timedOut, throwsA(isA<TimeoutException>()));
+
+      final fresh = harness.manager.requestMemoryUsage(input);
+      final freshFailure = expectLater(fresh, _throwsAttributionFailure);
+      harness.injectMemory(
+        values: const [100, 200, 300, 400, 91, 92, 93, 94, 1, 2, 3, 4],
+      );
+
+      await freshFailure;
+      expect(harness.memoryRequests, hasLength(5));
+    },
+  );
+
+  test(
+    'extra retry responses make a newer memory query fail explicitly',
+    () async {
+      final harness = _MemoryWireHarness();
+      addTearDown(harness.close);
+      final input = await harness.catalogueInput();
+
+      final retried = harness.manager.requestMemoryUsage(input);
+      await harness.waitForMemoryRequests(2);
+      harness.injectMemory(
+        values: const [100, 200, 300, 400, 10, 20, 30, 40, 1, 2, 3, 4],
+      );
+      final retriedResult = await retried;
+      expect(retriedResult?.sram.current, 10);
+
+      final fresh = harness.manager.requestMemoryUsage(input);
+      final freshFailure = expectLater(fresh, _throwsAttributionFailure);
+      harness.injectMemory(
+        values: const [100, 200, 300, 400, 10, 20, 30, 40, 1, 2, 3, 4],
+      );
+
+      await freshFailure;
+      await Future<void>.delayed(Duration.zero);
+      expect(harness.memoryRequests, hasLength(2));
+
+      final recovered = harness.manager.requestMemoryUsage(input);
+      await harness.waitForMemoryRequests(3);
+      harness.injectMemory(
+        values: const [500, 600, 700, 800, 50, 60, 70, 80, 5, 6, 7, 8],
+      );
+      final recoveredResult = await recovered;
+      expect(recoveredResult?.sram.current, 50);
+    },
+  );
+
+  test(
+    'connection replacement rejects a response from the disposed manager',
+    () async {
+      final harness = _MemoryWireHarness();
+      addTearDown(harness.close);
+      final input = await harness.catalogueInput();
+      final oldManager = harness.manager;
+
+      final oldQuery = oldManager.requestMemoryUsage(input);
+      await harness.waitForMemoryRequests(1);
+      oldManager.dispose();
+      await expectLater(oldQuery, throwsA(isA<StateError>()));
+
+      final replacement = harness.replaceManager();
+      final fresh = replacement.requestMemoryUsage(input);
+      final freshFailure = expectLater(fresh, _throwsAttributionFailure);
+      harness.injectMemory(
+        values: const [100, 200, 300, 400, 10, 20, 30, 40, 1, 2, 3, 4],
+      );
+
+      await freshFailure;
+      await Future<void>.delayed(Duration.zero);
+      expect(harness.memoryRequests, hasLength(1));
+
+      final recovered = replacement.requestMemoryUsage(input);
+      await harness.waitForMemoryRequests(2);
+      harness.injectMemory(
+        values: const [500, 600, 700, 800, 50, 60, 70, 80, 5, 6, 7, 8],
+      );
+      final recoveredResult = await recovered;
+      expect(recoveredResult?.sram.current, 50);
+    },
+  );
 }
+
+final Matcher _throwsAttributionFailure = throwsA(
+  isA<AmbiguousResponseAttributionException>(),
+);
 
 final class _MemoryWireHarness {
   _MemoryWireHarness({this.autoMemoryStatus}) {
@@ -172,13 +268,6 @@ final class _MemoryWireHarness {
           break;
       }
     });
-
-    manager = DistingMidiManager(
-      midiCommand: midi,
-      inputDevice: device,
-      outputDevice: device,
-      sysExId: _sysExId,
-    );
   }
 
   final int? autoMemoryStatus;
@@ -193,7 +282,24 @@ final class _MemoryWireHarness {
   );
   final List<List<int>> sentPackets = [];
 
-  late final DistingMidiManager manager;
+  final List<DistingMidiManager> _managers = [];
+  late DistingMidiManager manager = _createManager();
+
+  DistingMidiManager _createManager() {
+    final next = DistingMidiManager(
+      midiCommand: midi,
+      inputDevice: device,
+      outputDevice: device,
+      sysExId: _sysExId,
+    );
+    _managers.add(next);
+    return next;
+  }
+
+  DistingMidiManager replaceManager() {
+    manager = _createManager();
+    return manager;
+  }
 
   List<List<int>> get memoryRequests => sentPackets
       .where((packet) => packet.length > 6 && packet[6] == 0x39)
@@ -203,6 +309,12 @@ final class _MemoryWireHarness {
     final input = await MemoryQueryInput.requestFromCatalogue(manager);
     expect(input, isNotNull);
     return input!;
+  }
+
+  Future<void> waitForMemoryRequests(int count) async {
+    while (memoryRequests.length < count) {
+      await Future<void>.delayed(Duration.zero);
+    }
   }
 
   void injectMemory({
@@ -238,7 +350,9 @@ final class _MemoryWireHarness {
   }
 
   Future<void> close() async {
-    manager.dispose();
+    for (final manager in _managers) {
+      manager.dispose();
+    }
     await incoming.close();
   }
 }

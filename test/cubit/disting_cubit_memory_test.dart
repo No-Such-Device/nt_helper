@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/db/daos/metadata_dao.dart';
 import 'package:nt_helper/db/database.dart';
+import 'package:nt_helper/domain/disting_message_scheduler.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/domain/memory_query_input.dart';
@@ -165,7 +166,7 @@ void main() {
       expect(cubit.displayMemoryState.sample, same(firstSample));
       await waitForMemoryRequests(manager, 2);
       manager.memoryResponses[1].completeError(
-        TimeoutException('memory response timed out'),
+        AmbiguousResponseAttributionException(),
       );
       await failedRefresh;
 
@@ -182,14 +183,16 @@ void main() {
   );
 
   test(
-    'failed first refresh is unavailable and never fabricates a sample',
+    'ambiguous first refresh is unavailable and never caches a sample',
     () async {
       final manager = _ControlledMemoryManager();
       cubit.emit(synchronizedState(manager));
 
       final refresh = cubit.refreshDisplayMemory();
       await waitForMemoryRequests(manager, 1);
-      manager.memoryResponses.single.complete(null);
+      manager.memoryResponses.single.completeError(
+        AmbiguousResponseAttributionException(),
+      );
       await refresh;
 
       expect(cubit.displayMemoryState.status, MemoryDisplayStatus.unavailable);

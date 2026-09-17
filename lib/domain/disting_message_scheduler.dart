@@ -32,6 +32,16 @@ enum ResponseExpectation {
   none, // Fire-and-forget
 }
 
+enum ResponseAttributionPolicy { bestEffort, failWhenAmbiguous }
+
+final class AmbiguousResponseAttributionException extends StateError {
+  AmbiguousResponseAttributionException()
+    : super(
+        'Cannot establish response attribution because an earlier request may '
+        'still respond.',
+      );
+}
+
 // -----------------------------------------------------------------------------
 // Scheduler state
 // -----------------------------------------------------------------------------
@@ -54,6 +64,7 @@ class _ScheduledRequest {
     required this.timeout,
     required this.maxRetries,
     required this.retryDelay,
+    required this.attributionPolicy,
   });
 
   final int id;
@@ -64,9 +75,13 @@ class _ScheduledRequest {
   final Duration timeout;
   final int maxRetries;
   final Duration retryDelay;
+  final ResponseAttributionPolicy attributionPolicy;
 
   int attemptCount = 0;
   int transferErrorRecoveryCount = 0;
+  int sentRequestCount = 0;
+  int matchingResponseCount = 0;
+  bool attributionStarted = false;
   Timer? timeoutTimer;
 
   /// Stopwatch to measure round-trip time from send to response
@@ -100,7 +115,122 @@ class _ExpiredHandler {
   final DateTime expiredAt;
 }
 
+final class _AttributionEndpointKey {
+  const _AttributionEndpointKey({
+    required this.inputDeviceId,
+    required this.sysExId,
+  });
+
+  final String inputDeviceId;
+  final int sysExId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _AttributionEndpointKey &&
+      inputDeviceId == other.inputDeviceId &&
+      sysExId == other.sysExId;
+
+  @override
+  int get hashCode => Object.hash(inputDeviceId, sysExId);
+}
+
+final class _UnattributedResponse {
+  const _UnattributedResponse({required this.key, required this.createdAt});
+
+  final RequestKey key;
+  final DateTime createdAt;
+}
+
+/// Tracks response debt for requests whose wire protocol has no transaction ID.
+///
+/// The tracker is shared by schedulers using the same MIDI command and endpoint,
+/// so disposing and replacing a manager cannot make an old packet attributable
+/// to the replacement. Only callers opting into strict attribution use it.
+final class _StrictResponseAttribution {
+  static const _responseDebtMaxAge = Duration(seconds: 30);
+
+  _ScheduledRequest? _activeRequest;
+  final List<_UnattributedResponse> _responseDebt = [];
+
+  bool begin(_ScheduledRequest request) {
+    _removeExpiredDebt();
+    if (_activeRequest != null || _hasMatchingDebt(request.key)) {
+      return false;
+    }
+    _activeRequest = request;
+    return true;
+  }
+
+  void markSent(_ScheduledRequest request) {
+    if (identical(_activeRequest, request)) {
+      request.sentRequestCount++;
+    }
+  }
+
+  void markResponse(_ScheduledRequest request) {
+    if (identical(_activeRequest, request)) {
+      request.matchingResponseCount++;
+    }
+  }
+
+  void finish(_ScheduledRequest request) {
+    if (!identical(_activeRequest, request)) return;
+
+    final unresolved = request.sentRequestCount - request.matchingResponseCount;
+    final now = DateTime.now();
+    for (var i = 0; i < unresolved; i++) {
+      _responseDebt.add(
+        _UnattributedResponse(key: request.key, createdAt: now),
+      );
+    }
+    _activeRequest = null;
+  }
+
+  bool consumeUnattributed(DistingNTParsedMessage parsed) {
+    _removeExpiredDebt();
+    if (_activeRequest != null) return false;
+
+    final debtIndex = _responseDebt.indexWhere(
+      (response) => response.key.matchesStrict(parsed),
+    );
+    if (debtIndex == -1) return false;
+
+    _responseDebt.removeAt(debtIndex);
+    return true;
+  }
+
+  bool _hasMatchingDebt(RequestKey key) {
+    return _responseDebt.any((response) => response.key == key);
+  }
+
+  void _removeExpiredDebt() {
+    final now = DateTime.now();
+    _responseDebt.removeWhere(
+      (response) => now.difference(response.createdAt) > _responseDebtMaxAge,
+    );
+  }
+}
+
+final Expando<Map<_AttributionEndpointKey, _StrictResponseAttribution>>
+_strictAttributionByMidi = Expando('Disting strict response attribution');
+
+_StrictResponseAttribution _strictAttributionFor({
+  required MidiCommand midi,
+  required MidiDevice inputDevice,
+  required int sysExId,
+}) {
+  final endpointStates = _strictAttributionByMidi[midi] ??= {};
+  final endpoint = _AttributionEndpointKey(
+    inputDeviceId: inputDevice.id,
+    sysExId: sysExId,
+  );
+  return endpointStates.putIfAbsent(endpoint, _StrictResponseAttribution.new);
+}
+
 class _ResponseDemux {
+  _ResponseDemux(this._strictAttribution);
+
+  final _StrictResponseAttribution _strictAttribution;
   _ActiveHandler? _activeHandler;
   final List<_ExpiredHandler> _expiredHandlers = [];
   final List<void Function(DistingNTParsedMessage)> _observers = [];
@@ -130,6 +260,10 @@ class _ResponseDemux {
     }
   }
 
+  void discardActive() {
+    _activeHandler = null;
+  }
+
   void addObserver(void Function(DistingNTParsedMessage) observer) {
     _observers.add(observer);
   }
@@ -146,7 +280,13 @@ class _ResponseDemux {
       } catch (_) {}
     }
 
-    // 2. Check active handler first — active request always takes priority
+    // 2. Strict requests carry response debt across scheduler replacement.
+    if (_strictAttribution.consumeUnattributed(parsed)) {
+      staleResponsesAbsorbed++;
+      return;
+    }
+
+    // 3. Check active handler first — active request always takes priority
     if (_activeHandler != null && _activeHandler!.key.matches(parsed)) {
       final handler = _activeHandler!;
       _activeHandler = null;
@@ -154,7 +294,7 @@ class _ResponseDemux {
       return;
     }
 
-    // 3. Check expired handlers (oldest first) — absorb stale responses
+    // 4. Check expired handlers (oldest first) — absorb stale responses
     final expiredMatch = _expiredHandlers.indexWhere(
       (h) => h.key.matchesStrict(parsed),
     );
@@ -164,7 +304,7 @@ class _ResponseDemux {
       return;
     }
 
-    // 4. No match — discard cleanly
+    // 5. No match — discard cleanly
     unmatchedResponsesDiscarded++;
 
     // Lazy cleanup of old expired handlers
@@ -251,6 +391,12 @@ class DistingMessageScheduler {
        messageInterval = _normalizeDuration(messageInterval),
        defaultTimeout = _normalizeDuration(defaultTimeout),
        defaultRetryDelay = _normalizeDuration(defaultRetryDelay) {
+    _strictAttribution = _strictAttributionFor(
+      midi: _midi,
+      inputDevice: _inputDevice,
+      sysExId: _sysExId,
+    );
+    _demux = _ResponseDemux(_strictAttribution);
     _subscription = _midi.onMidiPacketReceived?.listen(
       _handleIncomingPacket,
       onError: _handleSubscriptionError,
@@ -287,7 +433,8 @@ class DistingMessageScheduler {
   StreamSubscription? _subscription;
 
   // Response demultiplexer
-  final _ResponseDemux _demux = _ResponseDemux();
+  late final _StrictResponseAttribution _strictAttribution;
+  late final _ResponseDemux _demux;
 
   // CC callback for receiving MIDI CC messages from the device
   CcCallback? _ccCallback;
@@ -629,6 +776,8 @@ class DistingMessageScheduler {
     int? maxRetries,
     Duration? timeout,
     Duration? retryDelay,
+    ResponseAttributionPolicy attributionPolicy =
+        ResponseAttributionPolicy.bestEffort,
   }) {
     final completer = Completer<T?>();
     final request = _ScheduledRequest(
@@ -640,6 +789,7 @@ class DistingMessageScheduler {
       timeout: _normalizeDuration(timeout ?? defaultTimeout),
       maxRetries: maxRetries ?? defaultMaxRetries,
       retryDelay: _normalizeDuration(retryDelay ?? defaultRetryDelay),
+      attributionPolicy: attributionPolicy,
     );
 
     _queue.add(request);
@@ -663,6 +813,7 @@ class DistingMessageScheduler {
     _retryTimer?.cancel();
     _demux.clear();
     final current = _currentRequest;
+    _finishStrictAttribution(current);
     if (current != null && !current.completer.isCompleted) {
       current.completer.completeError(StateError('Scheduler disposed'));
     }
@@ -707,6 +858,19 @@ class DistingMessageScheduler {
       return;
     }
 
+    if (request.attributionPolicy ==
+            ResponseAttributionPolicy.failWhenAmbiguous &&
+        !request.attributionStarted) {
+      if (!_strictAttribution.begin(request)) {
+        request.completer.completeError(
+          AmbiguousResponseAttributionException(),
+        );
+        _finishCurrentRequest();
+        return;
+      }
+      request.attributionStarted = true;
+    }
+
     // If device is suspected broken, fail immediately instead of trying to send.
     // This prevents flooding the native layer with failed send attempts.
     if (_deviceConnectionSuspectedBroken) {
@@ -739,6 +903,9 @@ class DistingMessageScheduler {
     // Send the message
     try {
       _midi.sendData(request.packet, deviceId: _outputDevice.id);
+      if (request.attributionStarted) {
+        _strictAttribution.markSent(request);
+      }
     } catch (e) {
       request.stopwatch.stop();
       _handleSendFailure(request, e);
@@ -766,6 +933,10 @@ class DistingMessageScheduler {
     if (request.completer.isCompleted) {
       _finishCurrentRequest();
       return;
+    }
+
+    if (request.attributionStarted) {
+      _strictAttribution.markResponse(request);
     }
 
     // Cancel timeout timer since we got a response
@@ -873,8 +1044,13 @@ class DistingMessageScheduler {
     }
 
     if (request.attemptCount >= request.maxRetries) {
-      // Out of retries — expire the handler so late responses get absorbed
-      _demux.expireActive();
+      // Out of retries — strict attribution tracks every sent attempt across
+      // manager replacement; ordinary requests retain the local stale handler.
+      if (request.attributionStarted) {
+        _demux.discardActive();
+      } else {
+        _demux.expireActive();
+      }
 
       // Record timeout for stats
       request.stopwatch.stop();
@@ -931,7 +1107,11 @@ class DistingMessageScheduler {
     }
 
     if (request.attemptCount >= request.maxRetries) {
-      _demux.expireActive();
+      if (request.attributionStarted) {
+        _demux.discardActive();
+      } else {
+        _demux.expireActive();
+      }
       _diag(
         'send-failed-final #${request.id} attempts=${request.attemptCount} '
         'key=${request.key} error=$error',
@@ -980,6 +1160,7 @@ class DistingMessageScheduler {
   }
 
   void _finishCurrentRequest() {
+    _finishStrictAttribution(_currentRequest);
     _currentRequest?.dispose();
     _currentRequest = null;
     _state = _SchedulerState.idle;
@@ -991,6 +1172,12 @@ class DistingMessageScheduler {
       _nextProcessTimer?.cancel();
       _nextProcessTimer = Timer(messageInterval, _processNext);
     }
+  }
+
+  void _finishStrictAttribution(_ScheduledRequest? request) {
+    if (request == null || !request.attributionStarted) return;
+    _strictAttribution.finish(request);
+    request.attributionStarted = false;
   }
 
   // ---------------------------------------------------------------------------

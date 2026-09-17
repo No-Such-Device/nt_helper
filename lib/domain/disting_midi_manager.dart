@@ -1409,6 +1409,7 @@ class DistingMidiManager
       message.encode(),
       key,
       responseExpectation: ResponseExpectation.required,
+      attributionPolicy: ResponseAttributionPolicy.failWhenAmbiguous,
     );
   }
 
