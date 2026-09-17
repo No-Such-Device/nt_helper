@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:nt_helper/models/algorithm_metadata.dart';
+import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/services/disting_controller.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -1479,6 +1481,69 @@ class MCPAlgorithmTools {
       default:
         return null;
     }
+  }
+
+  /// Returns one fresh device memory sample for MCP consumers.
+  ///
+  /// This deliberately uses the cubit's fresh-only path rather than its
+  /// connection-local display state, so a remembered UI sample can never turn
+  /// an unavailable device response into a successful MCP result.
+  Future<String> showMemory() async {
+    final state = _distingCubit.state;
+    if (state is! DistingStateSynchronized) {
+      return _memoryError(
+        code: 'disconnected',
+        message: 'No synchronized Disting NT is connected.',
+      );
+    }
+    if (state.offline || state.demo) {
+      return _memoryError(
+        code: 'unavailable',
+        message: 'Memory queries require an active physical connection.',
+      );
+    }
+    if (!state.firmwareVersion.hasMemoryUsage) {
+      return _memoryError(
+        code: 'unsupported',
+        message: 'Memory queries require firmware version 1.19 or higher.',
+      );
+    }
+
+    try {
+      final memory = await _distingCubit.requestFreshMemoryUsage();
+      return jsonEncode({
+        'success': true,
+        'memory_usage': {
+          'sram': _memoryPoolJson(memory.sram),
+          'dram': _memoryPoolJson(memory.dram),
+          'dtc': _memoryPoolJson(memory.dtc),
+          'itc': _memoryPoolJson(memory.itc),
+        },
+      });
+    } on TimeoutException catch (error) {
+      return _memoryError(code: 'timeout', message: error.toString());
+    } on FormatException catch (error) {
+      return _memoryError(
+        code: 'malformed_response',
+        message: error.toString(),
+      );
+    } on UnsupportedError catch (error) {
+      return _memoryError(code: 'unsupported', message: error.toString());
+    } on StateError catch (error) {
+      return _memoryError(code: 'unavailable', message: error.toString());
+    } catch (error) {
+      return _memoryError(code: 'query_failed', message: error.toString());
+    }
+  }
+
+  Map<String, int> _memoryPoolJson(MemoryPoolUsage pool) => {
+    'current_bytes': pool.current,
+    'total_bytes': pool.total,
+    'free_bytes': pool.free,
+  };
+
+  String _memoryError({required String code, required String message}) {
+    return jsonEncode({'success': false, 'error_code': code, 'error': message});
   }
 
   Future<String> showCpu() async {

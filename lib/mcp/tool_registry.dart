@@ -595,6 +595,16 @@ class ToolRegistry {
         handler: (_) => _algoTools.showCpu(),
       ),
     );
+
+    _entries.add(
+      ToolRegistryEntry(
+        name: 'show_memory',
+        description:
+            'Request and show fresh SRAM, DRAM, DTC, and ITC memory usage from the currently connected Disting NT.',
+        inputSchema: {'properties': {}},
+        handler: (_) => _algoTools.showMemory(),
+      ),
+    );
   }
 
   void _registerEditTools() {
