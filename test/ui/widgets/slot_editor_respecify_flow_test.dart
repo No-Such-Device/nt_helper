@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:nt_helper/core/platform/platform_interaction_service.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
@@ -13,8 +14,10 @@ import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
+import 'package:nt_helper/services/mcp_server_service.dart';
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:nt_helper/ui/parameter_editor_registry.dart';
+import 'package:nt_helper/ui/synchronized_screen.dart';
 import 'package:nt_helper/ui/widgets/algorithm_controller/algorithm_controller_section_controller.dart';
 import 'package:nt_helper/ui/widgets/slot_detail_view.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode.dart';
@@ -23,6 +26,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../test_helpers/mock_midi_command.dart';
 
 const _algorithmGuid = 'RSPC';
+
+class _MockPlatformInteractionService extends Mock
+    implements PlatformInteractionService {}
 
 final class _WidgetRespecificationManager extends Mock
     implements IDistingMidiManager, AlgorithmRespecificationWriter {
@@ -37,6 +43,19 @@ final class _WidgetRespecificationManager extends Mock
   bool missingReadback = false;
   bool failHydration = false;
   int hydrationRequests = 0;
+  int ordinaryRefreshRequests = 0;
+
+  @override
+  Future<int?> requestNumAlgorithmsInPreset({
+    Duration? timeout,
+    int? maxRetries,
+  }) async {
+    ordinaryRefreshRequests++;
+    return 1;
+  }
+
+  @override
+  Future<String?> requestPresetName() async => 'Respecification widget fixture';
 
   @override
   Future<void> requestRespecifyAlgorithm(
@@ -193,12 +212,35 @@ final class _WidgetRespecificationManager extends Mock
   }
 }
 
+final class _WidgetDistingCubit extends DistingCubit {
+  _WidgetDistingCubit(
+    super.database, {
+    super.midiCommand,
+    super.isWindowsOverride,
+  });
+
+  int ordinaryRefreshFetches = 0;
+
+  @override
+  Future<List<Slot>> fetchSlots(
+    int numAlgorithmsInPreset,
+    IDistingMidiManager disting, {
+    void Function(int completed, int total)? onSlotProgress,
+  }) async {
+    ordinaryRefreshFetches++;
+    final manager = disting as _WidgetRespecificationManager;
+    onSlotProgress?.call(1, 1);
+    return [_deviceReturnedSlot(manager)];
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late AppDatabase database;
-  late DistingCubit cubit;
+  late _WidgetDistingCubit cubit;
   late _WidgetRespecificationManager manager;
+  late _MockPlatformInteractionService platformService;
   late AlgorithmControllerSectionController controllerSections;
 
   setUp(() async {
@@ -208,11 +250,14 @@ void main() {
     database = AppDatabase.forTesting(NativeDatabase.memory());
     await AlgorithmMetadataService().initialize(database);
     manager = _WidgetRespecificationManager();
-    cubit = DistingCubit(
+    platformService = _MockPlatformInteractionService();
+    when(() => platformService.isMobilePlatform()).thenReturn(true);
+    cubit = _WidgetDistingCubit(
       database,
       midiCommand: MockMidiCommand(),
       isWindowsOverride: true,
     )..emit(_synchronizedState(manager));
+    McpServerService.initialize(distingCubit: cubit);
     controllerSections = AlgorithmControllerSectionController(
       initiallyCollapsed: false,
     );
@@ -369,6 +414,61 @@ void main() {
   );
 
   testWidgets(
+    'matching unchanged values establish current state without acknowledgement',
+    (tester) async {
+      await tester.pumpWidget(_slotEditorHarness(cubit, controllerSections));
+      await tester.pump();
+
+      await _openRespecifyDialog(tester);
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Respecify'));
+      await tester.pump();
+
+      expect(manager.mutations, [
+        [1],
+      ]);
+      expect(find.text('Respecifying…'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(
+        (cubit.state as DistingStateSynchronized)
+            .slots
+            .single
+            .algorithm
+            .specifications,
+        [1],
+      );
+      expect(find.text('Respecifying…'), findsNothing);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(manager.mutations, hasLength(1));
+    },
+  );
+
+  testWidgets('invalid range remains in the form and sends no mutation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_slotEditorHarness(cubit, controllerSections));
+    await tester.pump();
+
+    await _openRespecifyDialog(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('${_algorithmGuid}_spec_0')),
+      '4',
+    );
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Respecify'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Parameter count must be between 1 and 3'),
+      findsOneWidget,
+    );
+    expect(find.text('Respecify Shape fixture'), findsOneWidget);
+    expect(manager.mutations, isEmpty);
+    expect(manager.readbackTimeouts, isEmpty);
+  });
+
+  testWidgets(
     'differing device state replaces the proposal and reopens as authoritative',
     (tester) async {
       manager.specificationsReturnedAfterMutation = [2];
@@ -445,7 +545,9 @@ void main() {
     (tester) async {
       manager.missingReadback = true;
       final initialState = cubit.state;
-      await tester.pumpWidget(_slotEditorHarness(cubit, controllerSections));
+      await tester.pumpWidget(
+        _synchronizedScreenHarness(cubit, platformService),
+      );
       await tester.pump();
       await _openRespecifyDialog(tester);
       await tester.enterText(
@@ -484,11 +586,23 @@ void main() {
       expect(find.text('Respecifying…'), findsNothing);
       expect(find.text('Refreshing slot data…'), findsNothing);
       expect(
-        find.text('Unable to verify refreshed slot data.'),
+        find.text(
+          'Unable to verify whether the proposed specifications were applied.',
+        ),
         findsOneWidget,
       );
+      expect(find.textContaining('Retry'), findsNothing);
+      expect(find.byTooltip('Refresh'), findsOneWidget);
+      final refreshButton = find.widgetWithIcon(
+        IconButton,
+        Icons.refresh_rounded,
+      );
+      expect(refreshButton, findsOneWidget);
+      expect(tester.widget<IconButton>(refreshButton).onPressed, isNotNull);
       expect(manager.mutations, hasLength(1));
       expect(manager.hydrationRequests, 0);
+      expect(manager.ordinaryRefreshRequests, 0);
+      expect(cubit.ordinaryRefreshFetches, 0);
       expect(cubit.state, same(initialState));
       expect(
         manager.readbackTimeouts,
@@ -508,6 +622,23 @@ void main() {
       expect(manager.mutations, hasLength(1));
       expect(manager.hydrationRequests, 0);
       expect(cubit.state, same(initialState));
+
+      await tester.tap(refreshButton);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump();
+
+      expect(manager.ordinaryRefreshRequests, 1);
+      expect(cubit.ordinaryRefreshFetches, 1);
+      expect(manager.mutations, hasLength(1));
+      final refreshedSlot =
+          (cubit.state as DistingStateSynchronized).slots.single;
+      expect(refreshedSlot.algorithm.specifications, [2]);
+      expect(refreshedSlot.parameters.map((parameter) => parameter.name), [
+        'Existing device value',
+        'Added device default',
+      ]);
+      expect(find.byTooltip('Refresh'), findsOneWidget);
     },
   );
 
@@ -576,6 +707,102 @@ Widget _slotEditorHarness(
         },
       ),
     ),
+  );
+}
+
+Widget _synchronizedScreenHarness(
+  DistingCubit cubit,
+  PlatformInteractionService platformService,
+) {
+  return MaterialApp(
+    home: BlocProvider<DistingCubit>.value(
+      value: cubit,
+      child: BlocBuilder<DistingCubit, DistingState>(
+        builder: (context, state) {
+          if (state is! DistingStateSynchronized) {
+            return const SizedBox.shrink();
+          }
+          return SynchronizedScreen(
+            slots: state.slots,
+            algorithms: state.algorithms,
+            units: state.unitStrings,
+            presetName: state.presetName,
+            isDirty: state.isDirty,
+            distingVersion: state.distingVersion,
+            firmwareVersion: state.firmwareVersion,
+            screenshot: state.screenshot,
+            loading: state.loading,
+            platformService: platformService,
+          );
+        },
+      ),
+    ),
+  );
+}
+
+Slot _deviceReturnedSlot(_WidgetRespecificationManager manager) {
+  final parameterCount = manager.deviceSpecifications.single;
+  return Slot(
+    algorithm: manager._deviceAlgorithm(),
+    routing: RoutingInfo(
+      algorithmIndex: 0,
+      routingInfo: List<int>.filled(6, 4),
+    ),
+    pages: ParameterPages(
+      algorithmIndex: 0,
+      pages: [
+        ParameterPage(
+          name: 'Device page',
+          parameters: List<int>.generate(parameterCount, (index) => index),
+        ),
+      ],
+    ),
+    parameters: List<ParameterInfo>.generate(
+      parameterCount,
+      (index) => ParameterInfo(
+        algorithmIndex: 0,
+        parameterNumber: index,
+        min: 0,
+        max: 100,
+        defaultValue: manager._deviceValue(index),
+        unit: 0,
+        name: index == 0 ? 'Existing device value' : 'Added device default',
+        powerOfTen: 0,
+        ioFlags: index == 1 ? 8 : 0,
+      ),
+    ),
+    values: List<ParameterValue>.generate(
+      parameterCount,
+      (index) => ParameterValue(
+        algorithmIndex: 0,
+        parameterNumber: index,
+        value: manager._deviceValue(index),
+      ),
+    ),
+    enums: List<ParameterEnumStrings>.generate(
+      parameterCount,
+      (_) => ParameterEnumStrings.filler(),
+    ),
+    mappings: List<Mapping>.generate(
+      parameterCount,
+      (index) => Mapping(
+        algorithmIndex: 0,
+        parameterNumber: index,
+        packedMappingData: PackedMappingData.filler(),
+      ),
+    ),
+    valueStrings: List<ParameterValueString>.generate(
+      parameterCount,
+      (_) => ParameterValueString.filler(),
+    ),
+    parameterCountFromDevice: true,
+    parameterPagesFromDevice: true,
+    parameterValuesFromDevice: true,
+    outputModeMap: parameterCount == 2
+        ? const {
+            1: [0],
+          }
+        : const {},
   );
 }
 

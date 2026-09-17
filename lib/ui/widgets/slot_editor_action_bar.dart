@@ -208,12 +208,17 @@ class SlotEditorActionBar extends StatelessWidget {
             AlgorithmRespecificationStatus.observedMatchingState => null,
             AlgorithmRespecificationStatus.observedDifferingState =>
               'The device did not apply the proposed specifications.',
+            AlgorithmRespecificationStatus.unverifiable =>
+              'Unable to verify whether the proposed specifications were '
+                  'applied.',
             _ => 'Unable to verify refreshed slot data.',
           };
         } on AlgorithmRespecificationException catch (error) {
           failureMessage = error.message;
         } catch (_) {
-          failureMessage = 'Respecification failed.';
+          failureMessage =
+              'Unable to verify whether the proposed specifications were '
+              'applied.';
         }
       },
     );
