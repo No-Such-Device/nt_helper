@@ -1848,6 +1848,46 @@ void main() {
 
       expect((cubit.state as DistingStateSynchronized).isDirty, isFalse);
     });
+
+    test('late routing does not overwrite a replacement manager', () async {
+      final routing = Completer<RoutingInfo?>();
+      when(
+        () => mockDisting.requestRoutingInformation(0),
+      ).thenAnswer((_) => routing.future);
+      final initialState = makeSyncState(slots: [makeSlot()]);
+      cubit.emit(initialState);
+
+      final refresh = cubit.refreshRouting();
+      await Future<void>.delayed(Duration.zero);
+
+      final replacementManager = MockDistingMidiManager();
+      final replacementSlot = makeSlot().copyWith(
+        values: [
+          ParameterValue(algorithmIndex: 0, parameterNumber: 0, value: 42),
+        ],
+      );
+      final replacementState = initialState.copyWith(
+        disting: replacementManager,
+        slots: [replacementSlot],
+      );
+      cubit.emit(replacementState);
+      routing.complete(
+        RoutingInfo(algorithmIndex: 0, routingInfo: List<int>.filled(6, 99)),
+      );
+      await refresh;
+
+      expect(cubit.state, same(replacementState));
+      expect(
+        (cubit.state as DistingStateSynchronized)
+            .slots
+            .single
+            .values
+            .single
+            .value,
+        42,
+      );
+      verify(() => mockDisting.requestRoutingInformation(0)).called(1);
+    });
   });
 
   group('cubit mapping ops', () {

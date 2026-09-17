@@ -17,10 +17,45 @@ class _ParameterFetchDelegate {
   final _commandSemaphore = Completer<void>();
 
   bool get hasQueuedRetries => _parameterRetryQueue.isNotEmpty;
+  int get pendingRetryCount => _parameterRetryQueue.length;
 
   // Background retry for failed parameter requests
   void _queueParameterRetry(_ParameterRetryRequest request) {
+    final lifetime = request.respecificationLifetime;
+    if (lifetime != null &&
+        !_cubit._isCurrentRespecificationLifetime(lifetime)) {
+      return;
+    }
     _parameterRetryQueue.add(request);
+  }
+
+  void discardRetriesForRespecification(_RespecificationLifetime lifetime) {
+    _parameterRetryQueue.removeWhere(
+      (request) => identical(request.respecificationLifetime, lifetime),
+    );
+  }
+
+  bool _isRetryTargetCurrent(
+    _ParameterRetryRequest request,
+    IDistingMidiManager processingDisting,
+  ) {
+    final lifetime = request.respecificationLifetime;
+    if (lifetime != null &&
+        !_cubit._isCurrentRespecificationLifetime(lifetime)) {
+      return false;
+    }
+    final currentState = _cubit.state;
+    if (currentState is! DistingStateSynchronized ||
+        !identical(processingDisting, request.disting) ||
+        !identical(currentState.disting, request.disting) ||
+        request.algorithmGuid == null ||
+        request.slotIndex < 0 ||
+        request.slotIndex >= currentState.slots.length) {
+      return false;
+    }
+    final algorithm = currentState.slots[request.slotIndex].algorithm;
+    return algorithm.algorithmIndex == request.slotIndex &&
+        algorithm.guid == request.algorithmGuid;
   }
 
   // Acquire semaphore for active commands (blocks retry queue)
@@ -90,18 +125,21 @@ class _ParameterFetchDelegate {
 
         // Additional micro-yield to event loop before each request
         await Future.delayed(Duration.zero);
+        if (!_isRetryTargetCurrent(request, disting)) continue;
 
+        bool isCurrent() => _isRetryTargetCurrent(request, disting);
         switch (request.type) {
           case _ParameterRetryType.info:
             final info = await disting.requestParameterInfo(
               request.slotIndex,
               request.paramIndex,
             );
-            if (info != null) {
+            if (info != null && isCurrent()) {
               await _cubit._slotStateDelegate.updateSlotParameterInfo(
                 request.slotIndex,
                 request.paramIndex,
                 info,
+                isCurrent: isCurrent,
               );
             }
             break;
@@ -110,11 +148,12 @@ class _ParameterFetchDelegate {
               request.slotIndex,
               request.paramIndex,
             );
-            if (enums != null) {
+            if (enums != null && isCurrent()) {
               await _cubit._slotStateDelegate.updateSlotParameterEnums(
                 request.slotIndex,
                 request.paramIndex,
                 enums,
+                isCurrent: isCurrent,
               );
             }
             break;
@@ -123,11 +162,12 @@ class _ParameterFetchDelegate {
               request.slotIndex,
               request.paramIndex,
             );
-            if (mappings != null) {
+            if (mappings != null && isCurrent()) {
               await _cubit._slotStateDelegate.updateSlotParameterMappings(
                 request.slotIndex,
                 request.paramIndex,
                 mappings,
+                isCurrent: isCurrent,
               );
             }
             break;
@@ -136,11 +176,12 @@ class _ParameterFetchDelegate {
               request.slotIndex,
               request.paramIndex,
             );
-            if (valueStrings != null) {
+            if (valueStrings != null && isCurrent()) {
               await _cubit._slotStateDelegate.updateSlotParameterValueStrings(
                 request.slotIndex,
                 request.paramIndex,
                 valueStrings,
+                isCurrent: isCurrent,
               );
             }
             break;
@@ -201,6 +242,10 @@ class _ParameterFetchDelegate {
     int algorithmIndex,
   ) async {
     final slotStopwatch = Stopwatch()..start();
+    final respecificationLifetime = _cubit._respecificationLifetimeForSlot(
+      disting,
+      algorithmIndex,
+    );
     _diag('fetchSlot[$algorithmIndex] start');
 
     /* ------------------------------------------------------------------ *
@@ -313,6 +358,19 @@ class _ParameterFetchDelegate {
       }
     }
 
+    void queueParameterRetry(int paramIndex, _ParameterRetryType type) {
+      _queueParameterRetry(
+        _ParameterRetryRequest(
+          disting: disting,
+          algorithmGuid: guid?.guid,
+          slotIndex: algorithmIndex,
+          paramIndex: paramIndex,
+          type: type,
+          respecificationLifetime: respecificationLifetime,
+        ),
+      );
+    }
+
     /* Visible-parameter set (built from pages) */
     final visible = pages.pages.expand((p) => p.parameters).toSet();
 
@@ -330,23 +388,11 @@ class _ParameterFetchDelegate {
         final info = await disting.requestParameterInfo(algorithmIndex, param);
         parameters[param] = info ?? ParameterInfo.filler();
         if (info == null) {
-          _queueParameterRetry(
-            _ParameterRetryRequest(
-              slotIndex: algorithmIndex,
-              paramIndex: param,
-              type: _ParameterRetryType.info,
-            ),
-          );
+          queueParameterRetry(param, _ParameterRetryType.info);
         }
       } catch (e) {
         parameters[param] = ParameterInfo.filler();
-        _queueParameterRetry(
-          _ParameterRetryRequest(
-            slotIndex: algorithmIndex,
-            paramIndex: param,
-            type: _ParameterRetryType.info,
-          ),
-        );
+        queueParameterRetry(param, _ParameterRetryType.info);
       }
     });
     _diag(
@@ -412,23 +458,11 @@ class _ParameterFetchDelegate {
             );
             enums[param] = enumResult ?? ParameterEnumStrings.filler();
             if (enumResult == null) {
-              _queueParameterRetry(
-                _ParameterRetryRequest(
-                  slotIndex: algorithmIndex,
-                  paramIndex: param,
-                  type: _ParameterRetryType.enumStrings,
-                ),
-              );
+              queueParameterRetry(param, _ParameterRetryType.enumStrings);
             }
           } catch (e) {
             enums[param] = ParameterEnumStrings.filler();
-            _queueParameterRetry(
-              _ParameterRetryRequest(
-                slotIndex: algorithmIndex,
-                paramIndex: param,
-                type: _ParameterRetryType.enumStrings,
-              ),
-            );
+            queueParameterRetry(param, _ParameterRetryType.enumStrings);
           }
         },
       ),
@@ -445,23 +479,11 @@ class _ParameterFetchDelegate {
             );
             mappings[param] = mappingResult ?? Mapping.filler();
             if (mappingResult == null) {
-              _queueParameterRetry(
-                _ParameterRetryRequest(
-                  slotIndex: algorithmIndex,
-                  paramIndex: param,
-                  type: _ParameterRetryType.mappings,
-                ),
-              );
+              queueParameterRetry(param, _ParameterRetryType.mappings);
             }
           } catch (e) {
             mappings[param] = Mapping.filler();
-            _queueParameterRetry(
-              _ParameterRetryRequest(
-                slotIndex: algorithmIndex,
-                paramIndex: param,
-                type: _ParameterRetryType.mappings,
-              ),
-            );
+            queueParameterRetry(param, _ParameterRetryType.mappings);
           }
         },
       ),
@@ -543,7 +565,9 @@ class _ParameterFetchDelegate {
       );
     }
 
-    if (outputModeMap.isNotEmpty) {
+    // Respecification installs this cache only after guarded hydration commits.
+    // A fetch that outlives its target must remain side-effect free.
+    if (outputModeMap.isNotEmpty && respecificationLifetime == null) {
       _cubit._slotStateDelegate.setOutputModeUsageMapForSlot(
         algorithmIndex,
         outputModeMap,

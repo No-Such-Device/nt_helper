@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -46,9 +47,10 @@ final class _TestDistingCubit extends DistingCubit {
 
 final class _RecordingManager extends Mock
     implements IDistingMidiManager, AlgorithmRespecificationWriter {
-  _RecordingManager({this.onRequestAlgorithm});
+  _RecordingManager({this.onRequestAlgorithm, this.onRequestRouting});
 
   final Future<Algorithm?> Function(int requestNumber)? onRequestAlgorithm;
+  final Future<RoutingInfo?> Function(int algorithmIndex)? onRequestRouting;
   final List<String> mutationCommands = [];
   final List<int> respecifiedSlots = [];
   final List<List<int>> respecifiedValues = [];
@@ -140,6 +142,8 @@ final class _RecordingManager extends Mock
     operationEvents.add('routing:$algorithmIndex');
     routingRequests.add(algorithmIndex);
     if (failRouting) throw StateError('routing failed');
+    final override = onRequestRouting;
+    if (override != null) return override(algorithmIndex);
     return RoutingInfo(
       algorithmIndex: algorithmIndex,
       routingInfo: List<int>.filled(6, algorithmIndex + 1),
@@ -360,6 +364,8 @@ DistingStateSynchronized _synchronizedState(
   Algorithm? selectedAlgorithm,
   Slot? selectedSlot,
   List<AlgorithmInfo>? algorithms,
+  MidiDevice? inputDevice,
+  MidiDevice? outputDevice,
 }) {
   final selected =
       selectedSlot?.algorithm ?? selectedAlgorithm ?? _fixtureSlotAlgorithm();
@@ -375,6 +381,8 @@ DistingStateSynchronized _synchronizedState(
           selectedSlot ?? _slot(selected),
         ],
         unitStrings: const [],
+        inputDevice: inputDevice,
+        outputDevice: outputDevice,
         offline: offline,
         demo: demo,
       )
@@ -630,6 +638,343 @@ void main() {
     },
   );
 
+  test('disconnect cancels polling and releases the operation', () {
+    fakeAsync((async) {
+      final pendingReadback = Completer<Algorithm?>();
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) => pendingReadback.future,
+      );
+      final initialState = _synchronizedState(manager);
+      cubit.emit(initialState);
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+      expect(manager.activeReadbacks, 1);
+
+      cubit.disconnect();
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.unverifiable);
+      expect(manager.cancelledReadbacks, 1);
+      expect(manager.mutationCommands, ['respecify']);
+      expect(manager.routingRequests, isEmpty);
+      expect(cubit.state, same(initialState));
+
+      pendingReadback.complete(
+        _fixtureSlotAlgorithm().copyWith(
+          specifications: const [1, 12],
+          hasAuthoritativeSpecifications: true,
+        ),
+      );
+      async.flushMicrotasks();
+      expect(status, AlgorithmRespecificationStatus.unverifiable);
+      expect(manager.mutationCommands, ['respecify']);
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('another manager and device reject a late polling reply', () {
+    fakeAsync((async) {
+      final pendingReadback = Completer<Algorithm?>();
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) => pendingReadback.future,
+      );
+      final originalInput = MidiDevice(
+        'old-input',
+        'Disting NT',
+        MidiDeviceType.serial,
+        true,
+      );
+      final originalOutput = MidiDevice(
+        'old-output',
+        'Disting NT',
+        MidiDeviceType.serial,
+        true,
+      );
+      cubit.emit(
+        _synchronizedState(
+          manager,
+          inputDevice: originalInput,
+          outputDevice: originalOutput,
+        ),
+      );
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+      expect(manager.activeReadbacks, 1);
+
+      final replacementManager = _RecordingManager();
+      final replacementState = _synchronizedState(
+        replacementManager,
+        inputDevice: MidiDevice(
+          'new-input',
+          'Disting NT',
+          MidiDeviceType.serial,
+          true,
+        ),
+        outputDevice: MidiDevice(
+          'new-output',
+          'Disting NT',
+          MidiDeviceType.serial,
+          true,
+        ),
+      );
+      cubit.emit(replacementState);
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.unverifiable);
+      expect(manager.cancelledReadbacks, 1);
+      expect(cubit.state, same(replacementState));
+
+      pendingReadback.complete(
+        _fixtureSlotAlgorithm().copyWith(
+          specifications: const [1, 12],
+          hasAuthoritativeSpecifications: true,
+        ),
+      );
+      async.flushMicrotasks();
+      expect(cubit.state, same(replacementState));
+      expect(manager.routingRequests, isEmpty);
+      expect(replacementManager.mutationCommands, isEmpty);
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('cancelled hydration cannot overwrite output-mode cache', () {
+    fakeAsync((async) {
+      final outputModeUsage = Completer<OutputModeUsage?>();
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) async => _fixtureSlotAlgorithm().copyWith(
+          specifications: const [1, 12],
+          hasAuthoritativeSpecifications: true,
+        ),
+      );
+      when(() => manager.requestNumberOfParameters(2)).thenAnswer(
+        (_) async => NumParameters(algorithmIndex: 2, numParameters: 1),
+      );
+      when(() => manager.requestParameterPages(2)).thenAnswer(
+        (_) async => ParameterPages(
+          algorithmIndex: 2,
+          pages: [
+            ParameterPage(name: 'Main', parameters: const [0]),
+          ],
+        ),
+      );
+      when(() => manager.requestAllParameterValues(2)).thenAnswer(
+        (_) async => AllParameterValues(
+          algorithmIndex: 2,
+          values: [
+            ParameterValue(algorithmIndex: 2, parameterNumber: 0, value: 0),
+          ],
+        ),
+      );
+      when(() => manager.requestParameterInfo(2, 0)).thenAnswer(
+        (_) async => ParameterInfo(
+          algorithmIndex: 2,
+          parameterNumber: 0,
+          min: 0,
+          max: 1,
+          defaultValue: 0,
+          unit: -1,
+          name: 'Output mode',
+          powerOfTen: 0,
+          ioFlags: 8,
+        ),
+      );
+      when(
+        () => manager.requestOutputModeUsage(2, 0),
+      ).thenAnswer((_) => outputModeUsage.future);
+      when(() => manager.requestParameterValue(2, 0)).thenAnswer(
+        (_) async =>
+            ParameterValue(algorithmIndex: 2, parameterNumber: 0, value: 1),
+      );
+
+      final seededSlot = _hydratedSlot().copyWith(
+        outputModeMap: const {
+          0: [7],
+        },
+      );
+      cubit.fetchSlotOverride = (_, _) async => seededSlot;
+      cubit.emit(_synchronizedState(manager, selectedSlot: seededSlot));
+      var seeded = false;
+      cubit.refreshSlot(2).then((_) => seeded = true);
+      async.flushMicrotasks();
+      expect(seeded, isTrue);
+      expect(cubit.getSlotOutputModeUsage(2), const {
+        0: [7],
+      });
+      cubit.fetchSlotOverride = null;
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+      expect(status, isNull);
+
+      final replacementManager = _RecordingManager();
+      final replacementState = _synchronizedState(replacementManager);
+      cubit.emit(replacementState);
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.refreshSkipped);
+      expect(cubit.state, same(replacementState));
+      expect(cubit.getSlotOutputModeUsage(2), const {
+        0: [7],
+      });
+
+      outputModeUsage.complete(
+        OutputModeUsage(
+          algorithmIndex: 2,
+          parameterNumber: 0,
+          affectedParameterNumbers: const [0],
+        ),
+      );
+      async.flushMicrotasks();
+
+      expect(cubit.state, same(replacementState));
+      expect(cubit.getSlotOutputModeUsage(2), const {
+        0: [7],
+      });
+      expect(manager.routingRequests, isEmpty);
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('cancelled hydration discards queued shape retries', () {
+    fakeAsync((async) {
+      final lateParameterInfo = Completer<ParameterInfo?>();
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) async => _fixtureSlotAlgorithm().copyWith(
+          specifications: const [1, 12],
+          hasAuthoritativeSpecifications: true,
+        ),
+      );
+      when(() => manager.requestNumberOfParameters(2)).thenAnswer(
+        (_) async => NumParameters(algorithmIndex: 2, numParameters: 2),
+      );
+      when(() => manager.requestParameterPages(2)).thenAnswer(
+        (_) async => ParameterPages(
+          algorithmIndex: 2,
+          pages: [
+            ParameterPage(name: 'Main', parameters: const [0, 1]),
+          ],
+        ),
+      );
+      when(() => manager.requestAllParameterValues(2)).thenAnswer(
+        (_) async => AllParameterValues(
+          algorithmIndex: 2,
+          values: [
+            ParameterValue(algorithmIndex: 2, parameterNumber: 0, value: 0),
+            ParameterValue(algorithmIndex: 2, parameterNumber: 1, value: 0),
+          ],
+        ),
+      );
+      when(
+        () => manager.requestParameterInfo(2, 0),
+      ).thenAnswer((_) async => null);
+      when(
+        () => manager.requestParameterInfo(2, 1),
+      ).thenAnswer((_) => lateParameterInfo.future);
+      cubit.emit(_synchronizedState(manager));
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+
+      expect(status, isNull);
+      expect(cubit.pendingParameterRetryCount, 1);
+
+      final replacementManager = _RecordingManager();
+      final replacementState = _synchronizedState(replacementManager);
+      cubit.emit(replacementState);
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.refreshSkipped);
+      expect(cubit.pendingParameterRetryCount, 0);
+      expect(cubit.state, same(replacementState));
+
+      lateParameterInfo.complete();
+      async.flushMicrotasks();
+
+      expect(cubit.pendingParameterRetryCount, 0);
+      expect(cubit.state, same(replacementState));
+      expect(manager.routingRequests, isEmpty);
+      expect(manager.mutationCommands, ['respecify']);
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('late routing cannot update a replacement connection', () {
+    fakeAsync((async) {
+      final routing = List.generate(3, (_) => Completer<RoutingInfo?>());
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) async => _fixtureSlotAlgorithm().copyWith(
+          specifications: const [1, 12],
+          hasAuthoritativeSpecifications: true,
+        ),
+        onRequestRouting: (algorithmIndex) => routing[algorithmIndex].future,
+      );
+      cubit.fetchSlotOverride = (_, _) async => _hydratedSlot();
+      cubit.emit(_synchronizedState(manager));
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+
+      expect(status, isNull);
+      expect(manager.routingRequests, [0, 1, 2]);
+
+      final replacementManager = _RecordingManager();
+      final replacementState = _synchronizedState(replacementManager);
+      cubit.emit(replacementState);
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.refreshSkipped);
+      expect(cubit.state, same(replacementState));
+
+      for (var index = 0; index < routing.length; index++) {
+        routing[index].complete(
+          RoutingInfo(
+            algorithmIndex: index,
+            routingInfo: List<int>.filled(6, 99),
+          ),
+        );
+      }
+      async.flushMicrotasks();
+
+      expect(cubit.state, same(replacementState));
+      expect(
+        (cubit.state as DistingStateSynchronized).slots.map(
+          (slot) => slot.routing.routingInfo,
+        ),
+        everyElement(isNot(List<int>.filled(6, 99))),
+      );
+      expect(replacementManager.routingRequests, isEmpty);
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
   test('does not report verified completion for incomplete hydration', () {
     fakeAsync((async) {
       final manager = _RecordingManager(
@@ -704,7 +1049,23 @@ void main() {
       async.flushMicrotasks();
       expect(skippedStatus, isNull);
 
-      final replacementState = _synchronizedState(skippedManager);
+      final replacementBase = _synchronizedState(skippedManager);
+      final replacementSlots = List<Slot>.from(replacementBase.slots);
+      final replacedAlgorithm = replacementSlots[2].algorithm;
+      replacementSlots[2] = replacementSlots[2].copyWith(
+        algorithm: Algorithm(
+          algorithmIndex: replacedAlgorithm.algorithmIndex,
+          guid: 'NEXT',
+          name: replacedAlgorithm.name,
+          specifications: replacedAlgorithm.specifications,
+          hasAuthoritativeSpecifications:
+              replacedAlgorithm.hasAuthoritativeSpecifications,
+          visualStyle: replacedAlgorithm.visualStyle,
+        ),
+      );
+      final replacementState = replacementBase.copyWith(
+        slots: replacementSlots,
+      );
       cubit.emit(replacementState);
       skippedHydration.complete(_hydratedSlot());
       async.flushMicrotasks();

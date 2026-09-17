@@ -90,6 +90,12 @@ abstract class _DistingCubitBase extends Cubit<DistingState> {
     _SlotHydrationExpectation? expectation,
   });
   Future<void> refreshRouting();
+  Future<bool> _refreshRoutingForRespecification(
+    _RespecificationLifetime lifetime,
+  );
+  void _discardParameterRetriesForRespecification(
+    _RespecificationLifetime lifetime,
+  );
   void _rebuildCcLookup();
   Slot _fixAlgorithmIndex(Slot slot, int algorithmIndex);
   List<Slot> updateSlot(
@@ -180,6 +186,12 @@ class DistingCubit extends _DistingCubitBase
     _midiCommand = midiCommand ?? _midiCommandFactory();
   }
 
+  @override
+  void onChange(Change<DistingState> change) {
+    _invalidateRespecificationForState(change.nextState);
+    super.onChange(change);
+  }
+
   final MidiCommand Function() _midiCommandFactory;
   final bool _isWindows;
   late MidiCommand _midiCommand;
@@ -237,7 +249,7 @@ class DistingCubit extends _DistingCubitBase
 
   @override
   Future<void> close() async {
-    _respecificationCancellation?.cancel();
+    _cancelRespecificationForConnectionChange();
     _ccNotificationDelegate.stop();
     await _mappingDelegate.dispose();
     await _memoryDelegate.dispose();
@@ -268,6 +280,7 @@ class DistingCubit extends _DistingCubitBase
 
   Future<void> onDemo() async {
     _checkpointDelegate.clearCheckpoints();
+    _cancelRespecificationForConnectionChange();
     return _offlineDemoDelegate.onDemo();
   }
 
@@ -333,6 +346,7 @@ class DistingCubit extends _DistingCubitBase
 
   void disconnect() {
     _checkpointDelegate.clearCheckpoints();
+    _cancelRespecificationForConnectionChange();
     return _connectionDelegate.disconnect();
   }
 
@@ -346,6 +360,7 @@ class DistingCubit extends _DistingCubitBase
     MidiDevice outputDevice,
     int sysExId,
   ) async {
+    _cancelRespecificationForConnectionChange();
     return _connectionDelegate.connectToDevices(
       inputDevice,
       outputDevice,
@@ -357,10 +372,12 @@ class DistingCubit extends _DistingCubitBase
 
   Future<void> goOffline() async {
     _checkpointDelegate.clearCheckpoints();
+    _cancelRespecificationForConnectionChange();
     return _offlineDemoDelegate.goOffline();
   }
 
   Future<void> goOnline() async {
+    _cancelRespecificationForConnectionChange();
     return _offlineDemoDelegate.goOnline();
   }
 
@@ -377,6 +394,10 @@ class DistingCubit extends _DistingCubitBase
     _memoryDelegate.onDistingStateWillChange(next);
     emit(next);
   }
+
+  @visibleForTesting
+  int get pendingParameterRetryCount =>
+      _parameterFetchDelegate.pendingRetryCount;
 
   // Helper to fetch algorithm metadata for offline mode
   Future<List<AlgorithmInfo>> _fetchOfflineAlgorithms() async {
@@ -846,7 +867,21 @@ class DistingCubit extends _DistingCubitBase
 
   @override
   Future<void> refreshRouting() async {
-    return _slotStateDelegate.refreshRouting();
+    await _slotStateDelegate.refreshRouting();
+  }
+
+  @override
+  Future<bool> _refreshRoutingForRespecification(
+    _RespecificationLifetime lifetime,
+  ) {
+    return _slotStateDelegate.refreshRouting(lifetime: lifetime);
+  }
+
+  @override
+  void _discardParameterRetriesForRespecification(
+    _RespecificationLifetime lifetime,
+  ) {
+    _parameterFetchDelegate.discardRetriesForRespecification(lifetime);
   }
 
   @override

@@ -33,7 +33,35 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
   static const _respecificationRequestMaxRetries = 1;
   CancelableOperation<void>? _moveVerificationOperation;
   Future<AlgorithmRespecificationStatus>? _respecificationOperation;
-  DistingRequestCancellation? _respecificationCancellation;
+  _RespecificationLifetime? _activeRespecificationLifetime;
+
+  void _cancelRespecificationForConnectionChange() {
+    _activeRespecificationLifetime?.cancellation.cancel();
+  }
+
+  void _invalidateRespecificationForState(DistingState nextState) {
+    final lifetime = _activeRespecificationLifetime;
+    if (lifetime != null && !lifetime.matches(nextState)) {
+      lifetime.cancellation.cancel();
+    }
+  }
+
+  bool _isCurrentRespecificationLifetime(_RespecificationLifetime lifetime) =>
+      identical(_activeRespecificationLifetime, lifetime) &&
+      lifetime.matches(state);
+
+  _RespecificationLifetime? _respecificationLifetimeForSlot(
+    IDistingMidiManager disting,
+    int slotIndex,
+  ) {
+    final lifetime = _activeRespecificationLifetime;
+    if (lifetime == null ||
+        !identical(lifetime.disting, disting) ||
+        lifetime.slotIndex != slotIndex) {
+      return null;
+    }
+    return lifetime;
+  }
 
   DistingStateSynchronized _requireRespecificationState() {
     final currentState = state;
@@ -207,47 +235,91 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
       values.add(proposedValue);
     }
 
-    final submittedValues = List<int>.unmodifiable(values);
-    await currentState.disting.requestRespecifyAlgorithm(
-      slotIndex,
-      submittedValues,
-    );
-    final observation = await _observeRespecification(
-      currentState.disting,
+    final lifetime = _RespecificationLifetime(
+      state: currentState,
       slotIndex: preparation.slotIndex,
       algorithmGuid: preparation.algorithmGuid,
-      submittedValues: submittedValues,
     );
-    if (observation != AlgorithmRespecificationStatus.observedMatchingState) {
-      return observation;
-    }
+    _activeRespecificationLifetime = lifetime;
+    final submittedValues = List<int>.unmodifiable(values);
 
-    final _SlotRefreshStatus refreshStatus;
     try {
-      refreshStatus = await _refreshSlotWithResult(
-        slotIndex,
-        expectation: _SlotHydrationExpectation(
-          disting: currentState.disting,
-          algorithmGuid: preparation.algorithmGuid,
-          specifications: submittedValues,
+      final sendCompleted = await _waitForRespecificationSend(
+        currentState.disting.requestRespecifyAlgorithm(
+          slotIndex,
+          submittedValues,
         ),
+        lifetime,
       );
-    } catch (_) {
-      return AlgorithmRespecificationStatus.refreshFailed;
-    }
+      if (!sendCompleted || !_isCurrentRespecificationLifetime(lifetime)) {
+        return AlgorithmRespecificationStatus.unverifiable;
+      }
 
-    switch (refreshStatus) {
-      case _SlotRefreshStatus.skipped:
-        return AlgorithmRespecificationStatus.refreshSkipped;
-      case _SlotRefreshStatus.incomplete:
-        return AlgorithmRespecificationStatus.refreshIncomplete;
-      case _SlotRefreshStatus.installed:
-        try {
-          await refreshRouting();
-        } catch (_) {
-          return AlgorithmRespecificationStatus.refreshFailed;
-        }
-        return AlgorithmRespecificationStatus.observedMatchingState;
+      final observation = await _observeRespecification(
+        lifetime,
+        submittedValues: submittedValues,
+      );
+      if (observation != AlgorithmRespecificationStatus.observedMatchingState) {
+        return observation;
+      }
+      if (!_isCurrentRespecificationLifetime(lifetime)) {
+        return AlgorithmRespecificationStatus.unverifiable;
+      }
+
+      final _SlotRefreshStatus refreshStatus;
+      try {
+        refreshStatus = await _refreshSlotWithResult(
+          slotIndex,
+          expectation: _SlotHydrationExpectation(
+            lifetime: lifetime,
+            specifications: submittedValues,
+          ),
+        );
+      } catch (_) {
+        return AlgorithmRespecificationStatus.refreshFailed;
+      }
+
+      switch (refreshStatus) {
+        case _SlotRefreshStatus.skipped:
+          return AlgorithmRespecificationStatus.refreshSkipped;
+        case _SlotRefreshStatus.incomplete:
+          return AlgorithmRespecificationStatus.refreshIncomplete;
+        case _SlotRefreshStatus.installed:
+          try {
+            final refreshed = await _refreshRoutingForRespecification(lifetime);
+            return refreshed
+                ? AlgorithmRespecificationStatus.observedMatchingState
+                : AlgorithmRespecificationStatus.refreshSkipped;
+          } catch (_) {
+            return AlgorithmRespecificationStatus.refreshFailed;
+          }
+      }
+    } finally {
+      lifetime.cancellation.cancel();
+      _discardParameterRetriesForRespecification(lifetime);
+      if (identical(_activeRespecificationLifetime, lifetime)) {
+        _activeRespecificationLifetime = null;
+      }
+    }
+  }
+
+  Future<bool> _waitForRespecificationSend(
+    Future<void> request,
+    _RespecificationLifetime lifetime,
+  ) async {
+    if (!_isCurrentRespecificationLifetime(lifetime)) return false;
+
+    final cancelled = Completer<bool>();
+    final removeCancellationListener = lifetime.cancellation.addListener(() {
+      if (!cancelled.isCompleted) cancelled.complete(false);
+    });
+    try {
+      return await Future.any<bool>([
+        request.then((_) => true),
+        cancelled.future,
+      ]);
+    } finally {
+      removeCancellationListener();
     }
   }
 
@@ -276,13 +348,10 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
   }
 
   Future<AlgorithmRespecificationStatus> _observeRespecification(
-    IDistingMidiManager disting, {
-    required int slotIndex,
-    required String algorithmGuid,
+    _RespecificationLifetime lifetime, {
     required List<int> submittedValues,
   }) async {
-    final cancellation = DistingRequestCancellation();
-    _respecificationCancellation = cancellation;
+    final cancellation = lifetime.cancellation;
     final deadlineTimer = Timer(
       _respecificationVerificationWindow,
       cancellation.cancel,
@@ -297,21 +366,21 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
 
       while (!cancellation.isCancelled) {
         try {
-          final readback = await disting.requestAlgorithmGuid(
-            slotIndex,
+          final readback = await lifetime.disting.requestAlgorithmGuid(
+            lifetime.slotIndex,
             timeout: _respecificationRequestTimeout,
             maxRetries: _respecificationRequestMaxRetries,
             cancellation: cancellation,
             rejectAmbiguousResponse: true,
           );
-          if (cancellation.isCancelled) {
+          if (!_isCurrentRespecificationLifetime(lifetime)) {
             return AlgorithmRespecificationStatus.unverifiable;
           }
 
           final isFreshTargetState =
               readback != null &&
-              readback.algorithmIndex == slotIndex &&
-              readback.guid == algorithmGuid &&
+              readback.algorithmIndex == lifetime.slotIndex &&
+              readback.guid == lifetime.algorithmGuid &&
               readback.hasAuthoritativeSpecifications;
           if (isFreshTargetState) {
             return const ListEquality<int>().equals(
@@ -339,10 +408,6 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
       return AlgorithmRespecificationStatus.unverifiable;
     } finally {
       deadlineTimer.cancel();
-      cancellation.cancel();
-      if (identical(_respecificationCancellation, cancellation)) {
-        _respecificationCancellation = null;
-      }
     }
   }
 

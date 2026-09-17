@@ -47,10 +47,12 @@ class _SlotStateDelegate {
   Future<void> updateSlotParameterInfo(
     int slotIndex,
     int paramIndex,
-    ParameterInfo info,
-  ) async {
+    ParameterInfo info, {
+    required bool Function() isCurrent,
+  }) async {
     final currentState = _cubit.state;
-    if (currentState is! DistingStateSynchronized ||
+    if (!isCurrent() ||
+        currentState is! DistingStateSynchronized ||
         slotIndex >= currentState.slots.length) {
       return;
     }
@@ -73,16 +75,24 @@ class _SlotStateDelegate {
     _cubit._rebuildCcLookup();
 
     // Automatically query output mode usage if parameter has isOutputMode flag
-    if (info.isOutputMode && info.parameterNumber >= 0) {
-      await _queryOutputModeUsage(slotIndex, info.parameterNumber);
+    if (info.isOutputMode && info.parameterNumber >= 0 && isCurrent()) {
+      await _queryOutputModeUsage(
+        slotIndex,
+        info.parameterNumber,
+        isCurrent: isCurrent,
+      );
     }
   }
 
   /// Query output mode usage for a parameter with isOutputMode flag.
   /// Uses debounce logic to avoid duplicate queries during sync operations.
-  Future<void> _queryOutputModeUsage(int slotIndex, int parameterNumber) async {
+  Future<void> _queryOutputModeUsage(
+    int slotIndex,
+    int parameterNumber, {
+    required bool Function() isCurrent,
+  }) async {
     final currentState = _cubit.state;
-    if (currentState is! DistingStateSynchronized) {
+    if (!isCurrent() || currentState is! DistingStateSynchronized) {
       return;
     }
 
@@ -99,7 +109,7 @@ class _SlotStateDelegate {
         parameterNumber,
       );
 
-      if (outputModeUsage != null) {
+      if (outputModeUsage != null && isCurrent()) {
         // Store the output mode usage data
         final slotMap = _outputModeUsageMap[slotIndex] ?? {};
         slotMap[outputModeUsage.parameterNumber] =
@@ -113,7 +123,8 @@ class _SlotStateDelegate {
         // Update the slot with the new outputModeMap and emit state change
         // This ensures the routing editor gets the modeParameterNumber for output ports
         final refreshedState = _cubit.state;
-        if (refreshedState is DistingStateSynchronized &&
+        if (isCurrent() &&
+            refreshedState is DistingStateSynchronized &&
             slotIndex < refreshedState.slots.length) {
           final currentSlot = refreshedState.slots[slotIndex];
           final updatedSlot = currentSlot.copyWith(
@@ -143,10 +154,12 @@ class _SlotStateDelegate {
   Future<void> updateSlotParameterEnums(
     int slotIndex,
     int paramIndex,
-    ParameterEnumStrings enums,
-  ) async {
+    ParameterEnumStrings enums, {
+    required bool Function() isCurrent,
+  }) async {
     final currentState = _cubit.state;
-    if (currentState is! DistingStateSynchronized ||
+    if (!isCurrent() ||
+        currentState is! DistingStateSynchronized ||
         slotIndex >= currentState.slots.length) {
       return;
     }
@@ -169,10 +182,12 @@ class _SlotStateDelegate {
   Future<void> updateSlotParameterMappings(
     int slotIndex,
     int paramIndex,
-    Mapping mappings,
-  ) async {
+    Mapping mappings, {
+    required bool Function() isCurrent,
+  }) async {
     final currentState = _cubit.state;
-    if (currentState is! DistingStateSynchronized ||
+    if (!isCurrent() ||
+        currentState is! DistingStateSynchronized ||
         slotIndex >= currentState.slots.length) {
       return;
     }
@@ -198,10 +213,12 @@ class _SlotStateDelegate {
   Future<void> updateSlotParameterValueStrings(
     int slotIndex,
     int paramIndex,
-    ParameterValueString valueStrings,
-  ) async {
+    ParameterValueString valueStrings, {
+    required bool Function() isCurrent,
+  }) async {
     final currentState = _cubit.state;
-    if (currentState is! DistingStateSynchronized ||
+    if (!isCurrent() ||
+        currentState is! DistingStateSynchronized ||
         slotIndex >= currentState.slots.length) {
       return;
     }
@@ -223,24 +240,80 @@ class _SlotStateDelegate {
     _cubit._emitState(currentState.copyWith(slots: updatedSlots));
   }
 
-  Future<void> refreshRouting() async {
-    final disting = _cubit.requireDisting();
-    final currentState = _cubit.state;
-    if (currentState is! DistingStateSynchronized) return;
+  Future<bool> refreshRouting({_RespecificationLifetime? lifetime}) async {
+    final startingState = _cubit.state;
+    if (startingState is! DistingStateSynchronized) return false;
+    if (lifetime != null &&
+        !_cubit._isCurrentRespecificationLifetime(lifetime)) {
+      return false;
+    }
 
-    // For each slot, update the routing information
-    final updatedSlots = await Future.wait(
-      currentState.slots.map(
-        (slot) async => slot.copyWith(
-          routing:
-              await disting.requestRoutingInformation(
-                slot.algorithm.algorithmIndex,
-              ) ??
-              slot.routing,
-        ),
+    final disting = startingState.disting;
+    final slotIdentities = startingState.slots
+        .map(
+          (slot) =>
+              (index: slot.algorithm.algorithmIndex, guid: slot.algorithm.guid),
+        )
+        .toList(growable: false);
+    final routingRequest = Future.wait(
+      startingState.slots.map(
+        (slot) =>
+            disting.requestRoutingInformation(slot.algorithm.algorithmIndex),
       ),
     );
+    final List<RoutingInfo?>? routings;
+    if (lifetime == null) {
+      routings = await routingRequest;
+    } else {
+      routings = await _awaitRoutingOrCancellation(routingRequest, lifetime);
+    }
+    if (routings == null) return false;
+    final completedRoutings = routings;
 
+    final currentState = _cubit.state;
+    if (currentState is! DistingStateSynchronized ||
+        !identical(currentState.disting, disting) ||
+        !identical(currentState.inputDevice, startingState.inputDevice) ||
+        !identical(currentState.outputDevice, startingState.outputDevice) ||
+        currentState.slots.length != slotIdentities.length ||
+        (lifetime != null &&
+            !_cubit._isCurrentRespecificationLifetime(lifetime))) {
+      return false;
+    }
+    for (var index = 0; index < slotIdentities.length; index++) {
+      final currentAlgorithm = currentState.slots[index].algorithm;
+      final expected = slotIdentities[index];
+      if (currentAlgorithm.algorithmIndex != expected.index ||
+          currentAlgorithm.guid != expected.guid) {
+        return false;
+      }
+    }
+
+    final updatedSlots = List<Slot>.generate(currentState.slots.length, (
+      index,
+    ) {
+      final slot = currentState.slots[index];
+      return slot.copyWith(routing: completedRoutings[index] ?? slot.routing);
+    });
     _cubit._emitState(currentState.copyWith(slots: updatedSlots));
+    return true;
+  }
+
+  Future<List<RoutingInfo?>?> _awaitRoutingOrCancellation(
+    Future<List<RoutingInfo?>> routingRequest,
+    _RespecificationLifetime lifetime,
+  ) async {
+    final cancelled = Completer<List<RoutingInfo?>?>();
+    final removeCancellationListener = lifetime.cancellation.addListener(() {
+      if (!cancelled.isCompleted) cancelled.complete();
+    });
+    try {
+      return await Future.any<List<RoutingInfo?>?>([
+        routingRequest.then<List<RoutingInfo?>?>((routings) => routings),
+        cancelled.future,
+      ]);
+    } finally {
+      removeCancellationListener();
+    }
   }
 }

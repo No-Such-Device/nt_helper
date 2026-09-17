@@ -4,14 +4,15 @@ enum _SlotRefreshStatus { installed, skipped, incomplete }
 
 final class _SlotHydrationExpectation {
   _SlotHydrationExpectation({
-    required this.disting,
-    required this.algorithmGuid,
+    required this.lifetime,
     required List<int> specifications,
   }) : specifications = List<int>.unmodifiable(specifications);
 
-  final IDistingMidiManager disting;
-  final String algorithmGuid;
+  final _RespecificationLifetime lifetime;
   final List<int> specifications;
+
+  IDistingMidiManager get disting => lifetime.disting;
+  String get algorithmGuid => lifetime.algorithmGuid;
 }
 
 class _SlotMaintenanceDelegate {
@@ -106,21 +107,33 @@ class _SlotMaintenanceDelegate {
 
     final disting = syncState.disting;
     if (expectation != null &&
-        (!identical(disting, expectation.disting) ||
-            !_matchesExpectedAlgorithm(
-              syncState.slots[algorithmIndex].algorithm,
-              algorithmIndex,
-              expectation.algorithmGuid,
-            ))) {
+        !_cubit._isCurrentRespecificationLifetime(expectation.lifetime)) {
       return _SlotRefreshStatus.skipped;
     }
 
     try {
-      final Slot updatedSlot = await _cubit.fetchSlot(disting, algorithmIndex);
+      final fetch = _cubit.fetchSlot(disting, algorithmIndex);
+      final Slot? updatedSlot;
+      if (expectation == null) {
+        updatedSlot = await fetch;
+      } else {
+        updatedSlot = await _awaitHydrationOrCancellation(
+          fetch,
+          expectation.lifetime,
+        );
+      }
+      if (updatedSlot == null) return _SlotRefreshStatus.skipped;
+
       final currentState = _cubit.state;
-      if (!identical(currentState, syncState) ||
-          currentState is! DistingStateSynchronized ||
+      if (currentState is! DistingStateSynchronized ||
           algorithmIndex >= currentState.slots.length) {
+        return _SlotRefreshStatus.skipped;
+      }
+      if (expectation == null && !identical(currentState, syncState)) {
+        return _SlotRefreshStatus.skipped;
+      }
+      if (expectation != null &&
+          !_cubit._isCurrentRespecificationLifetime(expectation.lifetime)) {
         return _SlotRefreshStatus.skipped;
       }
 
@@ -155,6 +168,26 @@ class _SlotMaintenanceDelegate {
     } catch (e, stackTrace) {
       debugPrintStack(stackTrace: stackTrace);
       rethrow;
+    }
+  }
+
+  Future<Slot?> _awaitHydrationOrCancellation(
+    Future<Slot> hydration,
+    _RespecificationLifetime lifetime,
+  ) async {
+    if (!_cubit._isCurrentRespecificationLifetime(lifetime)) return null;
+
+    final cancelled = Completer<Slot?>();
+    final removeCancellationListener = lifetime.cancellation.addListener(() {
+      if (!cancelled.isCompleted) cancelled.complete();
+    });
+    try {
+      return await Future.any<Slot?>([
+        hydration.then<Slot?>((slot) => slot),
+        cancelled.future,
+      ]);
+    } finally {
+      removeCancellationListener();
     }
   }
 
