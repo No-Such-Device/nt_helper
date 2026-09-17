@@ -115,17 +115,20 @@ class MemoryDetailOpener extends StatefulWidget {
     required this.initialState,
     required this.stateStream,
     required this.onOpened,
-    required this.child,
+    this.child,
+    this.childBuilder,
     this.semanticLabel = 'Show memory details',
     this.targetAnchor = Alignment.topCenter,
     this.followerAnchor = Alignment.bottomCenter,
     this.offset = const Offset(0, -8),
-  });
+  }) : assert((child == null) != (childBuilder == null));
 
   final MemoryDisplayState initialState;
   final Stream<MemoryDisplayState> stateStream;
   final MemoryDetailOpenedCallback onOpened;
-  final Widget child;
+  final Widget? child;
+  final Widget Function(BuildContext context, MemoryDisplayState state)?
+  childBuilder;
   final String semanticLabel;
   final Alignment targetAnchor;
   final Alignment followerAnchor;
@@ -180,6 +183,9 @@ class _MemoryDetailOpenerState extends State<MemoryDetailOpener> {
   void _subscribeToState() {
     _stateSubscription = widget.stateStream.listen((state) {
       _displayState = state;
+      if (mounted && widget.childBuilder != null) {
+        setState(() {});
+      }
       _overlayEntry?.markNeedsBuild();
     });
   }
@@ -303,6 +309,7 @@ class _MemoryDetailOpenerState extends State<MemoryDetailOpener> {
                 behavior: HitTestBehavior.opaque,
                 onTap: _handleActivation,
                 child: ConstrainedBox(
+                  key: const ValueKey('memory-detail-interaction-target'),
                   constraints: const BoxConstraints(
                     minWidth: kMinInteractiveDimension,
                     minHeight: kMinInteractiveDimension,
@@ -317,13 +324,104 @@ class _MemoryDetailOpenerState extends State<MemoryDetailOpener> {
                         width: 2,
                       ),
                     ),
-                    child: Center(child: widget.child),
+                    child: Center(
+                      widthFactor: 1,
+                      heightFactor: 1,
+                      child:
+                          widget.childBuilder?.call(context, _displayState) ??
+                          widget.child!,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Compact visual used by the wide-screen bottom-bar memory shortcut.
+///
+/// The icon and four pool columns stay within two small-text lines while the
+/// surrounding [MemoryDetailOpener] retains the native interaction target.
+class MemoryMiniature extends StatelessWidget {
+  const MemoryMiniature({super.key, required this.state});
+
+  final MemoryDisplayState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final sample = state.sample;
+    final pools = <(String, MemoryPoolUsage?, Color)>[
+      ('SRAM', sample?.sram, colorScheme.primary),
+      ('DRAM', sample?.dram, colorScheme.secondary),
+      ('DTC', sample?.dtc, colorScheme.tertiary),
+      ('ITC', sample?.itc, colorScheme.error),
+    ];
+
+    return SizedBox(
+      key: const ValueKey('memory-miniature-visual'),
+      width: 41,
+      height: 24,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.memory,
+            key: const ValueKey('memory-miniature-icon'),
+            size: 14,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 5),
+          for (var index = 0; index < pools.length; index++) ...[
+            if (index > 0) const SizedBox(width: 2),
+            _MemoryMiniatureColumn(
+              key: ValueKey('memory-miniature-${pools[index].$1}'),
+              color: pools[index].$3,
+              usage: pools[index].$2,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MemoryMiniatureColumn extends StatelessWidget {
+  const _MemoryMiniatureColumn({
+    super.key,
+    required this.color,
+    required this.usage,
+  });
+
+  final Color color;
+  final MemoryPoolUsage? usage;
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = switch (usage) {
+      MemoryPoolUsage(total: final total, current: final current)
+          when total > 0 =>
+        (current / total).clamp(0.0, 1.0),
+      _ => 0.0,
+    };
+
+    return Container(
+      width: 4,
+      height: 22,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.bottomCenter,
+      child: FractionallySizedBox(
+        widthFactor: 1,
+        heightFactor: fraction,
+        child: ColoredBox(color: color),
       ),
     );
   }

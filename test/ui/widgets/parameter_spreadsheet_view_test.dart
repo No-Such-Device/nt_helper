@@ -44,6 +44,7 @@ void main() {
     when(() => cubit.checkpoints).thenReturn([]);
     when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.cpuUsageStream).thenAnswer((_) => const Stream.empty());
+    when(() => cubit.supportsMemoryUsage).thenReturn(false);
     when(
       () => cubit.updateParameterValue(
         algorithmIndex: any(named: 'algorithmIndex'),

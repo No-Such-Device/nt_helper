@@ -69,6 +69,7 @@ void main() {
     when(() => cubit.state).thenReturn(state);
     when(() => cubit.stream).thenAnswer((_) => Stream.value(state));
     when(() => cubit.cpuUsageStream).thenAnswer((_) => const Stream.empty());
+    when(() => cubit.supportsMemoryUsage).thenReturn(false);
     when(() => cubit.checkpoints).thenReturn([]);
     when(() => cubit.database).thenReturn(database);
     McpServerService.initialize(distingCubit: cubit);

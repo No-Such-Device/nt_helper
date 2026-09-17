@@ -208,6 +208,79 @@ void main() {
     );
   });
 
+  group('MemoryMiniature', () {
+    testWidgets(
+      'shows an icon beside four coloured columns inside a native target',
+      (tester) async {
+        final source = _ControlledMemorySource();
+        source.emit(const MemoryDisplayState.available(_sample));
+        addTearDown(source.close);
+        final semantics = tester.ensureSemantics();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+            ),
+            home: Scaffold(
+              body: Center(
+                child: MemoryDetailOpener(
+                  initialState: source.state,
+                  stateStream: source.states,
+                  onOpened: source.refresh,
+                  childBuilder: (context, state) =>
+                      MemoryMiniature(state: state),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final visual = find.byKey(const ValueKey('memory-miniature-visual'));
+        final trigger = find.bySemanticsLabel('Show memory details');
+        final interactionTarget = find.byKey(
+          const ValueKey('memory-detail-interaction-target'),
+        );
+        expect(tester.getSize(visual), const Size(41, 24));
+        expect(tester.getSize(interactionTarget), const Size(48, 48));
+        expect(find.text('MEM'), findsNothing);
+
+        final iconRect = tester.getRect(
+          find.byKey(const ValueKey('memory-miniature-icon')),
+        );
+        final columnColors = <Color>{};
+        Rect? previousRect;
+        for (final pool in const ['SRAM', 'DRAM', 'DTC', 'ITC']) {
+          final column = find.byKey(ValueKey('memory-miniature-$pool'));
+          expect(tester.getSize(column), const Size(4, 22));
+          final rect = tester.getRect(column);
+          expect(rect.left, greaterThan(iconRect.right));
+          if (previousRect != null) {
+            expect(rect.left, greaterThan(previousRect.right));
+          }
+          previousRect = rect;
+
+          final container = tester.widget<Container>(
+            find.descendant(of: column, matching: find.byType(Container)),
+          );
+          columnColors.add((container.decoration! as BoxDecoration).color!);
+        }
+        expect(columnColors, hasLength(4));
+
+        await tester.tap(trigger);
+        await tester.pump();
+        await tester.pump();
+        expect(source.refreshCalls, 1);
+        expect(find.byType(MemoryDetailPresenter), findsOneWidget);
+        expect(find.bySemanticsLabel('SRAM current, 16 KiB'), findsOneWidget);
+        expect(find.bySemanticsLabel('DRAM total, 8 MiB'), findsOneWidget);
+        expect(find.bySemanticsLabel('DTC free, 3 KiB'), findsOneWidget);
+        expect(find.bySemanticsLabel('ITC free, 384 B'), findsOneWidget);
+        semantics.dispose();
+      },
+    );
+  });
+
   group('MemoryDetailOpeningHook', () {
     testWidgets('calls once per mount and can wrap System detail directly', (
       tester,

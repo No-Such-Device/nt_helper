@@ -10,10 +10,16 @@ import 'package:nt_helper/db/daos/presets_dao.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
+import 'package:nt_helper/models/memory_display_state.dart';
+import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/services/mcp_server_service.dart';
+import 'package:nt_helper/services/settings_service.dart';
+import 'package:nt_helper/ui/cpu_monitor_widget.dart';
 import 'package:nt_helper/ui/poly_multisample/poly_samples_screen.dart';
 import 'package:nt_helper/ui/synchronized_screen.dart';
 import 'package:nt_helper/ui/template_manager/template_manager_screen.dart';
+import 'package:nt_helper/ui/widgets/memory_detail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MockDistingCubit extends Mock implements DistingCubit {}
 
@@ -27,6 +33,13 @@ class MockPresetsDao extends Mock implements PresetsDao {}
 
 class MockPlatformInteractionService extends Mock
     implements PlatformInteractionService {}
+
+const _memoryFixture = MemoryUsage(
+  sram: MemoryPoolUsage(total: 64 * 1024, current: 16 * 1024),
+  dram: MemoryPoolUsage(total: 8 * 1024 * 1024, current: 2 * 1024 * 1024),
+  dtc: MemoryPoolUsage(total: 4 * 1024, current: 1024),
+  itc: MemoryPoolUsage(total: 512, current: 128),
+);
 
 void main() {
   group('SynchronizedScreen Bottom Bar Platform Detection Tests', () {
@@ -42,7 +55,9 @@ void main() {
       TestWidgetsFlutterBinding.ensureInitialized();
     });
 
-    setUp(() {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({'show_debug_panel': false});
+      await SettingsService().init();
       mockCubit = MockDistingCubit();
       mockMidiManager = MockDistingMidiManager();
       mockPlatformService = MockPlatformInteractionService();
@@ -53,6 +68,16 @@ void main() {
       when(
         () => mockCubit.cpuUsageStream,
       ).thenAnswer((_) => const Stream.empty());
+      when(() => mockCubit.resumeCpuMonitoring()).thenReturn(null);
+      when(() => mockCubit.pauseCpuMonitoring()).thenReturn(null);
+      when(
+        () => mockCubit.displayMemoryState,
+      ).thenReturn(const MemoryDisplayState.available(_memoryFixture));
+      when(
+        () => mockCubit.displayMemoryStateStream,
+      ).thenAnswer((_) => const Stream.empty());
+      when(() => mockCubit.refreshDisplayMemory()).thenAnswer((_) async {});
+      when(() => mockCubit.supportsMemoryUsage).thenReturn(false);
       when(() => mockCubit.database).thenReturn(mockDatabase);
       when(() => mockDatabase.metadataDao).thenReturn(mockMetadataDao);
       when(() => mockDatabase.presetsDao).thenReturn(mockPresetsDao);
@@ -62,15 +87,21 @@ void main() {
       McpServerService.initialize(distingCubit: mockCubit);
     });
 
-    Widget createTestWidget({required bool isMobile, required bool isOffline}) {
+    Widget createTestWidget({
+      required bool isMobile,
+      required bool isOffline,
+      String firmware = '1.10.0',
+      bool? supportsMemoryUsage,
+    }) {
       // Mock platform service response
       when(() => mockPlatformService.isMobilePlatform()).thenReturn(isMobile);
 
       // Mock cubit state
+      final firmwareVersion = FirmwareVersion(firmware);
       final state = DistingStateSynchronized(
         disting: mockMidiManager,
-        distingVersion: '1.10.0',
-        firmwareVersion: FirmwareVersion('1.10.0'),
+        distingVersion: firmware,
+        firmwareVersion: firmwareVersion,
         presetName: 'Test Preset',
         algorithms: const [],
         slots: const [],
@@ -80,13 +111,16 @@ void main() {
 
       when(() => mockCubit.state).thenReturn(state);
       when(() => mockCubit.stream).thenAnswer((_) => Stream.value(state));
+      when(() => mockCubit.supportsMemoryUsage).thenReturn(
+        supportsMemoryUsage ?? (!isOffline && firmwareVersion.hasMemoryUsage),
+      );
 
       return MaterialApp(
         home: BlocProvider<DistingCubit>.value(
           value: mockCubit,
           child: SynchronizedScreen(
-            distingVersion: '1.10.0',
-            firmwareVersion: FirmwareVersion('1.10.0'),
+            distingVersion: firmware,
+            firmwareVersion: firmwareVersion,
             slots: const [],
             algorithms: const [],
             units: const [],
@@ -99,21 +133,20 @@ void main() {
       );
     }
 
-    testWidgets(
-      'uses a geometry-independent bottom bar alongside the FAB',
-      (tester) async {
-        await tester.pumpWidget(
-          createTestWidget(isMobile: false, isOffline: false),
-        );
+    testWidgets('uses a geometry-independent bottom bar alongside the FAB', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        createTestWidget(isMobile: false, isOffline: false),
+      );
 
-        expect(
-          find.byKey(const ValueKey('main-bottom-action-bar')),
-          findsOneWidget,
-        );
-        expect(find.byType(BottomAppBar), findsNothing);
-        expect(find.byType(FloatingActionButton), findsOneWidget);
-      },
-    );
+      expect(
+        find.byKey(const ValueKey('main-bottom-action-bar')),
+        findsOneWidget,
+      );
+      expect(find.byType(BottomAppBar), findsNothing);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+    });
 
     testWidgets('Display mode buttons are not in bottom bar when online', (
       tester,
@@ -190,6 +223,133 @@ void main() {
       expect(find.byTooltip('Template Manager'), findsOneWidget);
       expect(find.byTooltip('Perform'), findsOneWidget);
       expect(find.byTooltip('Plugin Manager'), findsOneWidget);
+    });
+
+    testWidgets(
+      'memory shortcut follows the CPU width threshold with compact geometry',
+      (tester) async {
+        tester.view.devicePixelRatio = 1;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final visualSizes = <int, Size>{};
+        final targetSizes = <int, Size>{};
+        for (final width in [390, 640, 900, 901, 1440]) {
+          tester.view.physicalSize = Size(width.toDouble(), 800);
+          await tester.pumpWidget(
+            createTestWidget(
+              isMobile: width < 900,
+              isOffline: false,
+              firmware: '1.19.0',
+            ),
+          );
+          await tester.pump();
+
+          final shortcut = find.byKey(const ValueKey('bottom-memory-shortcut'));
+          expect(tester.takeException(), isNull, reason: 'width $width');
+          if (width <= 900) {
+            expect(shortcut, findsNothing, reason: 'width $width');
+            continue;
+          }
+
+          expect(shortcut, findsOneWidget, reason: 'width $width');
+          expect(find.byType(CpuMonitorWidget), findsOneWidget);
+          final visual = find.byKey(const ValueKey('memory-miniature-visual'));
+          final interactionTarget = find.byKey(
+            const ValueKey('memory-detail-interaction-target'),
+          );
+          visualSizes[width] = tester.getSize(visual);
+          targetSizes[width] = tester.getSize(interactionTarget);
+
+          final cpuRect = tester.getRect(find.byType(CpuMonitorWidget));
+          final shortcutRect = tester.getRect(shortcut);
+          final fabRect = tester.getRect(find.byType(FloatingActionButton));
+          expect(shortcutRect.left, greaterThanOrEqualTo(cpuRect.right));
+          expect(shortcutRect.overlaps(fabRect), isFalse);
+        }
+
+        expect(visualSizes, {
+          901: const Size(41, 24),
+          1440: const Size(41, 24),
+        });
+        expect(targetSizes, {
+          901: const Size(48, 48),
+          1440: const Size(48, 48),
+        });
+      },
+    );
+
+    testWidgets(
+      'supported live shortcut opens accessible device-reported detail',
+      (tester) async {
+        tester.view.physicalSize = const Size(1200, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+        final semantics = tester.ensureSemantics();
+
+        await tester.pumpWidget(
+          createTestWidget(
+            isMobile: false,
+            isOffline: false,
+            firmware: '1.19beta',
+          ),
+        );
+
+        final shortcut = find.byKey(const ValueKey('bottom-memory-shortcut'));
+        expect(shortcut, findsOneWidget);
+        expect(find.byType(MemoryMiniature), findsOneWidget);
+        await tester.tap(shortcut);
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.byType(MemoryDetailPresenter), findsOneWidget);
+        expect(find.bySemanticsLabel('SRAM current, 16 KiB'), findsOneWidget);
+        expect(find.bySemanticsLabel('DRAM total, 8 MiB'), findsOneWidget);
+        expect(find.bySemanticsLabel('DTC free, 3 KiB'), findsOneWidget);
+        expect(find.bySemanticsLabel('ITC free, 384 B'), findsOneWidget);
+        expect(find.text('Used / total · free shown at right'), findsNothing);
+        expect(find.textContaining('fit'), findsNothing);
+        expect(find.textContaining('required'), findsNothing);
+        verify(() => mockCubit.refreshDisplayMemory()).called(1);
+        semantics.dispose();
+      },
+    );
+
+    testWidgets('memory shortcut applies live firmware eligibility', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        createTestWidget(
+          isMobile: false,
+          isOffline: false,
+          firmware: '1.18.99',
+        ),
+      );
+      expect(
+        find.byKey(const ValueKey('bottom-memory-shortcut')),
+        findsNothing,
+      );
+
+      await tester.pumpWidget(
+        createTestWidget(isMobile: false, isOffline: true, firmware: '1.19.0'),
+      );
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('bottom-memory-shortcut')),
+        findsNothing,
+      );
     });
 
     testWidgets('Samples button pushes PolySamplesScreen on desktop', (

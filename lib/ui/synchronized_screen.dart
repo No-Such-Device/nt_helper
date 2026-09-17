@@ -68,6 +68,7 @@ import 'package:nt_helper/ui/widgets/disting_version.dart';
 import 'package:nt_helper/ui/widgets/slot_detail_view.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode.dart';
 import 'package:nt_helper/ui/widgets/mcp_status_indicator.dart';
+import 'package:nt_helper/ui/widgets/memory_detail.dart';
 import 'package:nt_helper/ui/widgets/debug_panel.dart';
 import 'package:nt_helper/ui/widgets/section_parameter_controller.dart';
 import 'package:nt_helper/services/debug_service.dart';
@@ -1761,128 +1762,143 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
 
           const SizedBox(width: 24),
 
-          // Quick-action buttons for frequently used features
-          BlocBuilder<DistingCubit, DistingState>(
-            buildWhen: (previous, current) {
-              final prevOffline =
-                  previous is DistingStateSynchronized && previous.offline;
-              final currOffline =
-                  current is DistingStateSynchronized && current.offline;
-              return prevOffline != currOffline;
-            },
-            builder: (context, state) {
-              final isOffline = switch (state) {
-                DistingStateSynchronized(offline: final o) => o,
-                _ => false,
-              };
+          // Quick-action buttons for frequently used features. Keep them
+          // horizontally reachable when the fixed status/FAB area leaves less
+          // than their intrinsic width on a small screen.
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: BlocBuilder<DistingCubit, DistingState>(
+                buildWhen: (previous, current) {
+                  final prevOffline =
+                      previous is DistingStateSynchronized && previous.offline;
+                  final currOffline =
+                      current is DistingStateSynchronized && current.offline;
+                  return prevOffline != currOffline;
+                },
+                builder: (context, state) {
+                  final isOffline = switch (state) {
+                    DistingStateSynchronized(offline: final o) => o,
+                    _ => false,
+                  };
 
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'File Browser',
-                    icon: const Icon(
-                      Icons.folder_open,
-                      semanticLabel: 'File Browser',
-                    ),
-                    onPressed: widget.loading || isOffline
-                        ? null
-                        : () {
-                            final cubit = context.read<DistingCubit>();
-                            _handleBrowsePresets(cubit);
-                          },
-                  ),
-                  IconButton(
-                    tooltip: 'Template Manager',
-                    icon: const Icon(
-                      Icons.dashboard_customize,
-                      semanticLabel: 'Template Manager',
-                    ),
-                    onPressed: widget.loading
-                        ? null
-                        : () => _openTemplateManager(context),
-                  ),
-                  IconButton(
-                    tooltip: 'Video',
-                    icon: const Icon(Icons.videocam, semanticLabel: 'Video'),
-                    onPressed: widget.loading || isOffline
-                        ? null
-                        : () {
-                            _showScreenshotOverlay(context);
-                          },
-                  ),
-                  IconButton(
-                    tooltip: 'Perform',
-                    icon: const Icon(
-                      Icons.library_music,
-                      semanticLabel: 'Perform',
-                    ),
-                    onPressed: widget.loading
-                        ? null
-                        : () {
-                            final cubit = context.read<DistingCubit>();
-                            final midiListener = context
-                                .read<MidiListenerCubit>();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => MultiBlocProvider(
-                                  providers: [
-                                    BlocProvider.value(value: cubit),
-                                    BlocProvider.value(value: midiListener),
-                                  ],
-                                  child: PerformanceScreen(units: widget.units),
-                                ),
-                              ),
-                            );
-                          },
-                  ),
-                  if (!kPlayStoreBuild)
-                    IconButton(
-                      tooltip: 'Plugin Manager',
-                      icon: const Icon(
-                        Icons.extension_rounded,
-                        semanticLabel: 'Plugin Manager',
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'File Browser',
+                        icon: const Icon(
+                          Icons.folder_open,
+                          semanticLabel: 'File Browser',
+                        ),
+                        onPressed: widget.loading || isOffline
+                            ? null
+                            : () {
+                                final cubit = context.read<DistingCubit>();
+                                _handleBrowsePresets(cubit);
+                              },
                       ),
-                      onPressed: widget.loading
-                          ? null
-                          : () {
-                              final distingCubit = context.read<DistingCubit>();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => PluginGalleryScreen(
-                                    distingCubit: distingCubit,
-                                    database: distingCubit.database,
+                      IconButton(
+                        tooltip: 'Template Manager',
+                        icon: const Icon(
+                          Icons.dashboard_customize,
+                          semanticLabel: 'Template Manager',
+                        ),
+                        onPressed: widget.loading
+                            ? null
+                            : () => _openTemplateManager(context),
+                      ),
+                      IconButton(
+                        tooltip: 'Video',
+                        icon: const Icon(
+                          Icons.videocam,
+                          semanticLabel: 'Video',
+                        ),
+                        onPressed: widget.loading || isOffline
+                            ? null
+                            : () {
+                                _showScreenshotOverlay(context);
+                              },
+                      ),
+                      IconButton(
+                        tooltip: 'Perform',
+                        icon: const Icon(
+                          Icons.library_music,
+                          semanticLabel: 'Perform',
+                        ),
+                        onPressed: widget.loading
+                            ? null
+                            : () {
+                                final cubit = context.read<DistingCubit>();
+                                final midiListener = context
+                                    .read<MidiListenerCubit>();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => MultiBlocProvider(
+                                      providers: [
+                                        BlocProvider.value(value: cubit),
+                                        BlocProvider.value(value: midiListener),
+                                      ],
+                                      child: PerformanceScreen(
+                                        units: widget.units,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                    ),
-                  if (!isMobile)
-                    IconButton(
-                      tooltip: 'Samples',
-                      icon: const Icon(Icons.piano, semanticLabel: 'Samples'),
-                      onPressed: widget.loading
-                          ? null
-                          : () {
-                              final distingCubit = context.read<DistingCubit>();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => PolySamplesScreen(
-                                    distingCubit: distingCubit,
-                                  ),
-                                ),
-                              );
-                            },
-                    ),
-                ],
-              );
-            },
+                                );
+                              },
+                      ),
+                      if (!kPlayStoreBuild)
+                        IconButton(
+                          tooltip: 'Plugin Manager',
+                          icon: const Icon(
+                            Icons.extension_rounded,
+                            semanticLabel: 'Plugin Manager',
+                          ),
+                          onPressed: widget.loading
+                              ? null
+                              : () {
+                                  final distingCubit = context
+                                      .read<DistingCubit>();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => PluginGalleryScreen(
+                                        distingCubit: distingCubit,
+                                        database: distingCubit.database,
+                                      ),
+                                    ),
+                                  );
+                                },
+                        ),
+                      if (!isMobile)
+                        IconButton(
+                          tooltip: 'Samples',
+                          icon: const Icon(
+                            Icons.piano,
+                            semanticLabel: 'Samples',
+                          ),
+                          onPressed: widget.loading
+                              ? null
+                              : () {
+                                  final distingCubit = context
+                                      .read<DistingCubit>();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => PolySamplesScreen(
+                                        distingCubit: distingCubit,
+                                      ),
+                                    ),
+                                  );
+                                },
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
-
-          const Spacer(),
 
           // MCP server status indicator (desktop only)
           if (Platform.isMacOS || Platform.isWindows || Platform.isLinux)
@@ -1981,10 +1997,11 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                 );
               },
             ),
-          // CPU Monitor Widget - only in wide-screen mode
+          // CPU and memory status - only in wide-screen mode
           if (isWideScreen) ...[
             const SizedBox(width: 16),
             CpuMonitorWidget(paused: _showChatPanel),
+            const _BottomBarMemoryShortcut(),
           ],
           // Spacer for FAB so it doesn't cover the version/CPU info
           const SizedBox(width: 80),
@@ -3296,6 +3313,33 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
     }
 
     return closest;
+  }
+}
+
+class _BottomBarMemoryShortcut extends StatelessWidget {
+  const _BottomBarMemoryShortcut();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<DistingCubit, DistingState>(
+      builder: (context, state) {
+        final cubit = context.read<DistingCubit>();
+        if (!cubit.supportsMemoryUsage) {
+          return const SizedBox.shrink();
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: MemoryDetailOpener(
+            key: const ValueKey('bottom-memory-shortcut'),
+            initialState: cubit.displayMemoryState,
+            stateStream: cubit.displayMemoryStateStream,
+            onOpened: cubit.refreshDisplayMemory,
+            childBuilder: (context, state) => MemoryMiniature(state: state),
+          ),
+        );
+      },
+    );
   }
 }
 

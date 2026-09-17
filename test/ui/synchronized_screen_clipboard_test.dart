@@ -85,6 +85,7 @@ void main() {
       );
       when(() => mockCubit.state).thenReturn(state);
       when(() => mockCubit.stream).thenAnswer((_) => Stream.value(state));
+      when(() => mockCubit.supportsMemoryUsage).thenReturn(false);
       return MaterialApp(
         home: BlocProvider<DistingCubit>.value(
           value: mockCubit,
@@ -337,6 +338,7 @@ void main() {
       );
       when(() => mockCubit.state).thenReturn(state);
       when(() => mockCubit.stream).thenAnswer((_) => Stream.value(state));
+      when(() => mockCubit.supportsMemoryUsage).thenReturn(false);
       return MaterialApp(
         home: BlocProvider<DistingCubit>.value(
           value: mockCubit,
