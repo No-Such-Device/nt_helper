@@ -9,6 +9,7 @@ import 'package:nt_helper/algorithm_controller/algorithm_controller.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/models/firmware_version.dart';
+import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/algorithm_controller/algorithm_controller_section_controller.dart';
 import 'package:nt_helper/ui/widgets/algorithm_controller/lua_algorithm_controller_view.dart';
 import 'package:nt_helper/ui/widgets/section_parameter_controller.dart';
@@ -17,6 +18,43 @@ import 'package:nt_helper/ui/widgets/slot_editor_mode.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MockDistingCubit extends Mock implements DistingCubit {}
+
+const _sectionHeaderSource = r'''
+return {
+  version = 1,
+  title = "Header treatment",
+  root = ui.column {
+    gap = 16,
+    padding = 16,
+    children = {
+      ui.section {
+        title = "Main section",
+        subtitle = "Primary controls",
+        children = {
+          ui.toggle {
+            label = "Voice enabled",
+            parameter = nt.parameter("1:Enable").number
+          },
+          ui.section {
+            title = "Nested section",
+            subtitle = "Nested controls",
+            children = {
+              ui.text { text = "Nested content" }
+            }
+          }
+        }
+      },
+      ui.section {
+        title = "Second section",
+        subtitle = "Secondary controls",
+        children = {
+          ui.text { text = "Second content" }
+        }
+      }
+    }
+  }
+}
+''';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -70,6 +108,138 @@ void main() {
     expect(() => expansionController.addListener(() {}), throwsFlutterError);
     sectionState.dispose();
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'shades only $brightness controller headers without changing geometry',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(800, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final theme = AppTheme.build(
+          seedColor: AppTheme.defaultSeedColor,
+          brightness: brightness,
+        );
+
+        await tester.pumpWidget(
+          _host(cubit, _slot(), _sectionHeaderSource, theme: theme),
+        );
+        await tester.pumpAndSettle();
+
+        final expectedShade = theme.colorScheme.onSurface.withValues(
+          alpha: 0.10,
+        );
+        for (final path in ['root/0', 'root/0/1', 'root/1']) {
+          final tile = tester.widget<ExpansionTile>(_sectionTile(path));
+          expect(tile.backgroundColor, isNull);
+          expect(tile.collapsedBackgroundColor, isNull);
+          expect(_sectionHeaderInkColor(tester, path), expectedShade);
+        }
+
+        final mainTile = tester.widget<ExpansionTile>(_sectionTile('root/0'));
+        expect(
+          mainTile.key,
+          const ValueKey('algorithm-controller-section:root/0'),
+        );
+        expect(
+          mainTile.tilePadding,
+          const EdgeInsets.symmetric(horizontal: 16),
+        );
+        expect(
+          mainTile.childrenPadding,
+          const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        );
+        expect(
+          mainTile.shape,
+          const RoundedRectangleBorder(side: BorderSide.none),
+        );
+        expect(
+          mainTile.collapsedShape,
+          const RoundedRectangleBorder(side: BorderSide.none),
+        );
+        expect(
+          tester
+              .widget<Card>(
+                find
+                    .ancestor(
+                      of: _sectionTile('root/0'),
+                      matching: find.byType(Card),
+                    )
+                    .first,
+              )
+              .clipBehavior,
+          Clip.antiAlias,
+        );
+
+        final mainHeaderRect = tester.getRect(_sectionHeader('root/0'));
+        expect(mainHeaderRect.height, 72);
+        final titleRect = tester.getRect(find.text('Main section'));
+        final subtitleRect = tester.getRect(find.text('Primary controls'));
+        expect(titleRect.left, mainHeaderRect.left + 16);
+        expect(subtitleRect.left, mainHeaderRect.left + 16);
+        expect(titleRect.top, lessThan(subtitleRect.top));
+
+        final renderedTheme = Theme.of(
+          tester.element(find.text('Main section')),
+        );
+        final title = tester.widget<Text>(find.text('Main section'));
+        expect(
+          title.style?.fontSize,
+          renderedTheme.textTheme.titleLarge?.fontSize,
+        );
+        expect(
+          title.style?.fontWeight,
+          renderedTheme.textTheme.titleLarge?.fontWeight,
+        );
+        final subtitle = tester.widget<Text>(find.text('Primary controls'));
+        expect(
+          subtitle.style?.fontSize,
+          renderedTheme.textTheme.bodySmall?.fontSize,
+        );
+        expect(
+          subtitle.style?.fontWeight,
+          renderedTheme.textTheme.bodySmall?.fontWeight,
+        );
+        expect(
+          subtitle.style?.color,
+          renderedTheme.colorScheme.onSurfaceVariant,
+        );
+
+        final toggle = find.byType(SwitchListTile);
+        expect(toggle, findsOneWidget);
+        expect(
+          ListTileTheme.of(tester.element(toggle)).tileColor,
+          isNull,
+          reason: 'the controller header shade must not tint toggle rows',
+        );
+        expect(find.text('Voice enabled'), findsOneWidget);
+        expect(find.text('Nested content'), findsOneWidget);
+        expect(find.text('Second content'), findsOneWidget);
+
+        await tester.tap(toggle);
+        await tester.pump();
+        verify(
+          () => cubit.updateParameterValue(
+            algorithmIndex: 2,
+            parameterNumber: 1,
+            value: 0,
+            userIsChangingTheValue: false,
+          ),
+        ).called(1);
+
+        final expandedHeaderSize = mainHeaderRect.size;
+        await tester.tap(find.text('Main section'));
+        await tester.pumpAndSettle();
+
+        expect(tester.getSize(_sectionHeader('root/0')), expandedHeaderSize);
+        expect(_sectionHeaderInkColor(tester, 'root/0'), expectedShade);
+        expect(find.text('Main section'), findsOneWidget);
+        expect(find.text('Primary controls'), findsOneWidget);
+        expect(find.text('Voice enabled'), findsNothing);
+        expect(find.text('Nested section'), findsNothing);
+        expect(find.text('Second content'), findsOneWidget);
+      },
+    );
+  }
 
   testWidgets('re-evaluates Lua when a new immutable Slot arrives', (
     tester,
@@ -1180,6 +1350,10 @@ return {
   ) async {
     Widget app(Slot slot) {
       return MaterialApp(
+        theme: AppTheme.build(
+          seedColor: AppTheme.defaultSeedColor,
+          brightness: Brightness.light,
+        ),
         home: BlocProvider<DistingCubit>.value(
           value: cubit,
           child: Scaffold(
@@ -1306,6 +1480,7 @@ Widget _host(
   String source, {
   AlgorithmControllerSourceLoader? sourceLoader,
   List<String> units = const [],
+  ThemeData? theme,
 }) {
   return _LuaAlgorithmControllerHarness(
     cubit: cubit,
@@ -1313,6 +1488,7 @@ Widget _host(
     source: source,
     sourceLoader: sourceLoader,
     units: units,
+    theme: theme,
   );
 }
 
@@ -1323,6 +1499,7 @@ class _LuaAlgorithmControllerHarness extends StatefulWidget {
     required this.source,
     this.sourceLoader,
     this.units = const [],
+    this.theme,
   });
 
   final MockDistingCubit cubit;
@@ -1330,6 +1507,7 @@ class _LuaAlgorithmControllerHarness extends StatefulWidget {
   final String source;
   final AlgorithmControllerSourceLoader? sourceLoader;
   final List<String> units;
+  final ThemeData? theme;
 
   @override
   State<_LuaAlgorithmControllerHarness> createState() =>
@@ -1350,6 +1528,7 @@ class _LuaAlgorithmControllerHarnessState
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: widget.theme,
       home: BlocProvider<DistingCubit>.value(
         value: widget.cubit,
         child: Scaffold(
@@ -1370,6 +1549,22 @@ class _LuaAlgorithmControllerHarnessState
       ),
     );
   }
+}
+
+Finder _sectionTile(String path) =>
+    find.byKey(ValueKey('algorithm-controller-section:$path'));
+
+Finder _sectionHeader(String path) => find
+    .descendant(of: _sectionTile(path), matching: find.byType(ListTile))
+    .first;
+
+Color? _sectionHeaderInkColor(WidgetTester tester, String path) {
+  final inkFinder = find
+      .descendant(of: _sectionHeader(path), matching: find.byType(Ink))
+      .first;
+  final decoration = tester.widget<Ink>(inkFinder).decoration;
+  expect(decoration, isA<ShapeDecoration>());
+  return (decoration! as ShapeDecoration).color;
 }
 
 Slot _slot({

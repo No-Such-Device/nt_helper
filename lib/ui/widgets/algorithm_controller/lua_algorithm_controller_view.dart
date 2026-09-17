@@ -374,39 +374,56 @@ class _AlgorithmControllerDocumentBody extends StatelessWidget {
     String path,
   ) {
     final expansionController = sectionController.controllerFor(path);
+    final inheritedListTileTheme = ListTileTheme.of(context);
+    final headerListTileTheme = inheritedListTileTheme.copyWith(
+      tileColor: Theme.of(
+        context,
+      ).colorScheme.onSurface.withValues(alpha: 0.10),
+    );
+
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        key: ValueKey('algorithm-controller-section:$path'),
-        controller: expansionController,
-        initiallyExpanded: expansionController.isExpanded,
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        shape: const RoundedRectangleBorder(side: BorderSide.none),
-        collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
-        title: Semantics(
-          header: true,
-          child: Text(
-            node.title,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
-        subtitle: switch (node.subtitle) {
-          final subtitle? => Text(
-            subtitle,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+      child: ListTileTheme(
+        data: headerListTileTheme,
+        child: ExpansionTile(
+          key: ValueKey('algorithm-controller-section:$path'),
+          controller: expansionController,
+          initiallyExpanded: expansionController.isExpanded,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          shape: const RoundedRectangleBorder(side: BorderSide.none),
+          collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
+          title: Semantics(
+            header: true,
+            child: Text(
+              node.title,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
-          null => null,
-        },
-        children: _withGaps(
-          [
-            for (var index = 0; index < node.children.length; index++)
-              _buildNode(context, node.children[index], path: '$path/$index'),
-          ],
-          10,
-          Axis.vertical,
+          subtitle: switch (node.subtitle) {
+            final subtitle? => Text(
+              subtitle,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            null => null,
+          },
+          children: _withGaps(
+            [
+              for (var index = 0; index < node.children.length; index++)
+                ListTileTheme(
+                  data: inheritedListTileTheme,
+                  child: _buildNode(
+                    context,
+                    node.children[index],
+                    path: '$path/$index',
+                  ),
+                ),
+            ],
+            10,
+            Axis.vertical,
+          ),
         ),
       ),
     );
