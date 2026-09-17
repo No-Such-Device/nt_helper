@@ -6,6 +6,8 @@ class _OfflineDemoDelegate {
   _OfflineDemoDelegate(this._cubit);
 
   Future<void> onDemo() async {
+    _cubit._memoryDelegate.clearConnection();
+
     // Stop listening for MIDI setup changes when entering demo mode
     _cubit._stopMidiSetupListener();
 
@@ -46,6 +48,7 @@ class _OfflineDemoDelegate {
   }
 
   Future<void> goOffline() async {
+    _cubit._memoryDelegate.clearConnection();
     final currentState = _cubit.state;
     if (currentState is DistingStateSynchronized && currentState.offline) {
       return; // Already offline

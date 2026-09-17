@@ -15,6 +15,7 @@ import 'package:nt_helper/domain/disting_midi_manager.dart';
 import 'package:nt_helper/domain/midi_command_factory.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
+import 'package:nt_helper/domain/memory_query_input.dart';
 import 'package:nt_helper/domain/mock_disting_midi_manager.dart';
 import 'package:nt_helper/domain/offline_disting_midi_manager.dart';
 import 'package:nt_helper/domain/parameter_update_queue.dart';
@@ -27,6 +28,8 @@ import 'package:nt_helper/models/plugin_info.dart';
 import 'package:nt_helper/models/routing_information.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/models/firmware_release.dart';
+import 'package:nt_helper/models/memory_display_state.dart';
+import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/models/performance_page_item.dart';
 import 'package:nt_helper/models/slot_count_info.dart';
 import 'package:nt_helper/services/firmware_version_service.dart';
@@ -51,6 +54,7 @@ part 'disting_cubit_plugin_delegate.dart';
 part 'disting_cubit_connection_delegate.dart';
 part 'disting_cubit_parameter_refresh_delegate.dart';
 part 'disting_cubit_monitoring_delegate.dart';
+part 'disting_cubit_memory_delegate.dart';
 part 'disting_cubit_slot_state_delegate.dart';
 part 'disting_cubit_algorithm_library_delegate.dart';
 part 'disting_cubit_sd_card_delegate.dart';
@@ -124,6 +128,7 @@ class DistingCubit extends _DistingCubitBase
   late final _MonitoringDelegate _monitoringDelegate = _MonitoringDelegate(
     this,
   );
+  late final _MemoryDelegate _memoryDelegate = _MemoryDelegate(this);
   late final _SlotStateDelegate _slotStateDelegate = _SlotStateDelegate(this);
   late final _AlgorithmLibraryDelegate _algorithmLibraryDelegate =
       _AlgorithmLibraryDelegate(this);
@@ -227,6 +232,7 @@ class DistingCubit extends _DistingCubitBase
   Future<void> close() async {
     _ccNotificationDelegate.stop();
     await _mappingDelegate.dispose();
+    await _memoryDelegate.dispose();
     disting()?.dispose();
     _offlineManager?.dispose();
     _parameterQueue?.dispose();
@@ -299,6 +305,24 @@ class DistingCubit extends _DistingCubitBase
     return _monitoringDelegate.getCpuUsage();
   }
 
+  /// The current connection-local state for display memory consumers.
+  MemoryDisplayState get displayMemoryState => _memoryDelegate.state;
+
+  /// State transitions for display memory consumers.
+  Stream<MemoryDisplayState> get displayMemoryStateStream =>
+      _memoryDelegate.stateStream;
+
+  /// Whether the active physical connection's firmware supports memory queries.
+  bool get supportsMemoryUsage => _memoryDelegate.isSupported;
+
+  /// Refreshes display memory state without discarding a previous sample.
+  Future<void> refreshDisplayMemory() => _memoryDelegate.refreshDisplay();
+
+  /// Requests fresh memory from the active connection without using the
+  /// remembered display sample as a fallback.
+  Future<MemoryUsage> requestFreshMemoryUsage() =>
+      _memoryDelegate.requestFresh();
+
   void disconnect() {
     _checkpointDelegate.clearCheckpoints();
     return _connectionDelegate.disconnect();
@@ -342,6 +366,7 @@ class DistingCubit extends _DistingCubitBase
   }
 
   void _emitState(DistingState next) {
+    _memoryDelegate.onDistingStateWillChange(next);
     emit(next);
   }
 
@@ -1101,6 +1126,9 @@ class DistingCubit extends _DistingCubitBase
   ) {
     _ccNotificationDelegate.stop();
     _monitoringDelegate.pauseCpuMonitoring();
+    if (identical(disting(), manager)) {
+      _memoryDelegate.clearConnection();
+    }
     _parameterQueue?.dispose();
     _parameterQueue = null;
     if (identical(disting(), manager)) {

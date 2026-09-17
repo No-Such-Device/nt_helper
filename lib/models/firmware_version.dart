@@ -41,6 +41,11 @@ class FirmwareVersion {
     return isSupported('1.18.0');
   }
 
+  /// Firmware 1.19+ supports device memory queries via SysEx 0x39.
+  bool get hasMemoryUsage {
+    return isSupported('1.19.0');
+  }
+
   /// Firmware 1.15+ supports entering bootloader mode via SysEx.
   bool get hasBootloaderSysEx {
     return major > 1 || (major == 1 && minor >= 15);

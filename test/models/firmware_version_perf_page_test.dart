@@ -73,4 +73,18 @@ void main() {
       expect(FirmwareVersion('2.0').hasAlgorithmVisualStyle, true);
     });
   });
+
+  group('FirmwareVersion.hasMemoryUsage', () {
+    test('is false before firmware 1.19', () {
+      expect(FirmwareVersion('1.18.99').hasMemoryUsage, false);
+      expect(FirmwareVersion('').hasMemoryUsage, false);
+    });
+
+    test('is true for 1.19 betas and newer firmware', () {
+      expect(FirmwareVersion('1.19beta').hasMemoryUsage, true);
+      expect(FirmwareVersion('1.19.0-beta.2').hasMemoryUsage, true);
+      expect(FirmwareVersion('1.19.0').hasMemoryUsage, true);
+      expect(FirmwareVersion('2.0').hasMemoryUsage, true);
+    });
+  });
 }
