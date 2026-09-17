@@ -8,6 +8,7 @@ import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/disting_message_scheduler.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
+import 'package:nt_helper/domain/memory_query_input.dart';
 import 'package:nt_helper/domain/request_key.dart';
 import 'package:nt_helper/domain/sd_card_operation.dart';
 import 'package:nt_helper/domain/sysex/requests/add_algorithm.dart';
@@ -22,6 +23,7 @@ import 'package:nt_helper/domain/sysex/requests/request_all_parameter_values.dar
 import 'package:nt_helper/domain/sysex/requests/request_algorithm_guid.dart';
 import 'package:nt_helper/domain/sysex/requests/request_algorithm_info.dart';
 import 'package:nt_helper/domain/sysex/requests/request_mappings.dart';
+import 'package:nt_helper/domain/sysex/requests/request_memory_usage.dart';
 import 'package:nt_helper/domain/sysex/requests/request_num_algorithms.dart';
 import 'package:nt_helper/domain/sysex/requests/request_num_algorithms_in_preset.dart';
 import 'package:nt_helper/domain/sysex/requests/request_number_of_parameters.dart';
@@ -71,6 +73,7 @@ import 'package:nt_helper/domain/sysex/requests/request_kbm_file.dart';
 import 'package:nt_helper/domain/sysex/requests/request_cpu_usage.dart';
 import 'package:nt_helper/models/cpu_usage.dart';
 import 'package:nt_helper/models/firmware_version.dart';
+import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/models/sd_card_file_system.dart';
 import 'package:nt_helper/models/slot_count_info.dart';
 
@@ -1385,6 +1388,25 @@ class DistingMidiManager
 
     return await _scheduler.sendRequest<CpuUsage>(
       packet,
+      key,
+      responseExpectation: ResponseExpectation.required,
+    );
+  }
+
+  @override
+  Future<MemoryUsage?> requestMemoryUsage(MemoryQueryInput input) {
+    final message = RequestMemoryUsageMessage(
+      sysExId: sysExId,
+      guidBytes: input.guidBytes,
+      specificationValues: input.specificationValues,
+    );
+    final key = RequestKey(
+      sysExId: sysExId,
+      messageType: DistingNTRespMessageType.respMemoryUsage,
+    );
+
+    return _scheduler.sendRequest<MemoryUsage>(
+      message.encode(),
       key,
       responseExpectation: ResponseExpectation.required,
     );

@@ -7,6 +7,7 @@ import 'package:nt_helper/domain/sysex/responses/algorithm_response.dart';
 import 'package:nt_helper/domain/sysex/responses/all_parameter_values_response.dart';
 import 'package:nt_helper/domain/sysex/responses/mapping_response.dart';
 import 'package:nt_helper/domain/sysex/responses/message_response.dart';
+import 'package:nt_helper/domain/sysex/responses/memory_usage_response.dart';
 import 'package:nt_helper/domain/sysex/responses/num_parameters_response.dart';
 import 'package:nt_helper/domain/sysex/responses/number_of_algorithms_in_preset_response.dart';
 import 'package:nt_helper/domain/sysex/responses/number_of_algorithms_response.dart';
@@ -43,6 +44,8 @@ class ResponseFactory {
         return MessageResponse(payload);
       case DistingNTRespMessageType.respScreenshot:
         return ScreenshotResponse(payload);
+      case DistingNTRespMessageType.respMemoryUsage:
+        return MemoryUsageResponse(payload);
       case DistingNTRespMessageType.respAlgorithm:
         return AlgorithmResponse(payload);
       case DistingNTRespMessageType.respPresetName:

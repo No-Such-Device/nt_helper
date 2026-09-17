@@ -19,17 +19,21 @@ DistingNTParsedMessage? decodeDistingNTSysEx(Uint8List data) {
   // 3) Check 6D prefix
   if (data[4] != kDistingNTPrefix) return null;
 
-  // 4) The next byte is the SysEx ID for the module
-  final distingSysExId = data[5] & 0x7F;
+  // 4) The next byte is the SysEx ID for the module.
   if (data.length < 8) {
     // Must have at least one more byte for the message type
     return null;
   }
 
+  // SysEx body bytes must be 7-bit clean; do not mask malformed device IDs
+  // or commands into a match.
+  if (data[5] > 0x7F || data[6] > 0x7F) return null;
+  final distingSysExId = data[5];
+
   // 5) The next byte after that is the message type
-  final messageTypeByte = data[6] & 0x7F;
-  var msgType = DistingNTRespMessageType.fromByte(messageTypeByte);
-  var payload = data.sublist(7, data.length - 1);
+  final messageTypeByte = data[6];
+  final msgType = DistingNTRespMessageType.fromByte(messageTypeByte);
+  final payload = data.sublist(7, data.length - 1);
 
   // 6) The payload is everything between that byte and the final 0xF7,
   // but usually after the messageType we parse based on the command.

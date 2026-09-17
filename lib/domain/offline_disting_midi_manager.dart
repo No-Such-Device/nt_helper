@@ -13,7 +13,9 @@ import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:flutter/foundation.dart';
 import '../db/daos/presets_dao.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+import 'package:nt_helper/domain/memory_query_input.dart';
 import 'package:nt_helper/models/cpu_usage.dart';
+import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/models/performance_page_item.dart';
 import 'package:nt_helper/models/sd_card_file_system.dart';
 import 'package:nt_helper/services/offline_algorithm_shape_resolver.dart';
@@ -1094,6 +1096,11 @@ class OfflineDistingMidiManager
   @override
   Future<CpuUsage?> requestCpuUsage() async {
     throw UnsupportedError("CPU Usage is not available in offline mode.");
+  }
+
+  @override
+  Future<MemoryUsage?> requestMemoryUsage(MemoryQueryInput input) async {
+    throw UnsupportedError('Memory usage is not available in offline mode.');
   }
 
   @override

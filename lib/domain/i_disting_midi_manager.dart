@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:nt_helper/db/daos/presets_dao.dart' show FullPresetDetails;
 
+import 'package:nt_helper/domain/memory_query_input.dart';
+import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:nt_helper/models/performance_page_item.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
@@ -71,6 +73,7 @@ abstract class IDistingMidiManager {
   Future<Uint8List?>
   encodeTakeScreenshot(); // Assuming this belongs here, might need adjustment
   Future<CpuUsage?> requestCpuUsage();
+  Future<MemoryUsage?> requestMemoryUsage(MemoryQueryInput input);
 
   // Actions (may return Future<void> or void)
   Future<void> requestWake();
