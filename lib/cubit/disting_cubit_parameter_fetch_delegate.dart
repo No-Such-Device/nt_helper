@@ -214,8 +214,10 @@ class _ParameterFetchDelegate {
       disting.requestAlgorithmGuid(algorithmIndex),
     ]);
 
-    final numParams =
-        (essentialResults[0] as NumParameters?)?.numParameters ?? 0;
+    final numParametersResult = essentialResults[0] as NumParameters?;
+    final numParams = numParametersResult?.numParameters ?? 0;
+    final parameterCountFromDevice =
+        numParametersResult?.algorithmIndex == algorithmIndex;
     final guid = essentialResults[1] as Algorithm?;
     final pageResult = await _fetchParameterPagesWithMetadataFallback(
       disting,
@@ -238,12 +240,15 @@ class _ParameterFetchDelegate {
     // Try to get parameter values with retry and longer timeout
     List<ParameterValue> allValues;
     var allValuesFailed = false;
+    var parameterValuesFromDevice = false;
     try {
       final valuesStopwatch = Stopwatch()..start();
       _diag('fetchSlot[$algorithmIndex] allValues start');
       final paramValuesResult = await disting.requestAllParameterValues(
         algorithmIndex,
       );
+      parameterValuesFromDevice =
+          paramValuesResult?.algorithmIndex == algorithmIndex;
       allValues =
           paramValuesResult?.values ??
           List<ParameterValue>.generate(
@@ -265,6 +270,8 @@ class _ParameterFetchDelegate {
         final retryResult = await disting.requestAllParameterValues(
           algorithmIndex,
         );
+        parameterValuesFromDevice =
+            retryResult?.algorithmIndex == algorithmIndex;
         allValues =
             retryResult?.values ??
             List<ParameterValue>.generate(
@@ -591,6 +598,9 @@ class _ParameterFetchDelegate {
       mappings: mappings,
       valueStrings: valueStrings,
       routing: RoutingInfo.filler(), // unchanged – still skipped
+      parameterCountFromDevice: parameterCountFromDevice,
+      parameterPagesFromDevice: !pageResult.usedMetadataFallback,
+      parameterValuesFromDevice: parameterValuesFromDevice,
       outputModeMap: resolvedOutputModeMap,
     );
     _diag(

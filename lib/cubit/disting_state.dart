@@ -12,6 +12,13 @@ sealed class Slot with _$Slot {
     required List<Mapping> mappings,
     required List<ParameterValueString> valueStrings,
 
+    /// Required hydration responses that were read directly from the manager.
+    /// Ordinary refresh may still install fallback data with these set false;
+    /// strict respecification hydration requires all three to be true.
+    @Default(false) bool parameterCountFromDevice,
+    @Default(false) bool parameterPagesFromDevice,
+    @Default(false) bool parameterValuesFromDevice,
+
     /// Output mode usage map: parameter number -> list of affected parameter numbers
     /// Populated from SysEx 0x55 responses (Story 7.4)
     @Default({}) Map<int, List<int>> outputModeMap,

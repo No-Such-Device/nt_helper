@@ -293,6 +293,62 @@ Slot _hydratedSlot({
     ],
     mappings: [mapping],
     valueStrings: [ParameterValueString.filler()],
+    parameterCountFromDevice: true,
+    parameterPagesFromDevice: true,
+    parameterValuesFromDevice: true,
+  );
+}
+
+FullAlgorithmDetails _cachedSingleParameterMetadata() => FullAlgorithmDetails(
+  algorithm: const AlgorithmEntry(
+    guid: 'TEST',
+    name: 'Fixture algorithm',
+    numSpecifications: 2,
+  ),
+  specifications: const [],
+  parameters: const [],
+  parameterPages: [
+    ParameterPageWithItems(
+      page: const ParameterPageEntry(
+        algorithmGuid: 'TEST',
+        pageIndex: 0,
+        name: 'Cached page',
+      ),
+      parameterNumbers: const [0],
+    ),
+  ],
+  enums: const {},
+);
+
+void _stubSingleParameterHydration(
+  _RecordingManager manager, {
+  required Future<ParameterPages?> Function() requestPages,
+}) {
+  when(
+    () => manager.requestNumberOfParameters(2),
+  ).thenAnswer((_) async => NumParameters(algorithmIndex: 2, numParameters: 1));
+  when(
+    () => manager.requestParameterPages(2),
+  ).thenAnswer((_) => requestPages());
+  when(() => manager.requestAllParameterValues(2)).thenAnswer(
+    (_) async => AllParameterValues(
+      algorithmIndex: 2,
+      values: [
+        ParameterValue(algorithmIndex: 2, parameterNumber: 0, value: 25),
+      ],
+    ),
+  );
+  when(() => manager.requestParameterInfo(2, 0)).thenAnswer(
+    (_) async => ParameterInfo(
+      algorithmIndex: 2,
+      parameterNumber: 0,
+      min: 0,
+      max: 100,
+      defaultValue: 50,
+      unit: -1,
+      name: 'Device parameter',
+      powerOfTen: 0,
+    ),
   );
 }
 
@@ -339,6 +395,9 @@ void main() {
     metadataDao = _MockMetadataDao();
     midiCommand = MockMidiCommand();
     when(() => database.metadataDao).thenReturn(metadataDao);
+    when(
+      () => metadataDao.getFullAlgorithmDetails(any()),
+    ).thenAnswer((_) async => null);
     cubit = _TestDistingCubit(
       database,
       midiCommand: midiCommand,
@@ -347,6 +406,172 @@ void main() {
   });
 
   tearDown(() => cubit.close());
+
+  test(
+    'null page response without metadata cannot verify or install hydration',
+    () {
+      fakeAsync((async) {
+        final manager = _RecordingManager(
+          onRequestAlgorithm: (_) async => _fixtureSlotAlgorithm().copyWith(
+            specifications: const [1, 12],
+            hasAuthoritativeSpecifications: true,
+          ),
+        );
+        _stubSingleParameterHydration(manager, requestPages: () async => null);
+        final initialState = _synchronizedState(manager);
+        cubit.emit(initialState);
+
+        AlgorithmRespecificationStatus? status;
+        cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+          status = value;
+        });
+        async.flushMicrotasks();
+        async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
+
+        expect(status, AlgorithmRespecificationStatus.refreshIncomplete);
+        expect(cubit.state, same(initialState));
+        expect(manager.routingRequests, isEmpty);
+        expect(async.pendingTimers, isEmpty);
+      });
+    },
+  );
+
+  test('failed page response with cached metadata cannot verify or install '
+      'hydration', () {
+    fakeAsync((async) {
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) async => _fixtureSlotAlgorithm().copyWith(
+          specifications: const [1, 12],
+          hasAuthoritativeSpecifications: true,
+        ),
+      );
+      _stubSingleParameterHydration(
+        manager,
+        requestPages: () async => throw StateError('pages unavailable'),
+      );
+      when(
+        () => metadataDao.getFullAlgorithmDetails('TEST'),
+      ).thenAnswer((_) async => _cachedSingleParameterMetadata());
+      final initialState = _synchronizedState(manager);
+      cubit.emit(initialState);
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.refreshIncomplete);
+      expect(cubit.state, same(initialState));
+      expect(manager.routingRequests, isEmpty);
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('ordinary refresh still installs cached page fallback', () async {
+    final manager = _RecordingManager(
+      onRequestAlgorithm: (_) async => _fixtureSlotAlgorithm().copyWith(
+        specifications: const [1, 12],
+        hasAuthoritativeSpecifications: true,
+      ),
+    );
+    _stubSingleParameterHydration(
+      manager,
+      requestPages: () async => throw StateError('pages unavailable'),
+    );
+    when(
+      () => metadataDao.getFullAlgorithmDetails('TEST'),
+    ).thenAnswer((_) async => _cachedSingleParameterMetadata());
+    final initialState = _synchronizedState(manager);
+    cubit.emit(initialState);
+
+    await cubit.refreshSlot(2);
+
+    final refreshedState = cubit.state as DistingStateSynchronized;
+    expect(refreshedState, isNot(same(initialState)));
+    expect(refreshedState.slots[2].pages.pages.single.name, 'Cached page');
+    expect(refreshedState.slots[2].parameters.single.name, 'Device parameter');
+    expect(manager.routingRequests, isEmpty);
+  });
+
+  test('missing parameter count and values cannot verify empty hydration', () {
+    fakeAsync((async) {
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) async => _fixtureSlotAlgorithm().copyWith(
+          specifications: const [1, 12],
+          hasAuthoritativeSpecifications: true,
+        ),
+      );
+      _stubSingleParameterHydration(
+        manager,
+        requestPages: () async =>
+            ParameterPages(algorithmIndex: 2, pages: const []),
+      );
+      when(
+        () => manager.requestNumberOfParameters(2),
+      ).thenAnswer((_) async => null);
+      when(
+        () => manager.requestAllParameterValues(2),
+      ).thenAnswer((_) async => null);
+      final initialState = _synchronizedState(manager);
+      cubit.emit(initialState);
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.refreshIncomplete);
+      expect(cubit.state, same(initialState));
+      expect(manager.routingRequests, isEmpty);
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
+
+  test('device-returned empty pages remain valid hydration', () {
+    fakeAsync((async) {
+      final manager = _RecordingManager(
+        onRequestAlgorithm: (_) async => _fixtureSlotAlgorithm().copyWith(
+          specifications: const [1, 12],
+          hasAuthoritativeSpecifications: true,
+        ),
+      );
+      _stubSingleParameterHydration(
+        manager,
+        requestPages: () async =>
+            ParameterPages(algorithmIndex: 2, pages: const []),
+      );
+      final initialState = _synchronizedState(manager);
+      cubit.emit(initialState);
+
+      AlgorithmRespecificationStatus? status;
+      cubit.respecifyAlgorithm(2, const [1, 12]).then((value) {
+        status = value;
+      });
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 1));
+      async.flushMicrotasks();
+
+      expect(status, AlgorithmRespecificationStatus.observedMatchingState);
+      expect(cubit.state, isNot(same(initialState)));
+      expect(manager.routingRequests, [0, 1, 2]);
+      expect(
+        (cubit.state as DistingStateSynchronized)
+            .slots[2]
+            .parameters
+            .single
+            .name,
+        'Device parameter',
+      );
+      expect(async.pendingTimers, isEmpty);
+    });
+  });
 
   test(
     'waits for installed hydration before routing and verified completion',

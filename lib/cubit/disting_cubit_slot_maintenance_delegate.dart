@@ -86,6 +86,9 @@ class _SlotMaintenanceDelegate {
             ),
           )
           .toList(),
+      parameterCountFromDevice: slot.parameterCountFromDevice,
+      parameterPagesFromDevice: slot.parameterPagesFromDevice,
+      parameterValuesFromDevice: slot.parameterValuesFromDevice,
       outputModeMap: slot.outputModeMap,
     );
   }
@@ -180,6 +183,9 @@ class _SlotMaintenanceDelegate {
           algorithm.specifications,
           expectation.specifications,
         ) ||
+        !slot.parameterCountFromDevice ||
+        !slot.parameterPagesFromDevice ||
+        !slot.parameterValuesFromDevice ||
         slot.pages.algorithmIndex != algorithmIndex) {
       return false;
     }
