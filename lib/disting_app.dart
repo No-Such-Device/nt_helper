@@ -23,6 +23,14 @@ import 'package:nt_helper/ui/template_manager/template_manager_screen.dart';
 import 'package:nt_helper/utils/build_config.dart';
 import 'package:nt_helper/ui/midi_listener/midi_listener_cubit.dart';
 
+@visibleForTesting
+bool isFirmwareUpdateAvailable({
+  required bool isPlayStoreBuild,
+  required bool isMacOS,
+  required bool isWindows,
+  required bool isLinux,
+}) => !isPlayStoreBuild && (isMacOS || isWindows || isLinux);
+
 class DistingApp extends StatefulWidget {
   static const templateManagerRoute = '/template-manager';
 
@@ -333,10 +341,12 @@ class _DistingPageState extends State<DistingPage> {
                   context.read<DistingCubit>().goOffline();
                 },
                 onFirmwarePressed:
-                    !kPlayStoreBuild &&
-                        (Platform.isMacOS ||
-                            Platform.isWindows ||
-                            Platform.isLinux)
+                    isFirmwareUpdateAvailable(
+                      isPlayStoreBuild: kPlayStoreBuild,
+                      isMacOS: Platform.isMacOS,
+                      isWindows: Platform.isWindows,
+                      isLinux: Platform.isLinux,
+                    )
                     ? (
                         String? probedVersion,
                         MidiDevice? inputDevice,
@@ -622,14 +632,12 @@ class _DeviceSelectionView extends StatelessWidget {
                       OutlinedButton.icon(
                         icon: const Icon(Icons.system_update),
                         label: const Text('Firmware'),
-                        onPressed: canConnect
-                            ? () => onFirmwarePressed?.call(
-                                null,
-                                currentInputDevice,
-                                currentOutputDevice,
-                                selectedSysExId,
-                              )
-                            : null,
+                        onPressed: () => onFirmwarePressed?.call(
+                          null,
+                          currentInputDevice,
+                          currentOutputDevice,
+                          selectedSysExId,
+                        ),
                       ),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.cloud_off),
