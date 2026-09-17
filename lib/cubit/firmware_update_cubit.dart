@@ -13,6 +13,14 @@ import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/services/flash_tool_bridge.dart';
 import 'package:nt_helper/services/flash_tool_manager.dart';
 
+typedef LocalFirmwareFileReader = Future<List<int>?> Function(String path);
+
+Future<List<int>?> _readLocalFirmwareFileFromDisk(String path) async {
+  final file = File(path);
+  if (!await file.exists()) return null;
+  return file.readAsBytes();
+}
+
 /// Cubit for managing the firmware update workflow
 class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   final FirmwareVersionService _firmwareVersionService;
@@ -26,6 +34,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   final Future<IDistingMidiManager> Function()? _createMidiManager;
   final void Function(IDistingMidiManager)? _disposeMidiManager;
   final Future<bool> Function()? _checkMidiDevices;
+  final LocalFirmwareFileReader _readLocalFirmwareFile;
   final Duration _midiPollInterval;
   final int _midiPollAttempts;
   final bool _isWindows;
@@ -48,6 +57,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     Future<IDistingMidiManager> Function()? createMidiManager,
     void Function(IDistingMidiManager)? disposeMidiManager,
     Future<bool> Function()? checkMidiDevices,
+    LocalFirmwareFileReader? readLocalFirmwareFile,
     Duration midiPollInterval = const Duration(seconds: 5),
     int midiPollAttempts = 12,
     bool? isWindowsOverride,
@@ -62,6 +72,8 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
        _createMidiManager = createMidiManager,
        _disposeMidiManager = disposeMidiManager,
        _checkMidiDevices = checkMidiDevices,
+       _readLocalFirmwareFile =
+           readLocalFirmwareFile ?? _readLocalFirmwareFileFromDisk,
        _midiPollInterval = midiPollInterval,
        _midiPollAttempts = midiPollAttempts,
        _isWindows = isWindowsOverride ?? Platform.isWindows,
@@ -177,8 +189,8 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
     // Validate the file exists and is a valid ZIP
     try {
-      final file = File(path);
-      if (!await file.exists()) {
+      final bytes = await _readLocalFirmwareFile(path);
+      if (bytes == null) {
         emit(
           const FirmwareUpdateState.error(
             message: 'Selected file does not exist',
@@ -188,7 +200,6 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
       }
 
       // Validate it's a valid ZIP with firmware binary
-      final bytes = await file.readAsBytes();
       final archive = ZipDecoder().decodeBytes(bytes);
 
       if (archive.isEmpty) {
@@ -769,12 +780,14 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="15a2", ATTR{idProduct}=="0073", MODE="0666"
   Future<void> _cleanupTempFiles() async {
     if (_currentFirmwarePath != null) {
       // Only delete if it's in the temp directory (not a user-selected local file)
-      final file = File(_currentFirmwarePath!);
-      if (await file.exists() && _currentFirmwarePath!.contains('distingNT_')) {
-        try {
-          await file.delete();
-        } catch (_) {
-          // Ignore cleanup errors
+      if (_currentFirmwarePath!.contains('distingNT_')) {
+        final file = File(_currentFirmwarePath!);
+        if (await file.exists()) {
+          try {
+            await file.delete();
+          } catch (_) {
+            // Ignore cleanup errors
+          }
         }
       }
       _currentFirmwarePath = null;

@@ -57,6 +57,7 @@ void main() {
     bool isOffline = false,
     FirmwareVersion? firmwareVersion,
     IDistingMidiManager? midiManager,
+    Future<IDistingMidiManager> Function()? createMidiManager,
     void Function(IDistingMidiManager)? disposeMidiManager,
     Future<bool> Function()? checkMidiDevices,
     Duration midiPollInterval = const Duration(seconds: 5),
@@ -72,6 +73,7 @@ void main() {
       isOffline: isOffline,
       firmwareVersion: firmwareVersion,
       midiManager: midiManager,
+      createMidiManager: createMidiManager,
       disposeMidiManager: disposeMidiManager,
       checkMidiDevices: checkMidiDevices,
       midiPollInterval: midiPollInterval,
@@ -963,6 +965,88 @@ void main() {
 
           expect(events.take(2), ['release', 'flash']);
           expect(releases, 1);
+        },
+      );
+
+      test(
+        'lazy managers are reacquired and released once per flash attempt',
+        () async {
+          final firstManager = MockDistingMidiManager();
+          final secondManager = MockDistingMidiManager();
+          final managers = <IDistingMidiManager>[firstManager, secondManager];
+          final events = <String>[];
+          var managerIndex = 0;
+          var flashCalls = 0;
+
+          for (final manager in managers) {
+            when(() => manager.requestEnterBootloader()).thenAnswer((_) async {
+              events.add('bootloader-${managers.indexOf(manager) + 1}');
+            });
+          }
+          when(
+            () => mockFirmwareVersionService.downloadFirmware(
+              any(),
+              onProgress: any(named: 'onProgress'),
+            ),
+          ).thenAnswer((_) async => '/tmp/firmware.zip');
+          when(
+            () => mockFlashToolManager.getToolPath(),
+          ).thenAnswer((_) async => '/path/to/tool');
+          when(() => mockFlashToolBridge.flash(any())).thenAnswer((_) {
+            flashCalls++;
+            events.add('flash-$flashCalls');
+            return Stream.value(
+              const FlashProgress(
+                stage: FlashStage.write,
+                percent: 50,
+                message: 'Write failed',
+                isError: true,
+              ),
+            );
+          });
+          when(() => mockFlashToolBridge.cancel()).thenAnswer((_) async {});
+
+          final cubit = createCubit(
+            firmwareVersion: FirmwareVersion('1.15.0'),
+            createMidiManager: () async {
+              final next = managers[managerIndex++];
+              events.add('create-$managerIndex');
+              return next;
+            },
+            disposeMidiManager: (manager) {
+              events.add('release-${managers.indexOf(manager) + 1}');
+            },
+          );
+          final release = FirmwareRelease(
+            version: '1.16.0',
+            releaseDate: DateTime(2026),
+            changelog: const [],
+            downloadUrl: 'https://example.com/firmware.zip',
+          );
+
+          await cubit.startUpdate(release);
+          await cubit.confirmAndFlash();
+          await Future<void>.delayed(Duration.zero);
+          expect(cubit.state, isA<FirmwareUpdateStateError>());
+
+          await cubit.retryFlash();
+          await cubit.confirmAndFlash();
+          await Future<void>.delayed(Duration.zero);
+          await cubit.cancel();
+          await cubit.close();
+
+          expect(events, [
+            'create-1',
+            'bootloader-1',
+            'release-1',
+            'flash-1',
+            'create-2',
+            'bootloader-2',
+            'release-2',
+            'flash-2',
+          ]);
+          expect(managerIndex, 2);
+          expect(flashCalls, 2);
         },
       );
 

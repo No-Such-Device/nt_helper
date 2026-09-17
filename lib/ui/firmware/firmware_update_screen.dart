@@ -23,6 +23,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const String _kLastFirmwareDirectoryKey = 'last_firmware_directory';
 
+typedef LocalFirmwareFilePicker = Future<String?> Function();
+
+/// Injectable firmware I/O used by focused screen tests.
+///
+/// Production callers omit this and retain the platform service defaults.
+@visibleForTesting
+class FirmwareUpdateScreenDependencies {
+  final FirmwareVersionService firmwareVersionService;
+  final FlashToolManager flashToolManager;
+  final FlashToolBridge flashToolBridge;
+  final LocalFirmwareFilePicker? pickLocalFirmwareFile;
+  final LocalFirmwareFileReader? readLocalFirmwareFile;
+
+  const FirmwareUpdateScreenDependencies({
+    required this.firmwareVersionService,
+    required this.flashToolManager,
+    required this.flashToolBridge,
+    this.pickLocalFirmwareFile,
+    this.readLocalFirmwareFile,
+  });
+}
+
 /// Screen for managing firmware updates on desktop platforms
 class FirmwareUpdateScreen extends StatelessWidget {
   final DistingCubit distingCubit;
@@ -31,6 +53,9 @@ class FirmwareUpdateScreen extends StatelessWidget {
   final MidiDevice? outputDevice;
   final int? sysExId;
 
+  @visibleForTesting
+  final FirmwareUpdateScreenDependencies? dependencies;
+
   const FirmwareUpdateScreen({
     super.key,
     required this.distingCubit,
@@ -38,6 +63,7 @@ class FirmwareUpdateScreen extends StatelessWidget {
     this.inputDevice,
     this.outputDevice,
     this.sysExId,
+    this.dependencies,
   });
 
   @override
@@ -70,10 +96,14 @@ class FirmwareUpdateScreen extends StatelessWidget {
     final isDemo = syncState?.demo ?? false;
     final isOffline = syncState?.offline ?? false;
 
-    // Create services
-    final firmwareVersionService = FirmwareVersionService();
-    final flashToolManager = FlashToolManager();
-    final flashToolBridge = FlashToolBridge(toolManager: flashToolManager);
+    // Create services unless focused tests supplied controlled I/O boundaries.
+    final firmwareVersionService =
+        dependencies?.firmwareVersionService ?? FirmwareVersionService();
+    final flashToolManager =
+        dependencies?.flashToolManager ?? FlashToolManager();
+    final flashToolBridge =
+        dependencies?.flashToolBridge ??
+        FlashToolBridge(toolManager: flashToolManager);
 
     final firmwareVersion = currentVersionOverride != null
         ? FirmwareVersion(currentVersionOverride!)
@@ -116,21 +146,28 @@ class FirmwareUpdateScreen extends StatelessWidget {
             selectedInputDevice?.name,
             selectedOutputDevice?.name,
           ),
+          readLocalFirmwareFile: dependencies?.readLocalFirmwareFile,
         )..loadAvailableVersions(),
-        child: const _FirmwareUpdateView(),
+        child: _FirmwareUpdateView(
+          pickLocalFirmwareFile: dependencies?.pickLocalFirmwareFile,
+        ),
       ),
     );
   }
 }
 
 class _FirmwareUpdateView extends StatelessWidget {
-  const _FirmwareUpdateView();
+  final LocalFirmwareFilePicker? pickLocalFirmwareFile;
+
+  const _FirmwareUpdateView({this.pickLocalFirmwareFile});
 
   @override
   Widget build(BuildContext context) {
-    return const FirmwareUpdateCompletionListener(
+    return FirmwareUpdateCompletionListener(
       child: FirmwareUpdateAnnouncementListener(
-        child: _FirmwareUpdateScaffold(),
+        child: _FirmwareUpdateScaffold(
+          pickLocalFirmwareFile: pickLocalFirmwareFile,
+        ),
       ),
     );
   }
@@ -237,7 +274,9 @@ class FirmwareUpdateAnnouncementListener extends StatelessWidget {
 }
 
 class _FirmwareUpdateScaffold extends StatelessWidget {
-  const _FirmwareUpdateScaffold();
+  final LocalFirmwareFilePicker? pickLocalFirmwareFile;
+
+  const _FirmwareUpdateScaffold({this.pickLocalFirmwareFile});
 
   @override
   Widget build(BuildContext context) {
@@ -303,6 +342,14 @@ class _FirmwareUpdateScaffold extends StatelessWidget {
 
   Future<void> _selectLocalFile(BuildContext context) async {
     final cubit = context.read<FirmwareUpdateCubit>();
+    final injectedPicker = pickLocalFirmwareFile;
+    if (injectedPicker != null) {
+      final filePath = await injectedPicker();
+      if (filePath != null) {
+        await cubit.useLocalFile(filePath);
+      }
+      return;
+    }
 
     // Get last used directory
     final prefs = await SharedPreferences.getInstance();
@@ -315,15 +362,13 @@ class _FirmwareUpdateScaffold extends StatelessWidget {
       initialDirectory: lastDirectory,
     );
 
-    if (file != null) {
-      final filePath = file.path;
-      if (filePath != null) {
-        // Save the directory for next time
-        final directory = path.dirname(filePath);
-        await prefs.setString(_kLastFirmwareDirectoryKey, directory);
+    final filePath = file?.path;
+    if (filePath != null) {
+      // Save the directory for next time
+      final directory = path.dirname(filePath);
+      await prefs.setString(_kLastFirmwareDirectoryKey, directory);
 
-        cubit.useLocalFile(filePath);
-      }
+      await cubit.useLocalFile(filePath);
     }
   }
 }
