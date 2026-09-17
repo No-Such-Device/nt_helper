@@ -284,11 +284,7 @@ class _ParameterFetchDelegate {
         allValuesFailed = true;
         allValues = List<ParameterValue>.generate(
           numParams,
-          (param) => ParameterValue(
-            algorithmIndex: algorithmIndex,
-            parameterNumber: param,
-            value: 0,
-          ),
+          (_) => ParameterValue.filler(),
         );
       }
     }
@@ -575,9 +571,10 @@ class _ParameterFetchDelegate {
       );
     }
 
-    final resolvedOutputModeMap = outputModeMap.isNotEmpty
-        ? outputModeMap
-        : _cubit._slotStateDelegate.outputModeMapForSlot(algorithmIndex);
+    // A fresh slot fetch defines the current parameter shape. Do not carry
+    // output-mode relationships from the previous shape when the device
+    // returns none for the refreshed slot.
+    final resolvedOutputModeMap = outputModeMap;
 
     final slot = Slot(
       algorithm:

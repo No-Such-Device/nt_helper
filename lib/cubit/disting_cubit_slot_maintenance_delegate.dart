@@ -1,5 +1,19 @@
 part of 'disting_cubit.dart';
 
+enum _SlotRefreshStatus { installed, skipped, incomplete }
+
+final class _SlotHydrationExpectation {
+  _SlotHydrationExpectation({
+    required this.disting,
+    required this.algorithmGuid,
+    required List<int> specifications,
+  }) : specifications = List<int>.unmodifiable(specifications);
+
+  final IDistingMidiManager disting;
+  final String algorithmGuid;
+  final List<int> specifications;
+}
+
 class _SlotMaintenanceDelegate {
   _SlotMaintenanceDelegate(this._cubit);
 
@@ -76,35 +90,173 @@ class _SlotMaintenanceDelegate {
     );
   }
 
-  Future<void> refreshSlot(int algorithmIndex) async {
+  Future<_SlotRefreshStatus> refreshSlot(
+    int algorithmIndex, {
+    _SlotHydrationExpectation? expectation,
+  }) async {
     final syncState = _cubit.state;
-    if (syncState is! DistingStateSynchronized) {
-      return;
+    if (syncState is! DistingStateSynchronized ||
+        algorithmIndex < 0 ||
+        algorithmIndex >= syncState.slots.length) {
+      return _SlotRefreshStatus.skipped;
+    }
+
+    final disting = syncState.disting;
+    if (expectation != null &&
+        (!identical(disting, expectation.disting) ||
+            !_matchesExpectedAlgorithm(
+              syncState.slots[algorithmIndex].algorithm,
+              algorithmIndex,
+              expectation.algorithmGuid,
+            ))) {
+      return _SlotRefreshStatus.skipped;
     }
 
     try {
-      final disting = syncState.disting;
       final Slot updatedSlot = await _cubit.fetchSlot(disting, algorithmIndex);
       final currentState = _cubit.state;
       if (!identical(currentState, syncState) ||
           currentState is! DistingStateSynchronized ||
           algorithmIndex >= currentState.slots.length) {
-        return;
+        return _SlotRefreshStatus.skipped;
       }
+
+      if (expectation != null &&
+          !_isCompleteExpectedHydration(
+            updatedSlot,
+            algorithmIndex: algorithmIndex,
+            firmwareVersion: currentState.firmwareVersion,
+            expectation: expectation,
+          )) {
+        return _SlotRefreshStatus.incomplete;
+      }
+
+      final installedSlot = expectation == null
+          ? _cubit._preserveKnownSlotSpecifications(
+              previousState: syncState,
+              refreshedDisting: disting,
+              refreshedPresetName: syncState.presetName,
+              slotIndex: algorithmIndex,
+              refreshedSlot: updatedSlot,
+            )
+          : updatedSlot;
       final newSlots = List<Slot>.from(currentState.slots);
-      newSlots[algorithmIndex] = _cubit._preserveKnownSlotSpecifications(
-        previousState: syncState,
-        refreshedDisting: disting,
-        refreshedPresetName: syncState.presetName,
-        slotIndex: algorithmIndex,
-        refreshedSlot: updatedSlot,
+      newSlots[algorithmIndex] = installedSlot;
+      _cubit._slotStateDelegate.setOutputModeUsageMapForSlot(
+        algorithmIndex,
+        installedSlot.outputModeMap,
       );
       _cubit._emitState(currentState.copyWith(slots: newSlots));
       _cubit._rebuildCcLookup();
+      return _SlotRefreshStatus.installed;
     } catch (e, stackTrace) {
       debugPrintStack(stackTrace: stackTrace);
       rethrow;
     }
+  }
+
+  bool _matchesExpectedAlgorithm(
+    Algorithm algorithm,
+    int algorithmIndex,
+    String algorithmGuid,
+  ) =>
+      algorithm.algorithmIndex == algorithmIndex &&
+      algorithm.guid == algorithmGuid;
+
+  bool _isCompleteExpectedHydration(
+    Slot slot, {
+    required int algorithmIndex,
+    required FirmwareVersion firmwareVersion,
+    required _SlotHydrationExpectation expectation,
+  }) {
+    final algorithm = slot.algorithm;
+    if (!_matchesExpectedAlgorithm(
+          algorithm,
+          algorithmIndex,
+          expectation.algorithmGuid,
+        ) ||
+        !algorithm.hasAuthoritativeSpecifications ||
+        !const ListEquality<int>().equals(
+          algorithm.specifications,
+          expectation.specifications,
+        ) ||
+        slot.pages.algorithmIndex != algorithmIndex) {
+      return false;
+    }
+
+    final parameterCount = slot.parameters.length;
+    if (slot.values.length != parameterCount ||
+        slot.enums.length != parameterCount ||
+        slot.mappings.length != parameterCount ||
+        slot.valueStrings.length != parameterCount) {
+      return false;
+    }
+
+    final visibleParameters = slot.pages.pages
+        .expand((page) => page.parameters)
+        .toSet();
+    if (visibleParameters.any(
+      (parameterNumber) =>
+          parameterNumber < 0 || parameterNumber >= parameterCount,
+    )) {
+      return false;
+    }
+
+    for (var index = 0; index < parameterCount; index++) {
+      final parameter = slot.parameters[index];
+      final value = slot.values[index];
+      if (parameter.algorithmIndex != algorithmIndex ||
+          parameter.parameterNumber != index ||
+          value.algorithmIndex != algorithmIndex ||
+          value.parameterNumber != index) {
+        return false;
+      }
+
+      final isVisible = visibleParameters.contains(index);
+      final enumIsRequired =
+          isVisible &&
+          parameter.unit == 1 &&
+          !(firmwareVersion.isExactly('1.12.0') &&
+              algorithm.guid == 'maco' &&
+              index == 1);
+      final enumStrings = slot.enums[index];
+      if (enumIsRequired &&
+          (enumStrings.algorithmIndex != algorithmIndex ||
+              enumStrings.parameterNumber != index)) {
+        return false;
+      }
+
+      final mappingIsRequired = isVisible && parameter.unit != -1;
+      final mapping = slot.mappings[index];
+      if (mappingIsRequired &&
+          (mapping.algorithmIndex != algorithmIndex ||
+              mapping.parameterNumber != index)) {
+        return false;
+      }
+
+      final valueString = slot.valueStrings[index];
+      final hasValueStringCoordinates =
+          valueString.algorithmIndex == algorithmIndex &&
+          valueString.parameterNumber == index;
+      final isOptionalValueStringFiller =
+          valueString.algorithmIndex == -1 && valueString.parameterNumber == -1;
+      if (!hasValueStringCoordinates && !isOptionalValueStringFiller) {
+        return false;
+      }
+    }
+
+    for (final entry in slot.outputModeMap.entries) {
+      if (entry.key < 0 ||
+          entry.key >= parameterCount ||
+          entry.value.any(
+            (parameterNumber) =>
+                parameterNumber < 0 || parameterNumber >= parameterCount,
+          )) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   Future<void> refreshSlotAfterAnomaly(int algorithmIndex) async {

@@ -212,12 +212,43 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
       slotIndex,
       submittedValues,
     );
-    return _observeRespecification(
+    final observation = await _observeRespecification(
       currentState.disting,
       slotIndex: preparation.slotIndex,
       algorithmGuid: preparation.algorithmGuid,
       submittedValues: submittedValues,
     );
+    if (observation != AlgorithmRespecificationStatus.observedMatchingState) {
+      return observation;
+    }
+
+    final _SlotRefreshStatus refreshStatus;
+    try {
+      refreshStatus = await _refreshSlotWithResult(
+        slotIndex,
+        expectation: _SlotHydrationExpectation(
+          disting: currentState.disting,
+          algorithmGuid: preparation.algorithmGuid,
+          specifications: submittedValues,
+        ),
+      );
+    } catch (_) {
+      return AlgorithmRespecificationStatus.refreshFailed;
+    }
+
+    switch (refreshStatus) {
+      case _SlotRefreshStatus.skipped:
+        return AlgorithmRespecificationStatus.refreshSkipped;
+      case _SlotRefreshStatus.incomplete:
+        return AlgorithmRespecificationStatus.refreshIncomplete;
+      case _SlotRefreshStatus.installed:
+        try {
+          await refreshRouting();
+        } catch (_) {
+          return AlgorithmRespecificationStatus.refreshFailed;
+        }
+        return AlgorithmRespecificationStatus.observedMatchingState;
+    }
   }
 
   Future<bool> _waitForRespecificationDelay(

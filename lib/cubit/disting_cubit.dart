@@ -85,6 +85,11 @@ abstract class _DistingCubitBase extends Cubit<DistingState> {
     void Function(int completed, int total)? onSlotProgress,
   });
   Future<void> _refreshStateFromManager({Duration delay});
+  Future<_SlotRefreshStatus> _refreshSlotWithResult(
+    int algorithmIndex, {
+    _SlotHydrationExpectation? expectation,
+  });
+  Future<void> refreshRouting();
   void _rebuildCcLookup();
   Slot _fixAlgorithmIndex(Slot slot, int algorithmIndex);
   List<Slot> updateSlot(
@@ -839,8 +844,20 @@ class DistingCubit extends _DistingCubitBase
     return _parameterFetchDelegate.fetchSlot(disting, algorithmIndex);
   }
 
+  @override
   Future<void> refreshRouting() async {
     return _slotStateDelegate.refreshRouting();
+  }
+
+  @override
+  Future<_SlotRefreshStatus> _refreshSlotWithResult(
+    int algorithmIndex, {
+    _SlotHydrationExpectation? expectation,
+  }) {
+    return _slotMaintenanceDelegate.refreshSlot(
+      algorithmIndex,
+      expectation: expectation,
+    );
   }
 
   Future<void> _refreshSlotAfterAnomaly(int algorithmIndex) async {
@@ -881,9 +898,9 @@ class DistingCubit extends _DistingCubitBase
     return _parameterStringDelegate.refreshSlotParameterStrings(algorithmIndex);
   }
 
-  /// Refreshes a single slot's data from the module
+  /// Refreshes a single slot's data from the module.
   Future<void> refreshSlot(int algorithmIndex) async {
-    return _slotMaintenanceDelegate.refreshSlot(algorithmIndex);
+    await _refreshSlotWithResult(algorithmIndex);
   }
 
   Future<void> updateParameterString({

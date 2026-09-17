@@ -7,14 +7,25 @@ const ownerProvidedRespecifyMinimumFirmwareVersion = '1.19.0';
 
 /// The bounded observation available after sending SysEx 0x3A once.
 enum AlgorithmRespecificationStatus {
-  /// Fresh extended 0x40 state for the captured slot and GUID exactly matched.
+  /// Fresh extended 0x40 state for the captured slot and GUID exactly matched,
+  /// and the matching slot was fully hydrated before routing was refreshed.
   ///
   /// This establishes current device state only. It does not prove that an
-  /// unchanged submission caused a mutation or that slot hydration completed.
+  /// unchanged submission caused a mutation.
   observedMatchingState,
 
   /// Fresh extended 0x40 state for the captured slot and GUID differed.
   observedDifferingState,
+
+  /// Matching readback was observed, but the target changed before hydration
+  /// could be installed.
+  refreshSkipped,
+
+  /// Matching readback was observed, but required hydrated data was incomplete.
+  refreshIncomplete,
+
+  /// Matching readback was observed, but slot or routing refresh failed.
+  refreshFailed,
 
   /// No valid fresh extended 0x40 state was observed inside the time window.
   unverifiable,
