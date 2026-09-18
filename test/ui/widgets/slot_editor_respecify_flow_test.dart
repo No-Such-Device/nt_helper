@@ -27,6 +27,14 @@ import '../../test_helpers/mock_midi_command.dart';
 
 const _algorithmGuid = 'RSPC';
 
+typedef _WidgetDeviceFixture = ({
+  List<int> specifications,
+  List<String> parameterNames,
+  List<int> parameterValues,
+  List<PackedMappingData> mappings,
+  List<int> routing,
+});
+
 class _MockPlatformInteractionService extends Mock
     implements PlatformInteractionService {}
 
@@ -40,6 +48,8 @@ final class _WidgetRespecificationManager extends Mock
   final Completer<Algorithm?> lateReadback = Completer<Algorithm?>();
   Completer<ParameterPages?>? hydrationPagesGate;
   List<int>? specificationsReturnedAfterMutation;
+  _WidgetDeviceFixture? fixtureReturnedAfterMutation;
+  _WidgetDeviceFixture? _deviceFixture;
   bool missingReadback = false;
   bool failHydration = false;
   int hydrationRequests = 0;
@@ -63,9 +73,15 @@ final class _WidgetRespecificationManager extends Mock
     List<int> specifications,
   ) async {
     mutations.add(List<int>.from(specifications));
-    deviceSpecifications = List<int>.from(
-      specificationsReturnedAfterMutation ?? specifications,
-    );
+    final returnedFixture = fixtureReturnedAfterMutation;
+    if (returnedFixture != null) {
+      _deviceFixture = returnedFixture;
+      deviceSpecifications = List<int>.from(returnedFixture.specifications);
+    } else {
+      deviceSpecifications = List<int>.from(
+        specificationsReturnedAfterMutation ?? specifications,
+      );
+    }
   }
 
   @override
@@ -98,7 +114,7 @@ final class _WidgetRespecificationManager extends Mock
   Future<NumParameters?> requestNumberOfParameters(int algorithmIndex) async {
     return NumParameters(
       algorithmIndex: algorithmIndex,
-      numParameters: deviceSpecifications.single,
+      numParameters: _deviceParameterCount,
     );
   }
 
@@ -111,7 +127,7 @@ final class _WidgetRespecificationManager extends Mock
         ParameterPage(
           name: 'Device page',
           parameters: List<int>.generate(
-            deviceSpecifications.single,
+            _deviceParameterCount,
             (index) => index,
           ),
         ),
@@ -127,7 +143,7 @@ final class _WidgetRespecificationManager extends Mock
     return AllParameterValues(
       algorithmIndex: algorithmIndex,
       values: List<ParameterValue>.generate(
-        deviceSpecifications.single,
+        _deviceParameterCount,
         (index) => ParameterValue(
           algorithmIndex: algorithmIndex,
           parameterNumber: index,
@@ -149,9 +165,7 @@ final class _WidgetRespecificationManager extends Mock
       max: 100,
       defaultValue: _deviceValue(parameterNumber),
       unit: 0,
-      name: parameterNumber == 0
-          ? 'Existing device value'
-          : 'Added device default',
+      name: _deviceParameterName(parameterNumber),
       powerOfTen: 0,
       ioFlags: parameterNumber == 1 ? 8 : 0,
     );
@@ -165,14 +179,7 @@ final class _WidgetRespecificationManager extends Mock
     return Mapping(
       algorithmIndex: algorithmIndex,
       parameterNumber: parameterNumber,
-      packedMappingData: PackedMappingData.filler().copyWith(
-        version: 6,
-        midiChannel: 2,
-        midiCC: parameterNumber == 0 ? 12 : 74,
-        isMidiEnabled: true,
-        midiMin: 0,
-        midiMax: 127,
-      ),
+      packedMappingData: _deviceMapping(parameterNumber),
     );
   }
 
@@ -192,7 +199,9 @@ final class _WidgetRespecificationManager extends Mock
   Future<RoutingInfo?> requestRoutingInformation(int algorithmIndex) async {
     return RoutingInfo(
       algorithmIndex: algorithmIndex,
-      routingInfo: List<int>.filled(6, 4),
+      routingInfo: List<int>.from(
+        _deviceFixture?.routing ?? List<int>.filled(6, 4),
+      ),
     );
   }
 
@@ -200,15 +209,43 @@ final class _WidgetRespecificationManager extends Mock
     algorithmIndex: 0,
     guid: _algorithmGuid,
     name: 'Shape fixture',
-    specifications: List<int>.from(deviceSpecifications),
+    specifications: List<int>.from(
+      _deviceFixture?.specifications ?? deviceSpecifications,
+    ),
     hasAuthoritativeSpecifications: true,
   );
 
+  int get _deviceParameterCount =>
+      _deviceFixture?.parameterNames.length ?? deviceSpecifications.single;
+
   int _deviceValue(int parameterNumber) {
+    final fixture = _deviceFixture;
+    if (fixture != null) return fixture.parameterValues[parameterNumber];
     if (deviceSpecifications.single == 2) {
       return parameterNumber == 0 ? 11 : 77;
     }
     return 12;
+  }
+
+  String _deviceParameterName(int parameterNumber) {
+    final fixture = _deviceFixture;
+    if (fixture != null) return fixture.parameterNames[parameterNumber];
+    return parameterNumber == 0
+        ? 'Existing device value'
+        : 'Added device default';
+  }
+
+  PackedMappingData _deviceMapping(int parameterNumber) {
+    final fixture = _deviceFixture;
+    if (fixture != null) return fixture.mappings[parameterNumber];
+    return PackedMappingData.filler().copyWith(
+      version: 6,
+      midiChannel: 2,
+      midiCC: parameterNumber == 0 ? 12 : 74,
+      isMidiEnabled: true,
+      midiMin: 0,
+      midiMax: 127,
+    );
   }
 }
 
@@ -414,6 +451,78 @@ void main() {
   );
 
   testWidgets(
+    'conflicting returned indices replace displayed parameters, mappings, and routing',
+    (tester) async {
+      final insertedMapping = PackedMappingData.filler().copyWith(
+        version: 6,
+        midiChannel: 3,
+        midiCC: 91,
+        isMidiEnabled: true,
+        midiMin: 0,
+        midiMax: 127,
+      );
+      final shiftedMapping = PackedMappingData.filler().copyWith(
+        version: 6,
+        midiChannel: 2,
+        midiCC: 12,
+        isMidiEnabled: true,
+        midiMin: 0,
+        midiMax: 127,
+      );
+      manager.fixtureReturnedAfterMutation = (
+        specifications: [2],
+        parameterNames: [
+          'Inserted device parameter',
+          'Existing value shifted by device',
+        ],
+        parameterValues: [77, 10],
+        mappings: [insertedMapping, shiftedMapping],
+        routing: [9, 8, 7, 6, 5, 4],
+      );
+
+      await tester.pumpWidget(_slotEditorHarness(cubit, controllerSections));
+      await tester.pump();
+
+      expect(find.text('Existing device value'), findsOneWidget);
+      expect(find.byTooltip('Add mapping'), findsOneWidget);
+
+      await _openRespecifyDialog(tester);
+      await tester.enterText(
+        find.byKey(const ValueKey('${_algorithmGuid}_spec_0')),
+        '2',
+      );
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Respecify'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      final returned = (cubit.state as DistingStateSynchronized).slots.single;
+      expect(returned.algorithm.specifications, [2]);
+      expect(returned.parameters.map((parameter) => parameter.name), [
+        'Inserted device parameter',
+        'Existing value shifted by device',
+      ]);
+      expect(returned.values.map((value) => value.value), [77, 10]);
+      expect(
+        returned.mappings.map((mapping) => mapping.packedMappingData.midiCC),
+        [91, 12],
+      );
+      expect(returned.routing.routingInfo, [9, 8, 7, 6, 5, 4]);
+
+      expect(find.text('Existing device value'), findsNothing);
+      expect(find.text('Inserted device parameter'), findsOneWidget);
+      expect(find.text('Existing value shifted by device'), findsOneWidget);
+      expect(find.byTooltip('Edit mapping (active)'), findsNWidgets(2));
+      expect(
+        tester
+            .widgetList<Slider>(find.byType(Slider))
+            .map((slider) => slider.value),
+        containsAll(<double>[77, 10]),
+      );
+    },
+  );
+
+  testWidgets(
     'matching unchanged values establish current state without acknowledgement',
     (tester) async {
       await tester.pumpWidget(_slotEditorHarness(cubit, controllerSections));
@@ -512,7 +621,10 @@ void main() {
       expect(find.text('Respecifying…'), findsNothing);
       expect(find.text('Respecify Shape fixture'), findsNothing);
       expect(
-        find.text('The device did not apply the proposed specifications.'),
+        find.text(
+          'The device returned different specifications. Displaying the '
+          'returned device state.',
+        ),
         findsOneWidget,
       );
 
@@ -741,12 +853,14 @@ Widget _synchronizedScreenHarness(
 }
 
 Slot _deviceReturnedSlot(_WidgetRespecificationManager manager) {
-  final parameterCount = manager.deviceSpecifications.single;
+  final parameterCount = manager._deviceParameterCount;
   return Slot(
     algorithm: manager._deviceAlgorithm(),
     routing: RoutingInfo(
       algorithmIndex: 0,
-      routingInfo: List<int>.filled(6, 4),
+      routingInfo: List<int>.from(
+        manager._deviceFixture?.routing ?? List<int>.filled(6, 4),
+      ),
     ),
     pages: ParameterPages(
       algorithmIndex: 0,
@@ -766,7 +880,7 @@ Slot _deviceReturnedSlot(_WidgetRespecificationManager manager) {
         max: 100,
         defaultValue: manager._deviceValue(index),
         unit: 0,
-        name: index == 0 ? 'Existing device value' : 'Added device default',
+        name: manager._deviceParameterName(index),
         powerOfTen: 0,
         ioFlags: index == 1 ? 8 : 0,
       ),
@@ -788,7 +902,7 @@ Slot _deviceReturnedSlot(_WidgetRespecificationManager manager) {
       (index) => Mapping(
         algorithmIndex: 0,
         parameterNumber: index,
-        packedMappingData: PackedMappingData.filler(),
+        packedMappingData: manager._deviceMapping(index),
       ),
     ),
     valueStrings: List<ParameterValueString>.generate(

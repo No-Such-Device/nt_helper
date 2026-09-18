@@ -15,6 +15,12 @@ import 'package:nt_helper/ui/widgets/slot_editor_action_bar.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode_selector.dart';
 
+/// Presents the current slot snapshot supplied by [DistingStateSynchronized].
+///
+/// In particular, a post-respecification rebuild renders the returned
+/// parameters, mappings, and routing as supplied. This view does not merge
+/// them with the pre-respecification slot or infer parameter identity from an
+/// old index.
 class SlotDetailView extends StatefulWidget {
   final Slot slot;
   final int slotIndex;

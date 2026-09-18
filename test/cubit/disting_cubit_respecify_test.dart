@@ -1079,8 +1079,8 @@ void main() {
     });
   });
 
-  test('real hydration replaces device collections, rebuilds CC lookup, and '
-      'finishes before routing', () {
+  test('conflicting before/after device fixtures replace indexed state, '
+      'rebuild CC lookup, and finish before routing', () {
     fakeAsync((async) {
       final valueStringResult = Completer<ParameterValueString?>();
       final manager = _RecordingManager(
@@ -1199,10 +1199,62 @@ void main() {
               routingInfo: List<int>.filled(6, 99),
             ),
           ).copyWith(
+            pages: ParameterPages(
+              algorithmIndex: 2,
+              pages: [
+                ParameterPage(name: 'Before page', parameters: const [0, 1]),
+              ],
+            ),
+            parameters: [
+              ParameterInfo(
+                algorithmIndex: 2,
+                parameterNumber: 0,
+                min: 0,
+                max: 100,
+                defaultValue: 90,
+                unit: 0,
+                name: 'Before-only parameter',
+                powerOfTen: 0,
+              ),
+              ParameterInfo(
+                algorithmIndex: 2,
+                parameterNumber: 1,
+                min: 0,
+                max: 100,
+                defaultValue: 25,
+                unit: 1,
+                name: 'Device enum',
+                powerOfTen: 0,
+              ),
+            ],
+            values: [
+              ParameterValue(algorithmIndex: 2, parameterNumber: 0, value: 90),
+              ParameterValue(algorithmIndex: 2, parameterNumber: 1, value: 25),
+            ],
+            enums: [
+              ParameterEnumStrings.filler(),
+              ParameterEnumStrings(
+                algorithmIndex: 2,
+                parameterNumber: 1,
+                values: const ['Before low', 'Before high'],
+              ),
+            ],
             mappings: [
               Mapping(
                 algorithmIndex: 2,
                 parameterNumber: 0,
+                packedMappingData: PackedMappingData.filler().copyWith(
+                  version: 6,
+                  midiChannel: 2,
+                  midiCC: 99,
+                  isMidiEnabled: true,
+                  midiMin: 0,
+                  midiMax: 127,
+                ),
+              ),
+              Mapping(
+                algorithmIndex: 2,
+                parameterNumber: 1,
                 packedMappingData: PackedMappingData.filler().copyWith(
                   version: 6,
                   midiChannel: 2,
@@ -1213,8 +1265,16 @@ void main() {
                 ),
               ),
             ],
+            valueStrings: [
+              ParameterValueString.filler(),
+              ParameterValueString(
+                algorithmIndex: 2,
+                parameterNumber: 1,
+                value: 'before value',
+              ),
+            ],
             outputModeMap: const {
-              0: [0],
+              1: [0],
             },
           );
       cubit.emit(_synchronizedState(manager, selectedSlot: staleSlot));
@@ -1223,8 +1283,18 @@ void main() {
       cubit.refreshSlot(2).then((_) => seededShapeState = true);
       async.flushMicrotasks();
       expect(seededShapeState, isTrue);
+      final before = (cubit.state as DistingStateSynchronized).slots[2];
+      expect(before.parameters.map((parameter) => parameter.name), [
+        'Before-only parameter',
+        'Device enum',
+      ]);
+      expect(
+        before.mappings.map((mapping) => mapping.packedMappingData.midiCC),
+        [99, 10],
+      );
+      expect(before.routing.routingInfo, List<int>.filled(6, 99));
       expect(cubit.getSlotOutputModeUsage(2), const {
-        0: [0],
+        1: [0],
       });
       cubit.fetchSlotOverride = null;
 

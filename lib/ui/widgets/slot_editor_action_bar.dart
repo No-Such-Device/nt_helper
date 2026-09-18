@@ -207,7 +207,8 @@ class SlotEditorActionBar extends StatelessWidget {
           failureMessage = switch (status) {
             AlgorithmRespecificationStatus.observedMatchingState => null,
             AlgorithmRespecificationStatus.observedDifferingState =>
-              'The device did not apply the proposed specifications.',
+              'The device returned different specifications. Displaying the '
+                  'returned device state.',
             AlgorithmRespecificationStatus.unverifiable =>
               'Unable to verify whether the proposed specifications were '
                   'applied.',

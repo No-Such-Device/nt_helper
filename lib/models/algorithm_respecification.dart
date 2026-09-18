@@ -5,18 +5,27 @@ import 'package:nt_helper/domain/disting_nt_sysex.dart';
 /// Public upstream sources have not independently established this threshold.
 const ownerProvidedRespecifyMinimumFirmwareVersion = '1.19.0';
 
-/// The bounded observation available after sending SysEx 0x3A once.
+/// The bounded device observation available after sending SysEx 0x3A once.
+///
+/// These statuses describe fresh readback and hydration, not firmware
+/// migration behavior. They make no guarantee that parameter indices, CV,
+/// MIDI or I2C mappings, Performance Page references, routing assignments, or
+/// plug-in-private state survived a rebuild.
 enum AlgorithmRespecificationStatus {
   /// Fresh extended 0x40 state for the captured slot and GUID exactly matched,
   /// and the matching slot was fully hydrated before routing was refreshed.
   ///
-  /// This establishes current device state only. It does not prove that an
-  /// unchanged submission caused a mutation.
+  /// This establishes current device-returned state only. It does not prove
+  /// that an unchanged submission caused a mutation or that other state was
+  /// preserved.
   observedMatchingState,
 
   /// Fresh extended 0x40 state for the captured slot and GUID differed from
-  /// the proposal, and that authoritative state was fully hydrated before
+  /// the proposal, and that device-returned state was fully hydrated before
   /// routing was refreshed.
+  ///
+  /// This reports the observed state without inferring how firmware matched or
+  /// migrated parameter indices or any state attached to them.
   observedDifferingState,
 
   /// Valid readback was observed, but the target changed before hydration
