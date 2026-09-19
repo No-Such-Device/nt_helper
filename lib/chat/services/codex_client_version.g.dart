@@ -1,4 +1,4 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND.
 // Run `dart run tool/embed_codex_client_version.dart` to refresh it.
 
-const embeddedCodexClientVersion = '0.149.0';
+const embeddedCodexClientVersion = '0.154.0';
