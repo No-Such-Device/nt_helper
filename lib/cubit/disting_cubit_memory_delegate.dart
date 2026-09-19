@@ -21,6 +21,7 @@ final class _MemoryDelegate {
 
   MemoryDisplayState _state = const MemoryDisplayState.unavailable();
   _MemoryConnectionScope? _connection;
+  IDistingMidiManager? _missingSampleFetchManager;
   Future<void>? _displayRefresh;
   _MemoryConnectionScope? _displayRefreshConnection;
   bool _disposed = false;
@@ -70,6 +71,15 @@ final class _MemoryDelegate {
     return refresh;
   }
 
+  /// Refreshes after a device mutation that can change memory consumption.
+  ///
+  /// Unsupported or disconnected states are ignored so operations never turn a
+  /// remembered sample into an unavailable display.
+  void refreshAfterDeviceMutation() {
+    if (!isSupported) return;
+    unawaited(refreshDisplay());
+  }
+
   /// Requests a fresh sample from the active physical connection.
   ///
   /// This path never reads or returns the remembered display sample. It throws
@@ -89,6 +99,7 @@ final class _MemoryDelegate {
     }
 
     _connection = null;
+    _missingSampleFetchManager = null;
     _displayRefresh = null;
     _displayRefreshConnection = null;
     _setState(const MemoryDisplayState.unavailable());
@@ -98,18 +109,46 @@ final class _MemoryDelegate {
   /// replace or leave the active physical manager.
   void onDistingStateWillChange(DistingState nextState) {
     final activeConnection = _connection;
-    if (activeConnection == null) return;
-
     final nextManager = _physicalManager(nextState);
-    if (!identical(activeConnection.manager, nextManager)) {
-      clearConnection();
+    if (activeConnection != null) {
+      if (!identical(activeConnection.manager, nextManager)) {
+        clearConnection();
+        _scheduleMissingSampleFetch(nextState);
+        return;
+      }
+
+      if (nextState is DistingStateSynchronized &&
+          !nextState.firmwareVersion.hasMemoryUsage) {
+        _setState(const MemoryDisplayState.unavailable());
+      }
+    }
+
+    _scheduleMissingSampleFetch(nextState);
+  }
+
+  /// Fetches a first sample once per supported connection.
+  ///
+  /// The attempt is marked before it runs, so a failure leaves the display
+  /// unavailable instead of retrying on every later state emission.
+  void _scheduleMissingSampleFetch(DistingState nextState) {
+    if (_disposed) return;
+    if (nextState is! DistingStateSynchronized ||
+        !nextState.firmwareVersion.hasMemoryUsage) {
       return;
     }
 
-    if (nextState is DistingStateSynchronized &&
-        !nextState.firmwareVersion.hasMemoryUsage) {
-      _setState(const MemoryDisplayState.unavailable());
-    }
+    final manager = _physicalManager(nextState);
+    if (manager == null) return;
+    if (identical(_missingSampleFetchManager, manager)) return;
+    if (_state.sample != null) return;
+
+    _missingSampleFetchManager = manager;
+    scheduleMicrotask(() {
+      if (_disposed) return;
+      if (!identical(_physicalManager(_cubit.state), manager)) return;
+      if (_state.sample != null) return;
+      unawaited(refreshDisplay());
+    });
   }
 
   Future<void> dispose() async {

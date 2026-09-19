@@ -136,7 +136,7 @@ void main() {
         ],
       );
       await _pumpUntilAvailable(tester, cubit);
-      expect(find.bySemanticsLabel('SRAM current, 100 B'), findsOneWidget);
+      expect(find.bySemanticsLabel('SRAM current, 0.1 KiB'), findsOneWidget);
 
       await _pumpUntilMemoryRequests(tester, wire, 2);
       wire.injectMemory(
@@ -191,7 +191,7 @@ void main() {
         find.byKey(const ValueKey('system-memory-status')),
         findsOneWidget,
       );
-      expect(find.bySemanticsLabel('SRAM current, 110 B'), findsOneWidget);
+      expect(find.bySemanticsLabel('SRAM current, 0.11 KiB'), findsOneWidget);
 
       expect(mcpResult, {
         'success': true,

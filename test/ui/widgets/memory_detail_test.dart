@@ -188,7 +188,7 @@ void main() {
         source.completeRefresh(const MemoryDisplayState.available(_sample));
         await tester.pump();
         expect(find.text('Updated'), findsOneWidget);
-        expect(find.text('2 MiB'), findsOneWidget);
+        expect(find.text('2048 KiB'), findsOneWidget);
 
         await tester.sendKeyEvent(LogicalKeyboardKey.escape);
         await tester.pump();
@@ -273,9 +273,9 @@ void main() {
         expect(source.refreshCalls, 1);
         expect(find.byType(MemoryDetailPresenter), findsOneWidget);
         expect(find.bySemanticsLabel('SRAM current, 16 KiB'), findsOneWidget);
-        expect(find.bySemanticsLabel('DRAM total, 8 MiB'), findsOneWidget);
+        expect(find.bySemanticsLabel('DRAM total, 8192 KiB'), findsOneWidget);
         expect(find.bySemanticsLabel('DTC free, 3 KiB'), findsOneWidget);
-        expect(find.bySemanticsLabel('ITC free, 384 B'), findsOneWidget);
+        expect(find.bySemanticsLabel('ITC free, 0.38 KiB'), findsOneWidget);
         semantics.dispose();
       },
     );
@@ -348,12 +348,12 @@ void main() {
       expect(find.bySemanticsLabel('SRAM current, 16 KiB'), findsOneWidget);
       expect(find.bySemanticsLabel('SRAM total, 64 KiB'), findsOneWidget);
       expect(find.bySemanticsLabel('SRAM free, 48 KiB'), findsOneWidget);
-      expect(find.bySemanticsLabel('DRAM current, 2 MiB'), findsOneWidget);
-      expect(find.bySemanticsLabel('DRAM total, 8 MiB'), findsOneWidget);
-      expect(find.bySemanticsLabel('DRAM free, 6 MiB'), findsOneWidget);
+      expect(find.bySemanticsLabel('DRAM current, 2048 KiB'), findsOneWidget);
+      expect(find.bySemanticsLabel('DRAM total, 8192 KiB'), findsOneWidget);
+      expect(find.bySemanticsLabel('DRAM free, 6144 KiB'), findsOneWidget);
       expect(find.bySemanticsLabel('DTC current, 1 KiB'), findsOneWidget);
-      expect(find.bySemanticsLabel('ITC current, 128 B'), findsOneWidget);
-      expect(find.bySemanticsLabel('ITC free, 384 B'), findsOneWidget);
+      expect(find.bySemanticsLabel('ITC current, 0.13 KiB'), findsOneWidget);
+      expect(find.bySemanticsLabel('ITC free, 0.38 KiB'), findsOneWidget);
 
       expect(find.text('Used / total · free shown at right'), findsNothing);
       expect(find.textContaining('fit'), findsNothing);
@@ -362,7 +362,7 @@ void main() {
       semantics.dispose();
     });
 
-    testWidgets('formats fractional binary units without losing exact values', (
+    testWidgets('formats every pool in KiB without switching units', (
       tester,
     ) async {
       const fractionalSample = MemoryUsage(
@@ -376,14 +376,16 @@ void main() {
         presenterHost(const MemoryDisplayState.available(fractionalSample)),
       );
 
-      expect(find.text('1.5 KiB'), findsNWidgets(2));
-      expect(find.text('1.5 MiB'), findsNWidgets(2));
-      expect(find.text('1537 B'), findsOneWidget);
+      expect(find.textContaining('MiB'), findsNothing);
+      expect(find.textContaining(RegExp(r'\d B')), findsNothing);
+      expect(find.text('1.5 KiB'), findsNWidgets(3));
+      expect(find.text('1536 KiB'), findsNWidgets(2));
       expect(find.text('-1.5 KiB'), findsOneWidget);
       expect(find.bySemanticsLabel('SRAM current, 1.5 KiB'), findsOneWidget);
       expect(find.bySemanticsLabel('SRAM free, -1.5 KiB'), findsOneWidget);
-      expect(find.bySemanticsLabel('DRAM current, 1.5 MiB'), findsOneWidget);
-      expect(find.bySemanticsLabel('DTC total, 1537 B'), findsOneWidget);
+      expect(find.bySemanticsLabel('DRAM current, 1536 KiB'), findsOneWidget);
+      expect(find.bySemanticsLabel('DRAM total, 3072 KiB'), findsOneWidget);
+      expect(find.bySemanticsLabel('DTC total, 1.5 KiB'), findsOneWidget);
       semantics.dispose();
     });
 
@@ -399,7 +401,7 @@ void main() {
 
       expect(find.text('Refreshing'), findsOneWidget);
       expect(find.text('16 KiB'), findsOneWidget);
-      expect(find.text('2 MiB'), findsOneWidget);
+      expect(find.text('2048 KiB'), findsOneWidget);
       final status = tester.getSemantics(
         find.bySemanticsLabel('Refreshing memory values'),
       );

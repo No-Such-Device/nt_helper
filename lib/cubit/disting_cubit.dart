@@ -97,6 +97,7 @@ abstract class _DistingCubitBase extends Cubit<DistingState> {
     _RespecificationLifetime lifetime,
   );
   void _rebuildCcLookup();
+  void _refreshMemoryAfterDeviceMutation();
   Slot _fixAlgorithmIndex(Slot slot, int algorithmIndex);
   List<Slot> updateSlot(
     int algorithmIndex,
@@ -338,6 +339,10 @@ class DistingCubit extends _DistingCubitBase
 
   /// Refreshes display memory state without discarding a previous sample.
   Future<void> refreshDisplayMemory() => _memoryDelegate.refreshDisplay();
+
+  @override
+  void _refreshMemoryAfterDeviceMutation() =>
+      _memoryDelegate.refreshAfterDeviceMutation();
 
   /// Requests fresh memory from the active connection without using the
   /// remembered display sample as a fallback.

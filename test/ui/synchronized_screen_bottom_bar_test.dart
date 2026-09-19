@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -294,15 +296,15 @@ void main() {
           'SRAM current, 16 KiB',
           'SRAM total, 64 KiB',
           'SRAM free, 48 KiB',
-          'DRAM current, 2 MiB',
-          'DRAM total, 8 MiB',
-          'DRAM free, 6 MiB',
+          'DRAM current, 2048 KiB',
+          'DRAM total, 8192 KiB',
+          'DRAM free, 6144 KiB',
           'DTC current, 1 KiB',
           'DTC total, 4 KiB',
           'DTC free, 3 KiB',
-          'ITC current, 128 B',
-          'ITC total, 512 B',
-          'ITC free, 384 B',
+          'ITC current, 0.13 KiB',
+          'ITC total, 0.5 KiB',
+          'ITC free, 0.38 KiB',
         ];
 
         for (final width in [901, 1440]) {
@@ -357,6 +359,143 @@ void main() {
         semantics.dispose();
       },
     );
+
+    testWidgets('memory bars populate and update while detail stays closed', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final memoryStates = StreamController<MemoryDisplayState>.broadcast();
+      addTearDown(memoryStates.close);
+      var currentMemoryState = const MemoryDisplayState.unavailable();
+      when(
+        () => mockCubit.displayMemoryState,
+      ).thenAnswer((_) => currentMemoryState);
+      when(
+        () => mockCubit.displayMemoryStateStream,
+      ).thenAnswer((_) => memoryStates.stream);
+
+      Future<void> emitFractions(Map<String, double> fractions) async {
+        MemoryPoolUsage pool(String name) => MemoryPoolUsage(
+          total: 4096,
+          current: (4096 * fractions[name]!).round(),
+        );
+        currentMemoryState = MemoryDisplayState.available(
+          MemoryUsage(
+            sram: pool('SRAM'),
+            dram: pool('DRAM'),
+            dtc: pool('DTC'),
+            itc: pool('ITC'),
+          ),
+        );
+        memoryStates.add(currentMemoryState);
+        await tester.pump();
+      }
+
+      Finder fillOf(String name) => find.descendant(
+        of: find.byKey(ValueKey('memory-miniature-$name')),
+        matching: find.byType(ColoredBox),
+      );
+
+      await tester.pumpWidget(
+        createTestWidget(isMobile: false, isOffline: false, firmware: '1.19.0'),
+      );
+      await tester.pump();
+
+      // The bottom shortcut is mounted and the detail stays closed throughout.
+      expect(
+        find.byKey(const ValueKey('bottom-memory-shortcut')),
+        findsOneWidget,
+      );
+      expect(find.byType(CpuMonitorWidget), findsOneWidget);
+      expect(find.byType(MemoryDetailPresenter), findsNothing);
+
+      final columnHeight = tester
+          .getSize(find.byKey(const ValueKey('memory-miniature-SRAM')))
+          .height;
+      expect(columnHeight, greaterThan(0));
+      for (final name in const ['SRAM', 'DRAM', 'DTC', 'ITC']) {
+        expect(tester.getSize(fillOf(name)).height, 0, reason: name);
+      }
+
+      final colorScheme = Theme.of(
+        tester.element(find.byType(MemoryMiniature)),
+      ).colorScheme;
+      final expectedColors = <String, Color>{
+        'SRAM': colorScheme.primary,
+        'DRAM': colorScheme.secondary,
+        'DTC': colorScheme.tertiary,
+        'ITC': colorScheme.error,
+      };
+
+      // The four fills render left to right in SRAM, DRAM, DTC, ITC order.
+      final columnLefts = [
+        for (final name in const ['SRAM', 'DRAM', 'DTC', 'ITC'])
+          tester.getTopLeft(find.byKey(ValueKey('memory-miniature-$name'))).dx,
+      ];
+      expect(columnLefts, orderedEquals([...columnLefts]..sort()));
+
+      const firstFractions = {
+        'SRAM': 0.25,
+        'DRAM': 0.5,
+        'DTC': 0.75,
+        'ITC': 1.0,
+      };
+      await emitFractions(firstFractions);
+
+      expect(find.byType(MemoryDetailPresenter), findsNothing);
+      for (final entry in firstFractions.entries) {
+        final fill = fillOf(entry.key);
+        expect(
+          tester.getSize(fill).height,
+          moreOrLessEquals(columnHeight * entry.value, epsilon: 0.01),
+          reason: entry.key,
+        );
+        expect(
+          tester.widget<ColoredBox>(fill).color,
+          expectedColors[entry.key],
+          reason: entry.key,
+        );
+      }
+
+      const secondFractions = {
+        'SRAM': 0.75,
+        'DRAM': 0.25,
+        'DTC': 0.5,
+        'ITC': 0.125,
+      };
+      await emitFractions(secondFractions);
+
+      expect(find.byType(MemoryDetailPresenter), findsNothing);
+      for (final entry in secondFractions.entries) {
+        final fill = fillOf(entry.key);
+        expect(
+          tester.getSize(fill).height,
+          moreOrLessEquals(columnHeight * entry.value, epsilon: 0.01),
+          reason: entry.key,
+        );
+        expect(
+          tester.widget<ColoredBox>(fill).color,
+          expectedColors[entry.key],
+          reason: entry.key,
+        );
+        expect(
+          tester.getSize(fill).height,
+          isNot(
+            moreOrLessEquals(
+              columnHeight * firstFractions[entry.key]!,
+              epsilon: 0.01,
+            ),
+          ),
+          reason: entry.key,
+        );
+      }
+    });
 
     testWidgets('memory shortcut applies live firmware eligibility', (
       tester,

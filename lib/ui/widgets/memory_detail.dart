@@ -52,6 +52,7 @@ class MemoryDetailPresenter extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final sample = state.sample;
+    final usesStackedRows = MediaQuery.textScalerOf(context).scale(1) > 1.3;
     final pools = <_MemoryPoolPresentation>[
       _MemoryPoolPresentation('SRAM', sample?.sram, colorScheme.primary),
       _MemoryPoolPresentation('DRAM', sample?.dram, colorScheme.secondary),
@@ -91,9 +92,12 @@ class MemoryDetailPresenter extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                const _MemoryColumnHeadings(),
-                const SizedBox(height: 4),
-                for (final pool in pools) _MemoryPoolRow(pool: pool),
+                if (!usesStackedRows) ...[
+                  const _MemoryColumnHeadings(),
+                  const SizedBox(height: 4),
+                ],
+                for (final pool in pools)
+                  _MemoryPoolRow(pool: pool, stacked: usesStackedRows),
               ],
             ),
           ),
@@ -160,7 +164,7 @@ class _MemoryDetailOpenerState extends State<MemoryDetailOpener> {
   @override
   void didUpdateWidget(covariant MemoryDetailOpener oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.stateStream, widget.stateStream)) {
+    if (oldWidget.stateStream != widget.stateStream) {
       unawaited(_stateSubscription?.cancel());
       _displayState = widget.initialState;
       _subscribeToState();
@@ -446,9 +450,10 @@ class _MemoryColumnHeadings extends StatelessWidget {
 }
 
 class _MemoryPoolRow extends StatelessWidget {
-  const _MemoryPoolRow({required this.pool});
+  const _MemoryPoolRow({required this.pool, required this.stacked});
 
   final _MemoryPoolPresentation pool;
+  final bool stacked;
 
   @override
   Widget build(BuildContext context) {
@@ -457,6 +462,53 @@ class _MemoryPoolRow extends StatelessWidget {
       ('total', pool.usage?.total),
       ('free', pool.usage?.free),
     ];
+    final poolLabel = Row(
+      children: [
+        ExcludeSemantics(
+          child: Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.only(right: 6),
+            decoration: BoxDecoration(
+              color: pool.color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        Text(pool.name, style: Theme.of(context).textTheme.labelMedium),
+      ],
+    );
+
+    if (stacked) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            poolLabel,
+            for (final value in values)
+              Padding(
+                padding: const EdgeInsets.only(left: 14, top: 2),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${value.$1[0].toUpperCase()}${value.$1.substring(1)}',
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                    ),
+                    _MemoryValue(
+                      semanticLabel:
+                          '${pool.name} ${value.$1}, ${_formatBytes(value.$2)}',
+                      value: _formatBytes(value.$2),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -593,23 +645,17 @@ final class _MemoryPoolPresentation {
   final Color color;
 }
 
+/// Formats device memory in KiB (1,024 bytes) for every magnitude.
+///
+/// A single unit keeps the four pools directly comparable, so no value is
+/// rendered in MiB or bytes.
 String _formatBytes(int? bytes) {
   if (bytes == null) return '—';
 
   const kibibyte = 1024;
-  const mebibyte = 1024 * 1024;
-  final magnitude = bytes.abs();
-  if (magnitude >= mebibyte && (bytes * 100) % mebibyte == 0) {
-    return '${_formatExactScale(bytes, mebibyte)} MiB';
-  }
-  if (magnitude >= kibibyte && (bytes * 100) % kibibyte == 0) {
-    return '${_formatExactScale(bytes, kibibyte)} KiB';
-  }
-  return '$bytes B';
-}
-
-String _formatExactScale(int bytes, int unit) {
-  final fixed = (bytes / unit).toStringAsFixed(2);
-  final withoutTrailingZeroes = fixed.replaceFirst(RegExp(r'0+$'), '');
-  return withoutTrailingZeroes.replaceFirst(RegExp(r'\.$'), '');
+  final fixed = (bytes / kibibyte).toStringAsFixed(2);
+  final withoutTrailingZeroes = fixed.contains('.')
+      ? fixed.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '')
+      : fixed;
+  return '$withoutTrailingZeroes KiB';
 }

@@ -275,6 +275,7 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
     );
     _activeRespecificationLifetime = lifetime;
     final submittedValues = List<int>.unmodifiable(values);
+    var respecificationSent = false;
 
     try {
       final sendCompleted = await _waitForRespecificationSend(
@@ -287,6 +288,7 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
       if (!sendCompleted || !_isCurrentRespecificationLifetime(lifetime)) {
         return AlgorithmRespecificationStatus.unverifiable;
       }
+      respecificationSent = true;
 
       final observation = await _observeRespecification(
         lifetime,
@@ -334,6 +336,9 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
       _discardParameterRetriesForRespecification(lifetime);
       if (identical(_activeRespecificationLifetime, lifetime)) {
         _activeRespecificationLifetime = null;
+      }
+      if (respecificationSent) {
+        _refreshMemoryAfterDeviceMutation();
       }
     }
   }
@@ -686,6 +691,8 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
           throw const AlgorithmAddFailedException();
         }
 
+        _refreshMemoryAfterDeviceMutation();
+
         // 4) Hydrate the new slot once in the background. If its pages or
         // other details are malformed, keep the confirmed placeholder and let
         // a later manual refresh try again.
@@ -790,6 +797,8 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
           // Refresh immediately on error
           _refreshStateFromManager(delay: Duration.zero);
         });
+
+        _refreshMemoryAfterDeviceMutation();
 
         // 3. Verification
         _moveVerificationOperation = CancelableOperation.fromFuture(

@@ -18,6 +18,7 @@ class _RefreshDelegate {
     if (currentState is DistingStateSynchronized) {
       if (fullRefresh && !currentState.offline) {
         await _cubit._performSyncAndEmit();
+        _cubit._memoryDelegate.refreshAfterDeviceMutation();
         return;
       }
 
