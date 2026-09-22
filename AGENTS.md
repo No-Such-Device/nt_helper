@@ -156,6 +156,9 @@ installer. Finish with a clean worktree whose `HEAD` matches `origin/main`.
 
 ### Windows self-hosted release runner
 
+For SSH, direct Windows commands, and desktop access, see
+[dev-Windows runner access](docs/dev-windows-runner-access.md).
+
 The Windows job targets `[self-hosted, Windows, X64]`. It runs in the VirtualBox
 VM named `nt-helper-windows-x64` on
 `neal@dev.allosaurus-newton.ts.net`, registered with GitHub as `dev-Windows`.
