@@ -88,6 +88,40 @@ typedef _AlgorithmControllerSectionsEntry = ({
   AlgorithmControllerSectionController controller,
 });
 
+/// Whether the slots differ in anything the sidebar or tab bar displays:
+/// count, order, algorithm GUIDs, names or visual styles. Parameter values
+/// are deliberately ignored.
+bool slotHeadersChanged(List<Slot> previous, List<Slot> current) {
+  if (identical(previous, current)) return false;
+  if (previous.length != current.length) return true;
+  for (int i = 0; i < previous.length; i++) {
+    final a = previous[i].algorithm;
+    final b = current[i].algorithm;
+    if (a.guid != b.guid ||
+        a.name != b.name ||
+        a.visualStyle != b.visualStyle) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// `buildWhen` for the [DistingCubit] consumer that builds
+/// [SynchronizedScreen]. Parameter-value-only emissions (which replace the
+/// slots list) skip the rebuild; parameter editors read live slots through
+/// their own builders. Any other state change still rebuilds.
+bool synchronizedScaffoldShouldRebuild(
+  DistingState previous,
+  DistingState current,
+) {
+  if (previous is! DistingStateSynchronized ||
+      current is! DistingStateSynchronized) {
+    return true;
+  }
+  return previous.copyWith(slots: current.slots) != current ||
+      slotHeadersChanged(previous.slots, current.slots);
+}
+
 /// Help text for algorithm name interactions
 const String _algorithmNameHelpText =
     'Double-click: Focus algorithm UI  •  Long-press: Rename algorithm';
@@ -1033,6 +1067,17 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
     );
   }
 
+  /// Latest slots from [state] when they match the structure this screen was
+  /// built with, so parameter editors show values from emissions that
+  /// [synchronizedScaffoldShouldRebuild] filtered out.
+  List<Slot> _liveSlots(DistingState state) {
+    if (state is DistingStateSynchronized &&
+        !slotHeadersChanged(widget.slots, state.slots)) {
+      return state.slots;
+    }
+    return widget.slots;
+  }
+
   Widget _buildWideScreenBody() {
     return Row(
       children: [
@@ -1047,90 +1092,98 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
               ),
             ),
           ),
-          child: AlgorithmListView(
-            slots: widget.slots,
-            selectedIndex: _selectedIndex,
-            clipboardSelection: _clipboardSelection,
-            onToggleClipboardSelection: widget.loading
-                ? null
-                : (index) {
-                    // Multi-select is desktop-only (the side list only shows
-                    // on wide-screen / desktop). Toggle without setState: the
-                    // indicator leaf listens via ValueListenableBuilder.
-                    final next = Set<int>.of(_clipboardSelection.value);
-                    if (!next.add(index)) {
-                      next.remove(index);
-                    }
-                    _clipboardSelection.value = next;
-                  },
-            onSelectionChanged: (index) {
-              setState(() {
-                _selectedIndex = index;
-                _tabController.animateTo(index);
-              });
-              _syncSelectionToRouting(index);
-            },
-            onHelpTextChanged: _showContextualHelp
-                ? (text) => setState(() => _contextualHelpText = text)
-                : null,
-            onMoveUp: widget.loading
-                ? null
-                : (index) async {
-                    final cubit = context.read<DistingCubit>();
-                    final newIndex = await cubit.moveAlgorithmUp(index);
-                    setState(() {
-                      _selectedIndex = newIndex;
-                    });
-                    _tabController.animateTo(newIndex);
-                    return newIndex;
-                  },
-            onMoveDown: widget.loading
-                ? null
-                : (index) async {
-                    final cubit = context.read<DistingCubit>();
-                    final currentState = cubit.state;
-                    int slotCount = 0;
-                    if (currentState is DistingStateSynchronized) {
-                      slotCount = currentState.slots.length;
-                    }
-                    if (index < slotCount - 1) {
-                      final newIndex = await cubit.moveAlgorithmDown(index);
+          child: BlocBuilder<DistingCubit, DistingState>(
+            buildWhen: (previous, current) =>
+                previous is! DistingStateSynchronized ||
+                current is! DistingStateSynchronized ||
+                slotHeadersChanged(previous.slots, current.slots),
+            builder: (context, state) => AlgorithmListView(
+              slots: _liveSlots(state),
+              selectedIndex: _selectedIndex,
+              clipboardSelection: _clipboardSelection,
+              onToggleClipboardSelection: widget.loading
+                  ? null
+                  : (index) {
+                      // Multi-select is desktop-only (the side list only shows
+                      // on wide-screen / desktop). Toggle without setState: the
+                      // indicator leaf listens via ValueListenableBuilder.
+                      final next = Set<int>.of(_clipboardSelection.value);
+                      if (!next.add(index)) {
+                        next.remove(index);
+                      }
+                      _clipboardSelection.value = next;
+                    },
+              onSelectionChanged: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                  _tabController.animateTo(index);
+                });
+                _syncSelectionToRouting(index);
+              },
+              onHelpTextChanged: _showContextualHelp
+                  ? (text) => setState(() => _contextualHelpText = text)
+                  : null,
+              onMoveUp: widget.loading
+                  ? null
+                  : (index) async {
+                      final cubit = context.read<DistingCubit>();
+                      final newIndex = await cubit.moveAlgorithmUp(index);
                       setState(() {
                         _selectedIndex = newIndex;
                       });
                       _tabController.animateTo(newIndex);
                       return newIndex;
-                    }
-                    return index;
-                  },
-            onDelete: widget.loading
-                ? null
-                : (index) {
-                    final cubit = context.read<DistingCubit>();
-                    cubit.onRemoveAlgorithm(index);
-                  },
+                    },
+              onMoveDown: widget.loading
+                  ? null
+                  : (index) async {
+                      final cubit = context.read<DistingCubit>();
+                      final currentState = cubit.state;
+                      int slotCount = 0;
+                      if (currentState is DistingStateSynchronized) {
+                        slotCount = currentState.slots.length;
+                      }
+                      if (index < slotCount - 1) {
+                        final newIndex = await cubit.moveAlgorithmDown(index);
+                        setState(() {
+                          _selectedIndex = newIndex;
+                        });
+                        _tabController.animateTo(newIndex);
+                        return newIndex;
+                      }
+                      return index;
+                    },
+              onDelete: widget.loading
+                  ? null
+                  : (index) {
+                      final cubit = context.read<DistingCubit>();
+                      cubit.onRemoveAlgorithm(index);
+                    },
+            ),
           ),
         ),
         // Right side content
         Expanded(
           child: widget.slots.isNotEmpty
-              ? IndexedStack(
-                  index: _selectedIndex,
-                  children: widget.slots.mapIndexed((index, slot) {
-                    return SlotDetailView(
-                      key: ValueKey("$index - ${slot.algorithm.guid}"),
-                      slot: slot,
-                      slotIndex: index,
-                      units: widget.units,
-                      firmwareVersion: widget.firmwareVersion,
-                      sectionController: _sectionController,
-                      algorithmControllerSections:
-                          _algorithmControllerSectionsFor(index, slot),
-                      editorMode: _parameterEditorMode,
-                      onEditorModeChanged: _setParameterEditorMode,
-                      editorModeEnabled: !widget.loading,
-                    );
-                  }).toList(),
+              ? BlocBuilder<DistingCubit, DistingState>(
+                  builder: (context, state) => IndexedStack(
+                    index: _selectedIndex,
+                    children: _liveSlots(state).mapIndexed((index, slot) {
+                      return SlotDetailView(
+                        key: ValueKey("$index - ${slot.algorithm.guid}"),
+                        slot: slot,
+                        slotIndex: index,
+                        units: widget.units,
+                        firmwareVersion: widget.firmwareVersion,
+                        sectionController: _sectionController,
+                        algorithmControllerSections:
+                            _algorithmControllerSectionsFor(index, slot),
+                        editorMode: _parameterEditorMode,
+                        onEditorModeChanged: _setParameterEditorMode,
+                        editorModeEnabled: !widget.loading,
+                      );
+                    }).toList(),
+                  ),
                 )
               : Center(
                   child: Text(
@@ -2036,25 +2089,27 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
 
   Widget _buildBody() {
     if (widget.slots.isNotEmpty) {
-      return TabBarView(
-        controller: _tabController,
-        children: widget.slots.mapIndexed((index, slot) {
-          return SlotDetailView(
-            key: ValueKey("$index - ${slot.algorithm.guid}"),
-            slot: slot,
-            slotIndex: index,
-            units: widget.units,
-            firmwareVersion: widget.firmwareVersion,
-            sectionController: _sectionController,
-            algorithmControllerSections: _algorithmControllerSectionsFor(
-              index,
-              slot,
-            ),
-            editorMode: _parameterEditorMode,
-            onEditorModeChanged: _setParameterEditorMode,
-            editorModeEnabled: !widget.loading,
-          );
-        }).toList(),
+      return BlocBuilder<DistingCubit, DistingState>(
+        builder: (context, state) => TabBarView(
+          controller: _tabController,
+          children: _liveSlots(state).mapIndexed((index, slot) {
+            return SlotDetailView(
+              key: ValueKey("$index - ${slot.algorithm.guid}"),
+              slot: slot,
+              slotIndex: index,
+              units: widget.units,
+              firmwareVersion: widget.firmwareVersion,
+              sectionController: _sectionController,
+              algorithmControllerSections: _algorithmControllerSectionsFor(
+                index,
+                slot,
+              ),
+              editorMode: _parameterEditorMode,
+              onEditorModeChanged: _setParameterEditorMode,
+              editorModeEnabled: !widget.loading,
+            );
+          }).toList(),
+        ),
       );
     }
     return Center(
