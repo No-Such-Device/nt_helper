@@ -297,6 +297,7 @@ class _DistingPageState extends State<DistingPage> {
       body: BlocProvider(
         create: (context) => MidiListenerCubit(),
         child: BlocBuilder<DistingCubit, DistingState>(
+          buildWhen: synchronizedScaffoldShouldRebuild,
           builder: (context, state) {
             if (state is DistingStateInitial) {
               return Center(
