@@ -385,6 +385,109 @@ void main() {
     verifyNever(cubit.applyReorder(any));
   });
 
+  group('mouse background drag vs lane intersections', () {
+    // Algorithm 0's input row sits at y=73 on bus 1 (column 1). Column 2
+    // (x = 172 + 2*42 + 21 = 277) is bus 2, where hovering shows a ghost.
+    const intersection = Offset(277, 73);
+    final ghost = find.byWidgetPredicate(
+      (w) => w is Opacity && w.opacity == 0.55,
+    );
+
+    void stubAssign() {
+      when(
+        cubit.assignBusAndSolve(
+          algorithmIndex: anyNamed('algorithmIndex'),
+          parameterNumber: anyNamed('parameterNumber'),
+          previousBusValue: anyNamed('previousBusValue'),
+          busValue: anyNamed('busValue'),
+        ),
+      ).thenAnswer(
+        (_) async => const BusAssignmentResult(
+          algorithmIndex: 0,
+          parameterNumber: 0,
+          previousBusValue: 1,
+          newBusValue: 2,
+          reorder: null,
+        ),
+      );
+    }
+
+    Future<TestGesture> hoverIntersection(WidgetTester tester) async {
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: const Offset(300, 60));
+      await mouse.moveTo(intersection);
+      await tester.pump();
+      return mouse;
+    }
+
+    testWidgets('hover shows the intersection indicator', (tester) async {
+      await pumpConstrainedOversizedPreset(tester);
+      expect(ghost, findsNothing);
+
+      await hoverIntersection(tester);
+
+      expect(ghost, findsOneWidget);
+    });
+
+    testWidgets('plain left click on an intersection still assigns the bus', (
+      tester,
+    ) async {
+      await pumpConstrainedOversizedPreset(tester);
+      stubAssign();
+      final mouse = await hoverIntersection(tester);
+
+      await mouse.down(intersection);
+      await mouse.up();
+      await tester.pumpAndSettle();
+
+      verify(
+        cubit.assignBusAndSolve(
+          algorithmIndex: 0,
+          parameterNumber: 0,
+          previousBusValue: 1,
+          busValue: 2,
+        ),
+      ).called(1);
+    });
+
+    testWidgets('mouse drag started on an intersection scrolls, not clicks', (
+      tester,
+    ) async {
+      final (horizontal, _) = await pumpConstrainedOversizedPreset(tester);
+      stubAssign();
+      final mouse = await hoverIntersection(tester);
+
+      await mouse.down(intersection);
+      await mouse.moveBy(const Offset(-40, 0));
+      await mouse.moveBy(const Offset(-60, 0));
+      await mouse.up();
+      await tester.pumpAndSettle();
+
+      expect(horizontal.offset, greaterThan(0));
+      verifyNever(
+        cubit.assignBusAndSolve(
+          algorithmIndex: anyNamed('algorithmIndex'),
+          parameterNumber: anyNamed('parameterNumber'),
+          previousBusValue: anyNamed('previousBusValue'),
+          busValue: anyNamed('busValue'),
+        ),
+      );
+    });
+
+    testWidgets('mouse pointer-scroll signal still scrolls horizontally', (
+      tester,
+    ) async {
+      final (horizontal, _) = await pumpConstrainedOversizedPreset(tester);
+
+      final pointer = TestPointer(1, PointerDeviceKind.mouse);
+      await tester.sendEventToBinding(pointer.hover(const Offset(300, 60)));
+      await tester.sendEventToBinding(pointer.scroll(const Offset(80, 0)));
+      await tester.pump();
+
+      expect(horizontal.offset, 80);
+    });
+  });
+
   testWidgets('dragging the gutter still reorders algorithms', (tester) async {
     when(cubit.state).thenReturn(loadedWith(oversizedPreset()));
     when(cubit.applyReorder(any)).thenAnswer(

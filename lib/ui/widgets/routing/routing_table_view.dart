@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
@@ -270,8 +271,11 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       ),
     );
 
+    final scrollBehavior = ScrollConfiguration.of(
+      context,
+    ).copyWith(overscroll: false);
     return ScrollConfiguration(
-      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+      behavior: scrollBehavior,
       child: SingleChildScrollView(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,27 +293,37 @@ class _RoutingTableViewState extends State<RoutingTableView> {
               defaultVerticalAlignment: TableCellVerticalAlignment.middle,
               children: pinnedRows,
             ),
-            // Bus columns — horizontal scroll only
+            // Bus columns — horizontal scroll only. A left-button mouse
+            // drag on the table also scrolls, so an ordinary mouse can
+            // navigate without a trackpad or modifier key.
             Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Table(
-                  border: TableBorder(
-                    verticalInside: BorderSide(
-                      color: theme.dividerColor,
-                      width: 0.5,
-                    ),
-                    horizontalInside: BorderSide(
-                      color: theme.dividerColor,
-                      width: 0.5,
-                    ),
-                  ),
-                  columnWidths: {
-                    for (int i = 0; i < numBuses; i++)
-                      i: const FixedColumnWidth(_cellWidth),
+              child: ScrollConfiguration(
+                behavior: scrollBehavior.copyWith(
+                  dragDevices: {
+                    ...scrollBehavior.dragDevices,
+                    PointerDeviceKind.mouse,
                   },
-                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                  children: mainRows,
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Table(
+                    border: TableBorder(
+                      verticalInside: BorderSide(
+                        color: theme.dividerColor,
+                        width: 0.5,
+                      ),
+                      horizontalInside: BorderSide(
+                        color: theme.dividerColor,
+                        width: 0.5,
+                      ),
+                    ),
+                    columnWidths: {
+                      for (int i = 0; i < numBuses; i++)
+                        i: const FixedColumnWidth(_cellWidth),
+                    },
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    children: mainRows,
+                  ),
                 ),
               ),
             ),
