@@ -172,7 +172,9 @@ class _PluginDelegate {
   ///
   /// For gallery plugins, pass [galleryPluginId] and [galleryPluginVersion]
   /// to properly track the installation for update checking.
-  Future<void> installPlugin(
+  ///
+  /// Returns the root-duplicate cleanup outcome (see [_removeRootDuplicate]).
+  Future<PluginCleanupOutcome> installPlugin(
     String fileName,
     Uint8List fileData, {
     Function(double)? onProgress,
@@ -268,6 +270,17 @@ class _PluginDelegate {
       }
     }
 
+    // For C++ plugins installed into a subfolder, remove a confirmed duplicate
+    // left in the plug-ins root. Runs before the rescan and never fails the install.
+    PluginCleanupOutcome cleanupOutcome = const PluginCleanupSkipped();
+    if (extension == 'o') {
+      cleanupOutcome = await _removeRootDuplicate(
+        targetPath,
+        fileData,
+        disting,
+      );
+    }
+
     // For C++ plugins (.o files), complete the workflow:
     // - Always rescan plugins to make the new one available
     // - Invalidate algorithm info cache since plugin list changed
@@ -311,7 +324,77 @@ class _PluginDelegate {
 
     // Refresh state from manager to pick up any changes
     await _cubit._refreshStateFromManager();
+
+    return cleanupOutcome;
   }
+
+  /// After a `.o` install into a subfolder of `/programs/plug-ins`, deletes a
+  /// file directly in `/programs/plug-ins` with the same (case-sensitive)
+  /// filename only when its GUID set equals the installed plugin's.
+  ///
+  /// Identity is read from `.o` bytes only; no preset operation is issued.
+  /// Root installs and plugins without a readable GUID are skipped.
+  Future<PluginCleanupOutcome> _removeRootDuplicate(
+    String targetPath,
+    Uint8List fileData,
+    IDistingMidiManager disting,
+  ) async {
+    const rootDirectory = '/programs/plug-ins';
+    if (!targetPath.startsWith('$rootDirectory/')) {
+      return const PluginCleanupSkipped();
+    }
+    final relativePath = targetPath.substring(rootDirectory.length + 1);
+    if (!relativePath.contains('/')) return const PluginCleanupSkipped();
+
+    final baseName = relativePath.split('/').last;
+    final rootPath = '$rootDirectory/$baseName';
+
+    final Set<String> installedGuids;
+    try {
+      installedGuids = await _guidSet(fileData, baseName);
+    } catch (_) {
+      return const PluginCleanupSkipped();
+    }
+    if (installedGuids.isEmpty) return const PluginCleanupSkipped();
+
+    try {
+      final listing = await disting.requestDirectoryListing(rootDirectory);
+      if (listing == null) return PluginCleanupCouldNotBeVerified(rootPath);
+      final hasCandidate = listing.entries.any(
+        (entry) => !entry.isDirectory && entry.name == baseName,
+      );
+      if (!hasCandidate) return const PluginCleanupSkipped();
+
+      final candidateBytes = await disting.requestFileDownload(rootPath);
+      if (candidateBytes == null) {
+        return PluginCleanupCouldNotBeVerified(rootPath);
+      }
+      final candidateGuids = await _guidSet(candidateBytes, baseName);
+      if (candidateGuids.isEmpty) {
+        return PluginCleanupCouldNotBeVerified(rootPath);
+      }
+      if (!setEquals(candidateGuids, installedGuids)) {
+        return const PluginCleanupSkipped();
+      }
+    } catch (_) {
+      return PluginCleanupCouldNotBeVerified(rootPath);
+    }
+
+    try {
+      final status = await disting.requestFileDelete(rootPath);
+      return status != null && status.success
+          ? PluginCleanupRemoved(rootPath)
+          : PluginCleanupDeletionFailed(rootPath);
+    } catch (_) {
+      return PluginCleanupDeletionFailed(rootPath);
+    }
+  }
+
+  Future<Set<String>> _guidSet(Uint8List bytes, String fileName) async =>
+      (await ElfGuidExtractor.extractAllGuidsFromBytes(
+        bytes,
+        fileName,
+      )).map((g) => g.guid).toSet();
 
   /// Uploads a single chunk of file data.
   /// This mirrors the JavaScript tool's chunked upload implementation.

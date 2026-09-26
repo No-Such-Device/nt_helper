@@ -26,6 +26,7 @@ import 'package:nt_helper/models/cpu_usage.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:nt_helper/models/package_file.dart';
+import 'package:nt_helper/models/plugin_cleanup_outcome.dart';
 import 'package:nt_helper/models/plugin_info.dart';
 import 'package:nt_helper/models/routing_information.dart';
 import 'package:nt_helper/models/firmware_version.dart';
@@ -34,6 +35,7 @@ import 'package:nt_helper/models/memory_display_state.dart';
 import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/models/performance_page_item.dart';
 import 'package:nt_helper/models/slot_count_info.dart';
+import 'package:nt_helper/services/elf_guid_extractor.dart';
 import 'package:nt_helper/services/firmware_version_service.dart';
 import 'package:nt_helper/ui/parameter_editor_registry.dart';
 import 'package:nt_helper/services/settings_service.dart';
@@ -1004,7 +1006,10 @@ class DistingCubit extends _DistingCubitBase
   ///
   /// For gallery plugins, pass [galleryPluginId] and [galleryPluginVersion]
   /// to properly track the installation for update checking.
-  Future<void> installPlugin(
+  ///
+  /// Returns the outcome of removing a same-named, same-GUID duplicate from
+  /// the root of `/programs/plug-ins` after a subfolder `.o` install.
+  Future<PluginCleanupOutcome> installPlugin(
     String fileName,
     Uint8List fileData, {
     Function(double)? onProgress,
