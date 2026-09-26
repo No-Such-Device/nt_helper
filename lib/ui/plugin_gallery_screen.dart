@@ -21,6 +21,8 @@ import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 import 'package:nt_helper/ui/widgets/linkified_text.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:nt_helper/utils/responsive.dart';
+import 'package:nt_helper/models/plugin_cleanup_outcome.dart';
+import 'package:nt_helper/ui/widgets/plugin_cleanup_notice.dart';
 
 bool _isDevicePluginAlgorithm(AlgorithmInfo algorithm) {
   if (algorithm.isPlugin) return true;
@@ -1115,15 +1117,13 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
             onProgress,
             galleryPluginId,
             galleryPluginVersion,
-          }) async {
-            await distingCubit.installPlugin(
-              fileName,
-              fileData,
-              onProgress: onProgress,
-              galleryPluginId: galleryPluginId,
-              galleryPluginVersion: galleryPluginVersion,
-            );
-          },
+          }) => distingCubit.installPlugin(
+            fileName,
+            fileData,
+            onProgress: onProgress,
+            galleryPluginId: galleryPluginId,
+            galleryPluginVersion: galleryPluginVersion,
+          ),
       distingInstallSample: (targetPath, fileData, {onProgress}) async {
         return await distingCubit.installSampleFile(
           targetPath,
@@ -1139,6 +1139,7 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
           );
         }
       },
+      onCleanupOutcome: _showCleanupOutcome,
       onError: (error) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1169,15 +1170,13 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
             onProgress,
             galleryPluginId,
             galleryPluginVersion,
-          }) async {
-            await distingCubit.installPlugin(
-              fileName,
-              fileData,
-              onProgress: onProgress,
-              galleryPluginId: galleryPluginId,
-              galleryPluginVersion: galleryPluginVersion,
-            );
-          },
+          }) => distingCubit.installPlugin(
+            fileName,
+            fileData,
+            onProgress: onProgress,
+            galleryPluginId: galleryPluginId,
+            galleryPluginVersion: galleryPluginVersion,
+          ),
       distingInstallSample: (targetPath, fileData, {onProgress}) async {
         return await distingCubit.installSampleFile(
           targetPath,
@@ -1193,6 +1192,7 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
           );
         }
       },
+      onCleanupOutcome: _showCleanupOutcome,
       onError: (error) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1203,6 +1203,15 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
           );
         }
       },
+    );
+  }
+
+  void _showCleanupOutcome(PluginCleanupOutcome outcome) {
+    if (!mounted) return;
+    showPluginCleanupNotice(
+      ScaffoldMessenger.of(context),
+      outcome,
+      Theme.of(context).colorScheme,
     );
   }
 
@@ -1248,7 +1257,7 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
           }
 
           try {
-            await widget.distingCubit.installPlugin(
+            final cleanupOutcome = await widget.distingCubit.installPlugin(
               fileName,
               fileBytes,
               onProgress: (progress) {},
@@ -1256,6 +1265,7 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
 
             if (mounted) {
               Navigator.of(context).pop();
+              _showCleanupOutcome(cleanupOutcome);
               context.read<GalleryCubit>().refreshUpdates(
                 devicePluginGuids: _getDevicePluginGuids(),
                 devicePluginPaths: _getDevicePluginPaths(),
@@ -1708,13 +1718,14 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
       final fileName = file.name;
 
       if (!mounted) return;
-      await context.read<DistingCubit>().installPlugin(
+      final cleanupOutcome = await context.read<DistingCubit>().installPlugin(
         fileName,
         fileBytes,
         onProgress: (progress) {},
       );
 
       setState(() => _isInstallingFile = false);
+      _showCleanupOutcome(cleanupOutcome);
 
       if (!mounted) return;
       await context.read<DistingCubit>().rescanPlugins();

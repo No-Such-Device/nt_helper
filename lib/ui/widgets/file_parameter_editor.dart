@@ -14,6 +14,7 @@ import 'package:nt_helper/services/sample_directory_listing_cache.dart';
 import 'package:nt_helper/ui/parameter_editor_registry.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
+import 'package:nt_helper/ui/widgets/plugin_cleanup_notice.dart';
 import 'package:path/path.dart' as path;
 
 /// Enhanced file parameter editor widget that provides context-aware file browsing
@@ -1498,7 +1499,7 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
       final fileName = path.basename(_developmentFilePath!);
 
       // Upload to hardware using installPlugin
-      await cubit.installPlugin(
+      final cleanupOutcome = await cubit.installPlugin(
         fileName,
         contents,
         onProgress: (progress) {
@@ -1507,6 +1508,11 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
       );
 
       if (!mounted) return;
+      showPluginCleanupNotice(
+        ScaffoldMessenger.of(context),
+        cleanupOutcome,
+        Theme.of(context).colorScheme,
+      );
       setState(() => _devState = _DevelopmentState.reloading);
 
       // Force reload using state-preserving method

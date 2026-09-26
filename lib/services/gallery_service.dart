@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:nt_helper/models/gallery_models.dart';
+import 'package:nt_helper/models/plugin_cleanup_outcome.dart';
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:nt_helper/services/plugin_metadata_extractor.dart';
 import 'package:nt_helper/services/plugin_update_checker.dart';
@@ -840,6 +841,7 @@ class GalleryService {
     Function(PluginInstallPhase phase, double progress)? onProgress,
     List<int>? cachedArchiveBytes,
     List<CollectionPlugin>? selectedPlugins,
+    void Function(PluginCleanupOutcome outcome)? onCleanupOutcome,
   }) async {
     final version = plugin.getVersionTag('latest');
 
@@ -895,7 +897,7 @@ class GalleryService {
 
     // Install
     onProgress?.call(PluginInstallPhase.installing, 0.6);
-    await _installFilesViaDisting(
+    final cleanupOutcomes = await _installFilesViaDisting(
       filesToInstall,
       plugin,
       version,
@@ -907,6 +909,7 @@ class GalleryService {
         );
       },
     );
+    cleanupOutcomes.forEach(onCleanupOutcome ?? (_) {});
 
     // Install samples if present
     SampleInstallationResult? sampleResult;
@@ -950,6 +953,7 @@ class GalleryService {
     Function(QueuedPlugin)? onPluginComplete,
     Function(QueuedPlugin, String)? onPluginError,
     Function(QueuedPlugin, SampleInstallationResult)? onSampleInstallComplete,
+    Function(QueuedPlugin, PluginCleanupOutcome)? onCleanupOutcome,
   }) async {
     final pluginsToInstall = _installQueue
         .where((q) => q.status == QueuedPluginStatus.queued)
@@ -970,6 +974,9 @@ class GalleryService {
           onInstallationDetails: (files, bytes) {
             // Installation details tracked
           },
+          onCleanupOutcome: onCleanupOutcome == null
+              ? null
+              : (outcome) => onCleanupOutcome(queuedPlugin, outcome),
         );
 
         // Notify about sample installation results
@@ -1024,6 +1031,7 @@ class GalleryService {
     SampleInstallCallback? distingInstallSample,
     Function(QueuedPlugin, double)? onProgress,
     Function(int, int)? onInstallationDetails,
+    void Function(PluginCleanupOutcome outcome)? onCleanupOutcome,
   }) async {
     final plugin = queuedPlugin.plugin;
     final version = plugin.getVersionTag(queuedPlugin.selectedVersion);
@@ -1087,7 +1095,7 @@ class GalleryService {
     );
 
     // Install plugin files using Disting upload functionality
-    await _installFilesViaDisting(
+    final cleanupOutcomes = await _installFilesViaDisting(
       filesToInstall,
       plugin,
       version,
@@ -1099,6 +1107,7 @@ class GalleryService {
         onProgress?.call(queuedPlugin, totalProgress);
       },
     );
+    cleanupOutcomes.forEach(onCleanupOutcome ?? (_) {});
 
     // Install sample files if present and callback is provided
     SampleInstallationResult? sampleResult;
@@ -1452,7 +1461,10 @@ class GalleryService {
   }
 
   /// Install extracted files using Disting upload functionality
-  Future<void> _installFilesViaDisting(
+  ///
+  /// Returns the non-skipped root-duplicate cleanup outcomes reported by
+  /// [distingInstallPlugin] for the uploads that actually succeeded.
+  Future<List<PluginCleanupOutcome>> _installFilesViaDisting(
     List<MapEntry<String, List<int>>> files,
     GalleryPlugin plugin,
     String resolvedVersion,
@@ -1467,6 +1479,12 @@ class GalleryService {
     Function(double)? onProgress,
   ) async {
     int filesProcessed = 0;
+    final cleanupOutcomes = <PluginCleanupOutcome>[];
+    void recordOutcome(Object? result) {
+      if (result is PluginCleanupOutcome && result is! PluginCleanupSkipped) {
+        cleanupOutcomes.add(result);
+      }
+    }
 
     for (final fileEntry in files) {
       final relativePath = fileEntry.key;
@@ -1477,7 +1495,7 @@ class GalleryService {
         // Try to upload with directory structure first (if path contains directories)
         if (relativePath.contains('/') && relativePath != fileName) {
           try {
-            await distingInstallPlugin(
+            final result = await distingInstallPlugin(
               relativePath,
               fileData,
               onProgress: (fileProgress) {
@@ -1489,6 +1507,7 @@ class GalleryService {
               galleryPluginVersion: resolvedVersion,
             );
 
+            recordOutcome(result);
             filesProcessed++;
             onProgress?.call(filesProcessed / files.length);
             continue; // Success, move to next file
@@ -1497,8 +1516,9 @@ class GalleryService {
           }
         }
 
-        // Fallback: upload to plugin root directory with just filename
-        await distingInstallPlugin(
+        // Fallback: upload to plugin root directory with just filename.
+        // A root upload never triggers cleanup, so its outcome is skipped.
+        final result = await distingInstallPlugin(
           fileName,
           fileData,
           onProgress: (fileProgress) {
@@ -1510,12 +1530,14 @@ class GalleryService {
           galleryPluginVersion: resolvedVersion,
         );
 
+        recordOutcome(result);
         filesProcessed++;
         onProgress?.call(filesProcessed / files.length);
       } catch (e) {
         throw GalleryException('Failed to upload $fileName: $e');
       }
     }
+    return cleanupOutcomes;
   }
 
   /// Update a queued plugin's status
