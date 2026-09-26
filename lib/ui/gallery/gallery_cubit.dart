@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:nt_helper/models/gallery_models.dart';
+import 'package:nt_helper/models/plugin_cleanup_outcome.dart';
 import 'package:nt_helper/services/gallery_service.dart';
 import 'package:nt_helper/services/plugin_metadata_extractor.dart';
 import 'package:nt_helper/db/daos/plugin_installations_dao.dart';
@@ -26,6 +27,7 @@ class _PendingInstall {
   final SampleInstallCallback? distingInstallSample;
   final VoidCallback? onComplete;
   final Function(String)? onError;
+  final void Function(PluginCleanupOutcome)? onCleanupOutcome;
   final List<CollectionPlugin>? selectedPlugins;
 
   _PendingInstall({
@@ -34,6 +36,7 @@ class _PendingInstall {
     this.distingInstallSample,
     this.onComplete,
     this.onError,
+    this.onCleanupOutcome,
     this.selectedPlugins,
   });
 }
@@ -284,6 +287,7 @@ class GalleryCubit extends Cubit<GalleryState> {
     SampleInstallCallback? distingInstallSample,
     VoidCallback? onComplete,
     Function(String error)? onError,
+    void Function(PluginCleanupOutcome outcome)? onCleanupOutcome,
   }) {
     final currentState = state;
     if (currentState is! GalleryLoaded) return;
@@ -295,6 +299,7 @@ class GalleryCubit extends Cubit<GalleryState> {
         distingInstallSample: distingInstallSample,
         onComplete: onComplete,
         onError: onError,
+        onCleanupOutcome: onCleanupOutcome,
       ),
     );
 
@@ -321,6 +326,7 @@ class GalleryCubit extends Cubit<GalleryState> {
     SampleInstallCallback? distingInstallSample,
     VoidCallback? onComplete,
     Function(String error)? onError,
+    void Function(PluginCleanupOutcome outcome)? onCleanupOutcome,
   }) {
     final currentState = state;
     if (currentState is! GalleryLoaded) return;
@@ -336,6 +342,7 @@ class GalleryCubit extends Cubit<GalleryState> {
         distingInstallSample: distingInstallSample,
         onComplete: onComplete,
         onError: onError,
+        onCleanupOutcome: onCleanupOutcome,
         selectedPlugins: selected,
       ),
     );
@@ -370,6 +377,7 @@ class GalleryCubit extends Cubit<GalleryState> {
           distingInstallSample: pending.distingInstallSample,
           cachedArchiveBytes: cachedBytes,
           selectedPlugins: pending.selectedPlugins,
+          onCleanupOutcome: pending.onCleanupOutcome,
           onProgress: (phase, progress) {
             _updateInstallStatus(
               pluginId,
