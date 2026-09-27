@@ -1,58 +1,55 @@
-# Patch Helper integration foundation
+# Patch Helper SD-card companion
 
-The companion C++ project is `thorinside/patch_helper` (private). Its source
-spec is Substrate `d4abe223-d4c5-4784-811b-417aa43586ee`, still a discovery draft.
+The plug-in's GUID is `ThPh`. Its companion lives at `/helper/ThPh.lua` on the
+NT's SD card. Helper resolves `/helper/<GUID>.lua` with case preserved; the
+script must declare the matching GUID and companion API version. This is host
+Lua: Helper downloads the file through the existing whole-file SD operation
+and runs it on the computer. Install only scripts from a source you trust.
 
-The first slice added preset-data APIs. Revision 2 adds a live USB transport
-and a typed client; the visible editor remains the next step. `PatchMap` validates an immutable native-socket map;
-`PatchMapPresetCodec.readSlot`/`writeSlot` operate on one saved slot with GUID
-`ThPh`. Writing replaces only `patch_helper`, retains firmware fields, and
-refuses to overwrite unknown or invalid existing map data. It does not load
-the preset or mark a connected device dirty.
+Open the Patch Helper standard editor and choose **Load SD companion**. The Lua
+module's `render(state)` supplies a validated table document: field labels,
+ordered sections and socket-grid geometry. `handle(state, event)` supplies a
+validated declarative action. The existing Lua evaluator is reused inside a
+disposable isolate; Flutter renders the native controls. No bundled editor
+substitutes for a missing or failed script. The ordinary parameter/spreadsheet
+views remain available. Reload re-downloads the source and reads a fresh map.
 
-Direct placement of `patch_helper` in the slot is provisional: verify the
-firmware's actual custom-data envelope from a device-exported preset before
-integrating this codec into user-facing operations. The shared fixture proves
-the callback payload and the proposed slot adapter, not that hardware envelope.
+The host removes file/process/module/debug APIs and limits evaluations to two
+seconds, with 64 KiB source/output budgets. Isolates do not impose a hard memory
+quota: this is a trusted-companion preview, not a hostile-code sandbox.
 
-The version 1 preview covers twelve inputs and eight outputs. Connections have
-explicit socket IDs (0–19), destination, colour (0–11), optional Tag (0 absent,
-1–12 set), and group. Clearing destination retains other metadata. All sockets
-must appear exactly once. New maps show all sockets unused. Title/destination
-are at most 63 printable ASCII characters; group is at most 31. These are
-provisional plugin memory/display choices, not native firmware string limits.
-See the shared `test/fixtures/patch_map/native-map.json` fixture; its bytes must
-match the C++ repository's `tests/fixtures/native-map.json`.
+The table orders 12 inputs, 8 outputs and each expander's eight outputs. The
+minimap uses 3 rows × 4 columns, 4 × 2, then 8 × 1 per expander, left to right.
+Recorded dots use cable colour; unused sockets are hollow. Clicking a dot
+scrolls to and highlights its row. Tag is a plain optional integer (1–12), with
+blank meaning none. Edits require Enter or Apply row, and acknowledgement from
+the NT before the snapshot changes. Save the preset separately to persist it.
 
-The pinned official C++ API v13 supplies preset serialization and display-only
-parameter strings, but no arbitrary string-write callback. Existing Helper
-string parameters therefore do not establish plug-in editing support. The revision-2 bridge uses a separate experimental SysEx namespace, checked
-protocol version, slot address, client lease, request ID, and map revision.
-Writes replace one connection or title atomically, and are never replayed
-automatically. A conflict, preset change, malformed reply, or uncertain write
-invalidates the client until a complete reload. Live managers implement the
-optional `PatchMapTransport` capability, using the existing MIDI queue and
-selected-device filtering; demo/offline managers do not claim support.
+Supported record types are NTX-8CV, ES-5, ESX-8GT and ESX-8CV. Repeated types,
+instance names and manual bank ordering are supported. A move carries all eight
+records with the instance. This records physical cabling without configuring
+hardware or signal routing. The 7-bit socket address bounds this development
+format to 13 expander banks; it is not a hardware topology limit.
 
-Frames are at most 122 bytes, below the existing 1024-byte ceiling. USB is the
-only reply destination. Use a direct connection to one NT; the public plug-in
-API does not expose device SysEx ID or the incoming port. Hardware callback
-dispatch, preset-save behavior, and dirty marking still need owner verification.
-The bridge changes the live map; the normal Save preset action persists it.
+Native-only maps remain preset format 1. Format 2 adds `expanders` objects with
+`type` and `name`, and exactly 20 + 8×count connection records. The client uses
+extended Open payload `02`, reads every bank and socket at one revision, then
+publishes an immutable map. Older binaries reject extended Open with a clear
+update instruction. The legacy empty Open remains supported by the new plug-in.
 
-`PatchMapClient.load()` obtains the title and all 20 records at one revision.
-`setConnection()` and `setTitle()` return a new snapshot only on acknowledgement.
-Do not offer another write after an exception until `load()` succeeds. The
-matching wire fixture is `test/fixtures/patch_map/midi-session.json`; its bytes
-must match the C++ repository fixture. Both implementations test the exact same
-open/read/write exchange. Scheduler tests cover fragmented replies, endpoint
-filtering, queue ordering, and interrupted writes without replay.
+Commands 5/6/7/8 add/read/rename/move expanders; command 6 is read-only. Writes
+compare leases and revisions, never retry automatically, and invalidate edits
+after an uncertain result. Frames stay within 122 bytes. Direct USB to one NT
+remains the supported development transport.
 
-Lua controllers should receive immutable state and emit declarative actions
-executed by the host. They must not send MIDI directly or own a competing map.
-SD-card companion loading additionally needs compatibility metadata, trust and
-execution isolation, and a standard-editor fallback. Expander support and
-end-of-chain preset lifecycle remain separate discovery work.
+Cross-repository fixtures: `native-map.json`, `midi-session.json`, and
+`expanded-session.json` match `patch_helper/tests/fixtures/`. The Lua test fixture
+matches `patch_helper/helper/ThPh.lua`. Tests exercise the actual Lua source,
+GUID/path compatibility, broken/infinite scripts, acknowledged writes, exact
+C++/Dart wire exchange, expander persistence and a rendered widget interaction.
 
-Run `flutter test test/domain/patch_map/patch_map_test.dart` for the shared
-format, validation, immutability, and slot preservation checks.
+Source spec: Substrate `d4abe223-d4c5-4784-811b-417aa43586ee`. The approved table
+refines the original UI direction. NT-side text editing, gear-oriented sorting,
+arbitrary algorithm shared-state adapters, and regular/end-of-chain preset
+lifecycle verification remain separate work. The provisional saved-slot codec
+is not wired into UI: its firmware envelope still requires device evidence.

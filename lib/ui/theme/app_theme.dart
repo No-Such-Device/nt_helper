@@ -329,3 +329,19 @@ extension AppThemeDataExtension on ThemeData {
 extension AppThemeContextExtension on BuildContext {
   AppThemeColors get appColors => Theme.of(this).appColors;
 }
+
+/// Physical patch-cable colours, indexed by the PatchMap protocol palette.
+const patchCableColours = <Color>[
+  Colors.transparent,
+  Colors.black,
+  Colors.white,
+  Colors.grey,
+  Colors.red,
+  Colors.orange,
+  Colors.yellow,
+  Colors.green,
+  Colors.blue,
+  Colors.purple,
+  Colors.pink,
+  Colors.brown,
+];
