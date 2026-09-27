@@ -3,8 +3,8 @@
 The companion C++ project is `thorinside/patch_helper` (private). Its source
 spec is Substrate `d4abe223-d4c5-4784-811b-417aa43586ee`, still a discovery draft.
 
-This slice adds **preset-data APIs only**, not a visible editor or live MIDI
-transport. `PatchMap` validates an immutable native-socket map;
+The first slice added preset-data APIs. Revision 2 adds a live USB transport
+and a typed client; the visible editor remains the next step. `PatchMap` validates an immutable native-socket map;
 `PatchMapPresetCodec.readSlot`/`writeSlot` operate on one saved slot with GUID
 `ThPh`. Writing replaces only `patch_helper`, retains firmware fields, and
 refuses to overwrite unknown or invalid existing map data. It does not load
@@ -26,10 +26,27 @@ match the C++ repository's `tests/fixtures/native-map.json`.
 
 The pinned official C++ API v13 supplies preset serialization and display-only
 parameter strings, but no arbitrary string-write callback. Existing Helper
-string parameters therefore do not establish plug-in editing support. Before
-adding the UI, implement and verify a slot-addressed state transport with
-schema negotiation, stale-edit handling, acknowledgements, preset-switch
-protection, and recovery. Respect the existing 1024-byte SysEx ceiling.
+string parameters therefore do not establish plug-in editing support. The revision-2 bridge uses a separate experimental SysEx namespace, checked
+protocol version, slot address, client lease, request ID, and map revision.
+Writes replace one connection or title atomically, and are never replayed
+automatically. A conflict, preset change, malformed reply, or uncertain write
+invalidates the client until a complete reload. Live managers implement the
+optional `PatchMapTransport` capability, using the existing MIDI queue and
+selected-device filtering; demo/offline managers do not claim support.
+
+Frames are at most 122 bytes, below the existing 1024-byte ceiling. USB is the
+only reply destination. Use a direct connection to one NT; the public plug-in
+API does not expose device SysEx ID or the incoming port. Hardware callback
+dispatch, preset-save behavior, and dirty marking still need owner verification.
+The bridge changes the live map; the normal Save preset action persists it.
+
+`PatchMapClient.load()` obtains the title and all 20 records at one revision.
+`setConnection()` and `setTitle()` return a new snapshot only on acknowledgement.
+Do not offer another write after an exception until `load()` succeeds. The
+matching wire fixture is `test/fixtures/patch_map/midi-session.json`; its bytes
+must match the C++ repository fixture. Both implementations test the exact same
+open/read/write exchange. Scheduler tests cover fragmented replies, endpoint
+filtering, queue ordering, and interrupted writes without replay.
 
 Lua controllers should receive immutable state and emit declarative actions
 executed by the host. They must not send MIDI directly or own a competing map.

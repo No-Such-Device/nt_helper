@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:nt_helper/domain/patch_map/patch_map_client.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:path/path.dart' as p;
 import 'package:nt_helper/db/daos/presets_dao.dart';
@@ -86,7 +87,14 @@ class DistingMidiManager
         IDistingMidiManager,
         SlotCountInfoProvider,
         AlgorithmVisualStyleWriter,
-        AlgorithmRespecificationWriter {
+        AlgorithmRespecificationWriter,
+        PatchMapTransport {
+  @override
+  Future<Uint8List> exchangePatchMessage(
+    Uint8List request,
+    bool Function(Uint8List) matches,
+  ) => _scheduler.sendPluginRequest(request, matches);
+
   // Implement interface
   final DistingMessageScheduler _scheduler;
   final int sysExId;
