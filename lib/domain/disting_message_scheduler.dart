@@ -71,6 +71,7 @@ class _ScheduledRequest {
     required this.maxRetries,
     required this.retryDelay,
     required this.attributionPolicy,
+    this.rawResponseMatcher,
   });
 
   final int id;
@@ -82,6 +83,7 @@ class _ScheduledRequest {
   final int maxRetries;
   final Duration retryDelay;
   final ResponseAttributionPolicy attributionPolicy;
+  final bool Function(Uint8List)? rawResponseMatcher;
 
   int attemptCount = 0;
   int transferErrorRecoveryCount = 0;
@@ -820,6 +822,7 @@ class DistingMessageScheduler {
     if (_state != _SchedulerState.waitingForResponse ||
         !_isBufferingSysEx ||
         request == null ||
+        request.rawResponseMatcher != null ||
         request.completer.isCompleted ||
         request.transferErrorRecoveryCount >= _maxTransferErrorRecoveries) {
       return;
@@ -854,6 +857,23 @@ class DistingMessageScheduler {
     _demux.removeObserver(observer);
   }
 
+  /// Plug-in traffic shares the normal queue and selected-device receive path.
+  /// Responses must carry their own transaction identity. Never replay writes.
+  Future<Uint8List> sendPluginRequest(
+    Uint8List packet,
+    bool Function(Uint8List) matches,
+  ) async {
+    if (packet.length > 1024 || packet.length < 2 ||
+        packet.first != 0xf0 || packet.last != 0xf7) {
+      throw ArgumentError('Expected a SysEx frame of at most 1024 bytes');
+    }
+    final result = await sendRequest<Uint8List>(
+      packet, RequestKey(sysExId: _sysExId),
+      maxRetries: 1, rawResponseMatcher: matches,
+    );
+    return result!;
+  }
+
   Future<T?> sendRequest<T>(
     Uint8List packet,
     RequestKey key, {
@@ -864,6 +884,7 @@ class DistingMessageScheduler {
     ResponseAttributionPolicy attributionPolicy =
         ResponseAttributionPolicy.bestEffort,
     DistingRequestCancellation? cancellation,
+    bool Function(Uint8List)? rawResponseMatcher,
   }) {
     final completer = Completer<T?>();
     final request = _ScheduledRequest(
@@ -876,6 +897,7 @@ class DistingMessageScheduler {
       maxRetries: maxRetries ?? defaultMaxRetries,
       retryDelay: _normalizeDuration(retryDelay ?? defaultRetryDelay),
       attributionPolicy: attributionPolicy,
+      rawResponseMatcher: rawResponseMatcher,
     );
 
     _queue.add(request);
@@ -983,7 +1005,8 @@ class DistingMessageScheduler {
 
     // Register handler with demux BEFORE sending (first attempt only).
     // Handler persists across retries — only moved to expired on final timeout.
-    if (request.expectation != ResponseExpectation.none) {
+    if (request.expectation != ResponseExpectation.none &&
+        request.rawResponseMatcher == null) {
       _demux.registerActive(
         request.key,
         (parsed) {
@@ -1004,6 +1027,8 @@ class DistingMessageScheduler {
       _handleSendFailure(request, e);
       return;
     }
+
+    if (!identical(_currentRequest, request)) return;
 
     if (request.expectation == ResponseExpectation.none) {
       // Fire-and-forget: complete immediately and schedule next
@@ -1469,6 +1494,16 @@ class DistingMessageScheduler {
 
   void _dispatchSysEx(Uint8List sysex) {
     try {
+      final request = _currentRequest;
+      if (request != null && !request.completer.isCompleted &&
+          request.rawResponseMatcher?.call(sysex) == true) {
+        request.timeoutTimer?.cancel();
+        request.stopwatch.stop();
+        _consecutiveTimeouts = 0;
+        request.completer.complete(sysex);
+        _finishCurrentRequest();
+        return;
+      }
       final parsed = decodeDistingNTSysEx(sysex);
       if (parsed == null) return;
       if (parsed.sysExId != _sysExId) return;

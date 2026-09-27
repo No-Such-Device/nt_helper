@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/domain/disting_message_scheduler.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
@@ -116,6 +117,48 @@ void main() {
     tearDown(() {
       scheduler.dispose();
       incoming.close();
+    });
+
+    test('plug-in requests use the shared queue and selected device', () async {
+      final request = Uint8List.fromList([0xf0, 0x7d, 1, 0xf7]);
+      final reply = Uint8List.fromList([0xf0, 0x7d, 65, 0xf7]);
+      final first = scheduler.sendPluginRequest(
+        request,
+        (data) => listEquals(data, reply),
+      );
+      final second = scheduler.sendRequest(
+        _buildSysEx(DistingNTRespMessageType.respNumAlgorithms, []),
+        RequestKey(sysExId: 0),
+        responseExpectation: ResponseExpectation.none,
+      );
+      var completed = false;
+      first.then((_) => completed = true);
+      incoming.add(MidiPacket(reply, 0, _makeDevice('other-device')));
+      await Future<void>.delayed(Duration.zero);
+      expect(completed, isFalse);
+      verify(
+        () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
+      ).called(1);
+      incoming.add(MidiPacket(reply.sublist(0, 2), 0, device));
+      incoming.add(MidiPacket(reply.sublist(2), 0, device));
+      expect(await first, reply);
+      await second;
+      verify(
+        () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
+      ).called(1);
+    });
+
+    test('plug-in writes are never replayed after a receive error', () async {
+      final request = Uint8List.fromList([0xf0, 0x7d, 3, 0xf7]);
+      final future = scheduler.sendPluginRequest(request, (_) => false);
+      final expectation = expectLater(future, throwsA(isA<TimeoutException>()));
+      incoming.add(MidiPacket(Uint8List.fromList([0xf0, 0x7d]), 0, device));
+      await Future<void>.delayed(Duration.zero);
+      incoming.addError(StateError('Interrupted USB packet'));
+      await expectation;
+      verify(
+        () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
+      ).called(1);
     });
 
     test('basic request/response cycle — happy path', () async {
