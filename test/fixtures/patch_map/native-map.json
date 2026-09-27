@@ -1,0 +1,148 @@
+{
+  "patch_helper": {
+    "version": 1,
+    "title": "Studio patch",
+    "connections": [
+      {
+        "socket": 0,
+        "destination": "Oscillator \"A\" \\ left",
+        "colour": 4,
+        "tag": 12,
+        "group": "Voice 1"
+      },
+      {
+        "socket": 1,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 2,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 3,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 4,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 5,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 6,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 7,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 8,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 9,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 10,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 11,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 12,
+        "destination": "reverb left",
+        "colour": 8,
+        "tag": 1,
+        "group": "FX"
+      },
+      {
+        "socket": 13,
+        "destination": "reverb right",
+        "colour": 8,
+        "tag": 2,
+        "group": "FX"
+      },
+      {
+        "socket": 14,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 15,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 16,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 17,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 18,
+        "destination": "",
+        "colour": 0,
+        "tag": 0,
+        "group": ""
+      },
+      {
+        "socket": 19,
+        "destination": "",
+        "colour": 11,
+        "tag": 12,
+        "group": "Disconnected cable"
+      }
+    ]
+  }
+}
