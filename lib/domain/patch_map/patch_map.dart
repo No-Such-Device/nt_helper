@@ -6,9 +6,9 @@ class PatchMap {
   static const socketCount = 20;
   // Limited by the protocol's seven-bit socket address, not hardware topology.
   static const maxExpanders = (128 - socketCount) ~/ 8;
-  // New maps must fit the device's independent colour/tag parameter pages.
+  // New maps fit four-field native pages including read-only text.
   // Keep maxExpanders unchanged so existing 13-bank presets remain readable.
-  static const maxNewExpanders = 12;
+  static const maxNewExpanders = 8;
   static const maxSockets = socketCount + 8 * maxExpanders;
   static const expanderTypes = ['NTX-8CV', 'ES-5', 'ESX-8GT', 'ESX-8CV'];
   static const colours = <String>[

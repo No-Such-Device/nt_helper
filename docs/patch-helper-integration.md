@@ -53,10 +53,11 @@ acknowledgement triggers a reread; already-applied values are not written twice.
 Supported record types are NTX-8CV, ES-5, ESX-8GT and ESX-8CV. Repeated types,
 instance names and manual bank ordering are supported. A move carries all eight
 records with the instance. This records physical cabling without configuring
-hardware or signal routing. New maps allow 12 expander banks so independent native colour/tag controls fit
-the connected firmware's measured 240-parameter limit. Older 13-bank maps remain
-readable and editable in Helper; the NT provides a compatibility selector page
-for their final bank. This is not a hardware topology limit.
+hardware or signal routing. New maps allow eight expander banks. The NT shows
+one bank's eight socket pages at a time, with separate greyed-out Destination
+and Group properties plus editable colour/tag. Helper displays every bank
+together. Older maps up to 13 banks remain readable and editable; the NT's
+Other sockets selector covers banks beyond eight without discarding records.
 
 Native-only maps remain preset format 1. Format 2 adds `expanders` objects with
 `type` and `name`, and exactly 20 + 8×count connection records. The client uses
@@ -129,5 +130,5 @@ This is an additive API-1 primitive; old scripts without actions remain valid.
 
 V1 is documented in the original Substrate spec
 `d4abe223-d4c5-4784-811b-417aa43586ee` and `patch_helper/docs/v1-spec.md`.
-Native text-property editing remains required for full device parity; this
-host dialog change does not implement it.
+The owner accepts native display-only text until the C++ SDK exposes editable
+strings. Helper remains the text editor, with new edits limited to 32 characters.
