@@ -57,11 +57,21 @@ class PatchMapClient {
     _ready = false;
     // A fresh lease also separates late replies from an earlier reload.
     _lease = _lease == 0x0fffffff ? 1 : _lease + 1;
-    final titleData = _Reader(await _exchange(1, const []));
+    final titleData = _Reader(await _exchange(1, const [2]));
     final title = titleData.text(63);
+    final count = titleData.byte();
+    if (count > PatchMap.maxExpanders) {
+      throw const FormatException('Invalid expander count');
+    }
     titleData.finish();
+    final expanders = <PatchExpander>[];
+    for (var i = 0; i < count; i++) {
+      final data = _Reader(await _exchange(6, [i]));
+      expanders.add(PatchExpander(type: data.byte(), name: data.text(31)));
+      data.finish();
+    }
     final rows = <PatchConnection>[];
-    for (var socket = 0; socket < PatchMap.socketCount; socket++) {
+    for (var socket = 0; socket < PatchMap.socketCount + 8 * count; socket++) {
       final data = _Reader(await _exchange(2, [socket]));
       final identity = data.byte();
       final colour = data.byte();
@@ -80,13 +90,16 @@ class PatchMapClient {
         ),
       );
     }
-    _map = PatchMap(title: title, connections: rows);
+    _map = PatchMap(title: title, connections: rows, expanders: expanders);
     _ready = true;
     return _map!;
   });
 
   Future<PatchMap> setConnection(PatchConnection row) => _run(() async {
     _requireReady();
+    if (row.socket >= _map!.connections.length) {
+      throw RangeError.index(row.socket, _map!.connections);
+    }
     final payload = [
       row.socket,
       row.colour,
@@ -103,10 +116,45 @@ class PatchMapClient {
 
   Future<PatchMap> setTitle(String title) => _run(() async {
     _requireReady();
-    final candidate = PatchMap(title: title, connections: _map!.connections);
+    final candidate = PatchMap(
+      title: title,
+      connections: _map!.connections,
+      expanders: _map!.expanders,
+    );
     final response = await _exchange(4, _text(candidate.title));
     if (response.isNotEmpty) {
       throw const FormatException('Unexpected write reply');
+    }
+    return _map = candidate;
+  });
+
+  Future<PatchMap> addExpander(int type) => _run(() async {
+    _requireReady();
+    final candidate = _map!.addExpander(type);
+    final response = await _exchange(5, [
+      type,
+      ..._text(candidate.expanders.last.name),
+    ]);
+    if (response.isNotEmpty) {
+      throw const FormatException('Unexpected expander reply');
+    }
+    return _map = candidate;
+  });
+
+  Future<PatchMap> renameExpander(int index, String name) => _run(() async {
+    _requireReady();
+    final candidate = _map!.renameExpander(index, name);
+    if ((await _exchange(7, [index, ..._text(name)])).isNotEmpty) {
+      throw const FormatException('Unexpected expander reply');
+    }
+    return _map = candidate;
+  });
+
+  Future<PatchMap> moveExpander(int from, int to) => _run(() async {
+    _requireReady();
+    final candidate = _map!.moveExpander(from, to);
+    if ((await _exchange(8, [from, to])).isNotEmpty) {
+      throw const FormatException('Unexpected expander reply');
     }
     return _map = candidate;
   });
@@ -171,11 +219,14 @@ class PatchMapClient {
       throw PatchMapSyncException(switch (status) {
         2 => 'The preset or editing session changed. Reload the map.',
         3 => 'The map changed on the NT. Reload before editing.',
-        _ => 'The NT rejected this change. Reload the map and try again.',
+        _ =>
+          command == 1
+              ? 'Update the Patch Helper plug-in to the editor-compatible revision, then reload.'
+              : 'The NT rejected this change. Reload the map and try again.',
       });
     }
     final revision = _readInteger(response, 17);
-    final expected = _revision + (command >= 3 ? 1 : 0);
+    final expected = _revision + ([3, 4, 5, 7, 8].contains(command) ? 1 : 0);
     if (command != 1 && revision != expected) {
       throw const FormatException('Unexpected Patch Helper revision');
     }

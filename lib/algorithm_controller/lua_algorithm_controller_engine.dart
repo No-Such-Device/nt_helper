@@ -132,6 +132,42 @@ end
     return document;
   }
 
+  /// Data-only companion API. Caller runs this in a disposable isolate with a
+  /// deadline. Explicitly loaded SD code has no host APIs; it still requires
+  /// a trusted source because the isolate has no hard memory quota.
+  Object? evaluateCompanion({
+    required String source,
+    required String guid,
+    required Map<String, Object?> snapshot,
+    Map<String, Object?>? event,
+  }) {
+    final state = LuaState.newState();
+    state.openLibs();
+    _removeUnsafeGlobals(state);
+    for (final name in ['io', 'debug', 'collectgarbage']) {
+      state.pushNil();
+      state.setGlobal(name);
+    }
+    _pushValue(state, snapshot);
+    state.setGlobal('snapshot');
+    _pushValue(state, event);
+    state.setGlobal('event');
+    _pushValue(state, guid);
+    state.setGlobal('companion_guid');
+    final status = state.loadString(
+      'local companion = (function()\n$source\nend)()\n'
+      'assert(companion.api_version == 1 and companion.guid == companion_guid, "Incompatible companion")\n'
+      'if event == nil then return companion.render(snapshot) else return companion.handle(snapshot, event) end',
+    );
+    if (status != ThreadStatus.luaOk ||
+        state.pCall(0, 1, 0) != ThreadStatus.luaOk) {
+      throw LuaAlgorithmControllerException(
+        'SD-card companion failed: ${_takeError(state)}',
+      );
+    }
+    return _readValue(state, -1);
+  }
+
   void _removeUnsafeGlobals(LuaState state) {
     const names = [
       'package',
