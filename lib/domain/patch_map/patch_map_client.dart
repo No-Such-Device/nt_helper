@@ -39,6 +39,36 @@ class PatchMapClient {
   static const _prefix = [0x7d, 84, 104, 80, 104, 1];
 
   bool get ready => _ready;
+  Map<String, int> _properties = const {};
+  Map<String, int> get properties => _properties;
+  int get revision => _revision;
+
+  /// Cheap read-only watch request. Reads the full map only when its revision
+  /// changes; all subsequent records must match the observed revision.
+  Future<PatchMap> refresh() => _run(() async {
+    _requireReady();
+    final previousRevision = _revision;
+    final data = _Reader(await _exchange(9, const []));
+    final title = data.text(63), count = data.byte();
+    final first = data.byte(), colour = data.byte(), tag = data.byte();
+    data.finish();
+    if (count > PatchMap.maxExpanders ||
+        first < 1 ||
+        first > 20 + 8 * count ||
+        colour >= PatchMap.colours.length ||
+        tag > 12) {
+      throw const FormatException('Invalid NT property snapshot');
+    }
+    final map = previousRevision == _revision
+        ? _map!
+        : await _readMap(title, count);
+    _properties = Map.unmodifiable({
+      'first_socket': first,
+      'colour': colour,
+      'tag': tag,
+    });
+    return _map = map;
+  });
 
   Future<T> _run<T>(Future<T> Function() action) async {
     if (_busy) throw StateError('A Patch Helper operation is already running');
@@ -64,6 +94,13 @@ class PatchMapClient {
       throw const FormatException('Invalid expander count');
     }
     titleData.finish();
+    _map = await _readMap(title, count);
+    _properties = const {};
+    _ready = true;
+    return _map!;
+  });
+
+  Future<PatchMap> _readMap(String title, int count) async {
     final expanders = <PatchExpander>[];
     for (var i = 0; i < count; i++) {
       final data = _Reader(await _exchange(6, [i]));
@@ -91,9 +128,8 @@ class PatchMapClient {
       );
     }
     _map = PatchMap(title: title, connections: rows, expanders: expanders);
-    _ready = true;
     return _map!;
-  });
+  }
 
   Future<PatchMap> setConnection(PatchConnection row) => _run(() async {
     _requireReady();
@@ -220,14 +256,14 @@ class PatchMapClient {
         2 => 'The preset or editing session changed. Reload the map.',
         3 => 'The map changed on the NT. Reload before editing.',
         _ =>
-          command == 1
+          (command == 1 || command == 9)
               ? 'Update the Patch Helper plug-in to the editor-compatible revision, then reload.'
               : 'The NT rejected this change. Reload the map and try again.',
       });
     }
     final revision = _readInteger(response, 17);
     final expected = _revision + ([3, 4, 5, 7, 8].contains(command) ? 1 : 0);
-    if (command != 1 && revision != expected) {
+    if (command != 1 && command != 9 && revision != expected) {
       throw const FormatException('Unexpected Patch Helper revision');
     }
     _revision = revision;

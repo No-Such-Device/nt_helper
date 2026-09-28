@@ -53,3 +53,31 @@ refines the original UI direction. NT-side text editing, gear-oriented sorting,
 arbitrary algorithm shared-state adapters, and regular/end-of-chain preset
 lifecycle verification remain separate work. The provisional saved-slot codec
 is not wired into UI: its firmware envelope still requires device evidence.
+
+
+## Live property callbacks
+
+The ThPh adapter polls command 9 every second while the editor and app are active.
+It observes native First socket, Cable colour and Tag as `state.properties`
+keys `first_socket`, `colour`, `tag`. First socket is one-based; other values use
+existing palette and tag indexes. The plug-in's native controls are indices 0,
+1 and 2 respectively; standard NT common-parameter offsets remain a firmware
+concern, not Lua IDs. Each snapshot also carries `state.revision`.
+
+An optional `on_change(state, change)` receives `{type="nt_changed",
+properties={key={previous,value}}, map_changed=boolean}` and returns a view
+only. Missing callbacks fall back to render. Changed keys are coalesced between
+polls. A new runtime is used for each evaluation; there are no persistent Lua
+listeners. The bundled SD companion requests `focus_socket` on selection changes,
+which Flutter scrolls/highlights without moving keyboard focus.
+
+Unchanged revisions cost one read; changed maps are read consistently at that
+revision. Notifications never execute write actions. Unsent edits are retained
+and blocked on a conflicting NT map change until explicit reload; a preset/lease
+change is also an explicit reload boundary. Timer reads and user writes are
+serialized; disposal/inactive app or editor stops scheduling reads. An already
+in-flight read may complete, but cannot publish to a closed editor.
+
+The callback API can serve other adapters, but this revision implements only
+ThPh's property and map adapter. Native NT destination/title/group text entry,
+physical-device verification, and universal adapter discovery remain pending.

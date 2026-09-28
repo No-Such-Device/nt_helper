@@ -40,13 +40,14 @@ class SdCardCompanion {
   Future<Map<String, dynamic>> evaluate(
     Map<String, Object?> snapshot, {
     Map<String, Object?>? event,
+    Map<String, Object?>? change,
   }) async {
     final reply = ReceivePort();
     Isolate? worker;
     try {
       worker = await Isolate.spawn(
         _evaluate,
-        (reply.sendPort, source, snapshot, event, guid),
+        (reply.sendPort, source, snapshot, event, guid, change),
         onError: reply.sendPort,
         onExit: reply.sendPort,
         errorsAreFatal: true,
@@ -79,7 +80,14 @@ class SdCardCompanion {
 }
 
 void _evaluate(
-  (SendPort, String, Map<String, Object?>, Map<String, Object?>?, String)
+  (
+    SendPort,
+    String,
+    Map<String, Object?>,
+    Map<String, Object?>?,
+    String,
+    Map<String, Object?>?,
+  )
   request,
 ) {
   final value = const LuaAlgorithmControllerEngine().evaluateCompanion(
@@ -87,6 +95,7 @@ void _evaluate(
     guid: request.$5,
     snapshot: request.$3,
     event: request.$4,
+    change: request.$6,
   );
   Object? normalize(Object? input) {
     if (input is Map) {

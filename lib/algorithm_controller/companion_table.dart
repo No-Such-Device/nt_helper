@@ -3,7 +3,8 @@ import 'package:nt_helper/domain/patch_map/patch_map.dart';
 /// Validated host primitives. Lua chooses labels, field bindings, sections and
 /// minimap geometry; the host owns widgets, focus, scrolling and the MIDI queue.
 class CompanionTable {
-  CompanionTable._(this.groups, this.labels);
+  CompanionTable._(this.groups, this.labels, this.focusSocket);
+  final int? focusSocket;
   final List<CompanionSocketGroup> groups;
   final Map<String, String> labels;
 
@@ -50,10 +51,15 @@ class CompanionTable {
     if (sockets.length != map.connections.length) {
       throw const FormatException('Companion omitted sockets');
     }
+    final focus = document['focus_socket'];
+    if (focus != null &&
+        (focus is! int || focus < 0 || focus >= map.connections.length)) {
+      throw const FormatException('Invalid focused socket');
+    }
     return CompanionTable._(List.unmodifiable(groups), {
       for (final field in ['socket', 'destination', 'colour', 'tag', 'group'])
         field: _label(rawLabels[field]),
-    });
+    }, focus as int?);
   }
   static String _label(Object? value) {
     if (value is! String || value.isEmpty || value.length > 128) {

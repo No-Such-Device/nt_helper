@@ -83,8 +83,11 @@ void main() {
         await loader.load();
       }
       final boundary = GlobalKey();
+      final rootBoundary = GlobalKey();
       await tester.pumpWidget(
         MaterialApp(
+          builder: (context, child) =>
+              RepaintBoundary(key: rootBoundary, child: child!),
           theme:
               AppTheme.build(
                 seedColor: AppTheme.defaultSeedColor,
@@ -104,6 +107,7 @@ void main() {
                 ).colorScheme.surface,
                 child: PatchMapEditor(
                   transport: device,
+                  watchInterval: const Duration(seconds: 1),
                   slotIndex: 0,
                   download: (_) async => File(
                     'test/fixtures/patch_map/patch_helper.lua',
@@ -120,7 +124,9 @@ void main() {
       expect(find.text('Socket minimap'), findsOneWidget);
       final semantics = tester.ensureSemantics();
 
-      await tester.tap(find.byKey(const ValueKey('socket-dot-35')));
+      device.changeProperty(0, 36);
+      await tester.pump(const Duration(seconds: 1));
+      await settleCompanion(tester);
       await tester.pumpAndSettle();
       final selected = tester
           .widgetList<PatchMapRow>(find.byType(PatchMapRow))
@@ -170,6 +176,17 @@ void main() {
       await settleCompanion(tester);
       expect(device.map.connections.first.tag, 0);
 
+      // Pausing the app stops periodic reads; resuming receives later changes.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      final pausedFrames = device.frames.length;
+      await tester.pump(const Duration(seconds: 3));
+      expect(device.frames.length, pausedFrames);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+
       await tester.binding.setSurfaceSize(const Size(1280, 420));
       await tester.pumpAndSettle();
       await tester.drag(
@@ -207,6 +224,75 @@ void main() {
           image.dispose();
         });
       }
+      await tester.tap(find.byKey(const ValueKey('socket-dot-0')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Rings odd'),
+        'Unsent destination',
+      );
+      device.changeProperty(2, 5);
+      await tester.pump(const Duration(seconds: 1));
+      await settleCompanion(tester);
+      expect(
+        find.widgetWithText(TextField, 'Unsent destination'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('unsent edits are retained'), findsWidgets);
+      expect(device.map.connections[35].tag, 5);
+      await tester.tap(find.text('Reload companion & map'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Reload'));
+      await settleCompanion(tester);
+      await tester.binding.setSurfaceSize(const Size(1280, 820));
+      await tester.pumpAndSettle();
+      final rename = find.byTooltip('Rename Expander 1 · NTX-8CV');
+      await tester.ensureVisible(rename);
+      await tester.tap(rename);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Expander 1'),
+        'Draft expander',
+      );
+      device.changeProperty(2, 6);
+      await tester.pump(const Duration(seconds: 1));
+      await settleCompanion(tester);
+      expect(find.widgetWithText(TextField, 'Draft expander'), findsOneWidget);
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Apply'))
+            .onPressed,
+        isNull,
+      );
+      expect(device.map.expanders.first.name, 'Expander 1');
+      // The dialog already contains the complete error; omit transient overlay
+      // feedback from its evidence capture.
+      final messenger = ScaffoldMessenger.of(
+        tester.element(find.byType(PatchMapEditor)),
+      );
+      messenger.clearSnackBars();
+      messenger.removeCurrentSnackBar();
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing);
+      if (Platform.environment['CAPTURE_PATCH_EDITOR'] == '1') {
+        await tester.runAsync(() async {
+          final image =
+              await (rootBoundary.currentContext!.findRenderObject()!
+                      as RenderRepaintBoundary)
+                  .toImage();
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          File(
+            'docs/evidence/patch-helper/editor-name-conflict.png',
+          ).writeAsBytesSync(bytes!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      final closedFrames = device.frames.length;
+      await tester.pump(const Duration(seconds: 3));
+      expect(device.frames.length, closedFrames);
     },
   );
 }

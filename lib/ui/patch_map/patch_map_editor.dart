@@ -39,15 +39,18 @@ class PatchMapEditor extends StatefulWidget {
     required this.transport,
     required this.slotIndex,
     required this.download,
+    this.watchInterval = const Duration(seconds: 1),
   });
   final Future<Uint8List?> Function(String) download;
+  final Duration? watchInterval;
   final PatchMapTransport transport;
   final int slotIndex;
   @override
   State<PatchMapEditor> createState() => _PatchMapEditorState();
 }
 
-class _PatchMapEditorState extends State<PatchMapEditor> {
+class _PatchMapEditorState extends State<PatchMapEditor>
+    with WidgetsBindingObserver {
   late final PatchMapEditorCubit _cubit;
   final _scroll = ScrollController();
   final _horizontal = ScrollController();
@@ -57,6 +60,7 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
   int? _selected;
   int _expanderType = 0;
   bool _titleDirty = false;
+  bool _expanderDraftOpen = false;
   PatchMap? _acknowledged;
   bool _compactMapOpen = false;
 
@@ -66,11 +70,32 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
     _cubit = PatchMapEditorCubit(
       PatchMapClient(widget.transport, widget.slotIndex),
       widget.download,
+      watchInterval: widget.watchInterval,
+      hasUnsentEdits: () =>
+          _dirty.isNotEmpty || _titleDirty || _expanderDraftOpen,
     );
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateWatching();
+  }
+
+  void _updateWatching() => _cubit.setWatching(
+    TickerMode.valuesOf(context).enabled &&
+        (WidgetsBinding.instance.lifecycleState == null ||
+            WidgetsBinding.instance.lifecycleState ==
+                AppLifecycleState.resumed),
+  );
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) => _updateWatching();
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cubit.close();
     _scroll.dispose();
     _horizontal.dispose();
@@ -139,7 +164,7 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
       }
       if (!state.busy && state.error == null && state.map != null) {
         final next = state.map!;
-        if (!state.applied) {
+        if (!state.applied && !state.fromDevice) {
           _dirty.clear();
           _titleDirty = false;
         } else if (_acknowledged != null) {
@@ -152,6 +177,16 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
         }
         if (!_titleDirty) _title.text = next.title;
         _acknowledged = next;
+        final focus = state.document?.focusSocket;
+        if (state.fromDevice &&
+            focus != null &&
+            _dirty.isEmpty &&
+            !_titleDirty &&
+            !_expanderDraftOpen) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _jump(focus);
+          });
+        }
       }
     },
     builder: (context, state) {
@@ -253,6 +288,8 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
                           ? 'Waiting for the NT…'
                           : state.error != null
                           ? '${state.error} Edits are disabled until reload.'
+                          : state.fromDevice
+                          ? 'Updated from the NT. Save the preset to keep changes.'
                           : state.applied
                           ? 'Applied to the NT. Save the preset to keep your changes.'
                           : 'Press Enter or Apply row to send edits. Save the preset to keep them.',
@@ -330,37 +367,81 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
     final controller = TextEditingController(
       text: _cubit.state.map!.expanders[index].name,
     );
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Expander name'),
-        content: TextField(controller: controller, autofocus: true),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Apply'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (name != null && mounted) {
-      try {
-        PatchExpander(
-          type: _cubit.state.map!.expanders[index].type,
-          name: name,
-        );
-      } on FormatException catch (error) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
-        return;
-      }
-      await _cubit.renameExpander(index, name);
+    String? validationError;
+    _expanderDraftOpen = true;
+    try {
+      final navigator = Navigator.of(context, rootNavigator: true);
+      final route = DialogRoute<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) =>
+              BlocBuilder<PatchMapEditorCubit, PatchMapEditorState>(
+                bloc: _cubit,
+                builder: (context, state) => AlertDialog(
+                  title: const Text('Expander name'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: controller,
+                        autofocus: true,
+                        enabled: !state.busy,
+                        decoration: InputDecoration(errorText: validationError),
+                      ),
+                      if (state.error != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Text(
+                            '${state.error} Copy your name before closing, then reload the map.',
+                          ),
+                        ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: state.busy
+                          ? null
+                          : () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: !state.editable
+                          ? null
+                          : () async {
+                              try {
+                                PatchExpander(
+                                  type: state.map!.expanders[index].type,
+                                  name: controller.text,
+                                );
+                              } on FormatException catch (error) {
+                                setDialogState(
+                                  () => validationError = error.message,
+                                );
+                                return;
+                              }
+                              await _cubit.renameExpander(
+                                index,
+                                controller.text,
+                              );
+                              if (dialogContext.mounted &&
+                                  !_cubit.isClosed &&
+                                  _cubit.state.error == null) {
+                                Navigator.pop(dialogContext);
+                              }
+                            },
+                      child: const Text('Apply'),
+                    ),
+                  ],
+                ),
+              ),
+        ),
+      );
+      await navigator.push(route);
+      await route.completed;
+    } finally {
+      _expanderDraftOpen = false;
+      controller.dispose();
     }
   }
 

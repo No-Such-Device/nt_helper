@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/domain/patch_map/patch_map.dart';
 import 'package:nt_helper/domain/patch_map/patch_map_client.dart';
@@ -12,19 +13,115 @@ class PatchMapEditorState {
     this.busy = false,
     this.error,
     this.applied = false,
+    this.fromDevice = false,
   });
   final PatchMap? map;
   final CompanionTable? document;
   final bool busy;
   final String? error;
   final bool applied;
+  final bool fromDevice;
   bool get editable =>
       map != null && document != null && !busy && error == null;
 }
 
 class PatchMapEditorCubit extends Cubit<PatchMapEditorState> {
-  PatchMapEditorCubit(this.client, this.download)
-    : super(const PatchMapEditorState());
+  PatchMapEditorCubit(
+    this.client,
+    this.download, {
+    this.watchInterval,
+    this.hasUnsentEdits,
+  }) : super(const PatchMapEditorState());
+  final Duration? watchInterval;
+  final bool Function()? hasUnsentEdits;
+  Timer? _watch;
+  Future<void>? _refreshing;
+  Map<String, int> _observedProperties = const {};
+
+  @override
+  Future<void> close() {
+    _watch?.cancel();
+    return super.close();
+  }
+
+  void setWatching(bool active) {
+    _watch?.cancel();
+    _watch = null;
+    if (active && !isClosed && watchInterval != null) {
+      _watch = Timer.periodic(watchInterval!, (_) => refresh());
+    }
+  }
+
+  Future<void> refresh() {
+    if (isClosed || !state.editable || _refreshing != null) {
+      return Future.value();
+    }
+    final work = _refresh();
+    _refreshing = work;
+    return work.whenComplete(() => _refreshing = null);
+  }
+
+  Future<void> _refresh() async {
+    final previous = state;
+    try {
+      final map = await client.refresh();
+      if (isClosed) return;
+      final mapChanged = !identical(previous.map, map);
+      final changes = <String, Object?>{
+        for (final entry in client.properties.entries)
+          if (_observedProperties[entry.key] != entry.value)
+            entry.key: {
+              'previous': _observedProperties[entry.key],
+              'value': entry.value,
+            },
+      };
+      if (!mapChanged && changes.isEmpty) return;
+      if (mapChanged && (hasUnsentEdits?.call() ?? false)) {
+        throw const PatchMapSyncException(
+          'The map changed on the NT. Your unsent edits are retained. Reload to use the NT version.',
+        );
+      }
+      final document = CompanionTable.parse(
+        await _companion!.evaluate(
+          _snapshot(map),
+          change: {
+            'type': 'nt_changed',
+            'properties': changes,
+            'map_changed': mapChanged,
+          },
+        ),
+        map,
+      );
+      if (isClosed) return;
+      if (mapChanged && (hasUnsentEdits?.call() ?? false)) {
+        throw const PatchMapSyncException(
+          'The map changed on the NT. Your unsent edits are retained. Reload to use the NT version.',
+        );
+      }
+      _observedProperties = client.properties;
+      emit(
+        PatchMapEditorState(
+          map: map,
+          document: document,
+          applied: previous.applied,
+          fromDevice: true,
+        ),
+      );
+    } catch (error) {
+      if (!isClosed) {
+        emit(
+          PatchMapEditorState(
+            map: previous.map,
+            document: previous.document,
+            applied: previous.applied,
+            error: error.toString(),
+            fromDevice: true,
+          ),
+        );
+      }
+    }
+  }
+
   final PatchMapClient client;
   final Future<Uint8List?> Function(String) download;
   SdCardCompanion? _companion;
@@ -35,6 +132,7 @@ class PatchMapEditorCubit extends Cubit<PatchMapEditorState> {
     if (isClosed) throw StateError('Editor closed');
     final map = await client.load();
     _companion = source;
+    _observedProperties = const {};
     return map;
   }, applied: false);
   Future<void> setConnection(PatchConnection row) =>
@@ -50,11 +148,14 @@ class PatchMapEditorCubit extends Cubit<PatchMapEditorState> {
 
   Map<String, Object?> _snapshot(PatchMap map) => {
     ...map.toJson(),
+    'properties': client.properties,
+    'revision': client.revision,
     'expanders': [for (final e in map.expanders) e.toJson()],
   };
 
-  Future<void> _action(Map<String, Object?> event) {
-    if (!state.editable) return Future.value();
+  Future<void> _action(Map<String, Object?> event) async {
+    await _refreshing;
+    if (isClosed || !state.editable) return Future.value();
     return _run(() async {
       if (_companion == null || !client.ready || state.map == null) {
         throw const PatchMapSyncException(
@@ -94,6 +195,7 @@ class PatchMapEditorCubit extends Cubit<PatchMapEditorState> {
     Future<PatchMap> Function() action, {
     bool applied = true,
   }) async {
+    await _refreshing;
     if (isClosed || state.busy) return;
     final previous = state;
     emit(
