@@ -28,6 +28,60 @@ Future<void> settleCompanion(WidgetTester tester) async {
 
 void main() {
   testWidgets(
+    'slot name follows renames without moving or reloading the editor',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(430, 820));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final device = PatchMapDevice();
+      var downloads = 0;
+      Future<Uint8List?> download(String _) async {
+        downloads++;
+        return File(
+          'test/fixtures/patch_map/patch_helper.lua',
+        ).readAsBytesSync();
+      }
+
+      Widget editor(String name) => MaterialApp(
+        home: Scaffold(
+          body: PatchMapEditor(
+            transport: device,
+            slotIndex: 0,
+            download: download,
+            slotName: name,
+            watchInterval: null,
+          ),
+        ),
+      );
+      await tester.pumpWidget(editor('Patch Helper'));
+      await settleCompanion(tester);
+      final title = find.byKey(const ValueKey('patch-map-slot-name'));
+      final header = tester.getRect(find.text('Socket'));
+      final indicator = tester.getRect(
+        find.byKey(const ValueKey('patch-map-sync-indicator')),
+      );
+      final calls = downloads;
+      final name = List.filled(32, 'W').join();
+      await tester.pumpWidget(editor(name));
+      await tester.pumpAndSettle();
+      expect(find.text(name), findsOneWidget);
+      expect(tester.widget<Text>(title).maxLines, 1);
+      expect(tester.widget<Text>(title).overflow, TextOverflow.ellipsis);
+      expect(tester.getRect(title).left, greaterThanOrEqualTo(indicator.right));
+      expect(tester.getRect(find.text('Socket')), header);
+      expect(
+        tester.getRect(find.byKey(const ValueKey('patch-map-sync-indicator'))),
+        indicator,
+      );
+      expect(downloads, calls);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(editor(''));
+      await tester.pump();
+      expect(find.text('Patch Helper'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
     'overlong text is rejected without shifting or desynchronizing rows',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1280, 820));

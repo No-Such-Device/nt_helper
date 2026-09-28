@@ -132,3 +132,8 @@ V1 is documented in the original Substrate spec
 `d4abe223-d4c5-4784-811b-417aa43586ee` and `patch_helper/docs/v1-spec.md`.
 The owner accepts native display-only text until the C++ SDK exposes editable
 strings. Helper remains the text editor, with new edits limited to 32 characters.
+
+The Flutter header shows the current NT slot name beside the sync indicator,
+falling back to Patch Helper. It uses the existing 32-character NT name and
+updates on rename without recreating the editor or reloading its Lua. The label
+is read-only, single-line and ellipsized within the existing 48-pixel action bar.

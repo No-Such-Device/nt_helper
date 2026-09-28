@@ -45,6 +45,10 @@ class PatchMapAlgorithmView extends StatelessWidget {
         slotIndex: slotIndex,
         download: manager.requestFileDownload,
         companionCacheKey: cacheKey,
+        slotName:
+            state is DistingStateSynchronized && slotIndex < state.slots.length
+            ? state.slots[slotIndex].algorithm.name.trim()
+            : 'Patch Helper',
       );
     },
   );
@@ -58,10 +62,12 @@ class PatchMapEditor extends StatefulWidget {
     required this.download,
     this.watchInterval = const Duration(seconds: 1),
     this.companionCacheKey,
+    this.slotName = 'Patch Helper',
   });
   final Future<Uint8List?> Function(String) download;
   final Duration? watchInterval;
   final String? companionCacheKey;
+  final String slotName;
   final PatchMapTransport transport;
   final int slotIndex;
   @override
@@ -190,7 +196,20 @@ class _PatchMapEditorState extends State<PatchMapEditor>
                       child: Row(
                         children: [
                           _syncIndicator(state),
-                          const Spacer(),
+                          Expanded(
+                            child: Semantics(
+                              header: true,
+                              child: Text(
+                                widget.slotName.isEmpty
+                                    ? 'Patch Helper'
+                                    : widget.slotName,
+                                key: const ValueKey('patch-map-slot-name'),
+                                style: Theme.of(context).textTheme.titleMedium,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
                           for (final action in state.document!.actions)
                             IconButton(
                               tooltip: action.label,
