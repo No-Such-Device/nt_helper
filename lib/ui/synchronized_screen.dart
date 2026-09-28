@@ -2314,7 +2314,14 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
           ).push(MaterialPageRoute(builder: (_) => const Ntx8cvScreen()));
         } else if (value == 'system') {
           await _showSystemSubmenu(context, cubit);
-          if (mounted) _overflowMenuFocusNode.requestFocus();
+          if (mounted) {
+            // PopupMenuButton owns its button FocusNode. Restore that child,
+            // rather than focusing the non-interactive wrapper.
+            _overflowMenuFocusNode.descendants
+                .where((node) => node.canRequestFocus && !node.skipTraversal)
+                .firstOrNull
+                ?.requestFocus();
+          }
         }
       },
       itemBuilder: (popupCtx) {
@@ -2733,7 +2740,11 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
         ];
       },
     );
-    return Focus(focusNode: _overflowMenuFocusNode, child: menu);
+    return Focus(
+      focusNode: _overflowMenuFocusNode,
+      skipTraversal: true,
+      child: menu,
+    );
   }
 
   Padding _buildPresetInfoEditor(BuildContext context) {
@@ -3118,7 +3129,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
               color: dialogContext.appColors.warning.color,
             ),
             const SizedBox(width: 8),
-            const Text('Reboot Device'),
+            const Expanded(child: Text('Reboot Device')),
           ],
         ),
         content: const Text(

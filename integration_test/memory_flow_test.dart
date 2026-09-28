@@ -26,6 +26,7 @@ import 'package:nt_helper/ui/synchronized_screen.dart';
 import 'package:nt_helper/ui/widgets/memory_detail.dart';
 import 'package:nt_helper/ui/widgets/wave_cache_troubleshooting_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 
 final class _MockDistingCubit extends Mock implements DistingCubit {}
 
@@ -189,8 +190,16 @@ final class _MemoryFlowHarness {
   }
 }
 
-void main() {
+Future<void> main() async {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  // The native runner hides its window until app startup explicitly shows it.
+  // This harness bypasses main.dart, so it must perform that desktop setup.
+  if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+    await windowManager.ensureInitialized();
+    await windowManager.show();
+    await windowManager.focus();
+  }
 
   final runtime = Platform.operatingSystem;
   late _MemoryFlowHarness harness;
@@ -247,9 +256,9 @@ void main() {
         expect(find.bySemanticsLabel('SRAM current, 16 KiB'), findsOne);
         expect(find.bySemanticsLabel('SRAM total, 64 KiB'), findsOne);
         expect(find.bySemanticsLabel('SRAM free, 48 KiB'), findsOne);
-        expect(find.bySemanticsLabel('DRAM current, 2 MiB'), findsOne);
+        expect(find.bySemanticsLabel('DRAM current, 2048 KiB'), findsOne);
         expect(find.bySemanticsLabel('DTC total, 4 KiB'), findsOne);
-        expect(find.bySemanticsLabel('ITC free, 384 B'), findsOne);
+        expect(find.bySemanticsLabel('ITC free, 0.38 KiB'), findsOne);
         expect(tester.takeException(), isNull, reason: 'width $width');
 
         if (width == 390) {
@@ -362,7 +371,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
       await tester.pump();
       expect(find.byType(MemoryDetailPresenter), findsOne);
-      expect(find.bySemanticsLabel('DRAM total, 8 MiB'), findsOne);
+      expect(find.bySemanticsLabel('DRAM total, 8192 KiB'), findsOne);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pump();
 
