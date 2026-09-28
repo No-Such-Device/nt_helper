@@ -1,7 +1,7 @@
 -- NT Helper companion, executed on the computer, NOT a disting NT Lua algorithm.
--- Install as /helper/ThPh.lua on the NT SD card.
+-- Install as /programs/helper/ThPh.lua on the NT SD card.
 local models = { 'NTX-8CV', 'ES-5', 'ESX-8GT', 'ESX-8CV' }
-return {
+local companion = {
   api_version = 1,
   guid = 'ThPh',
   render = function(state)
@@ -15,7 +15,17 @@ return {
         short = 'E' .. i, start = 20 + (i - 1) * 8, count = 8, columns = 1,
       }
     end
+    local choices = {}
+    for i, model in ipairs(models) do
+      choices[#choices + 1] = { label = model, value = i - 1 }
+    end
     return {
+      actions = {
+        { id = 'add_expander', label = 'Add expander', dialog = {
+          type = 'choice_dialog', title = 'Add expander', cancel = 'Cancel',
+          choices = choices,
+        } },
+      },
       version = 1, type = 'socket_table', groups = groups,
       labels = { socket = 'Socket', destination = 'Destination', colour = 'Cable colour', tag = 'Tag', group = 'Group' },
     }
@@ -37,3 +47,14 @@ return {
     error('Unsupported editor action')
   end,
 }
+
+-- Read-only notification: state already contains an authoritative NT snapshot.
+-- Returning a document cannot write to the device or create an echo loop.
+companion.on_change = function(state, change)
+  local document = companion.render(state)
+  if change.properties.first_socket then
+    document.focus_socket = state.properties.first_socket - 1
+  end
+  return document
+end
+return companion

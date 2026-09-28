@@ -140,6 +140,7 @@ end
     required String guid,
     required Map<String, Object?> snapshot,
     Map<String, Object?>? event,
+    Map<String, Object?>? change,
   }) {
     final state = LuaState.newState();
     state.openLibs();
@@ -152,11 +153,14 @@ end
     state.setGlobal('snapshot');
     _pushValue(state, event);
     state.setGlobal('event');
+    _pushValue(state, change);
+    state.setGlobal('change');
     _pushValue(state, guid);
     state.setGlobal('companion_guid');
     final status = state.loadString(
       'local companion = (function()\n$source\nend)()\n'
       'assert(companion.api_version == 1 and companion.guid == companion_guid, "Incompatible companion")\n'
+      'if change ~= nil and companion.on_change ~= nil then return companion.on_change(snapshot, change) end\n'
       'if event == nil then return companion.render(snapshot) else return companion.handle(snapshot, event) end',
     );
     if (status != ThreadStatus.luaOk ||

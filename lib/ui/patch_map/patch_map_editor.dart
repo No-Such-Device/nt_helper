@@ -1,5 +1,7 @@
-import 'dart:typed_data';
+import 'dart:convert';
+import 'package:nt_helper/domain/disting_midi_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nt_helper/algorithm_controller/companion_table.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -19,15 +21,34 @@ class PatchMapAlgorithmView extends StatelessWidget {
     builder: (context, state) {
       final manager = context.read<DistingCubit>().disting();
       if (manager == null || manager is! PatchMapTransport) {
-        return const Center(
-          child: Text('Connect to an NT over USB to edit its patch map.'),
-        );
+        return const Center(child: Text('Connect to NT'));
       }
+      final cacheKey =
+          state is DistingStateSynchronized &&
+              manager is DistingMidiManager &&
+              state.inputDevice != null &&
+              state.outputDevice != null
+          ? jsonEncode([
+              state.inputDevice!.id,
+              state.outputDevice!.id,
+              manager.sysExId,
+            ])
+          : null;
       return PatchMapEditor(
-        key: ValueKey((manager, slotIndex)),
+        key: ValueKey((
+          manager,
+          slotIndex,
+          cacheKey,
+          state is DistingStateSynchronized ? state.presetName : null,
+        )),
         transport: manager as PatchMapTransport,
         slotIndex: slotIndex,
         download: manager.requestFileDownload,
+        companionCacheKey: cacheKey,
+        slotName:
+            state is DistingStateSynchronized && slotIndex < state.slots.length
+            ? state.slots[slotIndex].algorithm.name.trim()
+            : 'Patch Helper',
       );
     },
   );
@@ -39,26 +60,30 @@ class PatchMapEditor extends StatefulWidget {
     required this.transport,
     required this.slotIndex,
     required this.download,
+    this.watchInterval = const Duration(seconds: 1),
+    this.companionCacheKey,
+    this.slotName = 'Patch Helper',
   });
   final Future<Uint8List?> Function(String) download;
+  final Duration? watchInterval;
+  final String? companionCacheKey;
+  final String slotName;
   final PatchMapTransport transport;
   final int slotIndex;
   @override
   State<PatchMapEditor> createState() => _PatchMapEditorState();
 }
 
-class _PatchMapEditorState extends State<PatchMapEditor> {
+class _PatchMapEditorState extends State<PatchMapEditor>
+    with WidgetsBindingObserver {
   late final PatchMapEditorCubit _cubit;
   final _scroll = ScrollController();
   final _horizontal = ScrollController();
-  final _title = TextEditingController();
   final _rows = <int, GlobalKey>{};
-  final _dirty = <int>{};
   int? _selected;
-  int _expanderType = 0;
-  bool _titleDirty = false;
-  PatchMap? _acknowledged;
+  bool _expanderDraftOpen = false;
   bool _compactMapOpen = false;
+  String? _lastError;
 
   @override
   void initState() {
@@ -66,48 +91,36 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
     _cubit = PatchMapEditorCubit(
       PatchMapClient(widget.transport, widget.slotIndex),
       widget.download,
+      watchInterval: widget.watchInterval,
+      companionCacheKey: widget.companionCacheKey,
     );
+    _cubit.load();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateWatching();
+  }
+
+  void _updateWatching() => _cubit.setWatching(
+    (_expanderDraftOpen || TickerMode.valuesOf(context).enabled) &&
+        (WidgetsBinding.instance.lifecycleState == null ||
+            WidgetsBinding.instance.lifecycleState ==
+                AppLifecycleState.resumed),
+  );
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) => _updateWatching();
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cubit.close();
     _scroll.dispose();
     _horizontal.dispose();
-    _title.dispose();
     super.dispose();
-  }
-
-  Future<void> _reload() async {
-    if (_dirty.isNotEmpty || _titleDirty) {
-      final discard = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Discard unsent edits?'),
-          content: const Text(
-            'Reload reads the map from the NT and replaces unsent edits in this editor.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Keep editing'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Reload'),
-            ),
-          ],
-        ),
-      );
-      if (discard != true || !mounted) return;
-    }
-    await _cubit.load();
-    if (mounted && _cubit.state.error == null) {
-      setState(() {
-        _dirty.clear();
-        _titleDirty = false;
-      });
-    }
   }
 
   void _jump(int socket) {
@@ -132,49 +145,35 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
   ) => BlocConsumer<PatchMapEditorCubit, PatchMapEditorState>(
     bloc: _cubit,
     listener: (context, state) {
-      if (state.error != null) {
+      if (state.error != null && state.error != _lastError) {
+        _lastError = state.error;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(state.error!)));
+      } else if (!state.busy && state.error == null) {
+        _lastError = null;
       }
       if (!state.busy && state.error == null && state.map != null) {
-        final next = state.map!;
-        if (!state.applied) {
-          _dirty.clear();
-          _titleDirty = false;
-        } else if (_acknowledged != null) {
-          _dirty.removeWhere(
-            (socket) => !identical(
-              _acknowledged!.connections[socket],
-              next.connections[socket],
-            ),
-          );
+        final focus = state.document?.focusSocket;
+        if (state.fromDevice &&
+            focus != null &&
+            !state.pending &&
+            !_expanderDraftOpen) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _jump(focus);
+          });
         }
-        if (!_titleDirty) _title.text = next.title;
-        _acknowledged = next;
       }
     },
     builder: (context, state) {
       final map = state.map;
       if (map == null) {
         return Center(
-          child: state.busy
+          child: state.busy || state.pending
               ? const CircularProgressIndicator(
                   semanticsLabel: 'Loading patch map',
                 )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      state.error ??
-                          'Load /helper/ThPh.lua from the NT SD card to open its editor. The companion runs on this computer.',
-                    ),
-                    TextButton(
-                      onPressed: _reload,
-                      child: const Text('Load SD companion'),
-                    ),
-                  ],
-                ),
+              : Text(state.error ?? ''),
         );
       }
       return Shortcuts(
@@ -182,205 +181,265 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
           for (final key in KeyBindingService().globalShortcuts.keys)
             key: const DoNothingAndStopPropagationTextIntent(),
         },
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 1050;
-            return Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 240,
-                        child: TextField(
-                          controller: _title,
-                          enabled: state.editable,
-                          decoration: const InputDecoration(
-                            labelText: 'Patch title',
-                            isDense: true,
+        child: DefaultTextEditingShortcuts(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 1050;
+              return Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      key: const ValueKey('companion-action-bar'),
+                      height: 48,
+                      child: Row(
+                        children: [
+                          _syncIndicator(state),
+                          Expanded(
+                            child: Semantics(
+                              header: true,
+                              child: Text(
+                                widget.slotName.isEmpty
+                                    ? 'Patch Helper'
+                                    : widget.slotName,
+                                key: const ValueKey('patch-map-slot-name'),
+                                style: Theme.of(context).textTheme.titleMedium,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ),
-                          onChanged: (_) => setState(() => _titleDirty = true),
-                          onSubmitted: (_) => _saveTitle(),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: state.editable && _titleDirty
-                            ? _saveTitle
-                            : null,
-                        child: const Text('Apply title'),
-                      ),
-                      DropdownButton<int>(
-                        value: _expanderType,
-                        onChanged: state.editable
-                            ? (value) => setState(() => _expanderType = value!)
-                            : null,
-                        items: [
-                          for (
-                            var i = 0;
-                            i < PatchMap.expanderTypes.length;
-                            i++
-                          )
-                            DropdownMenuItem(
-                              value: i,
-                              child: Text(PatchMap.expanderTypes[i]),
+                          for (final action in state.document!.actions)
+                            IconButton(
+                              tooltip: action.label,
+                              onPressed:
+                                  state.editable &&
+                                      !state.pending &&
+                                      map.expanders.length <
+                                          PatchMap.maxNewExpanders
+                                  ? () => _chooseAction(action)
+                                  : null,
+                              icon: Icon(
+                                Icons.add,
+                                semanticLabel: action.label,
+                              ),
                             ),
                         ],
                       ),
-                      TextButton(
-                        onPressed:
-                            state.editable &&
-                                map.expanders.length < PatchMap.maxExpanders
-                            ? () => _cubit.addExpander(_expanderType)
-                            : null,
-                        child: const Text('Add expander'),
-                      ),
-                      TextButton(
-                        onPressed: state.busy ? null : _reload,
-                        child: const Text('Reload companion & map'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Semantics(
-                    liveRegion: true,
-                    child: Text(
-                      state.busy
-                          ? 'Waiting for the NT…'
-                          : state.error != null
-                          ? '${state.error} Edits are disabled until reload.'
-                          : state.applied
-                          ? 'Applied to the NT. Save the preset to keep your changes.'
-                          : 'Press Enter or Apply row to send edits. Save the preset to keep them.',
                     ),
-                  ),
-                  if (_dirty.isNotEmpty)
-                    Text('${_dirty.length} rows with unsent edits'),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: wide
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: _table(map, state, state.document!),
-                              ),
-                              const SizedBox(width: 16),
-                              SizedBox(
-                                width: 300,
-                                child: SingleChildScrollView(
-                                  key: const ValueKey('desktop-minimap-scroll'),
-                                  child: _minimap(map, state.document!),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: wide
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _table(map, state, state.document!),
                                 ),
-                              ),
-                            ],
-                          )
-                        : Column(
-                            children: [
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton.icon(
-                                  onPressed: () => setState(
-                                    () => _compactMapOpen = !_compactMapOpen,
-                                  ),
-                                  icon: Icon(
-                                    _compactMapOpen
-                                        ? Icons.expand_less
-                                        : Icons.expand_more,
-                                  ),
-                                  label: const Text('Socket minimap'),
-                                ),
-                              ),
-                              if (_compactMapOpen)
-                                ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    maxHeight: constraints.maxHeight * .38,
-                                  ),
+                                const SizedBox(width: 16),
+                                SizedBox(
+                                  width: 300,
                                   child: SingleChildScrollView(
                                     key: const ValueKey(
-                                      'compact-minimap-scroll',
+                                      'desktop-minimap-scroll',
                                     ),
-                                    child: _minimap(
-                                      map,
-                                      state.document!,
-                                      compact: true,
-                                    ),
+                                    child: _minimap(map, state.document!),
                                   ),
                                 ),
-                              Expanded(
-                                child: _table(map, state, state.document!),
-                              ),
-                            ],
-                          ),
-                  ),
-                ],
-              ),
-            );
-          },
+                              ],
+                            )
+                          : Column(
+                              children: [
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton.icon(
+                                    onPressed: () => setState(
+                                      () => _compactMapOpen = !_compactMapOpen,
+                                    ),
+                                    icon: Icon(
+                                      _compactMapOpen
+                                          ? Icons.expand_less
+                                          : Icons.expand_more,
+                                    ),
+                                    label: const Text('Sockets'),
+                                  ),
+                                ),
+                                if (_compactMapOpen)
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxHeight: constraints.maxHeight * .38,
+                                    ),
+                                    child: SingleChildScrollView(
+                                      key: const ValueKey(
+                                        'compact-minimap-scroll',
+                                      ),
+                                      child: _minimap(
+                                        map,
+                                        state.document!,
+                                        compact: true,
+                                      ),
+                                    ),
+                                  ),
+                                Expanded(
+                                  child: _table(map, state, state.document!),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       );
     },
   );
 
+  Widget _syncIndicator(PatchMapEditorState state) {
+    final (label, colour) = state.error != null
+        ? ('Sync error: ${state.error}', Theme.of(context).colorScheme.error)
+        : state.busy || state.pending
+        ? ('Syncing', context.appColors.info.color)
+        : ('Up to date', context.appColors.warning.color);
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: label,
+      child: Tooltip(
+        message: label,
+        excludeFromSemantics: true,
+        child: Container(
+          key: const ValueKey('patch-map-sync-indicator'),
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: colour, shape: BoxShape.circle),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _chooseAction(CompanionChoiceAction action) async {
+    _expanderDraftOpen = true;
+    var chosen = false;
+    try {
+      final model = await showDialog<int>(
+        context: context,
+        builder: (dialogContext) =>
+            BlocBuilder<PatchMapEditorCubit, PatchMapEditorState>(
+              bloc: _cubit,
+              builder: (context, state) => AlertDialog(
+                title: Semantics(header: true, child: Text(action.title)),
+                content: SizedBox(
+                  width: 320,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final choice in action.choices.entries)
+                          TextButton(
+                            autofocus: choice.key == action.choices.keys.first,
+                            style: TextButton.styleFrom(
+                              alignment: Alignment.centerLeft,
+                              minimumSize: const Size(48, 48),
+                            ),
+                            onPressed:
+                                state.editable &&
+                                    !state.pending &&
+                                    state.map!.expanders.length <
+                                        PatchMap.maxNewExpanders
+                                ? () {
+                                    if (chosen) return;
+                                    chosen = true;
+                                    Navigator.pop(dialogContext, choice.key);
+                                  }
+                                : null,
+                            child: Text(choice.value),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: Text(action.cancel),
+                  ),
+                ],
+              ),
+            ),
+      );
+      if (mounted && model != null) {
+        await _cubit.chooseAction(action.id, model);
+      }
+    } finally {
+      _expanderDraftOpen = false;
+      if (mounted) _updateWatching();
+    }
+  }
+
   Future<void> _renameExpander(int index) async {
     final controller = TextEditingController(
       text: _cubit.state.map!.expanders[index].name,
     );
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Expander name'),
-        content: TextField(controller: controller, autofocus: true),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Apply'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (name != null && mounted) {
-      try {
-        PatchExpander(
-          type: _cubit.state.map!.expanders[index].type,
-          name: name,
-        );
-      } on FormatException catch (error) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
-        return;
-      }
-      await _cubit.renameExpander(index, name);
-    }
-  }
-
-  Future<void> _saveTitle() async {
+    String? validationError;
+    _expanderDraftOpen = true;
     try {
-      final current = _cubit.state.map!;
-      PatchMap(
-        title: _title.text,
-        connections: current.connections,
-        expanders: current.expanders,
+      final navigator = Navigator.of(context, rootNavigator: true);
+      final route = DialogRoute<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) =>
+              BlocBuilder<PatchMapEditorCubit, PatchMapEditorState>(
+                bloc: _cubit,
+                builder: (context, state) => AlertDialog(
+                  title: const Text('Expander name'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: controller,
+                        autofocus: true,
+                        onChanged: (name) {
+                          try {
+                            _cubit.queueExpanderName(index, name);
+                            setDialogState(() => validationError = null);
+                          } on FormatException catch (error) {
+                            setDialogState(
+                              () => validationError = error.message,
+                            );
+                          }
+                        },
+                      ),
+                      SizedBox(
+                        height: 60,
+                        child: Text(
+                          validationError ?? state.error ?? '',
+                          maxLines: 3,
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              ),
+        ),
       );
-    } on FormatException catch (error) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
-      return;
-    }
-    await _cubit.setTitle(_title.text);
-    if (mounted && _cubit.state.error == null) {
-      setState(() => _titleDirty = false);
+      await navigator.push(route);
+      await route.completed;
+    } finally {
+      _expanderDraftOpen = false;
+      if (mounted) _updateWatching();
+      controller.dispose();
     }
   }
 
@@ -420,7 +479,6 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
                     ),
                     SizedBox(width: 64, child: Text(document.labels['tag']!)),
                     Expanded(flex: 2, child: Text(document.labels['group']!)),
-                    SizedBox(width: 84),
                   ],
                 ),
               ),
@@ -456,7 +514,7 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
                                   tooltip: 'Move ${section.title} earlier',
                                   onPressed:
                                       state.editable &&
-                                          _dirty.isEmpty &&
+                                          !state.pending &&
                                           section.start > 20
                                       ? () => _cubit.moveExpander(
                                           (section.start - 20) ~/ 8,
@@ -472,7 +530,7 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
                                   tooltip: 'Move ${section.title} later',
                                   onPressed:
                                       state.editable &&
-                                          _dirty.isEmpty &&
+                                          !state.pending &&
                                           section.start <
                                               map.connections.length - 8
                                       ? () => _cubit.moveExpander(
@@ -496,18 +554,15 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
                           PatchMapRow(
                             key: _rows.putIfAbsent(row.socket, GlobalKey.new),
                             row: row,
-                            enabled: state.editable,
+                            enabled: true,
                             selected: _selected == row.socket,
                             onSelected: () =>
                                 setState(() => _selected = row.socket),
-                            onDirty: (dirty) => setState(() {
-                              if (dirty) {
-                                _dirty.add(row.socket);
-                              } else {
-                                _dirty.remove(row.socket);
-                              }
-                            }),
-                            onSave: _cubit.setConnection,
+                            onEdit: (field, value) => _cubit.queueConnection(
+                              row.socket,
+                              field,
+                              value,
+                            ),
                           ),
                       ],
                     ],
@@ -535,8 +590,7 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Semantics(header: true, child: const Text('Socket minimap')),
-        const Text('Select a dot to find its row.'),
+        Semantics(header: true, child: const Text('Sockets')),
         const SizedBox(height: 8),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -557,16 +611,22 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
             ],
           ),
         ),
-        if (_selected != null && _selected! < map.connections.length)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Semantics(
-              liveRegion: true,
-              child: Text(
-                '${map.connections[_selected!].socketLabel}: ${map.connections[_selected!].destination.isEmpty ? 'Unused' : map.connections[_selected!].destination}',
-              ),
-            ),
-          ),
+        SizedBox(
+          height: 32,
+          child: _selected != null && _selected! < map.connections.length
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Semantics(
+                    liveRegion: true,
+                    child: Text(
+                      '${map.connections[_selected!].socketLabel}: ${map.connections[_selected!].destination.isEmpty ? 'Unused' : map.connections[_selected!].destination}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                )
+              : null,
+        ),
       ],
     ),
   );
@@ -627,11 +687,12 @@ class _PatchMapEditorState extends State<PatchMapEditor> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
+                    key: ValueKey('socket-colour-${row.socket}'),
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: row.connected
+                      color: row.connected || row.colour != 0
                           ? (row.colour == 0
                                 ? scheme.onSurfaceVariant
                                 : patchCableColours[row.colour])
@@ -660,14 +721,12 @@ class PatchMapRow extends StatefulWidget {
     required this.enabled,
     required this.selected,
     required this.onSelected,
-    required this.onDirty,
-    required this.onSave,
+    required this.onEdit,
   });
   final PatchConnection row;
   final bool enabled, selected;
   final VoidCallback onSelected;
-  final ValueChanged<bool> onDirty;
-  final Future<void> Function(PatchConnection) onSave;
+  final void Function(String field, Object value) onEdit;
   @override
   State<PatchMapRow> createState() => _PatchMapRowState();
 }
@@ -677,8 +736,6 @@ class _PatchMapRowState extends State<PatchMapRow> {
       _group = TextEditingController(),
       _tag = TextEditingController();
   late int _colour;
-  bool _dirty = false;
-  String? _error;
   @override
   void initState() {
     super.initState();
@@ -690,14 +747,24 @@ class _PatchMapRowState extends State<PatchMapRow> {
     _group.text = widget.row.group;
     _colour = widget.row.colour;
     _tag.text = widget.row.tag == 0 ? '' : '${widget.row.tag}';
-    _dirty = false;
-    _error = null;
   }
 
   @override
   void didUpdateWidget(PatchMapRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.row, widget.row)) _reset();
+    if (oldWidget.row.destination != widget.row.destination &&
+        _destination.text != widget.row.destination) {
+      _destination.text = widget.row.destination;
+    }
+    if (oldWidget.row.group != widget.row.group &&
+        _group.text != widget.row.group) {
+      _group.text = widget.row.group;
+    }
+    if (oldWidget.row.tag != widget.row.tag) {
+      final text = widget.row.tag == 0 ? '' : '${widget.row.tag}';
+      if (_tag.text != text) _tag.text = text;
+    }
+    _colour = widget.row.colour;
   }
 
   @override
@@ -708,32 +775,34 @@ class _PatchMapRowState extends State<PatchMapRow> {
     super.dispose();
   }
 
-  void _changed() {
-    setState(() => _dirty = true);
-    widget.onDirty(true);
-  }
-
-  Future<void> _save() async {
-    if (!widget.enabled || !_dirty) return;
+  void _edit(String field, Object value) {
     try {
-      final tag = _tag.text.isEmpty ? 0 : int.tryParse(_tag.text);
-      if (tag == null || (_tag.text.isNotEmpty && (tag < 1 || tag > 12))) {
-        throw const FormatException(
-          'Tag must be an integer from 1 to 12, or blank.',
+      if (field == 'tag') {
+        final text = value as String;
+        final tag = text.isEmpty ? 0 : int.tryParse(text);
+        if (tag == null || (text.isNotEmpty && (tag < 1 || tag > 12))) {
+          throw const FormatException(
+            'Tag must be an integer from 1 to 12, or blank.',
+          );
+        }
+        value = tag;
+      }
+      widget.onEdit(field, value);
+    } on FormatException catch (error) {
+      // Keep rejected text out of the visible, synchronized row as well.
+      if (field == 'destination' || field == 'group') {
+        final controller = field == 'destination' ? _destination : _group;
+        final previous = field == 'destination'
+            ? widget.row.destination
+            : widget.row.group;
+        controller.value = TextEditingValue(
+          text: previous,
+          selection: TextSelection.collapsed(offset: previous.length),
         );
       }
-      final row = PatchConnection(
-        socket: widget.row.socket,
-        destination: _destination.text,
-        colour: _colour,
-        tag: tag,
-        group: _group.text,
-      );
-      await widget.onSave(row);
-      // Only a new acknowledged row clears the draft; errors retain it.
-      if (mounted && !_dirty) widget.onDirty(false);
-    } on FormatException catch (error) {
-      setState(() => _error = error.message);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -775,8 +844,7 @@ class _PatchMapRowState extends State<PatchMapRow> {
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(vertical: 8),
                       ),
-                      onChanged: (_) => _changed(),
-                      onSubmitted: (_) => _save(),
+                      onChanged: (value) => _edit('destination', value),
                     ),
                   ),
                 ),
@@ -792,7 +860,7 @@ class _PatchMapRowState extends State<PatchMapRow> {
                       onChanged: widget.enabled
                           ? (v) {
                               _colour = v!;
-                              _changed();
+                              _edit('colour', v);
                             }
                           : null,
                       items: [
@@ -838,8 +906,7 @@ class _PatchMapRowState extends State<PatchMapRow> {
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(vertical: 8),
                       ),
-                      onChanged: (_) => _changed(),
-                      onSubmitted: (_) => _save(),
+                      onChanged: (value) => _edit('tag', value),
                     ),
                   ),
                 ),
@@ -856,34 +923,12 @@ class _PatchMapRowState extends State<PatchMapRow> {
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(vertical: 8),
                       ),
-                      onChanged: (_) => _changed(),
-                      onSubmitted: (_) => _save(),
+                      onChanged: (value) => _edit('group', value),
                     ),
                   ),
                 ),
-                SizedBox(
-                  width: 84,
-                  child: !_dirty
-                      ? const SizedBox(height: 32)
-                      : TextButton(
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            textStyle: Theme.of(context).textTheme.labelMedium,
-                          ),
-                          onPressed: widget.enabled && _dirty ? _save : null,
-                          child: const Text('Apply row'),
-                        ),
-                ),
               ],
             ),
-            if (_error != null)
-              Semantics(
-                liveRegion: true,
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
           ],
         ),
       ),

@@ -2,9 +2,13 @@
 /// This is a record of intended cabling, not detected connectivity.
 class PatchMap {
   static const version = 1;
+  static const maxEditableTextLength = 32;
   static const socketCount = 20;
   // Limited by the protocol's seven-bit socket address, not hardware topology.
   static const maxExpanders = (128 - socketCount) ~/ 8;
+  // New maps fit four-field native pages including read-only text.
+  // Keep maxExpanders unchanged so existing 13-bank presets remain readable.
+  static const maxNewExpanders = 8;
   static const maxSockets = socketCount + 8 * maxExpanders;
   static const expanderTypes = ['NTX-8CV', 'ES-5', 'ESX-8GT', 'ESX-8CV'];
   static const colours = <String>[
@@ -183,7 +187,7 @@ class PatchConnection {
        destination = _text(destination, 63, 'destination'),
        colour = _integer(colour, 0, PatchMap.colours.length - 1, 'colour'),
        tag = _integer(tag, 0, 12, 'tag'),
-       group = _text(group, 31, 'group');
+       group = _text(group, PatchMap.maxEditableTextLength, 'group');
 
   factory PatchConnection.fromJson(Map<String, dynamic> json) {
     _keys(json, {
@@ -203,7 +207,7 @@ class PatchConnection {
         'colour',
       ),
       tag: _integer(json['tag'], 0, 12, 'tag'),
-      group: _text(json['group'], 31, 'group'),
+      group: _text(json['group'], PatchMap.maxEditableTextLength, 'group'),
     );
   }
 
@@ -264,12 +268,16 @@ void _keys(Map<String, dynamic> value, Set<String> expected, String name) {
 class PatchExpander {
   PatchExpander({required int type, required String name})
     : type = _integer(type, 0, 3, 'expander type'),
-      name = _text(name, 31, 'expander name');
+      name = _text(name, PatchMap.maxEditableTextLength, 'expander name');
   factory PatchExpander.fromJson(Map<String, dynamic> json) {
     _keys(json, {'type', 'name'}, 'expander');
     return PatchExpander(
       type: _integer(json['type'], 0, 3, 'expander type'),
-      name: _text(json['name'], 31, 'expander name'),
+      name: _text(
+        json['name'],
+        PatchMap.maxEditableTextLength,
+        'expander name',
+      ),
     );
   }
   final int type;

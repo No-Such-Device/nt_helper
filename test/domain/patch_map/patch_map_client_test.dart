@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../support/patch_map_device.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -39,6 +40,41 @@ class FixtureTransport implements PatchMapTransport {
 }
 
 void main() {
+  test('32-character edits and legacy long destinations round-trip', () async {
+    final device = PatchMapDevice();
+    device.map = device.map
+        .withConnection(
+          PatchConnection(socket: 0, destination: 'L' * 63, group: 'G' * 32),
+        )
+        .addExpander(0)
+        .renameExpander(0, 'E' * 32);
+    final client = PatchMapClient(device, 0);
+    final loaded = await client.load();
+    expect(loaded.connections.first.destination.length, 63);
+    expect(loaded.connections.first.group.length, 32);
+    expect(loaded.expanders.first.name.length, 32);
+    await client.setConnection(
+      PatchConnection(
+        socket: 0,
+        destination: 'L' * 63,
+        group: 'G' * 32,
+        colour: 4,
+      ),
+    );
+    expect(device.map.connections.first.destination.length, 63);
+    final before = device.frames.length;
+    await expectLater(
+      client.setConnection(PatchConnection(socket: 0, destination: 'X' * 33)),
+      throwsFormatException,
+    );
+    expect(device.frames.length, before);
+    await client.load();
+    await client.setConnection(
+      PatchConnection(socket: 0, destination: 'D' * 32, group: 'G' * 32),
+    );
+    expect((await client.load()).connections.first.destination, 'D' * 32);
+    expect(() => PatchExpander(type: 0, name: 'E' * 33), throwsFormatException);
+  });
   test('client exchanges the same wire fixtures as the C++ factory', () async {
     final transport = FixtureTransport();
     final client = PatchMapClient(transport, 0, lease: 42);

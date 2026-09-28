@@ -5,10 +5,33 @@ import 'package:nt_helper/domain/patch_map/patch_map_client.dart';
 
 class PatchMapDevice implements PatchMapTransport {
   PatchMap map = PatchMap.empty();
-  int revision = 0, lease = 0;
+  int revision = 0, lease = 0, firstSocket = 1;
   bool loseReply = false;
   Completer<void>? holdWrite;
   final frames = <Map<String, List<int>>>[];
+  void changeProperty(int parameter, int value) {
+    frames.add({
+      'parameter': [parameter, value],
+    });
+    if (parameter == 0) {
+      firstSocket = value;
+    } else {
+      final row = map.connections[firstSocket - 1];
+      if ((parameter == 1 ? row.colour : row.tag) != value) {
+        map = map.withConnection(
+          PatchConnection(
+            socket: row.socket,
+            destination: row.destination,
+            colour: parameter == 1 ? value : row.colour,
+            tag: parameter == 2 ? value : row.tag,
+            group: row.group,
+          ),
+        );
+        revision++;
+      }
+    }
+  }
+
   @override
   Future<Uint8List> exchangePatchMessage(
     Uint8List request,
@@ -36,6 +59,15 @@ class PatchMapDevice implements PatchMapTransport {
       data = [...encode(map.title), map.expanders.length];
     } else if (integer(13) != lease) {
       status = 2;
+    } else if (command == 9) {
+      final row = map.connections[firstSocket - 1];
+      data = [
+        ...encode(map.title),
+        map.expanders.length,
+        firstSocket,
+        row.colour,
+        row.tag,
+      ];
     } else if (integer(17) != revision) {
       status = 3;
     } else if (command == 2) {
