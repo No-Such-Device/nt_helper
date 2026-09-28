@@ -163,6 +163,9 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
   final KeyBindingService _keyBindingService = KeyBindingService();
   RoutingEditorViewMode _routingViewMode = RoutingEditorViewMode.canvas;
   final FocusNode _screenFocusNode = FocusNode();
+  final FocusNode _overflowMenuFocusNode = FocusNode(
+    debugLabel: 'More options',
+  );
   late int _selectedIndex;
   late TabController _tabController;
   EditMode _currentMode = EditMode.parameters;
@@ -323,6 +326,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
     );
     _screenFocusNode.removeListener(_reclaimFocusIfLost);
     _screenFocusNode.dispose();
+    _overflowMenuFocusNode.dispose();
     _routingFocusSub?.cancel();
     _tabController.removeListener(_handleTabSelection);
     _tabController.dispose();
@@ -1954,7 +1958,8 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
           ),
 
           // MCP server status indicator (desktop only)
-          if (Platform.isMacOS || Platform.isWindows || Platform.isLinux)
+          if (isWideScreen &&
+              (Platform.isMacOS || Platform.isWindows || Platform.isLinux))
             ChangeNotifierProvider.value(
               value: McpServerService.instance,
               child: Consumer<McpServerService>(
@@ -1965,7 +1970,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
             ),
           const SizedBox(width: 8),
           // Only show version on tablets and desktop, not mobile
-          if (!isMobile)
+          if (isWideScreen && !isMobile)
             BlocBuilder<DistingCubit, DistingState>(
               buildWhen: (previous, current) {
                 // Only rebuild when availableFirmwareUpdate changes
@@ -2300,13 +2305,16 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
   }
 
   Widget _buildOverflowMenu(DistingCubit cubit) {
-    return PopupMenuButton<String>(
+    final menu = PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert, semanticLabel: 'More options'),
-      onSelected: (value) {
+      onSelected: (value) async {
         if (value == 'expanders') {
-          Navigator.of(
+          await Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const Ntx8cvScreen()));
+        } else if (value == 'system') {
+          await _showSystemSubmenu(context, cubit);
+          if (mounted) _overflowMenuFocusNode.requestFocus();
         }
       },
       itemBuilder: (popupCtx) {
@@ -2644,11 +2652,6 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
           PopupMenuItem(
             value: 'system',
             enabled: !widget.loading && !isOffline,
-            onTap: widget.loading || isOffline
-                ? null
-                : () {
-                    _showSystemSubmenu(popupCtx, cubit);
-                  },
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [Text('System'), Icon(Icons.settings_applications)],
@@ -2730,6 +2733,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
         ];
       },
     );
+    return Focus(focusNode: _overflowMenuFocusNode, child: menu);
   }
 
   Padding _buildPresetInfoEditor(BuildContext context) {
@@ -2998,10 +3002,13 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
     );
   }
 
-  void _showSystemSubmenu(BuildContext context, DistingCubit cubit) {
+  Future<void> _showSystemSubmenu(
+    BuildContext context,
+    DistingCubit cubit,
+  ) async {
     final supportsWaveCacheTroubleshooting =
         widget.firmwareVersion.hasWaveCacheListing;
-    showDialog<void>(
+    await showDialog<void>(
       context: context,
       builder: (dialogContext) => BlocProvider<DistingCubit>.value(
         value: cubit,
