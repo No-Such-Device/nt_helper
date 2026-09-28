@@ -66,7 +66,10 @@ update instruction. The legacy empty Open remains supported by the new plug-in.
 
 Commands 5/6/7/8 add/read/rename/move expanders; command 6 is read-only. Individual writes compare leases and revisions and are never blindly replayed.
 After an uncertain result, the editor rereads the map and reconciles queued field
-values before sending another write. Frames stay within 122 bytes. Direct USB to one NT
+values before sending another write. Frames stay within 123 bytes.
+New destinations, groups and expander names accept 32 printable ASCII characters.
+Legacy destinations up to 63 characters remain readable and can be retained
+unchanged while editing other fields; replacements must fit the new limit. Direct USB to one NT
 remains the supported development transport.
 
 Cross-repository fixtures: `native-map.json`, `midi-session.json`, and

@@ -104,6 +104,12 @@ class PatchMapEditorCubit extends Cubit<PatchMapEditorState> {
     if (!const {'destination', 'colour', 'tag', 'group'}.contains(field)) {
       throw ArgumentError.value(field, 'field');
     }
+    if (field == 'destination' &&
+        value is String &&
+        value.length > PatchMap.maxEditableTextLength &&
+        value != state.map!.connections[socket].destination) {
+      throw const FormatException('Destination must be at most 32 characters');
+    }
     // Validate against the visible row before retaining this desired field.
     PatchConnection.fromJson({
       ...state.map!.connections[socket].toJson(),

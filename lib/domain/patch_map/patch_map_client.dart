@@ -106,7 +106,12 @@ class PatchMapClient {
     final expanders = <PatchExpander>[];
     for (var i = 0; i < count; i++) {
       final data = _Reader(await _exchange(6, [i]));
-      expanders.add(PatchExpander(type: data.byte(), name: data.text(31)));
+      expanders.add(
+        PatchExpander(
+          type: data.byte(),
+          name: data.text(PatchMap.maxEditableTextLength),
+        ),
+      );
       data.finish();
     }
     final rows = <PatchConnection>[];
@@ -116,7 +121,7 @@ class PatchMapClient {
       final colour = data.byte();
       final tag = data.byte();
       final destination = data.text(63);
-      final group = data.text(31);
+      final group = data.text(PatchMap.maxEditableTextLength);
       data.finish();
       if (identity != socket) throw const FormatException('Wrong socket reply');
       rows.add(
@@ -137,6 +142,10 @@ class PatchMapClient {
     _requireReady();
     if (row.socket >= _map!.connections.length) {
       throw RangeError.index(row.socket, _map!.connections);
+    }
+    if (row.destination.length > PatchMap.maxEditableTextLength &&
+        row.destination != _map!.connections[row.socket].destination) {
+      throw const FormatException('Destination must be at most 32 characters');
     }
     final payload = [
       row.socket,
@@ -248,7 +257,7 @@ class PatchMapClient {
       matches,
     );
     if (!matches(response) ||
-        response.length > 122 ||
+        response.length > 123 ||
         response.sublist(1, response.length - 1).any((byte) => byte > 127)) {
       throw const FormatException('Invalid Patch Helper reply');
     }

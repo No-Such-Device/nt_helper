@@ -770,6 +770,17 @@ class _PatchMapRowState extends State<PatchMapRow> {
       }
       widget.onEdit(field, value);
     } on FormatException catch (error) {
+      // Keep rejected text out of the visible, synchronized row as well.
+      if (field == 'destination' || field == 'group') {
+        final controller = field == 'destination' ? _destination : _group;
+        final previous = field == 'destination'
+            ? widget.row.destination
+            : widget.row.group;
+        controller.value = TextEditingValue(
+          text: previous,
+          selection: TextSelection.collapsed(offset: previous.length),
+        );
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));

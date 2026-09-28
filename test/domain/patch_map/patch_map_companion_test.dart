@@ -16,6 +16,28 @@ Future<Uint8List?> download(String path) async {
 }
 
 void main() {
+  test('invalid long edits never enter automatic synchronization', () async {
+    final device = PatchMapDevice();
+    final cubit = PatchMapEditorCubit(PatchMapClient(device, 0), download);
+    addTearDown(cubit.close);
+    await cubit.load();
+    expect(
+      () => cubit.queueConnection(0, 'destination', 'D' * 33),
+      throwsFormatException,
+    );
+    expect(
+      () => cubit.queueConnection(0, 'group', 'G' * 33),
+      throwsFormatException,
+    );
+    expect(cubit.state.pending, isFalse);
+    cubit.queueConnection(0, 'destination', 'D' * 32);
+    cubit.queueConnection(0, 'group', 'G' * 32);
+    await cubit.synchronize();
+    expect(cubit.state.pending, isFalse);
+    expect(device.map.connections.first.destination, 'D' * 32);
+    expect(device.map.connections.first.group, 'G' * 32);
+  });
+
   test(
     'SD Lua owns dialog labels and choices; invalid or stale choices cannot write',
     () async {

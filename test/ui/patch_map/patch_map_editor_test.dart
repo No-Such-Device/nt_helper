@@ -28,6 +28,48 @@ Future<void> settleCompanion(WidgetTester tester) async {
 
 void main() {
   testWidgets(
+    'overlong text is rejected without shifting or desynchronizing rows',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 820));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final device = PatchMapDevice();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PatchMapEditor(
+              transport: device,
+              slotIndex: 0,
+              download: (_) async => File(
+                'test/fixtures/patch_map/patch_helper.lua',
+              ).readAsBytesSync(),
+            ),
+          ),
+        ),
+      );
+      await settleCompanion(tester);
+      final field = find
+          .descendant(
+            of: find.byType(PatchMapRow).first,
+            matching: find.byType(TextField),
+          )
+          .first;
+      final before = tester.getRect(field);
+      await tester.enterText(field, 'D' * 32);
+      await settleCompanion(tester);
+      expect(device.map.connections.first.destination, 'D' * 32);
+      await tester.enterText(field, 'X' * 33);
+      await tester.pump();
+      expect(tester.widget<TextField>(field).controller!.text, 'D' * 32);
+      expect(device.map.connections.first.destination, 'D' * 32);
+      expect(tester.getRect(field), before);
+      expect(
+        find.text('Destination must be at most 32 characters'),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets(
     'Lua action dialog adds each model, cancels without writes and keeps layout stable',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1280, 820));
