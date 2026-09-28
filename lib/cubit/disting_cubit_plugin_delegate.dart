@@ -190,39 +190,9 @@ class _PluginDelegate {
       throw Exception("Firmware does not support SD card operations.");
     }
 
-    // Determine the target directory based on file extension
+    final targetPath = PluginInstallationPath.target(fileName);
+    final isCompanion = PluginInstallationPath.isHelperCompanion(targetPath);
     final extension = fileName.toLowerCase().split('.').last;
-    String targetDirectory;
-    switch (extension) {
-      case 'lua':
-        targetDirectory = '/programs/lua';
-        break;
-      case '3pot':
-        targetDirectory = '/programs/three_pot';
-        break;
-      case 'o':
-        targetDirectory = '/programs/plug-ins';
-        break;
-      default:
-        throw Exception("Unsupported plugin file type: .$extension");
-    }
-
-    // Handle paths that already contain directory structure
-    final String targetPath;
-    if (fileName.contains('/')) {
-      // Check if the fileName already starts with the expected directory structure
-      final expectedPrefix = targetDirectory.substring(1); // Remove leading /
-      if (fileName.startsWith(expectedPrefix)) {
-        // The fileName already contains the full path structure, use it as-is
-        targetPath = '/$fileName';
-      } else {
-        // The fileName contains directories but not the expected prefix
-        targetPath = '$targetDirectory/$fileName';
-      }
-    } else {
-      // Simple filename without directory structure
-      targetPath = '$targetDirectory/$fileName';
-    }
 
     // Ensure the parent directory of the final target path exists before uploading
     final disting = _cubit.requireDisting();
@@ -302,6 +272,9 @@ class _PluginDelegate {
         // Fire-and-forget: don't block on rescan/reload errors
       }
     }
+
+    // Companions run in Helper, so do not register them as NT Lua algorithms.
+    if (isCompanion) return cleanupOutcome;
 
     // Record the installation in the database (non-blocking - don't fail install on DB error)
     try {

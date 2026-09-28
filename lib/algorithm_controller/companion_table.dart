@@ -3,8 +3,9 @@ import 'package:nt_helper/domain/patch_map/patch_map.dart';
 /// Validated host primitives. Lua chooses labels, field bindings, sections and
 /// minimap geometry; the host owns widgets, focus, scrolling and the MIDI queue.
 class CompanionTable {
-  CompanionTable._(this.groups, this.labels, this.focusSocket);
+  CompanionTable._(this.groups, this.labels, this.focusSocket, this.actions);
   final int? focusSocket;
+  final List<CompanionChoiceAction> actions;
   final List<CompanionSocketGroup> groups;
   final Map<String, String> labels;
 
@@ -56,10 +57,23 @@ class CompanionTable {
         (focus is! int || focus < 0 || focus >= map.connections.length)) {
       throw const FormatException('Invalid focused socket');
     }
-    return CompanionTable._(List.unmodifiable(groups), {
-      for (final field in ['socket', 'destination', 'colour', 'tag', 'group'])
-        field: _label(rawLabels[field]),
-    }, focus as int?);
+    final rawActions = document['actions'] ?? const [];
+    if (rawActions is! List) {
+      throw const FormatException('Invalid companion actions');
+    }
+    final actions = rawActions.map(CompanionChoiceAction.parse).toList();
+    if (actions.map((action) => action.id).toSet().length != actions.length) {
+      throw const FormatException('Duplicate companion action');
+    }
+    return CompanionTable._(
+      List.unmodifiable(groups),
+      {
+        for (final field in ['socket', 'destination', 'colour', 'tag', 'group'])
+          field: _label(rawLabels[field]),
+      },
+      focus as int?,
+      List.unmodifiable(actions),
+    );
   }
   static String _label(Object? value) {
     if (value is! String || value.isEmpty || value.length > 128) {
@@ -79,4 +93,50 @@ class CompanionSocketGroup {
   );
   final int start, count, columns;
   final String title, short;
+}
+
+/// Lua declares a choice dialog; the host retains a narrow action capability.
+class CompanionChoiceAction {
+  const CompanionChoiceAction._(
+    this.id,
+    this.label,
+    this.title,
+    this.cancel,
+    this.choices,
+  );
+  final String id, label, title, cancel;
+  final Map<int, String> choices;
+
+  factory CompanionChoiceAction.parse(Object? value) {
+    if (value is! Map || value['id'] != 'add_expander') {
+      throw const FormatException('Unsupported companion action');
+    }
+    final dialog = value['dialog'];
+    if (dialog is! Map ||
+        dialog['type'] != 'choice_dialog' ||
+        dialog['choices'] is! List) {
+      throw const FormatException('Invalid companion dialog');
+    }
+    final choices = <int, String>{};
+    for (final choice in dialog['choices'] as List) {
+      if (choice is! Map || choice['value'] is! int) {
+        throw const FormatException('Invalid dialog choice');
+      }
+      final model = choice['value'] as int;
+      if (model < 0 ||
+          model >= PatchMap.expanderTypes.length ||
+          choices.containsKey(model)) {
+        throw const FormatException('Invalid expander choice');
+      }
+      choices[model] = CompanionTable._label(choice['label']);
+    }
+    if (choices.isEmpty) throw const FormatException('Empty companion dialog');
+    return CompanionChoiceAction._(
+      value['id'] as String,
+      CompanionTable._label(value['label']),
+      CompanionTable._label(dialog['title']),
+      CompanionTable._label(dialog['cancel']),
+      Map.unmodifiable(choices),
+    );
+  }
 }

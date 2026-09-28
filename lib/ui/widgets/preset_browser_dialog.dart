@@ -98,12 +98,27 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
           child: AlertDialog(
             title: Row(
               children: [
-                const Text('File Browser'),
-                const Spacer(),
+                const Expanded(child: Text('File Browser')),
                 BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
                   builder: (context, state) {
                     return Row(
                       children: [
+                        state.maybeMap(
+                          loaded: (loaded) {
+                            final directory = isMobile
+                                ? loaded.drillPath ?? loaded.currentPath
+                                : loaded.currentPath;
+                            return IconButton(
+                              icon: Icon(
+                                Icons.create_new_folder,
+                                semanticLabel: 'New folder in $directory',
+                              ),
+                              tooltip: 'New folder in $directory',
+                              onPressed: () => _createFolderAction(directory),
+                            );
+                          },
+                          orElse: () => const SizedBox.shrink(),
+                        ),
                         state.maybeMap(
                           loaded: (loaded) =>
                               loaded.navigationHistory.isNotEmpty
@@ -246,6 +261,13 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
                                         onItemSelected: _handleItemSelected,
                                         currentPath: loaded.currentPath,
                                         onContextMenu: _handleContextMenu,
+                                        onDirectoryContextMenu:
+                                            (position, path) =>
+                                                _showContextMenu(
+                                                  null,
+                                                  position,
+                                                  path,
+                                                ),
                                         onFilesDropped: _handlePanelDrop,
                                         dropEnabled:
                                             !_isInstallingPackage &&
@@ -576,14 +598,16 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
   }
 
   void _showContextMenu(
-    DirectoryEntry entry,
+    DirectoryEntry? entry,
     Offset position,
     String panelPath,
   ) {
     final cubit = context.read<PresetBrowserCubit>();
-    final entryPath = cubit.getEntryPath(entry, panelPath);
-    final isFile = !entry.isDirectory;
-    final isTextFile = _isTextFile(entry.name);
+    final entryPath = entry == null
+        ? panelPath
+        : cubit.getEntryPath(entry, panelPath);
+    final isFile = entry != null && !entry.isDirectory;
+    final isTextFile = entry != null && _isTextFile(entry.name);
 
     final items = <PopupMenuEntry<_FileAction>>[];
 
@@ -634,24 +658,26 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
           contentPadding: EdgeInsets.zero,
         ),
       ),
-      const PopupMenuItem(
-        value: _FileAction.rename,
-        child: ListTile(
-          leading: Icon(Icons.edit),
-          title: Text('Rename'),
-          dense: true,
-          contentPadding: EdgeInsets.zero,
+      if (entry != null)
+        const PopupMenuItem(
+          value: _FileAction.rename,
+          child: ListTile(
+            leading: Icon(Icons.edit),
+            title: Text('Rename'),
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+          ),
         ),
-      ),
-      const PopupMenuItem(
-        value: _FileAction.delete,
-        child: ListTile(
-          leading: Icon(Icons.delete),
-          title: Text('Delete'),
-          dense: true,
-          contentPadding: EdgeInsets.zero,
+      if (entry != null)
+        const PopupMenuItem(
+          value: _FileAction.delete,
+          child: ListTile(
+            leading: Icon(Icons.delete),
+            title: Text('Delete'),
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+          ),
         ),
-      ),
     ]);
 
     showMenu<_FileAction>(
@@ -664,22 +690,22 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
       ),
       items: items,
     ).then((action) {
-      if (action == null) return;
+      if (action == null || !mounted) return;
       switch (action) {
         case _FileAction.download:
-          _downloadFile(entryPath, entry.name);
+          if (entry != null) _downloadFile(entryPath, entry.name);
         case _FileAction.upload:
-          final targetDir = entry.isDirectory ? entryPath : panelPath;
+          final targetDir = entry?.isDirectory == true ? entryPath : panelPath;
           _uploadFileAction(targetDir);
         case _FileAction.newFolder:
-          final targetDir = entry.isDirectory ? entryPath : panelPath;
+          final targetDir = entry?.isDirectory == true ? entryPath : panelPath;
           _createFolderAction(targetDir);
         case _FileAction.rename:
-          _renameAction(entryPath, entry.name);
+          if (entry != null) _renameAction(entryPath, entry.name);
         case _FileAction.delete:
-          _deleteAction(entryPath, entry.name);
+          if (entry != null) _deleteAction(entryPath, entry.name);
         case _FileAction.view:
-          _viewTextFile(entryPath, entry.name);
+          if (entry != null) _viewTextFile(entryPath, entry.name);
       }
     });
   }
@@ -1288,6 +1314,7 @@ class ThreePanelNavigator extends StatefulWidget {
   final Function(DirectoryEntry, PanelPosition) onItemSelected;
   final String currentPath;
   final Function(DirectoryEntry, Offset, String panelPath)? onContextMenu;
+  final void Function(Offset, String)? onDirectoryContextMenu;
   final void Function(List<XFile> files, String targetDirectory)?
   onFilesDropped;
   final bool dropEnabled;
@@ -1303,6 +1330,7 @@ class ThreePanelNavigator extends StatefulWidget {
     required this.onItemSelected,
     required this.currentPath,
     this.onContextMenu,
+    this.onDirectoryContextMenu,
     this.onFilesDropped,
     this.dropEnabled = true,
   });
@@ -1372,6 +1400,7 @@ class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
             currentPath: leftPath,
             dropTargetDirectory: leftDropTarget,
             onContextMenu: widget.onContextMenu,
+            onDirectoryContextMenu: widget.onDirectoryContextMenu,
             onFilesDropped: widget.onFilesDropped,
             dropEnabled: widget.dropEnabled,
             focusNode: _leftFocusNode,
@@ -1389,6 +1418,7 @@ class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
             currentPath: centerPath,
             dropTargetDirectory: centerDropTarget,
             onContextMenu: widget.onContextMenu,
+            onDirectoryContextMenu: widget.onDirectoryContextMenu,
             onFilesDropped: widget.onFilesDropped,
             dropEnabled: widget.dropEnabled,
             focusNode: _centerFocusNode,
@@ -1406,6 +1436,7 @@ class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
             currentPath: rightPath,
             dropTargetDirectory: rightDropTarget,
             onContextMenu: widget.onContextMenu,
+            onDirectoryContextMenu: widget.onDirectoryContextMenu,
             onFilesDropped: widget.onFilesDropped,
             dropEnabled: widget.dropEnabled,
             focusNode: _rightFocusNode,
@@ -1438,6 +1469,7 @@ class DirectoryPanel extends StatefulWidget {
   final String currentPath;
   final String? dropTargetDirectory;
   final Function(DirectoryEntry, Offset, String panelPath)? onContextMenu;
+  final void Function(Offset, String)? onDirectoryContextMenu;
   final void Function(List<XFile> files, String targetDirectory)?
   onFilesDropped;
   final bool dropEnabled;
@@ -1453,6 +1485,7 @@ class DirectoryPanel extends StatefulWidget {
     required this.currentPath,
     this.dropTargetDirectory,
     this.onContextMenu,
+    this.onDirectoryContextMenu,
     this.onFilesDropped,
     this.dropEnabled = true,
     this.focusNode,
@@ -1675,6 +1708,24 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
             ),
           ),
         ),
+      );
+    }
+
+    // A real directory owns its blank space. Child row gestures win the
+    // gesture arena, keeping folder-entry actions targeted inside that folder.
+    if (widget.onDirectoryContextMenu != null &&
+        widget.dropTargetDirectory != null) {
+      panel = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onSecondaryTapUp: (details) => widget.onDirectoryContextMenu!(
+          details.globalPosition,
+          widget.dropTargetDirectory!,
+        ),
+        onLongPressEnd: (details) => widget.onDirectoryContextMenu!(
+          details.globalPosition,
+          widget.dropTargetDirectory!,
+        ),
+        child: panel,
       );
     }
 

@@ -1,5 +1,5 @@
 -- NT Helper companion, executed on the computer, NOT a disting NT Lua algorithm.
--- Install as /helper/ThPh.lua on the NT SD card.
+-- Install as /programs/helper/ThPh.lua on the NT SD card.
 local models = { 'NTX-8CV', 'ES-5', 'ESX-8GT', 'ESX-8CV' }
 local companion = {
   api_version = 1,
@@ -15,7 +15,17 @@ local companion = {
         short = 'E' .. i, start = 20 + (i - 1) * 8, count = 8, columns = 1,
       }
     end
+    local choices = {}
+    for i, model in ipairs(models) do
+      choices[#choices + 1] = { label = model, value = i - 1 }
+    end
     return {
+      actions = {
+        { id = 'add_expander', label = 'Add expander', dialog = {
+          type = 'choice_dialog', title = 'Add expander', cancel = 'Cancel',
+          choices = choices,
+        } },
+      },
       version = 1, type = 'socket_table', groups = groups,
       labels = { socket = 'Socket', destination = 'Destination', colour = 'Cable colour', tag = 'Tag', group = 'Group' },
     }

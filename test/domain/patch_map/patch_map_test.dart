@@ -95,7 +95,7 @@ void main() {
         reject((json) => json['title'] = text);
         reject((json) => json['connections'][0]['destination'] = text);
       }
-      reject((json) => json['connections'][0]['group'] = 'x' * 32);
+      reject((json) => json['connections'][0]['group'] = 'x' * 33);
       reject((json) => json['connections'][1]['socket'] = 0);
       reject((json) => json['connections'].removeLast());
       for (final key in ['socket', 'colour', 'tag']) {
@@ -110,7 +110,7 @@ void main() {
     final connection = PatchConnection(
       socket: 0,
       destination: 'x' * 63,
-      group: 'y' * 31,
+      group: 'y' * 32,
       tag: 12,
       colour: 11,
     );

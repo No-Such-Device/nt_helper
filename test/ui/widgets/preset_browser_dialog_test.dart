@@ -1,6 +1,7 @@
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mocktail/mocktail.dart';
@@ -50,6 +51,99 @@ void main() {
   }
 
   group('PresetBrowserDialog', () {
+    for (final action in [
+      'empty root',
+      'root',
+      'toolbar',
+      'mobile toolbar',
+      'nested',
+      'entry',
+      'placeholder',
+    ]) {
+      testWidgets('folder creation targets correct directory via $action', (
+        tester,
+      ) async {
+        final mobile = action == 'mobile toolbar';
+        if (mobile) {
+          tester.view.physicalSize = const Size(390, 844);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+        }
+        final hasFolder = action != 'empty root' && action != 'placeholder';
+        final target = mobile || action == 'nested' || action == 'entry'
+            ? '/programs'
+            : '/';
+        final folder = DirectoryEntry(
+          name: 'programs/',
+          attributes: 0x10,
+          date: 0,
+          time: 0,
+          size: 0,
+        );
+        when(() => mockCubit.state).thenReturn(
+          PresetBrowserState.loaded(
+            currentPath: '/',
+            drillPath: mobile ? '/programs' : null,
+            leftPanelItems: hasFolder ? [folder] : [],
+            centerPanelItems: const [],
+            rightPanelItems: const [],
+            selectedLeftItem: hasFolder ? folder : null,
+            selectedCenterItem: null,
+            selectedRightItem: null,
+            navigationHistory: const [],
+            sortByDate: false,
+          ),
+        );
+        when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
+        when(
+          () => mockCubit.createDirectory(target, 'helper'),
+        ).thenAnswer((_) async {});
+        when(() => mockCubit.getEntryPath(folder, '/')).thenReturn('/programs');
+        await tester.pumpWidget(
+          createTestWidget(
+            child: Scaffold(
+              body: PresetBrowserDialog(distingCubit: mockDistingCubit),
+            ),
+          ),
+        );
+        if (action == 'toolbar' || mobile) {
+          expect(
+            find.bySemanticsLabel('New folder in $target'),
+            findsOneWidget,
+          );
+          await tester.tap(find.byTooltip('New folder in $target'));
+        } else {
+          final panel = find
+              .byType(DirectoryPanel)
+              .at(action == 'nested' || action == 'placeholder' ? 1 : 0);
+          await tester.tapAt(
+            action == 'entry'
+                ? tester.getCenter(find.text('programs'))
+                : tester.getBottomLeft(panel) + const Offset(25, -25),
+            buttons: kSecondaryMouseButton,
+          );
+          await tester.pumpAndSettle();
+          if (action == 'placeholder') {
+            expect(find.text('New Folder'), findsNothing);
+            return;
+          }
+          expect(find.text('New Folder'), findsOneWidget);
+          if (action != 'entry') {
+            expect(find.text('Delete'), findsNothing);
+            expect(find.text('Rename'), findsNothing);
+          }
+          await tester.tap(find.text('New Folder'));
+        }
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'helper');
+        await tester.tap(find.text('Create'));
+        await tester.pumpAndSettle();
+        verify(() => mockCubit.createDirectory(target, 'helper')).called(1);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     testWidgets('displays three panels in row layout', (tester) async {
       when(() => mockCubit.state).thenReturn(
         PresetBrowserState.loaded(

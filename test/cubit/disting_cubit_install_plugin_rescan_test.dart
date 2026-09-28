@@ -1,4 +1,10 @@
 import 'dart:typed_data';
+import 'package:archive/archive.dart';
+import 'package:nt_helper/models/gallery_models.dart';
+import 'package:nt_helper/services/gallery_service.dart';
+import 'package:nt_helper/services/plugin_metadata_extractor.dart';
+import 'package:nt_helper/services/settings_service.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -12,6 +18,8 @@ import 'package:nt_helper/models/sd_card_file_system.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../test_helpers/mock_midi_command.dart';
+
+class MockSettingsService extends Mock implements SettingsService {}
 
 class MockAppDatabase extends Mock implements AppDatabase {}
 
@@ -184,6 +192,223 @@ void main() {
     );
     return createSynchronizedState(algorithms: [algorithmInfo], slots: [slot]);
   }
+
+  group('companion ZIP installation', () {
+    const pluginPath = '/programs/plug-ins/patch_helper.o';
+    const companionPath = '/programs/helper/ThPh.lua';
+    final companion = Uint8List.fromList(List.generate(1100, (i) => i % 127));
+    final object = Uint8List.fromList([0x7f, 0x45, 0x4c, 0x46]);
+    const plugin = GalleryPlugin(
+      id: 'patch-helper',
+      name: 'Patch Helper',
+      description: '',
+      type: GalleryPluginType.cpp,
+      author: 'test',
+      repository: PluginRepository(
+        owner: 'test',
+        name: 'test',
+        url: 'https://example.com',
+      ),
+      releases: PluginReleases(latest: 'v1'),
+      installation: PluginInstallation(
+        targetPath: 'programs/plug-ins',
+        extractPattern: r'\.o$',
+        sourceDirectoryPath: 'programs/plug-ins',
+      ),
+    );
+
+    Uint8List zip({String companionName = 'programs/helper/ThPh.lua'}) =>
+        Uint8List.fromList(
+          ZipEncoder().encode(
+            Archive()
+              ..addFile(
+                ArchiveFile(
+                  'programs/plug-ins/patch_helper.o',
+                  object.length,
+                  object,
+                ),
+              )
+              ..addFile(ArchiveFile(companionName, companion.length, companion))
+              ..addFile(ArchiveFile('README.md', 4, [1, 2, 3, 4])),
+          ),
+        );
+
+    GalleryService gallery() {
+      final settings = MockSettingsService();
+      when(() => settings.galleryUrl).thenReturn('https://example.com/gallery');
+      when(
+        () => settings.graphqlEndpoint,
+      ).thenReturn('https://example.com/graphql');
+      return GalleryService(settingsService: settings);
+    }
+
+    for (final source in ['gallery']) {
+      test(
+        '$source ZIP uploads exact bytes into both SD directories',
+        () async {
+          cubit.emit(createSynchronizedState());
+          final directories = <String>{'/programs'};
+          final uploaded = <String, List<int>>{};
+          final events = <String>[];
+          when(() => mockDisting.requestDirectoryListing(any())).thenAnswer(
+            (call) async => directories.contains(call.positionalArguments[0])
+                ? DirectoryListing(entries: [])
+                : null,
+          );
+          when(() => mockDisting.requestDirectoryCreate(any())).thenAnswer((
+            call,
+          ) async {
+            directories.add(call.positionalArguments[0] as String);
+            return SdCardStatus(success: true, message: 'ok');
+          });
+          when(
+            () => mockDisting.requestFileUploadChunk(
+              any(),
+              any(),
+              any(),
+              createAlways: any(named: 'createAlways'),
+            ),
+          ).thenAnswer((call) async {
+            final target = call.positionalArguments[0] as String;
+            final bytes = call.positionalArguments[1] as Uint8List;
+            final position = call.positionalArguments[2] as int;
+            final data = uploaded.putIfAbsent(target, () => []);
+            expect(position, data.length);
+            expect(bytes.length, lessThanOrEqualTo(512));
+            expect(call.namedArguments[#createAlways], position == 0);
+            data.addAll(bytes);
+            events.add(target);
+            return SdCardStatus(success: true, message: 'ok');
+          });
+          when(() => mockDisting.requestRescanPlugins()).thenAnswer((_) async {
+            events.add('rescan');
+          });
+          await gallery().installPlugin(
+            plugin,
+            cachedArchiveBytes: zip(),
+            distingInstallPlugin: cubit.installPlugin,
+          );
+          expect(uploaded.keys, [companionPath, pluginPath]);
+          expect(uploaded[companionPath], companion);
+          expect(uploaded[pluginPath], object);
+          expect(events.last, 'rescan');
+          expect(
+            directories,
+            containsAll(['/programs/helper', '/programs/plug-ins']),
+          );
+          verifyNever(
+            () => mockPluginInstallationsDao.recordPluginByPath(
+              installationPath: companionPath,
+              pluginName: any(named: 'pluginName'),
+              pluginType: any(named: 'pluginType'),
+              totalBytes: any(named: 'totalBytes'),
+              pluginId: any(named: 'pluginId'),
+              pluginVersion: any(named: 'pluginVersion'),
+            ),
+          );
+        },
+      );
+
+      test(
+        '$source fails companion upload without a Lua-folder fallback',
+        () async {
+          cubit.emit(createSynchronizedState());
+          when(
+            () => mockDisting.requestFileUploadChunk(
+              companionPath,
+              any(),
+              any(),
+              createAlways: any(named: 'createAlways'),
+            ),
+          ).thenAnswer(
+            (_) async => SdCardStatus(success: false, message: 'disk full'),
+          );
+          await expectLater(
+            gallery().installPlugin(
+              plugin,
+              cachedArchiveBytes: zip(),
+              distingInstallPlugin: cubit.installPlugin,
+            ),
+            throwsException,
+          );
+          final paths = verify(
+            () => mockDisting.requestFileUploadChunk(
+              captureAny(),
+              any(),
+              any(),
+              createAlways: any(named: 'createAlways'),
+            ),
+          ).captured;
+          expect(paths, [companionPath]);
+          verifyNever(() => mockDisting.requestRescanPlugins());
+        },
+      );
+    }
+
+    test('companion is not a selectable algorithm in a collection', () async {
+      expect(
+        await PluginMetadataExtractor.countInstallablePlugins(zip(), plugin),
+        1,
+      );
+      final choices = await PluginMetadataExtractor.extractPluginsFromArchive(
+        zip(),
+        plugin,
+      );
+      expect(choices.map((p) => p.relativePath), ['patch_helper.o']);
+      final uploaded = <String>[];
+      await gallery().installPlugin(
+        plugin,
+        cachedArchiveBytes: zip(),
+        selectedPlugins: [choices.single.copyWith(selected: true)],
+        distingInstallPlugin:
+            (
+              String name,
+              Uint8List data, {
+              Function(double)? onProgress,
+              String? galleryPluginId,
+              String? galleryPluginVersion,
+            }) async {
+              uploaded.add(name);
+            },
+      );
+      expect(uploaded, ['programs/helper/ThPh.lua', 'patch_helper.o']);
+    });
+
+    for (final badPath in [
+      'programs/helper/../lua/ThPh.lua',
+      'programs/plug-ins/ThPh.lua',
+      'programs/helper-other/ThPh.lua',
+    ]) {
+      test('rejects invalid upload path $badPath', () async {
+        cubit.emit(createSynchronizedState());
+        await expectLater(
+          cubit.installPlugin(badPath, companion),
+          throwsFormatException,
+        );
+        verifyNever(
+          () => mockDisting.requestFileUploadChunk(
+            any(),
+            any(),
+            any(),
+            createAlways: any(named: 'createAlways'),
+          ),
+        );
+      });
+    }
+
+    test('plain Lua algorithm still uploads to programs/lua', () async {
+      cubit.emit(createSynchronizedState());
+      await cubit.installPlugin('normal.lua', Uint8List.fromList([1]));
+      verify(
+        () => mockDisting.requestFileUploadChunk(
+          '/programs/lua/normal.lua',
+          any(),
+          0,
+          createAlways: true,
+        ),
+      ).called(1);
+    });
+  });
 
   group('DistingCubit installPlugin rescan behavior', () {
     test('triggers requestRescanPlugins after .o file upload', () async {
