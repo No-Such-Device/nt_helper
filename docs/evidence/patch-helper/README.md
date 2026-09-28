@@ -24,3 +24,14 @@ The current interaction test also checks automatic loading and synchronization,
 colour-only socket dots, stable layout during edits and validation, app
 pause/resume, merging local field changes with NT updates, and stopped polling
 after editor disposal.
+
+`expander-dialog.png` shows the Lua-defined four-model chooser. The action sits
+at the top right and the sync dot stays at the top left. Tests add each model,
+cancel using Escape and Cancel, reject invalid/stale choices, enforce the bank
+limit and compare table geometry across dialog transitions.
+
+On 2026-09-28 the running macOS app was hot reloaded, the updated Lua was uploaded
+to `/programs/helper/ThPh.lua` using the official 512-byte uploader, and the live
+editor opened the four-model dialog. Escape returned to the editor without
+adding a bank. Existing preset records were retained. This live check covers
+opening/cancelling; the four successful additions are automated fixture tests.

@@ -300,6 +300,19 @@ class PatchMapEditorCubit extends Cubit<PatchMapEditorState> {
   }, applied: false);
   Future<void> setConnection(PatchConnection row) =>
       _action({'type': 'set_connection', 'connection': row.toJson()});
+  Future<void> chooseAction(String id, int value) async {
+    // Recheck the latest document after the dialog, including background Lua changes.
+    if (!state.editable ||
+        state.pending ||
+        state.map!.expanders.length >= PatchMap.maxNewExpanders) {
+      return;
+    }
+    final allowed = state.document!.actions.any(
+      (action) => action.id == id && action.choices.containsKey(value),
+    );
+    if (allowed && id == 'add_expander') await addExpander(value);
+  }
+
   Future<void> addExpander(int type) =>
       _action({'type': 'add_expander', 'model': type});
   Future<void> renameExpander(int index, String name) =>
@@ -328,7 +341,9 @@ class PatchMapEditorCubit extends Cubit<PatchMapEditorState> {
       if (isClosed) throw StateError('Editor closed');
       // Each user gesture grants only its own action kind. The companion receives
       // no transport object, file API, or unrestricted parameter-writing function.
-      if (action['type'] != event['type']) {
+      if (action['type'] != event['type'] ||
+          (event['type'] == 'add_expander' &&
+              action['model'] != event['model'])) {
         throw const FormatException('Companion changed the action kind');
       }
       return switch (action['type']) {

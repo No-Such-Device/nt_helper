@@ -16,6 +16,75 @@ Future<Uint8List?> download(String path) async {
 }
 
 void main() {
+  test(
+    'SD Lua owns dialog labels and choices; invalid or stale choices cannot write',
+    () async {
+      final device = PatchMapDevice();
+      var source = utf8.decode((await download('/programs/helper/ThPh.lua'))!);
+      source = source.replaceAll(
+        "title = 'Add expander'",
+        "title = 'Choose hardware'",
+      );
+      final cubit = PatchMapEditorCubit(
+        PatchMapClient(device, 0),
+        (_) async => Uint8List.fromList(utf8.encode(source)),
+        companionCheckInterval: Duration.zero,
+      );
+      await cubit.load();
+      final action = cubit.state.document!.actions.single;
+      expect(action.title, 'Choose hardware');
+      expect(action.choices.values, PatchMap.expanderTypes);
+      await cubit.chooseAction('set_title', 0);
+      await cubit.chooseAction('add_expander', 42);
+      expect(device.map.expanders, isEmpty);
+      // A background source update can withdraw a choice while its dialog is open.
+      source = source.replaceAll("{ label = model, value = i - 1 }", "nil");
+      await cubit.refresh();
+      expect(cubit.state.error, isNotNull);
+      await cubit.chooseAction(action.id, 0);
+      expect(device.map.expanders, isEmpty);
+      await cubit.close();
+    },
+  );
+
+  test(
+    'choice schema rejects unsupported actions, duplicate and invalid model values',
+    () {
+      Map<String, Object?> definition(List<Object?> choices) => {
+        'id': 'add_expander',
+        'label': 'Add expander',
+        'dialog': {
+          'type': 'choice_dialog',
+          'title': 'Models',
+          'cancel': 'Cancel',
+          'choices': choices,
+        },
+      };
+      for (final choices in [
+        <Object?>[],
+        [
+          {'value': -1, 'label': 'Bad'},
+        ],
+        [
+          {'value': 4, 'label': 'Bad'},
+        ],
+        [
+          {'value': 0, 'label': 'One'},
+          {'value': 0, 'label': 'Two'},
+        ],
+      ]) {
+        expect(
+          () => CompanionChoiceAction.parse(definition(choices)),
+          throwsFormatException,
+        );
+      }
+      expect(
+        () => CompanionChoiceAction.parse({'id': 'set_title'}),
+        throwsFormatException,
+      );
+    },
+  );
+
   test('missing Lua recovers automatically when the file appears', () async {
     final device = PatchMapDevice();
     var available = false;

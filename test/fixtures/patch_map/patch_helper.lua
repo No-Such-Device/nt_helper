@@ -15,7 +15,17 @@ local companion = {
         short = 'E' .. i, start = 20 + (i - 1) * 8, count = 8, columns = 1,
       }
     end
+    local choices = {}
+    for i, model in ipairs(models) do
+      choices[#choices + 1] = { label = model, value = i - 1 }
+    end
     return {
+      actions = {
+        { id = 'add_expander', label = 'Add expander', dialog = {
+          type = 'choice_dialog', title = 'Add expander', cancel = 'Cancel',
+          choices = choices,
+        } },
+      },
       version = 1, type = 'socket_table', groups = groups,
       labels = { socket = 'Socket', destination = 'Destination', colour = 'Cable colour', tag = 'Tag', group = 'Group' },
     }

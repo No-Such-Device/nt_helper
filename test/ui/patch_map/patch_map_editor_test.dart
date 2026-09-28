@@ -28,6 +28,129 @@ Future<void> settleCompanion(WidgetTester tester) async {
 
 void main() {
   testWidgets(
+    'Lua action dialog adds each model, cancels without writes and keeps layout stable',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 820));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final font = File('/System/Library/Fonts/SFNS.ttf');
+      if (font.existsSync()) {
+        final loader = FontLoader('Evidence');
+        loader.addFont(
+          Future.value(ByteData.sublistView(font.readAsBytesSync())),
+        );
+        await loader.load();
+      }
+      final iconFont = File(
+        '/Users/nealsanche/fvm/default/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+      );
+      if (iconFont.existsSync()) {
+        final loader = FontLoader('MaterialIcons');
+        loader.addFont(
+          Future.value(ByteData.sublistView(iconFont.readAsBytesSync())),
+        );
+        await loader.load();
+      }
+      final device = PatchMapDevice();
+      final boundary = GlobalKey();
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) =>
+              RepaintBoundary(key: boundary, child: child!),
+          theme:
+              AppTheme.build(
+                seedColor: AppTheme.defaultSeedColor,
+                brightness: Brightness.dark,
+              ).copyWith(
+                textTheme: ThemeData.dark().textTheme.apply(
+                  fontFamily: 'Evidence',
+                ),
+              ),
+          home: Scaffold(
+            body: PatchMapEditor(
+              transport: device,
+              slotIndex: 0,
+              download: (_) async => File(
+                'test/fixtures/patch_map/patch_helper.lua',
+              ).readAsBytesSync(),
+            ),
+          ),
+        ),
+      );
+      await settleCompanion(tester);
+      final semantics = tester.ensureSemantics();
+      await tester.pump();
+      expect(find.bySemanticsLabel('Add expander'), findsOneWidget);
+      final action = find.byTooltip('Add expander');
+      final header = tester.getRect(find.text('Socket'));
+      expect(tester.getRect(action).right, greaterThan(1200));
+      expect(tester.getRect(find.byTooltip('Up to date')).left, lessThan(60));
+      for (final model in PatchMap.expanderTypes) {
+        expect(find.text(model), findsNothing);
+      }
+      await tester.tap(action);
+      await tester.pumpAndSettle();
+      expect(tester.getRect(find.text('Socket')), header);
+      expect(
+        tester.getSemantics(find.text('Add expander')).flagsCollection.isHeader,
+        isTrue,
+      );
+      for (final model in PatchMap.expanderTypes) {
+        expect(find.widgetWithText(TextButton, model), findsOneWidget);
+      }
+      if (Platform.environment['CAPTURE_PATCH_EDITOR'] == '1') {
+        await tester.runAsync(() async {
+          final image =
+              await (boundary.currentContext!.findRenderObject()!
+                      as RenderRepaintBoundary)
+                  .toImage();
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          File(
+            'docs/evidence/patch-helper/expander-dialog.png',
+          ).writeAsBytesSync(bytes!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(device.map.expanders, isEmpty);
+      await tester.tap(action);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(device.map.expanders, isEmpty);
+      for (var model = 0; model < PatchMap.expanderTypes.length; model++) {
+        await tester.tap(action);
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.widgetWithText(TextButton, PatchMap.expanderTypes[model]),
+        );
+        await settleCompanion(tester);
+        expect(device.map.expanders.length, model + 1);
+        expect(device.map.expanders.last.type, model);
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(tester.getRect(find.text('Socket')), header);
+      }
+      while (device.map.expanders.length < PatchMap.maxNewExpanders) {
+        device.map = device.map.addExpander(0);
+      }
+      device.revision++;
+      await tester.pump(const Duration(seconds: 1));
+      await settleCompanion(tester);
+      expect(
+        tester
+            .widget<IconButton>(
+              find.ancestor(of: action, matching: find.byType(IconButton)),
+            )
+            .onPressed,
+        isNull,
+      );
+      semantics.dispose();
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
     'unnamed socket dots follow automatic edits and NT colour changes',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1280, 820));

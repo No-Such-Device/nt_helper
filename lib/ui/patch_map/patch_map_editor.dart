@@ -75,7 +75,6 @@ class _PatchMapEditorState extends State<PatchMapEditor>
   final _horizontal = ScrollController();
   final _rows = <int, GlobalKey>{};
   int? _selected;
-  int _expanderType = 0;
   bool _expanderDraftOpen = false;
   bool _compactMapOpen = false;
   String? _lastError;
@@ -185,41 +184,30 @@ class _PatchMapEditorState extends State<PatchMapEditor>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        _syncIndicator(state),
-                        DropdownButton<int>(
-                          value: _expanderType,
-                          onChanged: state.editable
-                              ? (value) =>
-                                    setState(() => _expanderType = value!)
-                              : null,
-                          items: [
-                            for (
-                              var i = 0;
-                              i < PatchMap.expanderTypes.length;
-                              i++
-                            )
-                              DropdownMenuItem(
-                                value: i,
-                                child: Text(PatchMap.expanderTypes[i]),
+                    SizedBox(
+                      key: const ValueKey('companion-action-bar'),
+                      height: 48,
+                      child: Row(
+                        children: [
+                          _syncIndicator(state),
+                          const Spacer(),
+                          for (final action in state.document!.actions)
+                            IconButton(
+                              tooltip: action.label,
+                              onPressed:
+                                  state.editable &&
+                                      !state.pending &&
+                                      map.expanders.length <
+                                          PatchMap.maxNewExpanders
+                                  ? () => _chooseAction(action)
+                                  : null,
+                              icon: Icon(
+                                Icons.add,
+                                semanticLabel: action.label,
                               ),
-                          ],
-                        ),
-                        TextButton(
-                          onPressed:
-                              state.editable &&
-                                  !state.pending &&
-                                  map.expanders.length <
-                                      PatchMap.maxNewExpanders
-                              ? () => _cubit.addExpander(_expanderType)
-                              : null,
-                          child: const Text('Add expander'),
-                        ),
-                      ],
+                            ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Expanded(
@@ -312,6 +300,66 @@ class _PatchMapEditorState extends State<PatchMapEditor>
         ),
       ),
     );
+  }
+
+  Future<void> _chooseAction(CompanionChoiceAction action) async {
+    _expanderDraftOpen = true;
+    var chosen = false;
+    try {
+      final model = await showDialog<int>(
+        context: context,
+        builder: (dialogContext) =>
+            BlocBuilder<PatchMapEditorCubit, PatchMapEditorState>(
+              bloc: _cubit,
+              builder: (context, state) => AlertDialog(
+                title: Semantics(header: true, child: Text(action.title)),
+                content: SizedBox(
+                  width: 320,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final choice in action.choices.entries)
+                          TextButton(
+                            autofocus: choice.key == action.choices.keys.first,
+                            style: TextButton.styleFrom(
+                              alignment: Alignment.centerLeft,
+                              minimumSize: const Size(48, 48),
+                            ),
+                            onPressed:
+                                state.editable &&
+                                    !state.pending &&
+                                    state.map!.expanders.length <
+                                        PatchMap.maxNewExpanders
+                                ? () {
+                                    if (chosen) return;
+                                    chosen = true;
+                                    Navigator.pop(dialogContext, choice.key);
+                                  }
+                                : null,
+                            child: Text(choice.value),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: Text(action.cancel),
+                  ),
+                ],
+              ),
+            ),
+      );
+      if (mounted && model != null) {
+        await _cubit.chooseAction(action.id, model);
+      }
+    } finally {
+      _expanderDraftOpen = false;
+      if (mounted) _updateWatching();
+    }
   }
 
   Future<void> _renameExpander(int index) async {

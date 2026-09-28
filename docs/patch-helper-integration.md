@@ -110,3 +110,21 @@ in-flight read may complete, but cannot publish to a closed editor.
 The callback API can serve other adapters, but this revision implements only
 ThPh's property and map adapter. Native NT destination/group text entry and universal adapter discovery remain
 pending. Hardware evidence is recorded separately from widget and protocol tests.
+
+## Lua-defined expander dialog
+
+The companion table document accepts an optional `actions` array. Its supported
+`add_expander` action declares `label` and a `choice_dialog` with `title`,
+`cancel`, and `{label, value}` choices. Values are unique model IDs 0–3. Flutter
+renders the action at the top right, with the fixed sync indicator at the top
+left. The model dropdown no longer occupies the editor. Cancel, Escape and
+barrier dismissal leave the map alone.
+
+Selection rechecks the latest Lua action, editability, pending synchronization,
+and bank limit. The returned Lua action cannot change the requested model.
+This is an additive API-1 primitive; old scripts without actions remain valid.
+
+V1 is documented in the original Substrate spec
+`d4abe223-d4c5-4784-811b-417aa43586ee` and `patch_helper/docs/v1-spec.md`.
+Native text-property editing remains required for full device parity; this
+host dialog change does not implement it.
