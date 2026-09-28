@@ -6,11 +6,18 @@ script must declare the matching GUID and companion API version. This is host
 Lua: Helper downloads the file through the existing whole-file SD operation
 and runs it on the computer. Install only scripts from a source you trust.
 
-In File Browser, right-click `programs` and choose **New Folder** to create
-`helper` inside it, then upload `ThPh.lua` there. Right-clicking blank space in
-a directory panel creates a folder in that directory, including the SD root.
-The folder-plus button creates a folder in the current directory (the leftmost
-panel on desktop, or the open directory on mobile).
+Gallery release ZIPs carry `programs/plug-ins/patch_helper.o` and
+`programs/helper/ThPh.lua`, relative to the SD root. The gallery extractor keeps
+companion Lua even when C++ extension filters or source-directory selection would
+normally exclude it. Companions install first, using the existing 512-byte SD
+upload and directory creation path, and overwrite earlier companion versions.
+They are dependencies: they do not count as separate algorithms in a collection
+or get recorded as NT Lua plugins. Explicit `programs/` paths never fall back to
+another directory after an upload error. Ordinary Lua algorithms still install
+to `/programs/lua/`. The local plugin file picker is unchanged.
+
+For manual installation, use File Browser to create `programs/helper` and upload
+`ThPh.lua` there. The folder-plus button creates a folder in the current directory.
 
 Opening the Patch Helper standard editor automatically loads its companion. The Lua
 module's `render(state)` supplies a validated table document: field labels,

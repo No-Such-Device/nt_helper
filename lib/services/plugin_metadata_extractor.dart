@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:nt_helper/utils/plugin_installation_path.dart';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as path;
 import 'package:nt_helper/models/gallery_models.dart';
@@ -18,7 +19,9 @@ class PluginMetadataExtractor {
     for (final file in archive) {
       if (!file.isFile) continue;
 
-      String filePath = file.name;
+      String filePath = PluginInstallationPath.normalize(file.name);
+      // Companion programs are dependencies, never selectable NT algorithms.
+      if (PluginInstallationPath.isHelperCompanion(filePath)) continue;
 
       // Apply source directory filtering if specified
       if (installation.sourceDirectoryPath != null &&
@@ -32,6 +35,8 @@ class PluginMetadataExtractor {
           filePath = filePath.substring(sourceDir.length + 1);
         }
       }
+
+      if (PluginInstallationPath.isHelperCompanion(filePath)) continue;
 
       // Only count installable plugin files (exclude source files like .cpp)
       final extension = path.extension(filePath).toLowerCase();
@@ -67,7 +72,9 @@ class PluginMetadataExtractor {
     for (final file in archive) {
       if (!file.isFile) continue;
 
-      String filePath = file.name;
+      String filePath = PluginInstallationPath.normalize(file.name);
+      // Companion programs are dependencies, never selectable NT algorithms.
+      if (PluginInstallationPath.isHelperCompanion(filePath)) continue;
 
       // Apply source directory filtering if specified
       if (installation.sourceDirectoryPath != null &&
@@ -81,6 +88,8 @@ class PluginMetadataExtractor {
           filePath = filePath.substring(sourceDir.length + 1);
         }
       }
+
+      if (PluginInstallationPath.isHelperCompanion(filePath)) continue;
 
       // Skip if not a plugin file (include both source and compiled files)
       final extension = path.extension(filePath).toLowerCase();

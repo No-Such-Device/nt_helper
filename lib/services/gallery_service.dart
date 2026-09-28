@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:nt_helper/utils/plugin_installation_path.dart';
 import 'package:http/http.dart' as http;
 import 'package:nt_helper/models/gallery_models.dart';
 import 'package:nt_helper/models/plugin_cleanup_outcome.dart';
@@ -1365,6 +1366,7 @@ class GalleryService {
     final archive = ZipDecoder().decodeBytes(archiveBytes);
     final pluginFiles = <MapEntry<String, List<int>>>[];
     final sampleFiles = <MapEntry<String, List<int>>>[];
+    final companions = <MapEntry<String, List<int>>>[];
     final installation = plugin.installation;
 
     // Compile regex pattern for file filtering if extractPattern is provided
@@ -1381,13 +1383,19 @@ class GalleryService {
     for (final file in archive) {
       if (!file.isFile) continue;
 
-      String filePath = file.name;
+      String filePath = PluginInstallationPath.normalize(file.name);
       final originalFilePath = filePath;
 
       // Check for sample files first (before any path manipulation)
       // Sample files are extracted with their full relative path preserved
       if (_isSampleFile(originalFilePath)) {
         sampleFiles.add(MapEntry(originalFilePath, file.content as List<int>));
+        continue;
+      }
+
+      // SD-root companions are dependencies and bypass algorithm-only filters.
+      if (PluginInstallationPath.isHelperCompanion(filePath)) {
+        companions.add(MapEntry(filePath, file.content as List<int>));
         continue;
       }
 
@@ -1407,6 +1415,11 @@ class GalleryService {
         } else if (filePath == sourceDir) {
           continue; // Skip the directory itself
         }
+      }
+
+      if (PluginInstallationPath.isHelperCompanion(filePath)) {
+        companions.add(MapEntry(filePath, file.content as List<int>));
+        continue;
       }
 
       // Skip empty paths
@@ -1455,7 +1468,7 @@ class GalleryService {
     }
 
     return ExtractedArchiveContents(
-      pluginFiles: pluginFiles,
+      pluginFiles: [...companions, ...pluginFiles],
       sampleFiles: sampleFiles,
     );
   }
@@ -1512,7 +1525,13 @@ class GalleryService {
             onProgress?.call(filesProcessed / files.length);
             continue; // Success, move to next file
           } catch (pathError) {
-            // Intentionally empty
+            // Explicit SD destinations must never fall back to another folder.
+            if (PluginInstallationPath.normalize(
+              relativePath,
+            ).toLowerCase().startsWith('programs/')) {
+              rethrow;
+            }
+            // Legacy relative plugin subfolders retain their root fallback.
           }
         }
 
