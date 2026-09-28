@@ -11,7 +11,7 @@ class SdCardCompanion {
     if (!RegExp(r'^[A-Za-z0-9 _-]{4}$').hasMatch(guid)) {
       throw const FormatException('Unsupported companion GUID');
     }
-    return '/helper/$guid.lua';
+    return '/programs/helper/$guid.lua';
   }
 
   // A transfer/source resource budget, independent of the preset's string limits.
@@ -26,7 +26,7 @@ class SdCardCompanion {
     final data = await download(pathForGuid(guid));
     if (data == null || data.isEmpty) {
       throw FormatException(
-        'Install $guid.lua in the top-level helper folder on the NT SD card.',
+        'Install $guid.lua in /programs/helper/ on the NT SD card.',
       );
     }
     if (data.length > maximumSourceBytes) {

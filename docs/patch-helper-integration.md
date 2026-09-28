@@ -1,10 +1,16 @@
 # Patch Helper SD-card companion
 
-The plug-in's GUID is `ThPh`. Its companion lives at `/helper/ThPh.lua` on the
-NT's SD card. Helper resolves `/helper/<GUID>.lua` with case preserved; the
+The plug-in's GUID is `ThPh`. Its companion lives at `/programs/helper/ThPh.lua` on the
+NT's SD card. Helper resolves `/programs/helper/<GUID>.lua` with case preserved; the
 script must declare the matching GUID and companion API version. This is host
 Lua: Helper downloads the file through the existing whole-file SD operation
 and runs it on the computer. Install only scripts from a source you trust.
+
+In File Browser, right-click `programs` and choose **New Folder** to create
+`helper` inside it, then upload `ThPh.lua` there. Right-clicking blank space in
+a directory panel creates a folder in that directory, including the SD root.
+The folder-plus button creates a folder in the current directory (the leftmost
+panel on desktop, or the open directory on mobile).
 
 Open the Patch Helper standard editor and choose **Load SD companion**. The Lua
 module's `render(state)` supplies a validated table document: field labels,

@@ -11,7 +11,7 @@ import 'package:nt_helper/ui/patch_map/patch_map_editor_cubit.dart';
 import '../../support/patch_map_device.dart';
 
 Future<Uint8List?> download(String path) async {
-  expect(path, '/helper/ThPh.lua');
+  expect(path, '/programs/helper/ThPh.lua');
   return File('test/fixtures/patch_map/patch_helper.lua').readAsBytes();
 }
 
@@ -156,20 +156,20 @@ void main() {
     );
     final loading = cubit.load();
     await cubit.close();
-    source.complete(await download('/helper/ThPh.lua'));
+    source.complete(await download('/programs/helper/ThPh.lua'));
     await loading;
     expect(device.frames, isEmpty);
   });
   test(
     'SD discovery is GUID-based and rejects unsafe filenames and mismatched scripts',
     () async {
-      expect(SdCardCompanion.pathForGuid('ThPh'), '/helper/ThPh.lua');
-      expect(SdCardCompanion.pathForGuid('Test'), '/helper/Test.lua');
+      expect(SdCardCompanion.pathForGuid('ThPh'), '/programs/helper/ThPh.lua');
+      expect(SdCardCompanion.pathForGuid('Test'), '/programs/helper/Test.lua');
       expect(() => SdCardCompanion.pathForGuid('../x'), throwsFormatException);
       const source =
           "return {api_version=1, guid='Test', render=function(s) return {ok=true} end}";
       final other = await SdCardCompanion.load((path) async {
-        expect(path, '/helper/Test.lua');
+        expect(path, '/programs/helper/Test.lua');
         return Uint8List.fromList(utf8.encode(source));
       }, guid: 'Test');
       expect(await other.evaluate({}), {'ok': true});

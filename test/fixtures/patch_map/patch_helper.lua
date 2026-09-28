@@ -1,5 +1,5 @@
 -- NT Helper companion, executed on the computer, NOT a disting NT Lua algorithm.
--- Install as /helper/ThPh.lua on the NT SD card.
+-- Install as /programs/helper/ThPh.lua on the NT SD card.
 local models = { 'NTX-8CV', 'ES-5', 'ESX-8GT', 'ESX-8CV' }
 local companion = {
   api_version = 1,

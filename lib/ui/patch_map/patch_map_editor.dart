@@ -202,7 +202,7 @@ class _PatchMapEditorState extends State<PatchMapEditor>
                   children: [
                     Text(
                       state.error ??
-                          'Load /helper/ThPh.lua from the NT SD card to open its editor. The companion runs on this computer.',
+                          'Load /programs/helper/ThPh.lua from the NT SD card to open its editor. The companion runs on this computer.',
                     ),
                     TextButton(
                       onPressed: _reload,
