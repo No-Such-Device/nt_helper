@@ -6,9 +6,8 @@ physical-device or full-application acceptance evidence.
 
 - `editor-desktop.png`: 1280 × 820, E2 Out 8 selected by an NT property change through Lua.
 - `editor-compact.png`: 707 × 853, expanded minimap, 48 × 48 socket targets.
-- `editor-name-conflict.png`: 1280 × 820, retained name draft and disabled Apply.
-  The transient snackbar is removed by the capture harness; full recovery text
-  remains visible in the dialog.
+- `editor-name-conflict.png`: historical evidence of the superseded manual Apply
+  interaction; it does not describe the current editor.
 
 Reproduce from the repository root:
 
@@ -21,5 +20,7 @@ validation (13 rejected, 7 accepted, blank cleared). Capture fonts use SFNS and
 Material Icons when available on the development Mac; assertions do not depend
 on their availability. Embedded PNG provenance records the capture origin.
 
-The current interaction test also checks app pause/resume, retained drafts on NT
-changes, and stopped polling after editor disposal.
+The current interaction test also checks automatic loading and synchronization,
+colour-only socket dots, stable layout during edits and validation, app
+pause/resume, merging local field changes with NT updates, and stopped polling
+after editor disposal.

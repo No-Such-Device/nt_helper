@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
+import 'dart:io';
+import 'package:crypto/crypto.dart';
+import 'package:path/path.dart' as p;
+import 'package:nt_helper/utils/temp_directory_utils.dart';
 import 'dart:typed_data';
 import 'lua_algorithm_controller_engine.dart';
 
-/// A session-owned SD source, never a bundled fallback or a device-global cache.
+/// SD Lua source with an optional endpoint-scoped scratch-file cache.
 class SdCardCompanion {
   SdCardCompanion._(this.source, this.guid);
   static String pathForGuid(String guid) {
@@ -22,8 +26,66 @@ class SdCardCompanion {
   static Future<SdCardCompanion> load(
     Future<Uint8List?> Function(String) download, {
     required String guid,
+    String? cacheKey,
+    bool refresh = false,
+    Future<Directory> Function()? temporaryDirectory,
   }) async {
-    final data = await download(pathForGuid(guid));
+    final sdPath = pathForGuid(guid);
+    File? cache;
+    if (cacheKey != null) {
+      try {
+        final root =
+            await (temporaryDirectory ??
+                TempDirectoryUtils.getWritableTempDirectory)();
+        final endpoint = sha256.convert(utf8.encode(cacheKey)).toString();
+        cache = File(
+          p.join(
+            root.path,
+            'nt_helper',
+            'companions',
+            'v1',
+            endpoint,
+            '$guid.lua',
+          ),
+        );
+        if (!refresh && await cache.exists()) {
+          try {
+            return _decode(await cache.readAsBytes(), guid);
+          } on FormatException {
+            // Invalid/partial scratch files are replaced by a fresh SD download.
+          }
+        }
+      } on FileSystemException {
+        // Scratch storage is optional; SD loading still works if unavailable.
+        cache = null;
+      }
+    }
+    final data = await download(sdPath);
+    final companion = _decode(data, guid);
+    if (cache != null) {
+      Directory? staging;
+      try {
+        await cache.parent.create(recursive: true);
+        staging = await cache.parent.createTemp('.download-');
+        final file = File(p.join(staging.path, '$guid.lua'));
+        await file.writeAsBytes(data!, flush: true);
+        await file.rename(cache.path);
+      } on FileSystemException {
+        // A cache write failure does not invalidate successfully downloaded Lua.
+      } finally {
+        if (staging != null) {
+          try {
+            await staging.delete(recursive: true);
+          } on FileSystemException {
+            /* Temporary cleanup is best effort. */
+          }
+        }
+      }
+    }
+    return companion;
+  }
+
+  static SdCardCompanion _decode(Uint8List? data, String guid) {
     if (data == null || data.isEmpty) {
       throw FormatException(
         'Install $guid.lua in /programs/helper/ on the NT SD card.',

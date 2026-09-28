@@ -226,6 +226,14 @@ ssh neal@dev.allosaurus-newton.ts.net \
 - [MCP API Guide](./docs/mcp-api-guide.md) — 4-tool API (search, new, edit, show)
 - [MCP Mapping Guide](./docs/mcp-mapping-guide.md) — CV, MIDI, i2c mappings
 
+## Layout Stability
+
+Layout stability is mandatory. Loading, sync, validation, error, and pending-edit
+states must not push controls or content around. Keep status indicators in fixed
+slots; use tooltips or overlays for details. If inline feedback is necessary,
+reserve its space in every state. Keep table rows and headers at stable positions
+as feedback appears or clears. Test geometry across asynchronous state changes.
+
 ## Flutter Accessibility
 
 - Build Flutter UI so blind users can understand state, navigate controls, and complete workflows with a screen reader.

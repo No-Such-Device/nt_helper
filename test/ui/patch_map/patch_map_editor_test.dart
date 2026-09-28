@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,12 +11,14 @@ import 'package:nt_helper/ui/patch_map/patch_map_editor.dart';
 import '../../support/patch_map_device.dart';
 
 Future<void> settleCompanion(WidgetTester tester) async {
-  for (var i = 0; i < 20; i++) {
+  await tester.pump(const Duration(milliseconds: 400));
+  for (var i = 0; i < 40; i++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
-    await tester.pump();
-    if (find.text('Waiting for the NT…').evaluate().isEmpty &&
+    await tester.pump(const Duration(milliseconds: 100));
+    if (i >= 3 &&
+        find.byTooltip('Up to date').evaluate().isNotEmpty &&
         find.byType(CircularProgressIndicator).evaluate().isEmpty) {
       break;
     }
@@ -24,6 +27,57 @@ Future<void> settleCompanion(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets(
+    'unnamed socket dots follow automatic edits and NT colour changes',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1280, 820));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final device = PatchMapDevice();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PatchMapEditor(
+              transport: device,
+              slotIndex: 0,
+              download: (_) async => File(
+                'test/fixtures/patch_map/patch_helper.lua',
+              ).readAsBytesSync(),
+            ),
+          ),
+        ),
+      );
+      await settleCompanion(tester);
+      final header = tester.getRect(find.text('Socket'));
+      Color? dotColour() =>
+          (tester
+                      .widget<Container>(
+                        find.byKey(const ValueKey('socket-colour-0')),
+                      )
+                      .decoration
+                  as BoxDecoration)
+              .color;
+      expect(dotColour(), isNull);
+      final selector = find.descendant(
+        of: find.byType(PatchMapRow).first,
+        matching: find.byType(DropdownButton<int>),
+      );
+      tester.widget<DropdownButton<int>>(selector).onChanged!(8);
+      await tester.pump();
+      await tester.pump();
+      expect(dotColour(), patchCableColours[8]);
+      expect(tester.getRect(find.text('Socket')), header);
+      await settleCompanion(tester);
+      expect(device.map.connections[0].colour, 8);
+      expect(device.map.connections[0].destination, isEmpty);
+      device.changeProperty(1, 4);
+      await tester.pump(const Duration(seconds: 1));
+      await settleCompanion(tester);
+      expect(dotColour(), patchCableColours[4]);
+      expect(tester.getRect(find.text('Socket')), header);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets(
     'SD Lua table, minimap selection, pending edits and narrow layout',
     (tester) async {
@@ -118,11 +172,16 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Load SD companion'), findsOneWidget);
-      await tester.tap(find.text('Load SD companion'));
+      expect(find.text('Load SD companion'), findsNothing);
       await settleCompanion(tester);
-      expect(find.text('Socket minimap'), findsOneWidget);
+      expect(find.text('Sockets'), findsOneWidget);
+      expect(find.text('Patch title'), findsNothing);
+      expect(find.text('Reload companion & map'), findsNothing);
+      expect(find.textContaining('Save the preset'), findsNothing);
+      expect(find.byTooltip('Up to date'), findsOneWidget);
       final semantics = tester.ensureSemantics();
+      await tester.pump();
+      expect(find.bySemanticsLabel('Up to date'), findsOneWidget);
 
       device.changeProperty(0, 36);
       await tester.pump(const Duration(seconds: 1));
@@ -150,29 +209,42 @@ void main() {
       }
       await tester.tap(find.byKey(const ValueKey('socket-dot-0')));
       await tester.pumpAndSettle();
+      final stableHeader = tester.getRect(find.text('Socket'));
       final destination = find.widgetWithText(TextField, 'Plaits out');
+      await tester.tap(destination);
+      final modifier = defaultTargetPlatform == TargetPlatform.macOS
+          ? LogicalKeyboardKey.metaLeft
+          : LogicalKeyboardKey.controlLeft;
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+      await tester.sendKeyUpEvent(modifier);
+      final destinationField = tester.widget<TextField>(destination);
+      expect(
+        destinationField.controller!.selection,
+        TextSelection(baseOffset: 0, extentOffset: 'Plaits out'.length),
+      );
       await tester.enterText(destination, 'Rings odd');
       await tester.pump();
-      expect(find.text('1 rows with unsent edits'), findsOneWidget);
+      expect(find.byTooltip('Syncing'), findsOneWidget);
+      expect(tester.getRect(find.text('Socket')), stableHeader);
       expect(device.map.connections.first.destination, 'Plaits out');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
       await settleCompanion(tester);
       expect(device.map.connections.first.destination, 'Rings odd');
-      expect(find.text('1 rows with unsent edits'), findsNothing);
+      expect(find.byTooltip('Syncing'), findsNothing);
+      final nextRow = find.byType(PatchMapRow).at(1);
+      final stableRow = tester.getRect(nextRow);
       await tester.enterText(find.byKey(const ValueKey('tag-0')), '13');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
       expect(
         find.text('Tag must be an integer from 1 to 12, or blank.'),
         findsOneWidget,
       );
+      expect(tester.getRect(nextRow), stableRow);
       expect(device.map.connections.first.tag, 0);
       await tester.enterText(find.byKey(const ValueKey('tag-0')), '7');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
       await settleCompanion(tester);
       expect(device.map.connections.first.tag, 7);
       await tester.enterText(find.byKey(const ValueKey('tag-0')), '');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
       await settleCompanion(tester);
       expect(device.map.connections.first.tag, 0);
 
@@ -204,7 +276,7 @@ void main() {
 
       await tester.binding.setSurfaceSize(const Size(707, 853));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Socket minimap'));
+      await tester.tap(find.text('Sockets'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(
@@ -228,20 +300,29 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(
         find.widgetWithText(TextField, 'Rings odd'),
-        'Unsent destination',
+        'Updated destination',
       );
+      await tester.pump();
+      final compactHeader = tester.getRect(find.text('Socket'));
       device.changeProperty(2, 5);
       await tester.pump(const Duration(seconds: 1));
       await settleCompanion(tester);
       expect(
-        find.widgetWithText(TextField, 'Unsent destination'),
+        find.widgetWithText(TextField, 'Updated destination'),
         findsOneWidget,
       );
-      expect(find.textContaining('unsent edits are retained'), findsWidgets);
+      expect(
+        device.map.connections[0].destination,
+        'Updated destination',
+        reason: tester
+            .widgetList<Tooltip>(find.byType(Tooltip))
+            .map((t) => t.message)
+            .join('; '),
+      );
+      expect(find.text('Apply row'), findsNothing);
+      expect(find.text('Discard edits'), findsNothing);
       expect(device.map.connections[35].tag, 5);
-      await tester.tap(find.text('Reload companion & map'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(TextButton, 'Reload'));
+      expect(tester.getRect(find.text('Socket')), compactHeader);
       await settleCompanion(tester);
       await tester.binding.setSurfaceSize(const Size(1280, 820));
       await tester.pumpAndSettle();
@@ -257,36 +338,9 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
       await settleCompanion(tester);
       expect(find.widgetWithText(TextField, 'Draft expander'), findsOneWidget);
-      expect(
-        tester
-            .widget<TextButton>(find.widgetWithText(TextButton, 'Apply'))
-            .onPressed,
-        isNull,
-      );
-      expect(device.map.expanders.first.name, 'Expander 1');
-      // The dialog already contains the complete error; omit transient overlay
-      // feedback from its evidence capture.
-      final messenger = ScaffoldMessenger.of(
-        tester.element(find.byType(PatchMapEditor)),
-      );
-      messenger.clearSnackBars();
-      messenger.removeCurrentSnackBar();
-      await tester.pumpAndSettle();
-      expect(find.byType(SnackBar), findsNothing);
-      if (Platform.environment['CAPTURE_PATCH_EDITOR'] == '1') {
-        await tester.runAsync(() async {
-          final image =
-              await (rootBoundary.currentContext!.findRenderObject()!
-                      as RenderRepaintBoundary)
-                  .toImage();
-          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-          File(
-            'docs/evidence/patch-helper/editor-name-conflict.png',
-          ).writeAsBytesSync(bytes!.buffer.asUint8List());
-          image.dispose();
-        });
-      }
-      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      expect(device.map.expanders.first.name, 'Draft expander');
+      expect(find.text('Apply'), findsNothing);
+      await tester.tap(find.widgetWithText(TextButton, 'Close'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

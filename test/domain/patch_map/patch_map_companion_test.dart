@@ -16,6 +16,115 @@ Future<Uint8List?> download(String path) async {
 }
 
 void main() {
+  test('missing Lua recovers automatically when the file appears', () async {
+    final device = PatchMapDevice();
+    var available = false;
+    var reads = 0;
+    final cubit = PatchMapEditorCubit(PatchMapClient(device, 0), (path) async {
+      reads++;
+      return available ? download(path) : null;
+    }, retryDelay: Duration.zero);
+    await cubit.load();
+    expect(cubit.state.error, contains('/programs/helper/'));
+    expect(device.frames, isEmpty);
+    available = true;
+    await cubit.synchronize();
+    expect(cubit.state.editable, isTrue);
+    expect(reads, 2);
+    await cubit.close();
+  });
+
+  test(
+    'background checks pick up changed SD Lua without reloading the map',
+    () async {
+      final device = PatchMapDevice();
+      var source = utf8.decode((await download('/programs/helper/ThPh.lua'))!);
+      final cubit = PatchMapEditorCubit(
+        PatchMapClient(device, 0),
+        (_) async => Uint8List.fromList(utf8.encode(source)),
+        companionCheckInterval: Duration.zero,
+      );
+      await cubit.load();
+      final map = cubit.state.map;
+      source = source.replaceAll(
+        "destination = 'Destination'",
+        "destination = 'Connected to'",
+      );
+      await cubit.synchronize();
+      expect(cubit.state.document!.labels['destination'], 'Connected to');
+      expect(identical(cubit.state.map, map), isTrue);
+      expect(device.frames.last['request']![7], 9);
+      await cubit.close();
+    },
+  );
+
+  test(
+    'SD Lua scratch cache reuses files, refreshes, separates devices and recovers',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'companion-cache-test-',
+      );
+      addTearDown(() => root.delete(recursive: true));
+      var downloads = 0;
+      Uint8List? data = Uint8List.fromList(utf8.encode('first Lua'));
+      Future<Uint8List?> fetch(String path) async {
+        expect(path, '/programs/helper/ThPh.lua');
+        downloads++;
+        return data;
+      }
+
+      Future<SdCardCompanion> load({
+        bool refresh = false,
+        String device = 'NT one',
+      }) => SdCardCompanion.load(
+        fetch,
+        guid: 'ThPh',
+        cacheKey: device,
+        refresh: refresh,
+        temporaryDirectory: () async => root,
+      );
+      expect((await load()).source, 'first Lua');
+      data = Uint8List.fromList(utf8.encode('updated Lua'));
+      expect((await load()).source, 'first Lua');
+      expect(downloads, 1);
+      expect((await load(refresh: true)).source, 'updated Lua');
+      expect(downloads, 2);
+      expect((await load(device: 'NT two')).source, 'updated Lua');
+      expect(downloads, 3);
+      data = null;
+      await expectLater(load(refresh: true), throwsFormatException);
+      expect((await load()).source, 'updated Lua');
+      final files = await root
+          .list(recursive: true)
+          .where((f) => f is File && f.path.endsWith('.lua'))
+          .cast<File>()
+          .toList();
+      expect(files, hasLength(2));
+      for (final file in files) {
+        await file.writeAsBytes([0xff]);
+      }
+      data = Uint8List.fromList(utf8.encode('repaired Lua'));
+      expect((await load()).source, 'repaired Lua');
+      expect(downloads, 5);
+      for (final file in files) {
+        await file.delete();
+      }
+      expect((await load()).source, 'repaired Lua');
+      expect(downloads, 6);
+    },
+  );
+
+  test('cache failures do not block the established SD transfer', () async {
+    final source = await SdCardCompanion.load(
+      download,
+      guid: 'ThPh',
+      cacheKey: 'NT',
+      temporaryDirectory: () async =>
+          throw const FileSystemException('unavailable'),
+    );
+    expect(source.source, contains('return companion'));
+  });
+
   test(
     'notification cannot return a write and failure keeps the last view',
     () async {
@@ -87,26 +196,70 @@ void main() {
     },
   );
 
+  test('automatic field edits merge with concurrent NT changes', () async {
+    final device = PatchMapDevice();
+    final cubit = PatchMapEditorCubit(PatchMapClient(device, 0), download);
+    await cubit.load();
+    cubit.queueConnection(0, 'destination', 'Rings');
+    cubit.queueConnection(0, 'colour', 4);
+    expect(cubit.state.map!.connections[0].colour, 4);
+    expect(cubit.state.pending, isTrue);
+    device.changeProperty(2, 3);
+    await cubit.synchronize();
+    expect(device.map.connections[0].destination, 'Rings');
+    expect(device.map.connections[0].colour, 4);
+    expect(device.map.connections[0].tag, 3);
+    expect(cubit.state.pending, isFalse);
+    expect(cubit.state.error, isNull);
+    await cubit.close();
+  });
+
+  test('latest edit survives a lost acknowledgement and converges', () async {
+    final device = PatchMapDevice();
+    final cubit = PatchMapEditorCubit(
+      PatchMapClient(device, 0),
+      download,
+      retryDelay: Duration.zero,
+    );
+    await cubit.load();
+    device.holdWrite = Completer<void>();
+    device.loseReply = true;
+    cubit.queueConnection(0, 'destination', 'First');
+    final writing = cubit.synchronize();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    cubit.queueConnection(0, 'destination', 'Latest');
+    device.holdWrite!.complete();
+    await writing;
+    expect(cubit.state.map!.connections[0].destination, 'Latest');
+    expect(cubit.state.pending, isTrue);
+    device.loseReply = false;
+    device.holdWrite = null;
+    await cubit.synchronize();
+    expect(device.map.connections[0].destination, 'Latest');
+    expect(device.revision, 2);
+    expect(cubit.state.pending, isFalse);
+    await cubit.close();
+  });
+
   test(
-    'NT change preserves drafts and blocks writes until explicit reload',
+    'already applied edit is acknowledged by reread without a duplicate write',
     () async {
       final device = PatchMapDevice();
       final cubit = PatchMapEditorCubit(
         PatchMapClient(device, 0),
         download,
-        hasUnsentEdits: () => true,
+        retryDelay: Duration.zero,
       );
       await cubit.load();
-      final original = cubit.state.map;
-      device.changeProperty(2, 3);
-      await cubit.refresh();
-      expect(identical(cubit.state.map, original), isTrue);
-      expect(cubit.state.error, contains('unsent edits are retained'));
-      final before = device.frames.length;
-      await cubit.setTitle('stale draft');
-      expect(device.frames.length, before);
-      await cubit.load();
-      expect(cubit.state.map!.connections[0].tag, 3);
+      device.loseReply = true;
+      cubit.queueConnection(0, 'colour', 8);
+      await cubit.synchronize();
+      expect(cubit.state.pending, isTrue);
+      device.loseReply = false;
+      await cubit.synchronize();
+      expect(device.revision, 1);
+      expect(cubit.state.pending, isFalse);
+      expect(cubit.state.error, isNull);
       await cubit.close();
     },
   );
@@ -230,25 +383,33 @@ void main() {
     },
   );
   test(
-    'failed writes retain last acknowledged state and require reload',
+    'lost write acknowledgement recovers by reading without replaying writes',
     () async {
       final device = PatchMapDevice();
-      final cubit = PatchMapEditorCubit(PatchMapClient(device, 0), download);
+      final cubit = PatchMapEditorCubit(
+        PatchMapClient(device, 0),
+        download,
+        retryDelay: Duration.zero,
+      );
       await cubit.load();
       device.holdWrite = Completer<void>();
       device.loseReply = true;
-      final pending = cubit.setTitle('Changed');
+      final pending = cubit.setConnection(
+        PatchConnection(socket: 0, destination: 'Changed'),
+      );
       await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(cubit.state.busy, isTrue);
-      expect(cubit.state.map!.title, 'Patch Helper');
+      expect(cubit.state.map!.connections[0].destination, '');
       device.holdWrite!.complete();
       await pending;
       expect(cubit.state.editable, isFalse);
-      expect(cubit.state.map!.title, 'Patch Helper');
+      expect(cubit.state.map!.connections[0].destination, '');
       device.holdWrite = null;
       device.loseReply = false;
-      await cubit.load();
-      expect(cubit.state.map!.title, 'Changed');
+      await cubit.synchronize();
+      expect(cubit.state.map!.connections[0].destination, 'Changed');
+      expect(device.revision, 1);
+      expect(device.frames.where((f) => f['request']?[7] == 3), isEmpty);
       await cubit.close();
     },
   );
