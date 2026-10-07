@@ -314,6 +314,14 @@ void main() {
       await tester.pump();
 
       expect(firmwareCubit.state, isA<FirmwareUpdateStateVerifyingMidi>());
+      expect(
+        tester
+            .widget<IconButton>(
+              find.widgetWithIcon(IconButton, Icons.arrow_back),
+            )
+            .onPressed,
+        isNull,
+      );
 
       await tester.pump(const Duration(seconds: 5));
       await tester.pump();

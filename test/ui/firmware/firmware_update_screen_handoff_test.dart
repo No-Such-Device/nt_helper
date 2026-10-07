@@ -422,7 +422,20 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Install'));
       await tester.pump();
       await tester.tap(find.widgetWithText(FilledButton, 'Update Firmware'));
+      await tester.pump();
+      final back = find.widgetWithIcon(IconButton, Icons.arrow_back);
+      expect(tester.widget<IconButton>(back).onPressed, isNull);
+      expect(find.text('Cancel'), findsNothing);
       await _pumpBootloaderWait(tester);
+      expect(tester.widget<IconButton>(back).onPressed, isNull);
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('Cancel Firmware Update?'), findsOneWidget);
+      await tester.tap(find.text('Continue Update'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      verifyNever(() => flashToolBridge.cancel());
 
       expect(events, ['bootloader', 'release', 'flash']);
       verifyNever(

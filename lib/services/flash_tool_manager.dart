@@ -18,6 +18,9 @@ typedef TlsDiagnostics = Future<String> Function(Uri uri);
 /// Manages the nt-flash tool binary - auto-downloading from GitHub releases
 class FlashToolManager {
   final http.Client _httpClient;
+
+  /// Release the HTTP client when its firmware route is removed.
+  void dispose() => _httpClient.close();
   final TrustedHttpClientFactory _trustedClientFactory;
   final TlsDiagnostics _tlsDiagnostics;
   final String _operatingSystem;

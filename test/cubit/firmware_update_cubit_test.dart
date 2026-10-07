@@ -63,6 +63,7 @@ void main() {
     Duration midiPollInterval = const Duration(seconds: 5),
     int midiPollAttempts = 12,
     bool? isWindowsOverride,
+    bool ownsServices = false,
   }) {
     return FirmwareUpdateCubit(
       firmwareVersionService: mockFirmwareVersionService,
@@ -79,6 +80,7 @@ void main() {
       midiPollInterval: midiPollInterval,
       midiPollAttempts: midiPollAttempts,
       isWindowsOverride: isWindowsOverride,
+      ownsServices: ownsServices,
     );
   }
 
@@ -953,6 +955,358 @@ void main() {
         expect(cubit.state, isA<FirmwareUpdateStateSuccess>());
         expect(checks, 3);
       });
+    });
+
+    test('only route-owned firmware services close, exactly once', () async {
+      final borrowed = createCubit();
+      await borrowed.close();
+      verifyNever(() => mockFirmwareVersionService.dispose());
+      verifyNever(() => mockFlashToolManager.dispose());
+      final owned = createCubit(ownsServices: true);
+      await owned.close();
+      await owned.close();
+      verify(() => mockFirmwareVersionService.dispose()).called(1);
+      verify(() => mockFlashToolManager.dispose()).called(1);
+    });
+
+    group('asynchronous route lifetime', () {
+      final release = FirmwareRelease(
+        version: '1.16.0',
+        releaseDate: DateTime(2026),
+        changelog: const [],
+        downloadUrl: 'https://example.com/firmware.zip',
+      );
+
+      setUp(() {
+        when(
+          () => mockFirmwareVersionService.fetchAvailableVersions(),
+        ).thenAnswer((_) async => []);
+        when(
+          () => mockFirmwareVersionService.downloadFirmware(
+            any(),
+            onProgress: any(named: 'onProgress'),
+          ),
+        ).thenAnswer((_) async => '/tmp/firmware.zip');
+        when(
+          () => mockFlashToolManager.getToolPath(),
+        ).thenAnswer((_) async => '/path/to/tool');
+        when(() => mockFlashToolBridge.cancel()).thenAnswer((_) async {});
+      });
+
+      for (final fail in [false, true]) {
+        test(
+          'late version fetch after close is harmless (failure: $fail)',
+          () async {
+            final fetch = Completer<List<FirmwareRelease>>();
+            final manager = MockDistingMidiManager();
+            var releases = 0;
+            when(
+              () => mockFirmwareVersionService.fetchAvailableVersions(),
+            ).thenAnswer((_) => fetch.future);
+            final cubit = createCubit(
+              midiManager: manager,
+              disposeMidiManager: (_) => releases++,
+            );
+            final states = <FirmwareUpdateState>[];
+            final subscription = cubit.stream.listen(states.add);
+            final loading = cubit.loadAvailableVersions();
+            await cubit.close();
+            if (fail) {
+              fetch.completeError(StateError('late network error'));
+            } else {
+              fetch.complete([release]);
+            }
+            await loading;
+            expect(states, [
+              isA<FirmwareUpdateStateInitial>().having(
+                (s) => s.isLoadingVersions,
+                'loading',
+                true,
+              ),
+            ]);
+            expect(releases, 0);
+            await subscription.cancel();
+          },
+        );
+      }
+
+      test(
+        'failed lazy acquisition and bootloader request clean up and can retry',
+        () async {
+          final manager = MockDistingMidiManager();
+          var acquisitions = 0;
+          var releases = 0;
+          when(
+            () => manager.requestEnterBootloader(),
+          ).thenThrow(StateError('bootloader unavailable'));
+          final cubit = createCubit(
+            firmwareVersion: FirmwareVersion('1.15.0'),
+            createMidiManager: () async {
+              if (++acquisitions == 1) throw StateError('cannot connect');
+              return manager;
+            },
+            disposeMidiManager: (_) => releases++,
+          );
+          await cubit.startUpdate(release);
+          await cubit.confirmAndFlash();
+          expect(cubit.state, isA<FirmwareUpdateStateError>());
+          expect(releases, 0);
+          await cubit.retryFlash();
+          await cubit.confirmAndFlash();
+          expect(cubit.state, isA<FirmwareUpdateStateError>());
+          expect(releases, 1);
+          await cubit.cancel();
+          await cubit.close();
+          expect(acquisitions, 2);
+          expect(releases, 1);
+          verifyNever(() => mockFlashToolBridge.flash(any()));
+        },
+      );
+
+      for (final cancel in [false, true]) {
+        test(
+          'late lazy acquisition is released after ${cancel ? 'cancel' : 'close'}',
+          () async {
+            final acquisition = Completer<IDistingMidiManager>();
+            final manager = MockDistingMidiManager();
+            var releases = 0;
+            final cubit = createCubit(
+              firmwareVersion: FirmwareVersion('1.15.0'),
+              createMidiManager: () => acquisition.future,
+              disposeMidiManager: (_) => releases++,
+            );
+            await cubit.startUpdate(release);
+            final confirmation = cubit.confirmAndFlash();
+            if (cancel) {
+              await cubit.cancel();
+            } else {
+              await cubit.close();
+            }
+            final retainedState = cubit.state;
+            acquisition.complete(manager);
+            await confirmation;
+            expect(cubit.state, same(retainedState));
+            expect(releases, 1);
+            verifyNever(() => manager.requestEnterBootloader());
+            verifyNever(() => mockFlashToolBridge.flash(any()));
+            if (cancel) await cubit.close();
+            expect(releases, 1);
+          },
+        );
+      }
+
+      test(
+        'late bootloader completion cannot release a newer retry manager',
+        () async {
+          final first = MockDistingMidiManager();
+          final second = MockDistingMidiManager();
+          final firstCommand = Completer<void>();
+          final secondCommand = Completer<void>();
+          when(
+            () => first.requestEnterBootloader(),
+          ).thenAnswer((_) => firstCommand.future);
+          when(
+            () => second.requestEnterBootloader(),
+          ).thenAnswer((_) => secondCommand.future);
+          final released = <IDistingMidiManager>[];
+          var attempts = 0;
+          final cubit = createCubit(
+            firmwareVersion: FirmwareVersion('1.15.0'),
+            createMidiManager: () async => ++attempts == 1 ? first : second,
+            disposeMidiManager: released.add,
+          );
+          await cubit.startUpdate(release);
+          final oldOperation = cubit.confirmAndFlash();
+          await Future<void>.delayed(Duration.zero);
+          await cubit.cancel();
+          expect(released, [first]);
+          await cubit.startUpdate(release);
+          final retry = cubit.confirmAndFlash();
+          await Future<void>.delayed(Duration.zero);
+          firstCommand.complete();
+          await oldOperation;
+          expect(released, [first]);
+          expect(cubit.state, isA<FirmwareUpdateStateEnteringBootloader>());
+          await cubit.close();
+          secondCommand.completeError(StateError('late bootloader failure'));
+          await retry;
+          expect(released, [first, second]);
+          verifyNever(() => mockFlashToolBridge.flash(any()));
+        },
+      );
+
+      test('late acquisition cannot replace a current retry manager', () async {
+        final late = MockDistingMidiManager();
+        final current = MockDistingMidiManager();
+        final acquisition = Completer<IDistingMidiManager>();
+        final command = Completer<void>();
+        when(
+          () => current.requestEnterBootloader(),
+        ).thenAnswer((_) => command.future);
+        final released = <IDistingMidiManager>[];
+        var attempts = 0;
+        final cubit = createCubit(
+          firmwareVersion: FirmwareVersion('1.15.0'),
+          createMidiManager: () =>
+              ++attempts == 1 ? acquisition.future : Future.value(current),
+          disposeMidiManager: released.add,
+        );
+        await cubit.startUpdate(release);
+        final oldOperation = cubit.confirmAndFlash();
+        await cubit.cancel();
+        await cubit.startUpdate(release);
+        final retry = cubit.confirmAndFlash();
+        await Future<void>.delayed(Duration.zero);
+        acquisition.complete(late);
+        await oldOperation;
+        expect(released, [late]);
+        verifyNever(() => late.requestEnterBootloader());
+        await cubit.close();
+        command.complete();
+        await retry;
+        expect(released, [late, current]);
+      });
+
+      test(
+        'close during tool preparation neither launches nor consumes borrowed transport',
+        () async {
+          final prepared = Completer<String>();
+          final manager = MockDistingMidiManager();
+          var releases = 0;
+          when(
+            () => mockFlashToolManager.getToolPath(),
+          ).thenAnswer((_) => prepared.future);
+          final cubit = createCubit(
+            midiManager: manager,
+            disposeMidiManager: (_) => releases++,
+          );
+          await cubit.startUpdate(release);
+          final flash = cubit.confirmAndFlash();
+          await cubit.close();
+          prepared.complete('/path/to/tool');
+          await flash;
+          expect(releases, 0);
+          verifyNever(() => mockFlashToolBridge.flash(any()));
+        },
+      );
+
+      for (final cancel in [false, true]) {
+        test(
+          'late reacquisition is invalidated after ${cancel ? 'cancel' : 'close'}',
+          () async {
+            final detection = Completer<bool>();
+            var checks = 0;
+            final progress = StreamController<FlashProgress>();
+            when(
+              () => mockFlashToolBridge.flash(any()),
+            ).thenAnswer((_) => progress.stream);
+            final cubit = createCubit(
+              checkMidiDevices: () {
+                checks++;
+                return detection.future;
+              },
+              midiPollInterval: Duration.zero,
+              midiPollAttempts: 1,
+            );
+            await cubit.startUpdate(release);
+            await cubit.confirmAndFlash();
+            progress.add(
+              const FlashProgress(
+                stage: FlashStage.complete,
+                percent: 100,
+                message: 'Done',
+              ),
+            );
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+            expect(checks, 1);
+            expect(cubit.state, isA<FirmwareUpdateStateVerifyingMidi>());
+            if (cancel) {
+              await cubit.cancel();
+            } else {
+              await cubit.close();
+            }
+            final retainedState = cubit.state;
+            detection.complete(true);
+            await Future<void>.delayed(Duration.zero);
+            expect(cubit.state, same(retainedState));
+            expect(checks, 1);
+            expect(progress.hasListener, isFalse);
+            if (cancel) await cubit.close();
+            await progress.close();
+          },
+        );
+      }
+
+      for (final action in ['close', 'cancel', 'reset']) {
+        test(
+          '$action cleans the flash subscription and downloaded file',
+          () async {
+            final directory = await Directory.systemTemp.createTemp(
+              'firmware-lifetime-',
+            );
+            final file = File('${directory.path}/distingNT_test.zip');
+            await file.writeAsBytes([1, 2, 3]);
+            addTearDown(() => directory.delete(recursive: true));
+            var subscriptionCancellations = 0;
+            final progress = StreamController<FlashProgress>(
+              onCancel: () => subscriptionCancellations++,
+            );
+            when(
+              () => mockFirmwareVersionService.downloadFirmware(
+                any(),
+                onProgress: any(named: 'onProgress'),
+              ),
+            ).thenAnswer((_) async => file.path);
+            when(
+              () => mockFlashToolBridge.flash(any()),
+            ).thenAnswer((_) => progress.stream);
+            final cubit = createCubit();
+            await cubit.startUpdate(release);
+            await cubit.confirmAndFlash();
+            if (action == 'close') {
+              await cubit.close();
+            } else if (action == 'cancel') {
+              await cubit.cancel();
+              await cubit.close();
+            } else {
+              progress.addError(StateError('flash failure'));
+              await Future<void>.delayed(Duration.zero);
+              expect(cubit.state, isA<FirmwareUpdateStateError>());
+              await cubit.cleanupAndReset();
+              await cubit.close();
+            }
+            expect(await file.exists(), isFalse);
+            expect(subscriptionCancellations, 1);
+            await progress.close();
+          },
+        );
+      }
+
+      test(
+        'download finishing after close removes its late temporary file',
+        () async {
+          final directory = await Directory.systemTemp.createTemp(
+            'firmware-late-',
+          );
+          final file = File('${directory.path}/distingNT_late.zip');
+          await file.writeAsBytes([1]);
+          addTearDown(() => directory.delete(recursive: true));
+          final download = Completer<String>();
+          when(
+            () => mockFirmwareVersionService.downloadFirmware(
+              any(),
+              onProgress: any(named: 'onProgress'),
+            ),
+          ).thenAnswer((_) => download.future);
+          final cubit = createCubit();
+          final operation = cubit.startUpdate(release);
+          await cubit.close();
+          download.complete(file.path);
+          await operation;
+          expect(await file.exists(), isFalse);
+          expect(cubit.state, isA<FirmwareUpdateStateDownloading>());
+        },
+      );
     });
 
     group('MIDI release lifecycle', () {

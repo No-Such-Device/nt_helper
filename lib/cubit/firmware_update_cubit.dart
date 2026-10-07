@@ -38,7 +38,11 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   final Duration _midiPollInterval;
   final int _midiPollAttempts;
   final bool _isWindows;
-  bool _midiReleased = false;
+  final bool _ownsServices;
+  // A supplied manager is borrowed until a deliberate firmware handoff.
+  bool _ownsMidiManager = false;
+  bool _closing = false;
+  int _operationGeneration = 0;
   int _midiReacquisitionGeneration = 0;
 
   StreamSubscription<FlashProgress>? _flashSubscription;
@@ -61,6 +65,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     Duration midiPollInterval = const Duration(seconds: 5),
     int midiPollAttempts = 12,
     bool? isWindowsOverride,
+    bool ownsServices = false,
   }) : _firmwareVersionService = firmwareVersionService,
        _flashToolManager = flashToolManager,
        _flashToolBridge = flashToolBridge,
@@ -77,7 +82,11 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
        _midiPollInterval = midiPollInterval,
        _midiPollAttempts = midiPollAttempts,
        _isWindows = isWindowsOverride ?? Platform.isWindows,
+       _ownsServices = ownsServices,
        super(FirmwareUpdateState.initial(currentVersion: currentVersion));
+
+  bool _isCurrent(int generation) =>
+      !_closing && !isClosed && generation == _operationGeneration;
 
   bool get _canAutoEnterBootloader =>
       _firmwareVersion?.hasBootloaderSysEx == true &&
@@ -94,7 +103,8 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
   /// Load available firmware versions from the server
   Future<void> loadAvailableVersions() async {
-    if (!isUpdateAvailable) return;
+    if (_closing || isClosed || !isUpdateAvailable) return;
+    final generation = _operationGeneration;
 
     final currentState = state;
     if (currentState is! FirmwareUpdateStateInitial) return;
@@ -103,6 +113,9 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
     try {
       final versions = await _firmwareVersionService.fetchAvailableVersions();
+      if (!_isCurrent(generation) || state is! FirmwareUpdateStateInitial) {
+        return;
+      }
       emit(
         currentState.copyWith(
           availableVersions: versions,
@@ -110,6 +123,9 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
         ),
       );
     } catch (e) {
+      if (!_isCurrent(generation) || state is! FirmwareUpdateStateInitial) {
+        return;
+      }
       emit(
         currentState.copyWith(
           isLoadingVersions: false,
@@ -121,6 +137,8 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
   /// Start the firmware update process for a specific version
   Future<void> startUpdate(FirmwareRelease version) async {
+    if (_closing || isClosed) return;
+    final generation = ++_operationGeneration;
     if (!isUpdateAvailable) {
       emit(
         FirmwareUpdateState.error(
@@ -140,7 +158,8 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
       final firmwarePath = await _firmwareVersionService.downloadFirmware(
         version,
         onProgress: (progress) {
-          if (state is FirmwareUpdateStateDownloading) {
+          if (_isCurrent(generation) &&
+              state is FirmwareUpdateStateDownloading) {
             emit(
               FirmwareUpdateState.downloading(
                 version: version,
@@ -151,6 +170,10 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
         },
       );
 
+      if (!_isCurrent(generation)) {
+        await _deleteTempFile(firmwarePath);
+        return;
+      }
       _currentFirmwarePath = firmwarePath;
       _currentTargetVersion = version.version;
 
@@ -162,6 +185,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
         ),
       );
     } on FirmwareDownloadException catch (e) {
+      if (!_isCurrent(generation)) return;
       emit(
         FirmwareUpdateState.error(
           message: e.message,
@@ -169,6 +193,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
         ),
       );
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       emit(
         FirmwareUpdateState.error(
           message: 'Download failed: $e',
@@ -180,6 +205,8 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
   /// Use a local firmware file instead of downloading
   Future<void> useLocalFile(String path) async {
+    if (_closing || isClosed) return;
+    final generation = ++_operationGeneration;
     if (!isUpdateAvailable) {
       emit(
         FirmwareUpdateState.error(message: 'Firmware updates not available'),
@@ -190,6 +217,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     // Validate the file exists and is a valid ZIP
     try {
       final bytes = await _readLocalFirmwareFile(path);
+      if (!_isCurrent(generation)) return;
       if (bytes == null) {
         emit(
           const FirmwareUpdateState.error(
@@ -237,6 +265,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
         ),
       );
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       emit(
         FirmwareUpdateState.error(
           message: 'Invalid firmware file: $e',
@@ -250,6 +279,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   /// If auto-enter is available, enters bootloader automatically; otherwise
   /// starts flashing directly (user already in bootloader mode).
   Future<void> confirmAndFlash() async {
+    if (_closing || isClosed) return;
     final currentState = state;
     if (currentState is! FirmwareUpdateStateWaitingForBootloader) return;
 
@@ -265,6 +295,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
   /// Start the flash process after user confirms bootloader mode
   Future<void> startFlashing() async {
+    if (_closing || isClosed) return;
     final currentState = state;
     final String firmwarePath;
     final String targetVersion;
@@ -279,11 +310,16 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
       return;
     }
 
+    final generation = ++_operationGeneration;
+
     // On Linux, automatically install udev rules if missing
     if (Platform.isLinux) {
       final udevRulesFile = File('/etc/udev/rules.d/99-disting-nt.rules');
-      if (!await udevRulesFile.exists()) {
+      final rulesExist = await udevRulesFile.exists();
+      if (!_isCurrent(generation)) return;
+      if (!rulesExist) {
         final installed = await _installUdevRulesInternal();
+        if (!_isCurrent(generation)) return;
         if (!installed) {
           emit(
             FirmwareUpdateState.error(
@@ -304,6 +340,8 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     try {
       await _flashToolManager.getToolPath();
     } catch (e) {
+      if (!_isCurrent(generation)) return;
+      _releaseOwnedMidiConnection();
       emit(
         FirmwareUpdateState.error(
           message: 'Failed to prepare flash tool: $e',
@@ -314,6 +352,11 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
       );
       return;
     }
+
+    if (!_isCurrent(generation)) return;
+    await _flashSubscription?.cancel();
+    _flashSubscription = null;
+    if (!_isCurrent(generation)) return;
 
     // The desktop MIDI backends must release the selected ports before the
     // standalone flasher resets and re-enumerates the NT.
@@ -337,6 +380,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
       _flashSubscription = stream.listen(
         (progress) {
+          if (!_isCurrent(generation)) return;
           currentStage = progress.stage;
           if (progress.isError) {
             emit(
@@ -364,6 +408,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
           }
         },
         onError: (error) {
+          if (!_isCurrent(generation)) return;
           emit(
             FirmwareUpdateState.error(
               message: 'Flash error: $error',
@@ -375,6 +420,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
           );
         },
         onDone: () {
+          if (!_isCurrent(generation)) return;
           // Stream completed - check if we're still in flashing state
           // If so, something went wrong
           if (state is FirmwareUpdateStateFlashing) {
@@ -391,6 +437,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
         },
       );
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       emit(
         FirmwareUpdateState.error(
           message: 'Failed to start flash: $e',
@@ -410,6 +457,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     String firmwarePath,
     String targetVersion,
   ) async {
+    final generation = ++_operationGeneration;
     emit(
       FirmwareUpdateState.enteringBootloader(
         firmwarePath: firmwarePath,
@@ -417,18 +465,37 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
       ),
     );
 
-    if (_midiManager == null && _createMidiManager != null) {
-      _midiManager = await _createMidiManager();
-      _midiReleased = false;
-    }
-
     try {
-      await _midiManager!.requestEnterBootloader();
-    } finally {
-      // Close both MIDI directions immediately after the bootloader command,
-      // before the flasher process is launched.
-      _releaseMidiConnection();
+      if (_midiManager == null && _createMidiManager != null) {
+        final manager = await _createMidiManager();
+        if (!_isCurrent(generation)) {
+          _disposeManager(manager);
+          return;
+        }
+        _midiManager = manager;
+      }
+      // A bootloader command deliberately consumes even a borrowed manager.
+      _ownsMidiManager = true;
+      final manager = _midiManager!;
+      try {
+        await manager.requestEnterBootloader();
+      } finally {
+        // A late command completion must not release a newer retry's manager.
+        if (identical(_midiManager, manager)) _releaseOwnedMidiConnection();
+      }
+    } catch (e) {
+      if (!_isCurrent(generation)) return;
+      emit(
+        FirmwareUpdateState.error(
+          message: 'Failed to enter bootloader: $e',
+          errorType: FirmwareErrorType.bootloaderConnection,
+          firmwarePath: firmwarePath,
+          targetVersion: targetVersion,
+        ),
+      );
+      return;
     }
+    if (!_isCurrent(generation)) return;
 
     // Wait for the device to switch to bootloader mode, updating progress.
     final totalTicks =
@@ -436,7 +503,10 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
         _bootloaderWaitTickInterval.inMilliseconds;
     for (var tick = 1; tick <= totalTicks; tick++) {
       await Future<void>.delayed(_bootloaderWaitTickInterval);
-      if (state is! FirmwareUpdateStateEnteringBootloader) return;
+      if (!_isCurrent(generation) ||
+          state is! FirmwareUpdateStateEnteringBootloader) {
+        return;
+      }
       emit(
         FirmwareUpdateState.enteringBootloader(
           firmwarePath: firmwarePath,
@@ -446,17 +516,25 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
       );
     }
 
-    if (state is FirmwareUpdateStateEnteringBootloader) {
+    if (_isCurrent(generation) &&
+        state is FirmwareUpdateStateEnteringBootloader) {
       await startFlashing();
     }
   }
 
+  void _releaseOwnedMidiConnection() {
+    if (_ownsMidiManager) _releaseMidiConnection();
+  }
+
   void _releaseMidiConnection() {
     final manager = _midiManager;
-    if (_midiReleased || manager == null) return;
-
-    _midiReleased = true;
+    if (manager == null) return;
     _midiManager = null;
+    _ownsMidiManager = false;
+    _disposeManager(manager);
+  }
+
+  void _disposeManager(IDistingMidiManager manager) {
     try {
       final dispose = _disposeMidiManager;
       if (dispose != null) {
@@ -502,7 +580,9 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   }) async {
     for (var attempt = 1; attempt <= _midiPollAttempts; attempt++) {
       await Future<void>.delayed(_midiPollInterval);
-      if (isClosed || generation != _midiReacquisitionGeneration) return;
+      if (_closing || isClosed || generation != _midiReacquisitionGeneration) {
+        return;
+      }
 
       var found = false;
       try {
@@ -512,7 +592,9 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
         // retrying through the full timeout.
       }
 
-      if (isClosed || generation != _midiReacquisitionGeneration) return;
+      if (_closing || isClosed || generation != _midiReacquisitionGeneration) {
+        return;
+      }
       if (found) {
         emit(FirmwareUpdateState.success(newVersion: newVersion));
         return;
@@ -539,6 +621,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
   /// Retry the complete five-second/one-minute MIDI detection cycle.
   Future<void> checkMidiAgain() async {
+    if (_closing || isClosed) return;
     final currentState = state;
     final checkMidiDevices = _checkMidiDevices;
     if (currentState is! FirmwareUpdateStateMidiRecoveryRequired ||
@@ -579,13 +662,18 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
   /// Cancel the current operation
   Future<void> cancel() async {
+    if (_closing || isClosed) return;
+    final generation = ++_operationGeneration;
     _midiReacquisitionGeneration++;
-    await _flashSubscription?.cancel();
+    final subscription = _flashSubscription;
     _flashSubscription = null;
-
-    await _flashToolBridge.cancel();
     _releaseMidiConnection();
-    await _cleanupTempFiles();
+    final cleanup = _cleanupTempFiles();
+    final cancellation = _flashToolBridge.cancel();
+    await subscription?.cancel();
+    await cancellation;
+    await cleanup;
+    if (!_isCurrent(generation)) return;
 
     final currentState = state;
     if (currentState is FirmwareUpdateStateInitial) {
@@ -600,7 +688,16 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
   /// Clean up temporary files (called on success, cancel, or error dismiss)
   Future<void> cleanupAndReset() async {
-    await _cleanupTempFiles();
+    if (_closing || isClosed) return;
+    final generation = ++_operationGeneration;
+    _midiReacquisitionGeneration++;
+    final subscription = _flashSubscription;
+    _flashSubscription = null;
+    _releaseOwnedMidiConnection();
+    final cleanup = _cleanupTempFiles();
+    await subscription?.cancel();
+    await cleanup;
+    if (!_isCurrent(generation)) return;
     emit(FirmwareUpdateState.initial(currentVersion: _getCurrentVersion()));
     // Reload available versions
     await loadAvailableVersions();
@@ -609,6 +706,9 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   /// Return to bootloader instructions (from error state)
   /// Used when user needs to re-enter bootloader mode
   void returnToBootloaderInstructions() {
+    if (_closing || isClosed) return;
+    _operationGeneration++;
+    _midiReacquisitionGeneration++;
     final currentState = state;
     String? firmwarePath;
     String? targetVersion;
@@ -639,6 +739,9 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   /// Retry the flash process (from error state)
   /// Used when the flash failed during upload/write
   Future<void> retryFlash() async {
+    if (_closing || isClosed) return;
+    _operationGeneration++;
+    _midiReacquisitionGeneration++;
     final currentState = state;
     String? firmwarePath;
     String? targetVersion;
@@ -669,6 +772,8 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   /// Install udev rules on Linux using pkexec for elevated privileges
   /// Called from error state when user wants to retry after failed auto-install
   Future<bool> installUdevRules() async {
+    if (_closing || isClosed) return false;
+    final generation = _operationGeneration;
     if (!Platform.isLinux) return false;
 
     final currentState = state;
@@ -678,6 +783,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     }
 
     final installed = await _installUdevRulesInternal();
+    if (!_isCurrent(generation)) return false;
     if (installed) {
       // Success - return to bootloader waiting state and retry
       final firmwarePath = currentState.firmwarePath ?? _currentFirmwarePath;
@@ -778,20 +884,20 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="15a2", ATTR{idProduct}=="0073", MODE="0666"
 
   /// Clean up downloaded firmware files
   Future<void> _cleanupTempFiles() async {
-    if (_currentFirmwarePath != null) {
-      // Only delete if it's in the temp directory (not a user-selected local file)
-      if (_currentFirmwarePath!.contains('distingNT_')) {
-        final file = File(_currentFirmwarePath!);
-        if (await file.exists()) {
-          try {
-            await file.delete();
-          } catch (_) {
-            // Ignore cleanup errors
-          }
-        }
-      }
-      _currentFirmwarePath = null;
-      _currentTargetVersion = null;
+    final path = _currentFirmwarePath;
+    _currentFirmwarePath = null;
+    _currentTargetVersion = null;
+    if (path != null) await _deleteTempFile(path);
+  }
+
+  Future<void> _deleteTempFile(String path) async {
+    // Retain user-selected files; only remove downloaded firmware packages.
+    if (!path.contains('distingNT_')) return;
+    try {
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+    } catch (_) {
+      // Ignore cleanup errors.
     }
   }
 
@@ -800,10 +906,18 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="15a2", ATTR{idProduct}=="0073", MODE="0666"
 
   @override
   Future<void> close() async {
+    final disposeServices = !_closing && _ownsServices;
+    _closing = true;
+    _operationGeneration++;
     _midiReacquisitionGeneration++;
+    _releaseOwnedMidiConnection();
+    if (disposeServices) {
+      _firmwareVersionService.dispose();
+      _flashToolManager.dispose();
+    }
     await _flashSubscription?.cancel();
+    _flashSubscription = null;
     await _cleanupTempFiles();
-    _releaseMidiConnection();
     return super.close();
   }
 }

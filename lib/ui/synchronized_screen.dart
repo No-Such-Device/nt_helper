@@ -137,6 +137,7 @@ class SynchronizedScreen extends StatefulWidget {
   final Uint8List? screenshot;
   final bool loading;
   final PlatformInteractionService? platformService;
+  final FirmwareUpdateScreenDependencies? firmwareUpdateDependencies;
 
   const SynchronizedScreen({
     super.key,
@@ -150,6 +151,7 @@ class SynchronizedScreen extends StatefulWidget {
     required this.screenshot,
     required this.loading,
     this.platformService,
+    this.firmwareUpdateDependencies,
   });
 
   @override
@@ -2014,6 +2016,8 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                               MaterialPageRoute(
                                 builder: (_) => FirmwareUpdateScreen(
                                   distingCubit: distingCubit,
+                                  dependencies:
+                                      widget.firmwareUpdateDependencies,
                                 ),
                               ),
                             );
@@ -2042,6 +2046,8 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                                 MaterialPageRoute(
                                   builder: (_) => FirmwareUpdateScreen(
                                     distingCubit: distingCubit,
+                                    dependencies:
+                                        widget.firmwareUpdateDependencies,
                                   ),
                                 ),
                               );
@@ -2677,8 +2683,10 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                       Navigator.push(
                         popupCtx,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              FirmwareUpdateScreen(distingCubit: distingCubit),
+                          builder: (_) => FirmwareUpdateScreen(
+                            distingCubit: distingCubit,
+                            dependencies: widget.firmwareUpdateDependencies,
+                          ),
                         ),
                       );
                     },

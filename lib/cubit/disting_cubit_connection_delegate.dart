@@ -252,6 +252,37 @@ class _ConnectionDelegate {
     _cubit._midiSetupSubscription = null;
   }
 
+  Future<IDistingMidiManager> createFirmwareMidiManager(
+    MidiDevice inputDevice,
+    MidiDevice outputDevice,
+    int sysExId,
+  ) async {
+    _cubit._midiSetupSubscription?.pause();
+    final connected = <MidiDevice>[];
+    try {
+      await _cubit._midiCommand.connectToDevice(inputDevice);
+      connected.add(inputDevice);
+      if (inputDevice.id != outputDevice.id) {
+        await _cubit._midiCommand.connectToDevice(outputDevice);
+        connected.add(outputDevice);
+      }
+      return DistingMidiManager(
+        midiCommand: _cubit._midiCommand,
+        inputDevice: inputDevice,
+        outputDevice: outputDevice,
+        sysExId: sysExId,
+      );
+    } catch (_) {
+      for (final device in connected) {
+        try {
+          _cubit._midiCommand.disconnectDevice(device);
+        } catch (_) {}
+      }
+      _cubit._midiSetupSubscription?.resume();
+      rethrow;
+    }
+  }
+
   void disconnect() {
     _cubit._memoryDelegate.clearConnection();
 

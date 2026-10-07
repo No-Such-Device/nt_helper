@@ -1189,19 +1189,11 @@ class DistingCubit extends _DistingCubitBase
     MidiDevice inputDevice,
     MidiDevice outputDevice,
     int sysExId,
-  ) async {
-    _midiSetupSubscription?.pause();
-    await _midiCommand.connectToDevice(inputDevice);
-    if (inputDevice.id != outputDevice.id) {
-      await _midiCommand.connectToDevice(outputDevice);
-    }
-    return DistingMidiManager(
-      midiCommand: _midiCommand,
-      inputDevice: inputDevice,
-      outputDevice: outputDevice,
-      sysExId: sysExId,
-    );
-  }
+  ) => _connectionDelegate.createFirmwareMidiManager(
+    inputDevice,
+    outputDevice,
+    sysExId,
+  );
 
   /// Disposes a midi manager created by [createFirmwareMidiManager] and
   /// disconnects the devices.
