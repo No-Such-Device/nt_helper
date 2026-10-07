@@ -38,6 +38,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   final Duration _midiPollInterval;
   final int _midiPollAttempts;
   final bool _isWindows;
+  final bool _ownsServices;
   // A supplied manager is borrowed until a deliberate firmware handoff.
   bool _ownsMidiManager = false;
   bool _closing = false;
@@ -64,6 +65,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     Duration midiPollInterval = const Duration(seconds: 5),
     int midiPollAttempts = 12,
     bool? isWindowsOverride,
+    bool ownsServices = false,
   }) : _firmwareVersionService = firmwareVersionService,
        _flashToolManager = flashToolManager,
        _flashToolBridge = flashToolBridge,
@@ -80,6 +82,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
        _midiPollInterval = midiPollInterval,
        _midiPollAttempts = midiPollAttempts,
        _isWindows = isWindowsOverride ?? Platform.isWindows,
+       _ownsServices = ownsServices,
        super(FirmwareUpdateState.initial(currentVersion: currentVersion));
 
   bool _isCurrent(int generation) =>
@@ -903,10 +906,15 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="15a2", ATTR{idProduct}=="0073", MODE="0666"
 
   @override
   Future<void> close() async {
+    final disposeServices = !_closing && _ownsServices;
     _closing = true;
     _operationGeneration++;
     _midiReacquisitionGeneration++;
     _releaseOwnedMidiConnection();
+    if (disposeServices) {
+      _firmwareVersionService.dispose();
+      _flashToolManager.dispose();
+    }
     await _flashSubscription?.cancel();
     _flashSubscription = null;
     await _cleanupTempFiles();

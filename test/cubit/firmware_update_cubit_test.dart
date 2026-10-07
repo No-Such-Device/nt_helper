@@ -63,6 +63,7 @@ void main() {
     Duration midiPollInterval = const Duration(seconds: 5),
     int midiPollAttempts = 12,
     bool? isWindowsOverride,
+    bool ownsServices = false,
   }) {
     return FirmwareUpdateCubit(
       firmwareVersionService: mockFirmwareVersionService,
@@ -79,6 +80,7 @@ void main() {
       midiPollInterval: midiPollInterval,
       midiPollAttempts: midiPollAttempts,
       isWindowsOverride: isWindowsOverride,
+      ownsServices: ownsServices,
     );
   }
 
@@ -953,6 +955,18 @@ void main() {
         expect(cubit.state, isA<FirmwareUpdateStateSuccess>());
         expect(checks, 3);
       });
+    });
+
+    test('only route-owned firmware services close, exactly once', () async {
+      final borrowed = createCubit();
+      await borrowed.close();
+      verifyNever(() => mockFirmwareVersionService.dispose());
+      verifyNever(() => mockFlashToolManager.dispose());
+      final owned = createCubit(ownsServices: true);
+      await owned.close();
+      await owned.close();
+      verify(() => mockFirmwareVersionService.dispose()).called(1);
+      verify(() => mockFlashToolManager.dispose()).called(1);
     });
 
     group('asynchronous route lifetime', () {

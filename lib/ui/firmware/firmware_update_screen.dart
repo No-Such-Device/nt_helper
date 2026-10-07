@@ -146,6 +146,7 @@ class FirmwareUpdateScreen extends StatelessWidget {
             selectedOutputDevice?.name,
           ),
           readLocalFirmwareFile: dependencies?.readLocalFirmwareFile,
+          ownsServices: dependencies == null,
         )..loadAvailableVersions(),
         child: _FirmwareUpdateView(
           pickLocalFirmwareFile: dependencies?.pickLocalFirmwareFile,
