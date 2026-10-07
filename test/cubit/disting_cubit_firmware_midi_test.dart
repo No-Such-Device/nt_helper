@@ -77,6 +77,102 @@ void main() {
     verifyNever(() => midiCommand.dispose());
   });
 
+  test(
+    'duplex endpoint is disconnected only once during deliberate handoff',
+    () {
+      final duplex = device('duplex', 'Disting NT', MidiPortType.IN)
+        ..outputPorts.add(MidiPort(0, MidiPortType.OUT));
+      final manager = _MockDistingMidiManager();
+      cubit.disposeFirmwareMidiManager(manager, duplex, duplex);
+      verify(() => midiCommand.disconnectDevice(duplex)).called(1);
+      verify(() => manager.dispose()).called(1);
+    },
+  );
+
+  test(
+    'failed lazy connection releases opened endpoints and resumes setup refresh',
+    () async {
+      final input = device('input', 'Disting NT Input', MidiPortType.IN);
+      final output = device('output', 'Disting NT Output', MidiPortType.OUT);
+      final setup = StreamController<MidiSetupChange>.broadcast();
+      addTearDown(setup.close);
+      when(() => midiCommand.onMidiSetupChanged).thenAnswer((_) => setup.stream);
+      when(() => midiCommand.devices).thenAnswer((_) async => [input, output]);
+      when(() => midiCommand.connectToDevice(input)).thenAnswer((_) async {});
+      when(
+        () => midiCommand.connectToDevice(output),
+      ).thenThrow(StateError('output unavailable'));
+      await cubit.initialize();
+      await expectLater(
+        cubit.createFirmwareMidiManager(input, output, 17),
+        throwsStateError,
+      );
+      verify(() => midiCommand.disconnectDevice(input)).called(1);
+      verifyNever(() => midiCommand.disconnectDevice(output));
+      clearInteractions(midiCommand);
+      setup.add(MidiSetupChange.deviceAppeared);
+      await Future<void>.delayed(Duration.zero);
+      verify(() => midiCommand.devices).called(1);
+      verifyNever(() => midiCommand.dispose());
+    },
+  );
+
+  test(
+    'explicit disconnect releases the synchronized manager and distinct endpoints',
+    () {
+      final input = device('input', 'Disting NT', MidiPortType.IN);
+      final output = device('output', 'Disting NT', MidiPortType.OUT);
+      final manager = _MockDistingMidiManager();
+      cubit.emit(
+        DistingState.synchronized(
+          disting: manager,
+          distingVersion: '1.16.0',
+          firmwareVersion: FirmwareVersion('1.16.0'),
+          presetName: 'Test',
+          algorithms: const [],
+          slots: const [],
+          unitStrings: const [],
+          inputDevice: input,
+          outputDevice: output,
+        ),
+      );
+      cubit.disconnect();
+      verify(() => midiCommand.disconnectDevice(input)).called(1);
+      verify(() => midiCommand.disconnectDevice(output)).called(1);
+      verify(() => manager.dispose()).called(1);
+      verifyNever(() => midiCommand.dispose());
+      // The existing disconnect caller subsequently refreshes device selection.
+      cubit.emit(const DistingState.initial());
+    },
+  );
+
+  test(
+    'genuine endpoint removal clears only the vanished selection on setup refresh',
+    () async {
+      final input = device('input', 'Disting NT Input', MidiPortType.IN);
+      final output = device('output', 'Disting NT Output', MidiPortType.OUT);
+      final setup = StreamController<MidiSetupChange>.broadcast();
+      addTearDown(setup.close);
+      when(() => midiCommand.onMidiSetupChanged).thenAnswer((_) => setup.stream);
+      when(() => midiCommand.devices).thenAnswer((_) async => [input, output]);
+      await cubit.initialize();
+      cubit.updateDeviceSelection(
+        inputDevice: input,
+        outputDevice: output,
+        sysExId: 17,
+      );
+      when(() => midiCommand.devices).thenAnswer((_) async => [output]);
+      setup.add(MidiSetupChange.deviceDisappeared);
+      await Future<void>.delayed(Duration.zero);
+      final selection = cubit.state as DistingStateSelectDevice;
+      expect(selection.selectedInputDevice, isNull);
+      expect(selection.selectedOutputDevice, same(output));
+      expect(selection.selectedSysExId, 17);
+      expect(selection.inputDevices, isEmpty);
+      verifyNever(() => midiCommand.connectToDevice(input));
+    },
+  );
+
   test('firmware handoff stops polling the disposed pre-flash manager', () {
     final input = device('input', 'Disting NT', MidiPortType.IN);
     final output = device('output', 'Disting NT', MidiPortType.OUT);

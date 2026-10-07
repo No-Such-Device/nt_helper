@@ -436,6 +436,7 @@ class _DistingPageState extends State<DistingPage> {
                 screenshot: state.screenshot,
                 loading: state.loading,
                 firmwareVersion: state.firmwareVersion,
+                firmwareUpdateDependencies: widget.firmwareUpdateDependencies,
               );
             } else {
               // Simple fallback - just restart the device selection
