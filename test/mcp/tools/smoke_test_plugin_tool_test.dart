@@ -258,6 +258,7 @@ void main() {
   late _FakeNt device;
   late _TestCubit cubit;
   late PluginTools tools;
+  late _MockMetadataDao metadataDao;
 
   setUpAll(() {
     registerFallbackValue(_myFilter(0));
@@ -349,7 +350,7 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     final database = _MockAppDatabase();
-    final metadataDao = _MockMetadataDao();
+    metadataDao = _MockMetadataDao();
     when(() => database.metadataDao).thenReturn(metadataDao);
     manager = _MockDistingMidiManager();
     device = _FakeNt()..wire(manager);
@@ -743,6 +744,109 @@ void main() {
 
       expect(result['error'], 'load_failed');
       expect(result['message'], contains('preset was not changed'));
+      expectPresetUntouched();
+    });
+  });
+
+  group('algorithm library still loading', () {
+    // The device's full library; the plug-in under test is its last entry.
+    final library = [
+      AlgorithmInfo(
+        algorithmIndex: 0,
+        guid: 'clck',
+        name: 'Clock',
+        specifications: const [],
+      ),
+      AlgorithmInfo(
+        algorithmIndex: 1,
+        guid: 'quan',
+        name: 'Quantizer',
+        specifications: const [],
+      ),
+      _myFilter(2),
+    ];
+
+    List<AlgorithmInfo> currentAlgorithms() => current().algorithms;
+
+    /// Starts a background library load whose plug-in reads after the quick
+    /// first pass wait for [release], and returns once the partial list
+    /// (built-ins only) is in state.
+    void startPartialLibraryLoad(FakeAsync async, Future<void> release) {
+      when(
+        () => metadataDao.hasCachedAlgorithms(),
+      ).thenAnswer((_) async => false);
+      when(
+        () => metadataDao.invalidateAlgorithmInfoCache(),
+      ).thenAnswer((_) async {});
+      when(
+        () => metadataDao.getAlgorithmInfoCache(
+          any(),
+          cacheFreshnessDays: any(named: 'cacheFreshnessDays'),
+        ),
+      ).thenAnswer((_) async => null);
+      when(
+        () => metadataDao.saveAlgorithmInfoCache(any(), any()),
+      ).thenAnswer((_) async {});
+      when(
+        () => manager.requestNumberOfAlgorithms(),
+      ).thenAnswer((_) async => library.length);
+      var pluginReads = 0;
+      // Typed as nullable like the real manager, so the delegate's
+      // `onTimeout: () => null` type-checks.
+      Future<AlgorithmInfo?> read(int index) async {
+        final algorithm = library[index];
+        if (algorithm.isPlugin && pluginReads++ > 0) await release;
+        return algorithm;
+      }
+
+      when(
+        () => manager.requestAlgorithmInfo(any()),
+      ).thenAnswer((call) => read(call.positionalArguments[0] as int));
+      cubit.emit(current().copyWith(algorithms: const []));
+      cubit.refreshAlgorithms();
+      async.elapse(const Duration(seconds: 1));
+      expect(cubit.isAlgorithmLibraryLoading, isTrue);
+      expect(currentAlgorithms().map((a) => a.guid), ['clck', 'quan']);
+    }
+
+    test('waits for the full list and then finds the plug-in', () {
+      Map<String, dynamic>? result;
+      fakeAsync((async) {
+        // Created inside the fake zone so its completion is delivered there.
+        final release = Completer<void>();
+        startPartialLibraryLoad(async, release.future);
+        tools
+            .smokeTestPlugin(base())
+            .then((r) => result = jsonDecode(r) as Map<String, dynamic>);
+        // Without the wait it would look the GUID up in the partial list
+        // now and refuse it as unknown_guid.
+        async.elapse(const Duration(seconds: 5));
+        expect(result, isNull);
+        expectPresetUntouched();
+        release.complete();
+        async.elapse(const Duration(minutes: 3));
+      });
+
+      expect(result, isNotNull, reason: 'smoke_test_plugin did not finish');
+      expect(result!['success'], isTrue, reason: '$result');
+      expect(cubit.isAlgorithmLibraryLoading, isFalse);
+      expectBaselineRestored();
+    });
+
+    test('refuses with algorithm_library_loading if loading never ends', () {
+      Map<String, dynamic>? result;
+      fakeAsync((async) {
+        startPartialLibraryLoad(async, Completer<void>().future);
+        tools
+            .smokeTestPlugin(base())
+            .then((r) => result = jsonDecode(r) as Map<String, dynamic>);
+        async.elapse(const Duration(minutes: 3));
+      });
+
+      expect(result, isNotNull, reason: 'smoke_test_plugin did not finish');
+      expect(result!['success'], isFalse);
+      expect(result!['error'], 'algorithm_library_loading');
+      expect(result!['message'], contains('preset was not changed'));
       expectPresetUntouched();
     });
   });

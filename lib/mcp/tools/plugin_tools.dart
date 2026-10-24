@@ -32,7 +32,10 @@ void registerPluginTools(
           'upload, a .o must be a 32-bit little-endian ARM relocatable ELF '
           'that defines pluginEntry and at least one factory GUID, and none of '
           'its GUIDs may belong to a built-in algorithm or to a plug-in from a '
-          'different file (reinstalling the same file is allowed); a .lua must '
+          'different file (reinstalling the same file is allowed). If the '
+          'algorithm list is still loading in the background, the .o check '
+          'waits up to 10 s for it, then refuses with '
+          'algorithm_library_loading. A .lua must '
           'be UTF-8 text without NUL bytes. The file must '
           'be inside an allowed root with MCP read permission (see '
           'list_allowed_roots) and at most 2 MiB. Upload runs at roughly '
@@ -89,7 +92,8 @@ void registerPluginTools(
           'samples, and rollback (kept, not_needed, removed_slot, '
           'reloaded_saved_preset or failed). Requires a live, synchronized '
           'device; refused in offline and demo mode and when all slots are '
-          'in use. Typical use: install_plugin with load: true, then this.',
+          'in use, and with algorithm_library_loading if the algorithm list '
+          'is still loading after 10 s. Typical use: install_plugin with load: true, then this.',
       inputSchema: {
         'properties': {
           'guid': {
@@ -192,12 +196,14 @@ void registerPluginTools(
 final class PluginTools {
   /// Creates handlers that read local files as [actor] and install them
   /// through [_cubit]. [maxRescanAttempts] and [rescanPollInterval] bound the
-  /// wait for a rescanned `.o` to appear.
+  /// wait for a rescanned `.o` to appear; [libraryReadyTimeout] bounds the
+  /// wait for a background algorithm-list load before GUIDs are checked.
   PluginTools(
     this._cubit, {
     required this.actor,
     this.maxRescanAttempts = 5,
     this.rescanPollInterval = const Duration(seconds: 1),
+    this.libraryReadyTimeout = const Duration(seconds: 10),
   });
 
   final DistingCubit _cubit;
@@ -210,6 +216,12 @@ final class PluginTools {
 
   /// Delay between algorithm-list reads while waiting for a rescan.
   final Duration rescanPollInterval;
+
+  /// Longest wait for a background algorithm-list load to finish before
+  /// `install_plugin` checks collisions or `smoke_test_plugin` looks up the
+  /// GUID. Still loading after this, both refuse with
+  /// `algorithm_library_loading`.
+  final Duration libraryReadyTimeout;
 
   /// Largest file `install_plugin` accepts, in bytes.
   static const maxFileBytes = 2 * 1024 * 1024;
@@ -307,6 +319,7 @@ final class PluginTools {
         load: load,
         maxRescanAttempts: maxRescanAttempts,
         rescanPollInterval: rescanPollInterval,
+        libraryReadyTimeout: libraryReadyTimeout,
       );
     } on PluginInstallRefused catch (e) {
       return _failure(e.reason.code, e.message, e.details ?? const {});
@@ -398,6 +411,7 @@ final class PluginTools {
           cpuSamples: samples,
           keep: keep,
           reloadSavedOnFailure: reloadSaved,
+          libraryReadyTimeout: libraryReadyTimeout,
         ),
       );
     } on PluginSmokeTestRefused catch (e) {

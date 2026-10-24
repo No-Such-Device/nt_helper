@@ -517,6 +517,11 @@ class DistingCubit extends _DistingCubitBase
     _algorithmLibraryDelegate.refreshAlgorithms();
   }
 
+  /// Whether a background load is still filling in the algorithm list, so
+  /// `algorithms` in the synchronized state may be empty or missing plug-ins.
+  bool get isAlgorithmLibraryLoading =>
+      _algorithmLibraryDelegate.isLoadingInBackground;
+
   /// Sends rescan plugins command to hardware and refreshes algorithm list.
   /// Used by the Add Algorithm screen's manual rescan button.
   Future<void> rescanPlugins() async {
@@ -1170,15 +1175,17 @@ class DistingCubit extends _DistingCubitBase
   /// when [load] is true, the outcome of loading each one.
   ///
   /// Throws [PluginInstallRefused] in demo or offline mode, when no device is
-  /// synchronized, or when the firmware cannot write to the SD card.
-  /// [maxRescanAttempts] and [rescanPollInterval] bound the wait for the
-  /// rescanned algorithm list.
+  /// synchronized, when the firmware cannot write to the SD card, or when a
+  /// background algorithm-list load is still running after
+  /// [libraryReadyTimeout]. [maxRescanAttempts] and [rescanPollInterval]
+  /// bound the wait for the rescanned algorithm list.
   Future<PluginInstallReport> installPluginAndVerify(
     String fileName,
     Uint8List fileData, {
     bool load = false,
     int maxRescanAttempts = 5,
     Duration rescanPollInterval = const Duration(seconds: 1),
+    Duration libraryReadyTimeout = const Duration(seconds: 10),
   }) {
     return _pluginVerifyDelegate.installPluginAndVerify(
       fileName,
@@ -1186,6 +1193,7 @@ class DistingCubit extends _DistingCubitBase
       load: load,
       maxRescanAttempts: maxRescanAttempts,
       rescanPollInterval: rescanPollInterval,
+      libraryReadyTimeout: libraryReadyTimeout,
     );
   }
 

@@ -34,7 +34,11 @@ enum PluginInstallRefusal {
   guidCollision('guid_collision'),
 
   /// The `.lua` file is not valid UTF-8 or contains NUL bytes.
-  invalidLua('invalid_lua');
+  invalidLua('invalid_lua'),
+
+  /// The algorithm list was still loading in the background when the wait
+  /// for it ran out, so GUID collisions could not be checked.
+  algorithmLibraryLoading('algorithm_library_loading');
 
   const PluginInstallRefusal(this.code);
 

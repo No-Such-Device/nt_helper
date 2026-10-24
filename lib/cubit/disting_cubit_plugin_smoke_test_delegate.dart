@@ -18,8 +18,9 @@ class _PluginSmokeTestDelegate {
   /// Runs the smoke test for the plug-in [guid] with [options].
   ///
   /// Throws [PluginSmokeTestRefused] before touching the preset when there
-  /// is no live session, [guid] is unknown or built in, every slot is in
-  /// use, or the plug-in cannot be loaded. Every other outcome, including
+  /// is no live session, the algorithm list is still loading after
+  /// [PluginSmokeTestOptions.libraryReadyTimeout], [guid] is unknown or
+  /// built in, every slot is in use, or the plug-in cannot be loaded. Every other outcome, including
   /// device errors, is returned as a [PluginSmokeTestReport].
   Future<PluginSmokeTestReport> smokeTestPlugin(
     String guid,
@@ -43,6 +44,18 @@ class _PluginSmokeTestDelegate {
     String guid,
     PluginSmokeTestOptions options,
   ) async {
+    _requireLiveSession();
+    // A partly loaded list could report an installed plug-in as unknown.
+    if (!await _cubit._algorithmLibraryDelegate.waitForBackgroundLoads(
+      options.libraryReadyTimeout,
+    )) {
+      throw PluginSmokeTestRefused(
+        PluginSmokeTestRefusal.algorithmLibraryLoading,
+        'The algorithm list is still loading from the device after '
+        '${options.libraryReadyTimeout.inSeconds} s, so $guid cannot be '
+        'looked up yet. The preset was not changed. Retry in a few seconds.',
+      );
+    }
     final start = _requireLiveSession();
     var algorithm = _findPlugin(start, guid);
     if (start.slots.length >= DistingLimits.maxPresetSlots) {

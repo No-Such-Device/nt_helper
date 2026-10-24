@@ -28,7 +28,11 @@ enum PluginSmokeTestRefusal {
   presetFull('preset_full'),
 
   /// The plug-in was not loaded and loading it did not succeed.
-  loadFailed('load_failed');
+  loadFailed('load_failed'),
+
+  /// The algorithm list was still loading in the background when the wait
+  /// for it ran out, so the GUID could not be looked up reliably.
+  algorithmLibraryLoading('algorithm_library_loading');
 
   const PluginSmokeTestRefusal(this.code);
 
@@ -137,6 +141,7 @@ class PluginSmokeTestOptions {
     this.removePollInterval = const Duration(milliseconds: 500),
     this.removePollAttempts = 10,
     this.reloadTimeout = const Duration(seconds: 20),
+    this.libraryReadyTimeout = const Duration(seconds: 10),
   });
 
   /// Highest per-slot CPU percentage the test slot may report.
@@ -183,6 +188,10 @@ class PluginSmokeTestOptions {
 
   /// Longest wait for the saved preset to reload.
   final Duration reloadTimeout;
+
+  /// Longest wait for a background algorithm-list load to finish before the
+  /// GUID is looked up.
+  final Duration libraryReadyTimeout;
 }
 
 /// One named check and its outcome.

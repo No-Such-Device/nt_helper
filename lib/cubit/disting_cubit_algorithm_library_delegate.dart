@@ -5,6 +5,43 @@ class _AlgorithmLibraryDelegate {
 
   final DistingCubit _cubit;
 
+  /// Background loads that may still publish a fuller `state.algorithms`.
+  int _backgroundLoads = 0;
+  Completer<void>? _backgroundLoadsSettled;
+
+  /// Whether a background load is still filling in `state.algorithms`.
+  /// Until it finishes, the list can be empty or missing plug-ins.
+  bool get isLoadingInBackground => _backgroundLoads > 0;
+
+  /// Waits until no background load is running, for at most [timeout].
+  /// Returns true at once when none is running, and false if one is still
+  /// running when [timeout] expires.
+  Future<bool> waitForBackgroundLoads(Duration timeout) async {
+    if (_backgroundLoads == 0) return true;
+    final settled = (_backgroundLoadsSettled ??= Completer<void>()).future;
+    try {
+      await settled.timeout(timeout);
+      return true;
+    } on TimeoutException {
+      return false;
+    }
+  }
+
+  /// Runs [load] as a background load, so [isLoadingInBackground] stays true
+  /// until it finishes, whether or not it succeeds.
+  Future<void> _trackBackgroundLoad(Future<void> Function() load) async {
+    _backgroundLoads++;
+    try {
+      await load();
+    } finally {
+      _backgroundLoads--;
+      if (_backgroundLoads == 0) {
+        _backgroundLoadsSettled?.complete();
+        _backgroundLoadsSettled = null;
+      }
+    }
+  }
+
   // Helper to determine if an algorithm is a factory algorithm (lowercase GUID)
   // vs community plugin (any uppercase letters in GUID)
   bool _isFactoryAlgorithm(String guid) {
@@ -158,6 +195,11 @@ class _AlgorithmLibraryDelegate {
   Future<void> loadAllAlgorithmsInBackground(
     IDistingMidiManager manager,
     int numAlgorithms,
+  ) => _trackBackgroundLoad(() => _loadAllAlgorithms(manager, numAlgorithms));
+
+  Future<void> _loadAllAlgorithms(
+    IDistingMidiManager manager,
+    int numAlgorithms,
   ) async {
     // Try cache first
     final cacheFreshnessDays = SettingsService().algorithmCacheDays;
@@ -235,6 +277,14 @@ class _AlgorithmLibraryDelegate {
     IDistingMidiManager manager,
     List<int> communityIndices,
     List<AlgorithmInfo> baseResults,
+  ) => _trackBackgroundLoad(
+    () => _loadCommunityPlugins(manager, communityIndices, baseResults),
+  );
+
+  Future<void> _loadCommunityPlugins(
+    IDistingMidiManager manager,
+    List<int> communityIndices,
+    List<AlgorithmInfo> baseResults,
   ) async {
     final List<AlgorithmInfo> communityResults = [];
 
@@ -273,38 +323,41 @@ class _AlgorithmLibraryDelegate {
   // Background refresh of algorithm library without blocking the UI
   void refreshAlgorithmsInBackground() {
     // Run asynchronously without awaiting
-    () async {
-      try {
-        final currentState = _cubit.state;
-        if (currentState is! DistingStateSynchronized || currentState.offline) {
-          return; // State changed, abort
-        }
-
-        final distingManager = _cubit.requireDisting();
-
-        // Fetch algorithm info in the background with prioritization
+    unawaited(
+      _trackBackgroundLoad(() async {
         try {
-          final algorithms = await fetchAlgorithmsWithPriority(
-            distingManager,
-            enableBackgroundCommunityLoading: true,
-          );
+          final currentState = _cubit.state;
+          if (currentState is! DistingStateSynchronized ||
+              currentState.offline) {
+            return; // State changed, abort
+          }
 
-          // Only update if state is still synchronized and algorithms changed
-          final newState = _cubit.state;
-          if (newState is DistingStateSynchronized &&
-              !newState.offline &&
-              algorithms.length != newState.algorithms.length) {
-            _cubit._emitState(newState.copyWith(algorithms: algorithms));
+          final distingManager = _cubit.requireDisting();
+
+          // Fetch algorithm info in the background with prioritization
+          try {
+            final algorithms = await fetchAlgorithmsWithPriority(
+              distingManager,
+              enableBackgroundCommunityLoading: true,
+            );
+
+            // Only update if state is still synchronized and algorithms changed
+            final newState = _cubit.state;
+            if (newState is DistingStateSynchronized &&
+                !newState.offline &&
+                algorithms.length != newState.algorithms.length) {
+              _cubit._emitState(newState.copyWith(algorithms: algorithms));
+            }
+          } catch (e, stackTrace) {
+            debugPrintStack(stackTrace: stackTrace);
+            // Don't update state on algorithm fetch failure during background refresh
           }
         } catch (e, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
-          // Don't update state on algorithm fetch failure during background refresh
+          // Don't emit error state for background refresh failures
         }
-      } catch (e, stackTrace) {
-        debugPrintStack(stackTrace: stackTrace);
-        // Don't emit error state for background refresh failures
-      }
-    }();
+      }),
+    );
   }
 
   // Public method to trigger algorithm list refresh from UI

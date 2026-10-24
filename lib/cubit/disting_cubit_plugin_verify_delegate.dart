@@ -20,6 +20,9 @@ class _PluginVerifyDelegate {
   /// - a `.lua` file is not valid UTF-8 or contains NUL bytes;
   /// - the app is not synchronized with live hardware whose firmware
   ///   supports SD writes;
+  /// - for a `.o` file, the algorithm list is still loading in the
+  ///   background after [libraryReadyTimeout], so the collision check would
+  ///   see a partial list;
   /// - a GUID in the `.o` file already belongs to a built-in algorithm or to
   ///   a plug-in installed from a different file (see [_checkCollisions]).
   ///
@@ -36,6 +39,7 @@ class _PluginVerifyDelegate {
     bool load = false,
     int maxRescanAttempts = 5,
     Duration rescanPollInterval = const Duration(seconds: 1),
+    Duration libraryReadyTimeout = const Duration(seconds: 10),
   }) async {
     final targetPath = PluginInstallationPath.target(fileName);
     final isObject = targetPath.toLowerCase().endsWith('.o');
@@ -43,6 +47,8 @@ class _PluginVerifyDelegate {
         ? _checkObject(fileData, fileName)
         : const <String>[];
     if (!isObject) _checkLua(fileData, fileName);
+    _requireLiveSession();
+    if (isObject) await _requireLoadedLibrary(libraryReadyTimeout);
     final state = _requireLiveSession();
     final unattributedGuids = _checkCollisions(
       expectedGuids,
@@ -135,6 +141,21 @@ class _PluginVerifyDelegate {
       );
     }
     return state;
+  }
+
+  /// Waits up to [timeout] for any background algorithm-list load to finish,
+  /// then throws [PluginInstallRefused] if one is still running. Until it
+  /// finishes, `state.algorithms` can be empty or missing plug-ins, and a
+  /// collision check against it could miss an existing GUID.
+  Future<void> _requireLoadedLibrary(Duration timeout) async {
+    final library = _cubit._algorithmLibraryDelegate;
+    if (await library.waitForBackgroundLoads(timeout)) return;
+    throw PluginInstallRefused(
+      PluginInstallRefusal.algorithmLibraryLoading,
+      'The algorithm list is still loading from the device after '
+      '${timeout.inSeconds} s, so GUID collisions cannot be checked yet. '
+      'Nothing was uploaded. Retry in a few seconds.',
+    );
   }
 
   /// Whether [targetPath]'s directory lists the file with [size] bytes, or

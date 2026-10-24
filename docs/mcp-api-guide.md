@@ -902,7 +902,10 @@ missing:
 **Errors**: `success` is `false`, `error` is a snake_case code, and `message`
 explains it. Nothing is sent to the device for any error except
 `install_failed`. File checks run first, then the connection checks, then the
-GUID collision check.
+GUID collision check. The collision check needs the device's full algorithm
+list, so for a `.o` file the tool first waits up to 10 seconds for any
+background algorithm-list load to finish; if it is still loading, the tool
+refuses with `algorithm_library_loading` without uploading.
 
 | `error` | Cause |
 |---|---|
@@ -922,6 +925,7 @@ GUID collision check.
 | `missing_plugin_entry` | a `.o` that does not define `pluginEntry` |
 | `no_guid` | a `.o` with no factory GUID nt_helper can read |
 | `guid_collision` | a GUID already used by a built-in algorithm or by a plug-in from another file; also returns `guid`, `existing_name`, `existing_kind` (`built_in` or `plugin`), and `existing_path` |
+| `algorithm_library_loading` | the algorithm list was still loading from the device after 10 seconds, so collisions could not be checked; retry shortly |
 | `invalid_lua` | a `.lua` that is not UTF-8 or contains a NUL byte |
 | `invalid_file_name` | the name cannot be used on the SD card |
 | `not_connected` | no synchronized device |
@@ -1114,6 +1118,11 @@ identified safely; `rolled_back` says whether the original lineup was confirmed.
 | `not_a_plugin` | the GUID belongs to a built-in algorithm |
 | `preset_full` | every slot is in use; also returns `max_slots` |
 | `load_failed` | the plug-in did not report loaded |
+| `algorithm_library_loading` | the algorithm list was still loading from the device after 10 seconds, so the GUID could not be looked up; retry shortly |
+
+Before looking up the GUID, the tool waits up to 10 seconds for any
+background algorithm-list load to finish, because a partly loaded list can
+report an installed plug-in as `unknown_guid`.
 
 ---
 

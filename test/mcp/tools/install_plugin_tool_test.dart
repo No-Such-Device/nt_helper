@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -826,5 +827,144 @@ void main() {
       () =>
           expectRefused(synchronized(version: '1.9.0'), 'sd_card_unsupported'),
     );
+  });
+
+  group('algorithm library still loading', () {
+    // The device's full library: a built-in algorithm, and a plug-in from
+    // another file whose GUID collides with the fixture's ATds.
+    final library = [
+      AlgorithmInfo(
+        algorithmIndex: 0,
+        guid: 'clck',
+        name: 'Clock',
+        specifications: const [],
+      ),
+      _plugin(1, 'ATds', '$_pluginsDir/other.o'),
+    ];
+    late Completer<void> pluginReadsReleased;
+
+    List<AlgorithmInfo> currentAlgorithms() =>
+        (cubit.state as DistingStateSynchronized).algorithms;
+
+    /// Starts a background library load whose plug-in reads wait for
+    /// [pluginReadsReleased], and waits until the partial list (built-ins
+    /// only) is in state.
+    Future<void> startPartialLibraryLoad() async {
+      pluginReadsReleased = Completer<void>();
+      var pluginReads = 0;
+      when(
+        () => manager.requestNumberOfAlgorithms(),
+      ).thenAnswer((_) async => library.length);
+      // Typed as nullable like the real manager, so the delegate's
+      // `onTimeout: () => null` type-checks.
+      Future<AlgorithmInfo?> read(int index) async {
+        final algorithm = library[index];
+        // The quick first pass answers; the background pass is held.
+        if (algorithm.isPlugin && pluginReads++ > 0) {
+          await pluginReadsReleased.future;
+        }
+        return algorithm;
+      }
+
+      when(
+        () => manager.requestAlgorithmInfo(any()),
+      ).thenAnswer((call) => read(call.positionalArguments[0] as int));
+      cubit.refreshAlgorithms();
+      for (var i = 0; i < 100 && currentAlgorithms().isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(cubit.isAlgorithmLibraryLoading, isTrue);
+      expect(currentAlgorithms().map((a) => a.guid), ['clck']);
+    }
+
+    tearDown(() {
+      if (!pluginReadsReleased.isCompleted) pluginReadsReleased.complete();
+    });
+
+    test('waits for the full list and then refuses the collision', () async {
+      await startPartialLibraryLoad();
+      final source = inAllowed('seq.o', fixtureBytes);
+
+      final pending = install({'path': source});
+      // Give the install time to pass its file and session checks; without
+      // the wait it would check collisions against the partial list now and
+      // upload.
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expectNothingUploaded();
+      pluginReadsReleased.complete();
+      final result = await pending;
+
+      expect(result['success'], isFalse);
+      expect(result['error'], 'guid_collision');
+      expect(result['guid'], 'ATds');
+      expect(result['existing_path'], '$_pluginsDir/other.o');
+      expect(cubit.isAlgorithmLibraryLoading, isFalse);
+      expectNothingUploaded();
+    });
+
+    test(
+      'refuses with algorithm_library_loading if loading never ends',
+      () async {
+        await startPartialLibraryLoad();
+        tools = PluginTools(
+          cubit,
+          actor: FileRootActor.mcp,
+          libraryReadyTimeout: const Duration(milliseconds: 50),
+        );
+        final source = inAllowed('seq.o', fixtureBytes);
+
+        final result = await install({'path': source});
+
+        expect(result['success'], isFalse);
+        expect(result['error'], 'algorithm_library_loading');
+        expect(result['message'], contains('Nothing was uploaded'));
+        expect(result['message'], contains('Retry'));
+        expectNothingUploaded();
+      },
+    );
+
+    test('content checks still run first while loading', () async {
+      await startPartialLibraryLoad();
+      final source = inAllowed('bad.o', utf8.encode('not an elf'));
+
+      final result = await install({'path': source});
+
+      expect(result['error'], 'invalid_elf');
+      expectNothingUploaded();
+    });
+
+    test('a .lua install does not wait for the library', () async {
+      await startPartialLibraryLoad();
+      tools = PluginTools(
+        cubit,
+        actor: FileRootActor.mcp,
+        libraryReadyTimeout: const Duration(hours: 1),
+      );
+      final source = inAllowed('script.lua', utf8.encode('return {}'));
+
+      final result = await install({'path': source});
+
+      expect(result['success'], isTrue, reason: '$result');
+      expect(cubit.isAlgorithmLibraryLoading, isTrue);
+    });
+
+    test('a loaded library adds no wait', () async {
+      expect(cubit.isAlgorithmLibraryLoading, isFalse);
+      tools = PluginTools(
+        cubit,
+        actor: FileRootActor.mcp,
+        maxRescanAttempts: 3,
+        rescanPollInterval: Duration.zero,
+        libraryReadyTimeout: const Duration(hours: 1),
+      );
+      device.algorithms = seqAlgorithms();
+      final source = inAllowed('seq.o', fixtureBytes);
+
+      final result = await install({'path': source});
+
+      // An hour-long wait would time the test out.
+      expect(result['success'], isTrue, reason: '$result');
+      expect(result['verified'], isTrue);
+    });
   });
 }
