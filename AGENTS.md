@@ -5,6 +5,29 @@ Flutter app for Disting NT Eurorack module: preset management, algorithm loading
 **Platforms:** Linux, macOS, iOS, Android, Windows
 **Modes:** Demo (no hardware), Offline (cached), Connected (live MIDI)
 
+## Delivery contract: third-party bug reports
+
+When the user asks to debug or fix a problem reported by someone else (for
+example a Discord screenshot, support request, or GitHub issue), **the task
+includes shipping a release that person can install**. This is authorization to
+commit, push, create and merge a PR after required checks, and publish the fix;
+a separate request to commit or release is not required. An explicit instruction
+such as “investigate only”, “do not commit”, or “do not release” overrides this
+default.
+
+Required delivery sequence: **fix → verify → commit → PR → merge → release →
+verify downloadable assets**. Use the `nt-helper-release` skill and the Release
+section below. For a focused bug fix, take the hotfix path: a small PR followed
+by a patch release, without unrelated cleanup or waiting for a feature release.
+Keep required checks and release verification intact.
+
+Completion gate: the final delivery report must include the merged PR URL,
+released version, and verified download/release URL. Local changes, a commit,
+a PR, or a pushed tag alone are intermediate states, not completion. If delivery
+is blocked, identify the exact blocker and remaining steps; never silently
+reduce the task to a local-only fix or ask whether to release an already
+authorized third-party fix.
+
 ## Architecture
 
 - **State:** Cubit pattern with delegate decomposition (`lib/cubit/disting_cubit.dart`)

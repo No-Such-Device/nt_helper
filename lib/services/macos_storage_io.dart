@@ -26,16 +26,19 @@ final class MacosStorageIo {
       .lookupFunction<Int32 Function(Int32, Int32), int Function(int, int)>(
         'fcntl',
       );
+  // Intel Darwin retains the legacy 32-bit-inode ABI under the bare symbols.
+  // Our 144-byte buffers and offsets require stat64, including birth time.
+  // C callers get this symbol remapping from sys/stat.h; FFI callers do not.
   static final _stat = _lib
       .lookupFunction<
         Int32 Function(Pointer<Utf8>, Pointer<Uint8>),
         int Function(Pointer<Utf8>, Pointer<Uint8>)
-      >('lstat');
+      >(Abi.current() == Abi.macosX64 ? r'lstat$INODE64' : 'lstat');
   static final _fstat = _lib
       .lookupFunction<
         Int32 Function(Int32, Pointer<Uint8>),
         int Function(int, Pointer<Uint8>)
-      >('fstat');
+      >(Abi.current() == Abi.macosX64 ? r'fstat$INODE64' : 'fstat');
   static final _pread = _lib
       .lookupFunction<
         IntPtr Function(Int32, Pointer<Uint8>, IntPtr, Int64),

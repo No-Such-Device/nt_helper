@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:ffi' show Abi;
+import 'dart:io';
 import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:nt_helper/disting_app.dart';
 import 'package:nt_helper/services/macos_library_storage.dart';
 import 'package:nt_helper/services/startup_controller.dart';
@@ -143,10 +146,19 @@ class _RecoveryPageState extends State<_RecoveryPage> {
   );
 }
 
-class _RecoveryDialog extends StatelessWidget {
+class _RecoveryDialog extends StatefulWidget {
   const _RecoveryDialog({required this.controller});
 
   final StartupController controller;
+
+  @override
+  State<_RecoveryDialog> createState() => _RecoveryDialogState();
+}
+
+class _RecoveryDialogState extends State<_RecoveryDialog> {
+  bool _showDetails = true;
+
+  StartupController get controller => widget.controller;
 
   @override
   Widget build(BuildContext context) {
@@ -166,13 +178,13 @@ class _RecoveryDialog extends StatelessWidget {
                   header: true,
                   namesRoute: true,
                   child: Text(
-                    'Open your library',
+                    'Unable to open your library',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Normal library features wait until the selected database opens. Existing files and recovery data are retained.',
+                  'nt_helper could not open its saved presets and cached data. Your disting NT hardware has not been changed.',
                 ),
                 const SizedBox(height: 16),
                 Expanded(
@@ -182,14 +194,41 @@ class _RecoveryDialog extends StatelessWidget {
                       child: SelectableText(
                         failure == null
                             ? 'Preparing storage.'
-                            : '${_failureMessage(failure)}\n\nOperation details: $failure',
+                            : '${_failureMessage(failure)}\n\n'
+                                  'If Retry does not help, copy the error details and send them to nt_helper support. Do not delete or move library files.'
+                                  '${_showDetails ? '\n\n${_errorDetails(failure)}' : ''}',
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  'After resolving the reported condition, use Retry here; restarting the app is not required. Folder selection, when offered, does not guarantee that macOS will permit access.',
+                SizedBox(
+                  height: 40,
+                  child: Row(
+                    children: [
+                      TextButton(
+                        onPressed: () =>
+                            setState(() => _showDetails = !_showDetails),
+                        child: Text(
+                          _showDetails ? 'Hide details' : 'Show details',
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'Copy error details',
+                        onPressed: failure == null
+                            ? null
+                            : () => unawaited(
+                                Clipboard.setData(
+                                  ClipboardData(text: _errorDetails(failure)),
+                                ),
+                              ),
+                        icon: const Icon(
+                          Icons.copy,
+                          semanticLabel: 'Copy error details',
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
@@ -214,7 +253,7 @@ class _RecoveryDialog extends StatelessWidget {
                               ? 'Closing…'
                               : failure == null
                               ? 'Ready to open'
-                              : 'Library remains unavailable',
+                              : 'Library not opened',
                         ),
                 ),
                 const SizedBox(height: 12),
@@ -232,16 +271,23 @@ class _RecoveryDialog extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: FocusTraversalOrder(
-                        order: const NumericFocusOrder(2),
-                        child: OutlinedButton(
-                          onPressed:
-                              controller.canSelectAccess && !controller.busy
-                              ? () => unawaited(
-                                  controller.retry(selectLegacyDirectory: true),
-                                )
-                              : null,
-                          child: const Text('Select legacy folder…'),
+                      child: Visibility(
+                        visible: controller.canSelectAccess,
+                        maintainState: true,
+                        maintainAnimation: true,
+                        maintainSize: true,
+                        child: FocusTraversalOrder(
+                          order: const NumericFocusOrder(2),
+                          child: OutlinedButton(
+                            onPressed: !controller.busy
+                                ? () => unawaited(
+                                    controller.retry(
+                                      selectLegacyDirectory: true,
+                                    ),
+                                  )
+                                : null,
+                            child: const Text('Allow folder access…'),
+                          ),
                         ),
                       ),
                     ),
@@ -256,24 +302,30 @@ class _RecoveryDialog extends StatelessWidget {
   }
 }
 
+String _errorDetails(Object failure) =>
+    'nt_helper library startup failure\n'
+    'OS: ${Platform.operatingSystemVersion}\n'
+    'Architecture: ${Abi.current()}\n\n$failure';
+
 String _failureMessage(Object failure) {
   if (failure is! StorageFailure) {
-    return 'The library could not be opened. No replacement library was admitted.';
+    return 'An unexpected error prevented nt_helper from opening your library. Select Retry. If this continues, contact support with the error details.';
   }
   return switch (failure.kind) {
     StorageFailureKind.access =>
-      'A required storage operation was denied. Check the reported source or destination access, then Retry.',
+      'nt_helper could not access a library file or folder. Check the report below for a missing file or a permission error. For permission errors, check nt_helper’s access in System Settings → Privacy & Security → Files and Folders, then Retry.',
     StorageFailureKind.busy =>
-      'Storage is busy. Let the other operation finish, then Retry.',
+      'Another operation is using the library. Close any other running copy of nt_helper, then Retry.',
     StorageFailureKind.io =>
-      'A storage read or write failed. Resolve the reported I/O condition, then Retry.',
+      'nt_helper could not read or write a library file. Check that your disk is connected and has free space, then Retry.',
     StorageFailureKind.native =>
-      'SQLite could not complete opening or inspection. The library has not been classified as corrupt. Retry when the reported condition is corrected.',
+      'The database could not be opened. This does not necessarily mean it is damaged. Select Retry; if this continues, send the error details to support.',
     StorageFailureKind.unsupportedSchema =>
-      'This library schema is not supported by this version. Its files remain preserved.',
-    StorageFailureKind.uncertain => failure.message,
+      'This library uses a database version this app cannot open. Install the latest nt_helper version. Do not delete your library.',
+    StorageFailureKind.uncertain =>
+      'nt_helper could not determine which saved library files are safe to use. The report below explains what it found. Please send these details to support so we can help recover access.',
     StorageFailureKind.damaged =>
-      'Database damage was detected. The previous library has not been recovered; files remain preserved.',
+      'The library database appears damaged and automatic recovery could not finish. Please send the error details to support. Do not delete your library files.',
   };
 }
 
