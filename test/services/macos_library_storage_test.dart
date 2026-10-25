@@ -92,6 +92,134 @@ void main() {
     },
   );
 
+  for (final operation in [
+    'BEGIN; SELECT * FROM metadata_cache; COMMIT',
+    'BEGIN; SELECT * FROM metadata_cache; ROLLBACK',
+    "BEGIN; INSERT INTO metadata_cache VALUES ('rollback', 'edit'); ROLLBACK",
+    'VACUUM',
+  ]) {
+    test(
+      'selected library survives normal SQLite operation: $operation',
+      () async {
+        final selected = await prepare();
+        final raw = selected.openRaw();
+        try {
+          raw.execute(operation);
+        } finally {
+          raw.close();
+        }
+        await prepare(
+          documents: () async => throw StateError('no legacy access'),
+        );
+      },
+    );
+  }
+
+  test(
+    'valid saved database opens after file identity changes without consulting Documents',
+    () async {
+      final selected = await prepare();
+      final saved = await selected.open();
+      await saved.customStatement(
+        "INSERT INTO metadata_cache VALUES ('saved-before-restart', 'keep this')",
+      );
+      await saved.close();
+      final original = selected.file.renameSync(
+        '${selected.file.path}.retained',
+      );
+      original.copySync(selected.file.path);
+      expect(
+        MacosStorageIo.identity(selected.file.path),
+        isNot(selected.identity),
+      );
+      final reopened = await prepare(
+        documents: () async => throw StateError('no legacy access'),
+        checkpoint: (point) async {
+          if (point.contains('inspect-selected')) {
+            throw StateError(
+              'A successful open must not enter failure inspection',
+            );
+          }
+        },
+      );
+      expect(reopened.file.path, selected.file.path);
+      final app = await reopened.open();
+      await app.customStatement(
+        "INSERT INTO metadata_cache VALUES ('changed-file', 'kept')",
+      );
+      await app.close();
+      final again = await (await prepare()).open();
+      expect(
+        (await again.select(again.metadataCache).get()).map(
+          (row) => row.cacheKey,
+        ),
+        containsAll(['saved-before-restart', 'changed-file']),
+      );
+      await again.close();
+    },
+  );
+
+  test(
+    'diagnostic inventory errors do not replace the original SQLite failure',
+    () async {
+      final selected = await prepare();
+      final saved = selected.file.renameSync('${selected.file.path}.retained');
+      Link('${selected.file.path}-wal').createSync(saved.path);
+      await expectLater(
+        prepare(),
+        throwsA(
+          isA<StorageFailure>()
+              .having(
+                (e) => e.kind,
+                'original failure kind',
+                StorageFailureKind.access,
+              )
+              .having(
+                (e) => e.cause.toString(),
+                'original SQLite failure',
+                contains('SqliteException'),
+              )
+              .having(
+                (e) => e.diagnostics,
+                'missing database',
+                contains('Observed identity: missing'),
+              )
+              .having(
+                (e) => e.diagnostics,
+                'failed diagnostic',
+                contains('Could not inspect:'),
+              ),
+        ),
+      );
+      expect(selected.file.existsSync(), isFalse);
+      expect(saved.existsSync(), isTrue);
+    },
+  );
+
+  test(
+    'recovery successor reopens after an earlier valid file replacement',
+    () async {
+      await fixture(docs);
+      final selected = await prepare();
+      final app = await selected.open();
+      final expected = await contents(app);
+      await app.close();
+      final saved = selected.file.renameSync('${selected.file.path}.retained');
+      saved.copySync(selected.file.path);
+      damageLibrary(selected.file, repairable: true);
+      final repaired = await prepare(
+        documents: () async => throw StateError('no legacy access'),
+      );
+      expect(repaired.recovery, LibraryRecovery.repaired);
+      expect(repaired.file.path, isNot(selected.file.path));
+      final reopened = await prepare(
+        documents: () async => throw StateError('no legacy access'),
+      );
+      expect(reopened.file.path, repaired.file.path);
+      await assertComplete(reopened, expected);
+    },
+  );
+
   for (final row in ['R', 'D', 'D marker', 'R+D', 'A', 'A+R+D']) {
     test(
       'automatic inventory $row opens complete records, keys, relationships, sequences and WAL exactly once',
@@ -235,12 +363,27 @@ void main() {
   );
 
   test(
-    'selected identity cannot be implicitly created or replaced and restoration permits Retry',
+    'failed SQLite open reports missing or invalid selected files without creating a replacement',
     () async {
       await fixture(docs);
       final selected = await prepare();
       final saved = selected.file.renameSync('${selected.file.path}.retained');
-      await expectLater(prepare(), throwsA(isA<StorageFailure>()));
+      await expectLater(
+        prepare(),
+        throwsA(
+          isA<StorageFailure>()
+              .having(
+                (e) => e.diagnostics,
+                'report',
+                contains(selected.file.path),
+              )
+              .having(
+                (e) => e.cause.toString(),
+                'SQLite error',
+                contains('SqliteException'),
+              ),
+        ),
+      );
       expect(selected.file.existsSync(), isFalse);
       File(selected.file.path).writeAsStringSync('replacement');
       await expectLater(prepare(), throwsA(isA<StorageFailure>()));
@@ -251,8 +394,19 @@ void main() {
       await db.close();
       final journal = File('${selected.file.path}-journal');
       final retained = journal.renameSync('${journal.path}.retained');
-      await expectLater(prepare(), throwsA(isA<StorageFailure>()));
-      retained.renameSync(journal.path);
+      final reopened = await prepare();
+      expect(reopened.file.path, selected.file.path);
+      final writable = await reopened.open();
+      await writable.customStatement(
+        "INSERT INTO metadata_cache VALUES ('journal-recreated', 'new edit')",
+      );
+      await writable.close();
+      expect(journal.existsSync(), isTrue);
+      expect(retained.existsSync(), isTrue);
+      expect(
+        MacosStorageIo.identity(journal.path),
+        isNot(selected.journalIdentity),
+      );
       await prepare();
     },
   );
@@ -657,6 +811,16 @@ void main() {
       final file = File(p.join(root.path, 'identity'))
         ..writeAsStringSync('same');
       final id = MacosStorageIo.identity(file.path);
+      expect(id, startsWith('32768:'));
+      expect(MacosStorageIo.identity(root.path), startsWith('16384:'));
+      final reader = MacosStorageIo.openRead(file.path);
+      try {
+        expect(reader.read(), utf8.encode('same'));
+      } finally {
+        reader.close();
+      }
+      file.writeAsStringSync('a larger ordinary edit');
+      expect(MacosStorageIo.identity(file.path), id);
       file.renameSync('${file.path}.retained');
       File(file.path).writeAsStringSync('same');
       expect(MacosStorageIo.identity(file.path), isNot(id));

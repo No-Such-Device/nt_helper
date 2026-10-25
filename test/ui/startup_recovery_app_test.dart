@@ -141,7 +141,7 @@ void main() {
   void blocked(StartupController controller) {
     expect(controller.ready, isFalse);
     expect(activations, 0);
-    expect(find.text('Open your library'), findsOneWidget);
+    expect(find.text('Unable to open your library'), findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);
     expect(find.textContaining('Expected library admitted'), findsNothing);
   }
@@ -173,17 +173,19 @@ void main() {
         await attempt(tester, controller);
         blocked(controller);
         expect(
-          find.textContaining('required storage operation was denied'),
+          find.textContaining('could not access a library'),
           findsOneWidget,
         );
         final buttonPosition = tester.getRect(
           find.widgetWithText(FilledButton, 'Retry'),
         );
-        final titlePosition = tester.getRect(find.text('Open your library'));
+        final titlePosition = tester.getRect(
+          find.text('Unable to open your library'),
+        );
         final semantics = tester.ensureSemantics();
         expect(
           tester
-              .getSemantics(find.text('Open your library'))
+              .getSemantics(find.text('Unable to open your library'))
               .flagsCollection
               .isHeader,
           isTrue,
@@ -199,17 +201,17 @@ void main() {
         if (site == 'source') {
           expect(
             Focus.of(
-              tester.element(find.text('Select legacy folder…')),
+              tester.element(find.text('Allow folder access…')),
             ).hasFocus,
             isTrue,
           );
           expect(
             tester
                 .getSemantics(
-                  find.widgetWithText(OutlinedButton, 'Select legacy folder…'),
+                  find.widgetWithText(OutlinedButton, 'Allow folder access…'),
                 )
                 .label,
-            contains('Select legacy folder'),
+            contains('Allow folder access'),
           );
         } else {
           expect(FocusManager.instance.primaryFocus, isNotNull);
@@ -219,7 +221,10 @@ void main() {
           tester.getRect(find.widgetWithText(FilledButton, 'Retry')),
           buttonPosition,
         );
-        expect(tester.getRect(find.text('Open your library')), titlePosition);
+        expect(
+          tester.getRect(find.text('Unable to open your library')),
+          titlePosition,
+        );
         denied = false;
         await clickRetry(tester, controller);
         expect(admitted, expected);
@@ -397,7 +402,7 @@ void main() {
 
   for (final loss in ['missing', 'replaced', 'denied', 'recovery journal']) {
     testWidgets(
-      'selected $loss blocks without rollback; restore same identity and Retry',
+      'selected $loss tries SQLite without falling back to legacy data',
       (tester) async {
         await tester.runAsync(() => fixture(docs));
         final initial = controllerFor(opener());
@@ -446,9 +451,24 @@ void main() {
         );
         await show(tester, next);
         await attempt(tester, next);
+        if (loss == 'recovery journal') {
+          expect(next.ready, isTrue);
+          expect(admitted, expected);
+          expect(legacyReads, 0);
+          expect(find.byType(Dialog), findsNothing);
+          expect(saved!.existsSync(), isTrue);
+          return;
+        }
         blocked(next);
         expect(legacyReads, 0);
-        if (loss == 'missing') expect(affected.existsSync(), isFalse);
+        if (loss == 'missing') {
+          expect(affected.existsSync(), isFalse);
+          expect(find.textContaining('SqliteException'), findsOneWidget);
+          expect(
+            find.textContaining('Observed identity: missing'),
+            findsOneWidget,
+          );
+        }
         if (loss == 'replaced') affected.renameSync('${affected.path}.unknown');
         saved?.renameSync(affected.path);
         denied = false;
@@ -460,6 +480,76 @@ void main() {
       skip: !Platform.isMacOS,
     );
   }
+
+  testWidgets(
+    'failed open report is visible, copyable and does not shift controls',
+    (tester) async {
+      const report = 'File: /saved/library.sqlite\nObserved identity: missing';
+      final controller = StartupController(
+        open: ({bool selectLegacyDirectory = false}) async =>
+            throw const StorageFailure(
+              StorageFailureKind.access,
+              'SQLite could not open the saved library',
+              'SqliteException(14): unable to open database file',
+              report,
+            ),
+        canSelectLegacyDirectory: () => false,
+        activationSteps: const [],
+      );
+      controllers.add(controller);
+      await show(tester, controller);
+      await attempt(tester, controller);
+      final semantics = tester.ensureSemantics();
+      expect(find.textContaining(report), findsOneWidget);
+      expect(find.textContaining('SqliteException(14)'), findsOneWidget);
+      expect(find.textContaining('Architecture:'), findsOneWidget);
+      final retryRect = tester.getRect(
+        find.widgetWithText(FilledButton, 'Retry'),
+      );
+      final titleRect = tester.getRect(
+        find.text('Unable to open your library'),
+      );
+      final copy = find.widgetWithIcon(IconButton, Icons.copy);
+      expect(tester.getSemantics(copy).label, contains('Copy error details'));
+      String? copied;
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String;
+        }
+        return null;
+      });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+      );
+      await tester.tap(copy);
+      await tester.pump();
+      expect(copied, contains(report));
+      expect(copied, contains('SqliteException(14)'));
+      expect(copied, contains('OS:'));
+      await tester.tap(find.text('Hide details'));
+      await tester.pump();
+      expect(find.textContaining(report), findsNothing);
+      expect(
+        tester.getRect(find.widgetWithText(FilledButton, 'Retry')),
+        retryRect,
+      );
+      expect(
+        tester.getRect(find.text('Unable to open your library')),
+        titleRect,
+      );
+      await tester.tap(find.text('Show details'));
+      await tester.pump();
+      expect(find.textContaining(report), findsOneWidget);
+      expect(
+        tester.getRect(find.widgetWithText(FilledButton, 'Retry')),
+        retryRect,
+      );
+      expect(tester.takeException(), isNull);
+      semantics.dispose();
+    },
+  );
 
   for (final failure in ['native', 'I/O', 'access', 'busy']) {
     testWidgets(
@@ -541,7 +631,7 @@ void main() {
       await show(tester, controller);
       await attempt(tester, controller);
       await tester.runAsync(() async {
-        await tester.tap(find.text('Select legacy folder…'));
+        await tester.tap(find.text('Allow folder access…'));
         await controller.retry();
       });
       await tester.pump();
@@ -550,7 +640,7 @@ void main() {
       expect(released, 1);
       cancel = false;
       await tester.runAsync(() async {
-        await tester.tap(find.text('Select legacy folder…'));
+        await tester.tap(find.text('Allow folder access…'));
         await controller.retry();
       });
       await tester.pump();
@@ -868,18 +958,20 @@ void main() {
         expect(
           find.textContaining(
             kind == StorageFailureKind.busy
-                ? 'Storage is busy.'
-                : 'required storage operation was denied.',
+                ? 'Another operation is using the library.'
+                : 'could not access a library',
           ),
           findsOneWidget,
         );
         final button = find.widgetWithText(FilledButton, 'Retry');
         final buttonRect = tester.getRect(button);
-        final titleRect = tester.getRect(find.text('Open your library'));
-        final accessRect = tester.getRect(find.text('Select legacy folder…'));
+        final titleRect = tester.getRect(
+          find.text('Unable to open your library'),
+        );
+        final accessRect = tester.getRect(find.text('Allow folder access…'));
         expect(
           tester
-              .getSemantics(find.text('Open your library'))
+              .getSemantics(find.text('Unable to open your library'))
               .flagsCollection
               .isHeader,
           isTrue,
@@ -889,7 +981,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.pump();
         expect(
-          Focus.of(tester.element(find.text('Select legacy folder…'))).hasFocus,
+          Focus.of(tester.element(find.text('Allow folder access…'))).hasFocus,
           isTrue,
         );
         await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
@@ -906,8 +998,11 @@ void main() {
         expect(controller.busy, isTrue);
         expect(find.text('Opening library…'), findsOneWidget);
         expect(tester.getRect(button), buttonRect);
-        expect(tester.getRect(find.text('Open your library')), titleRect);
-        expect(tester.getRect(find.text('Select legacy folder…')), accessRect);
+        expect(
+          tester.getRect(find.text('Unable to open your library')),
+          titleRect,
+        );
+        expect(tester.getRect(find.text('Allow folder access…')), accessRect);
         await tester.runAsync(() async {
           gate.complete();
         });
@@ -972,7 +1067,9 @@ void main() {
           expect(find.text('nt_helper'), findsOneWidget);
           expect(find.byType(Dialog), findsNothing);
           await attempt(tester, controller);
-          final context = tester.element(find.text('Open your library'));
+          final context = tester.element(
+            find.text('Unable to open your library'),
+          );
           final expected = AppTheme.build(
             seedColor: seed,
             brightness: brightness,
@@ -990,7 +1087,7 @@ void main() {
           await tester.sendKeyEvent(LogicalKeyboardKey.escape);
           await tester.tapAt(const Offset(8, 8));
           await tester.pumpAndSettle();
-          expect(find.text('Open your library'), findsOneWidget);
+          expect(find.text('Unable to open your library'), findsOneWidget);
           settings.themeSeedColorNotifier.value = const Color(0xFF125C77);
           await tester.pumpAndSettle();
           expect(
@@ -1021,7 +1118,7 @@ void main() {
       controllers.add(controller);
       await show(tester, controller);
       expect(find.byType(Dialog), findsNothing);
-      expect(find.text('Open your library'), findsNothing);
+      expect(find.text('Unable to open your library'), findsNothing);
       expect(find.textContaining('Expected library admitted'), findsNothing);
       await attempt(tester, controller);
       await tester.pumpAndSettle();

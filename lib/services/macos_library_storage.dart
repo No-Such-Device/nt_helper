@@ -25,13 +25,15 @@ enum StorageFailureKind {
 }
 
 final class StorageFailure implements Exception {
-  const StorageFailure(this.kind, this.message, [this.cause]);
+  const StorageFailure(this.kind, this.message, [this.cause, this.diagnostics]);
   final StorageFailureKind kind;
   final String message;
   final Object? cause;
+  final String? diagnostics;
   @override
   String toString() =>
-      'Storage ${kind.name}: $message${cause == null ? '' : ' ($cause)'}';
+      'Storage ${kind.name}: $message${cause == null ? '' : ' ($cause)'}'
+      '${diagnostics == null ? '' : '\n\n$diagnostics'}';
 }
 
 /// Fault seam shared by deterministic faults and disposable process-death tests.
@@ -40,8 +42,9 @@ typedef StorageCheckpoint = Future<void> Function(String boundary);
 
 enum LibraryRecovery { repaired, freshAfterDamage }
 
-/// The selected file is never opened with CREATE. Identity is checked on every
-/// reopen, including in the ordinary Drift opener. No legacy access is needed.
+/// Open the saved path without CREATE. Historic file identities are diagnostic
+/// evidence after a failed open, not a prerequisite for trying SQLite.
+/// No legacy access is needed.
 final class SelectedLibrary {
   SelectedLibrary._(
     this.file,
@@ -56,54 +59,77 @@ final class SelectedLibrary {
   final String attempt;
   final LibraryRecovery? recovery;
 
-  void _requireIdentity() {
-    if (MacosStorageIo.identity(file.path) != identity ||
-        MacosStorageIo.identity('${file.path}-journal') != journalIdentity) {
-      throw const StorageFailure(
-        StorageFailureKind.uncertain,
-        'Selected library or its retained recovery journal is missing or replaced; restore the same identity and Retry',
-      );
+  StorageFailure _openingFailure(Object error, String operation) {
+    final failure = classifyStorageFailure(error, operation);
+    if (failure.diagnostics != null) return failure;
+    final report = StringBuffer('Library open attempt: $operation\n');
+    for (final suffix in ['', ..._journals]) {
+      final path = '${file.path}$suffix';
+      report.writeln('File: $path');
+      try {
+        final actual = MacosStorageIo.identity(path);
+        report.writeln('  Observed identity: ${actual ?? 'missing'}');
+        if (actual != null) {
+          final stat = FileStat.statSync(path);
+          report.writeln(
+            '  Size: ${stat.size} bytes; mode: ${stat.modeString()}',
+          );
+        }
+        final expected = suffix.isEmpty
+            ? identity
+            : suffix == '-journal'
+            ? journalIdentity
+            : null;
+        if (expected != null) {
+          report.writeln('  Recorded identity: $expected');
+          report.writeln('  Identity matches: ${actual == expected}');
+        }
+      } catch (inspectionError) {
+        report.writeln('  Could not inspect: $inspectionError');
+      }
     }
+    return StorageFailure(
+      failure.kind,
+      failure.message,
+      failure.cause,
+      report.toString(),
+    );
   }
 
   Database openRaw() {
     try {
-      _requireIdentity();
       final raw = sqlite3.open(file.path, mode: OpenMode.readWrite);
       try {
         raw.execute(
           'PRAGMA journal_mode=PERSIST; PRAGMA fullfsync=ON; PRAGMA synchronous=FULL',
         );
-        if (MacosStorageIo.identity(file.path) != identity) {
-          throw const StorageFailure(
-            StorageFailureKind.uncertain,
-            'Selected library changed during opening',
-          );
-        }
         return raw;
       } catch (_) {
         raw.close();
         rethrow;
       }
     } catch (error) {
-      throw classifyStorageFailure(error, 'Cannot reopen selected library');
+      throw _openingFailure(error, 'SQLite could not open the saved library');
     }
   }
 
   Future<AppDatabase> open({StorageCheckpoint? checkpoint}) async {
+    final raw = openRaw();
     final app = AppDatabase.withExecutor(
-      NativeDatabase.opened(openRaw()),
+      NativeDatabase.opened(raw),
       storageCheckpoint: checkpoint,
     );
     try {
+      _checkVersion(raw, app);
       await _querySchema(app);
+      final damage = DatabaseIntegrityService.inspect(raw);
+      if (damage != null) {
+        throw StorageFailure(StorageFailureKind.damaged, damage);
+      }
       return app;
     } catch (error) {
       await app.close();
-      throw classifyStorageFailure(
-        error,
-        'Cannot open selected library schema',
-      );
+      throw _openingFailure(error, 'SQLite could not read the saved library');
     }
   }
 }
@@ -152,18 +178,34 @@ final class MacosLibraryStorage {
       });
       final selected = _readSelection();
       if (selected != null) {
-        selected._requireIdentity();
-        final damaged = await _effect(
-          'inspect-selected',
-          () async => _inspectSource(selected.file.path, files),
-        );
-        if (!damaged) {
-          files.close();
+        try {
           await _effect('open', () async {
             final app = await selected.open(checkpoint: checkpoint);
             await app.close();
           });
           return selected;
+        } catch (error) {
+          // Only an actual failed open/read can lead to recovery inspection.
+          // Missing files, access errors and busy databases never authorize a
+          // replacement or fallback to the old Documents copy.
+          if (!_positiveDamage(error)) rethrow;
+          final bool damaged;
+          try {
+            damaged = await _effect(
+              'inspect-selected',
+              () async => _inspectSource(selected.file.path, files),
+            );
+          } catch (inspectionError) {
+            throw selected._openingFailure(
+              StorageFailure(
+                StorageFailureKind.uncertain,
+                'The library could not be opened and safe recovery could not be established.',
+                '$error\nRecovery inspection: $inspectionError',
+              ),
+              'Recovery inspection after a failed SQLite open',
+            );
+          }
+          if (!damaged) rethrow;
         }
       }
 
@@ -433,8 +475,7 @@ final class MacosLibraryStorage {
           (recoveryName != null && recovery == null) ||
           record['predecessor'] != previous?.attempt ||
           (previous != null &&
-              (receipt['sources'] as Map?)?[previous.file.path] !=
-                  previous.identity)) {
+              (receipt['sources'] as Map?)?[previous.file.path] is! String)) {
         throw const StorageFailure(
           StorageFailureKind.uncertain,
           'Contradictory recovery selection authority',
