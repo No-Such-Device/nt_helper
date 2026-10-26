@@ -1,0 +1,47 @@
+name: Retain release Actions artifacts
+
+on:
+  schedule:
+    - cron: '29 6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retain-release-actions-artifacts
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: github.repository == 'No-Such-Device/nt_helper'
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Test retention safety
+        run: python3 -m unittest discover -s scripts -p 'test_retain_release_artifacts.py' -v
+      - name: Retain five release versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 scripts/retain_release_artifacts.py --apply
+          --evidence-dir "$RUNNER_TEMP/release-retention-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+      - name: Print audit receipts
+        if: always()
+        env:
+          EVIDENCE: ${{ runner.temp }}/release-retention-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          directory = Path(os.environ['EVIDENCE'])
+          for name in ('manifest.json', 'manifest.sha256', 'receipts.json'):
+              path = directory / name
+              if path.exists():
+                  print(f'--- {name} ---\n{path.read_text()}')
+          PY
