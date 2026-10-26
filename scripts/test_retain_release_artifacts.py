@@ -60,34 +60,35 @@ class PlanningTests(unittest.TestCase):
         data["runs"][0]["conclusion"] = "failure"
         result = policy.plan(**data)
         self.assertEqual(result["keep"][0], "v1.0.1")
-        # Preserve extra latest successful version at an ambiguous boundary.
-        self.assertIn("v1.0.3", result["keep"])
-        self.assertEqual([a["id"] for a in result["delete"]], [2])
+        self.assertNotIn("v1.0.3", result["keep"])
+        self.assertEqual([a["id"] for a in result["delete"]], [2, 3])
 
-    def test_successful_original_run_fallback_without_release_records(self):
+    def test_no_fallback_without_release_records(self):
         data = fixture()
         data["releases"] = []
         data["runs"][0]["updated_at"] = "2026-12-31T00:00:00Z"
-        self.assertEqual([a["id"] for a in policy.plan(**data)["delete"]], [1, 2])
+        with self.assertRaises(RuntimeError):
+            policy.plan(**data)
 
-    def test_old_failed_and_cancelled_attempts_are_deleted(self):
+    def test_old_unpublished_failed_and_cancelled_attempts_are_preserved(self):
         for conclusion in ("failure", "cancelled"):
             with self.subTest(conclusion=conclusion):
                 data = fixture()
                 data["runs"][0]["conclusion"] = conclusion
                 data["releases"] = data["releases"][1:]
-                self.assertEqual([a["id"] for a in policy.plan(**data)["delete"]], [1, 2])
+                self.assertEqual([a["id"] for a in policy.plan(**data)["delete"]], [2])
 
     def test_new_failed_unpublished_attempt_preserved(self):
         data = fixture(8)
         data["runs"][-1]["conclusion"] = "failure"
         data["releases"].pop()
-        self.assertIn("v1.0.8", policy.plan(**data)["keep"])
+        self.assertNotIn(8, [a["id"] for a in policy.plan(**data)["delete"]])
 
-    def test_equal_boundary_preserves_extra(self):
+    def test_equal_boundary_uses_stable_release_id(self):
         data = fixture()
         data["releases"][1]["published_at"] = data["releases"][2]["published_at"]
-        self.assertIn("v1.0.2", policy.plan(**data)["keep"])
+        self.assertNotIn("v1.0.2", policy.plan(**data)["keep"])
+        self.assertEqual(len(policy.plan(**data)["keep"]), 5)
 
     def test_unknown_nonrelease_and_dispatch_preserved(self):
         data = fixture()
@@ -107,9 +108,8 @@ class PlanningTests(unittest.TestCase):
             lambda d: d["tags"].pop(0),
             lambda d: d["runs"][0].update(head_sha="changed"),
             lambda d: d["runs"][0].pop("repository"),
-            lambda d: d["artifacts"].clear(),
             lambda d: d["artifacts"][0].update(expired=True),
-            lambda d: d["releases"][0].update(published_at=None),
+            lambda d: d["releases"][0].update(published_at="not-a-date"),
         ):
             data = fixture()
             mutate(data)
@@ -124,7 +124,7 @@ class PlanningTests(unittest.TestCase):
         source = ('name: Multi-Platform Build\n\non:\n  push:\n    tags:\n'
                   '      - "v*" # e.g., v1.0, v1.2.3, etc.\n  workflow_dispatch:')
         data["historical_sources"] = {sha: source}
-        self.assertIn(1, [a["id"] for a in policy.plan(**data)["delete"]])
+        self.assertNotIn(1, [a["id"] for a in policy.plan(**data)["delete"]])
         data["historical_sources"][sha] = source.replace('tags:', 'branches:')
         with self.assertRaises(RuntimeError):
             policy.plan(**data)
@@ -139,10 +139,14 @@ class PlanningTests(unittest.TestCase):
             run["status"] = status
             with self.assertRaises(RuntimeError):
                 policy.assert_idle([run], "")
-            run.update(path=policy.CLEANUP_PATH, event="schedule", head_branch="main")
-            policy.assert_idle([run], "1")
+            for event in ("schedule", "workflow_run"):
+                run.update(path=policy.CLEANUP_PATH, event=event, head_branch="main")
+                policy.assert_idle([run], "1")
+                with self.assertRaises(RuntimeError):
+                    policy.assert_idle([run], "2")
+            run["event"] = "pull_request"
             with self.assertRaises(RuntimeError):
-                policy.assert_idle([run], "2")
+                policy.assert_idle([run], "1")
 
 
 class PaginationTests(unittest.TestCase):
@@ -186,7 +190,7 @@ class ApplyTests(unittest.TestCase):
                 patch.object(policy, "snapshot", return_value=changed), \
                 patch.object(policy, "api") as api:
             with self.assertRaises(RuntimeError):
-                policy.apply(manifest, before, Path(directory))
+                policy.apply_artifacts(manifest, before, Path(directory))
             api.assert_not_called()
 
     def test_fresh_identity_delete_204_and_absence_receipts(self):
@@ -198,7 +202,7 @@ class ApplyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, \
                 patch.object(policy, "snapshot", side_effect=[before, before, after]), \
                 patch.object(policy, "api", side_effect=responses) as api:
-            receipts = policy.apply(manifest, before, Path(directory))
+            receipts = policy.apply_artifacts(manifest, before, Path(directory))
             self.assertEqual(receipts, [{"id": 1, "status": 204, "verified_absent": True}])
             self.assertEqual(api.call_args_list[2].args,
                              (f"repos/{policy.REPO}/actions/artifacts/1", "DELETE"))
@@ -220,7 +224,7 @@ class ApplyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, \
                 patch.object(policy, "snapshot", side_effect=[before, before, middle, after]), \
                 patch.object(policy, "api", side_effect=responses):
-            self.assertEqual(len(policy.apply(manifest, before, Path(directory))), 2)
+            self.assertEqual(len(policy.apply_artifacts(manifest, before, Path(directory))), 2)
 
     def test_api_scope_and_http_errors(self):
         with self.assertRaises(RuntimeError):
@@ -231,6 +235,116 @@ class ApplyTests(unittest.TestCase):
             with patch.object(policy.subprocess, "run", return_value=result), \
                     self.assertRaises(RuntimeError):
                 policy.api(f"repos/{policy.REPO}/actions/artifacts/1", "DELETE")
+
+
+class ReleaseTests(unittest.TestCase):
+    def test_drafts_unpublished_and_assets_preserved(self):
+        data = fixture(9)
+        data["releases"][0]["draft"] = True
+        data["releases"][1]["published_at"] = None
+        for release in data["releases"]:
+            release["assets"] = [{"id": release["id"] * 10, "name": "package", "size": 123}]
+        original = copy.deepcopy(data)
+        result = policy.plan(**data)
+        self.assertEqual(result["keep_release_ids"], [9, 8, 7, 6, 5])
+        self.assertEqual([r["id"] for r in result["delete_releases"]], [4, 3])
+        self.assertEqual([a["id"] for a in result["delete"]], [3, 4])
+        self.assertEqual(data, original)
+
+    def test_releases_without_artifacts_still_consume_slots(self):
+        data = fixture()
+        data["artifacts"] = data["artifacts"][:2]
+        result = policy.plan(**data)
+        self.assertEqual(result["keep_release_ids"], [7, 6, 5, 4, 3])
+        self.assertEqual([a["id"] for a in result["delete"]], [1, 2])
+        data["artifacts"] = []
+        self.assertEqual(len(policy.plan(**data)["delete_releases"]), 2)
+
+    def test_malformed_duplicate_and_error_release_data(self):
+        for mutate in (
+            lambda r: r.append(copy.deepcopy(r[0])),
+            lambda r: r[0].update(id="1"),
+            lambda r: r[0].update(draft="false"),
+            lambda r: r[0].update(prerelease=None),
+            lambda r: r[0].update(assets=None),
+            lambda r: r[0].update(published_at="bad"),
+            lambda r: r[0].update(tag_name=r[1]["tag_name"]),
+        ):
+            data = fixture()
+            mutate(data["releases"])
+            with self.assertRaises((RuntimeError, ValueError)):
+                policy.plan(**data)
+        with self.assertRaises(RuntimeError):
+            policy.select_releases({"message": "error"})
+
+    def test_ref_deletion_and_asset_direct_deletion_forbidden(self):
+        for path in ("git/refs/tags/v1.0.1", "releases/assets/123", "actions/runs/123"):
+            with patch.object(policy.subprocess, "run") as run, self.assertRaises(RuntimeError):
+                policy.api(f"repos/{policy.REPO}/{path}", "DELETE")
+            run.assert_not_called()
+
+    def test_asset_listing_incomplete_or_changed_aborts(self):
+        release = fixture()["releases"][0]
+        release["assets"] = [{"id": 1, "size": 100}]
+        with patch.object(policy, "pages", return_value=[]), self.assertRaises(RuntimeError):
+            policy.release_assets(release)
+
+    def test_release_delete_receipts_preserve_five_drafts_and_tags(self):
+        before = fixture(6)
+        draft = {"id": 99, "tag_name": "unpublished", "draft": True,
+                 "prerelease": False, "published_at": None, "assets": [{"id": 990}]}
+        before["releases"].append(draft)
+        manifest = policy.plan(**before)
+        after = copy.deepcopy(before)
+        after["releases"].pop(0)
+        after["artifacts"].pop(0)
+        refs = [{"ref": "refs/tags/v1.0.1", "object": {"sha": "1" * 40}}]
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(policy, "apply_artifacts", return_value=[]), \
+                patch.object(policy, "tag_refs", return_value=refs), \
+                patch.object(policy, "release_guard", side_effect=[
+                    (before["releases"], refs), (after["releases"], refs)]), \
+                patch.object(policy, "release_assets") as assets, \
+                patch.object(policy, "snapshot", return_value=after), \
+                patch.object(policy, "api", side_effect=[before["releases"][0],
+                                                          {"status": 204}, None]) as api:
+            policy.write_json(Path(directory) / "tag-refs-preflight.json", refs)
+            receipts = policy.apply(manifest, before, Path(directory))
+            self.assertEqual(receipts, [{"id": 1, "tag": "v1.0.1", "status": 204,
+                                         "verified_absent": True}])
+            self.assertEqual(api.call_args_list[1].args,
+                             (f"repos/{policy.REPO}/releases/1", "DELETE"))
+            self.assertEqual(assets.call_count, 7)  # deleted + five retained + draft
+            self.assertEqual(after["tags"], before["tags"])
+            self.assertEqual(after["releases"][-1], draft)
+
+    def test_concurrent_release_or_ref_change_aborts_without_mutation(self):
+        before = fixture(6)
+        manifest = policy.plan(**before)
+        for changed in ((before["releases"][:-1], []), (before["releases"], [1])):
+            with tempfile.TemporaryDirectory() as directory, \
+                    patch.object(policy, "apply_artifacts", return_value=[]), \
+                    patch.object(policy, "tag_refs", return_value=[]), \
+                    patch.object(policy, "release_guard", return_value=changed), \
+                    patch.object(policy, "api") as api:
+                policy.write_json(Path(directory) / "tag-refs-preflight.json", [])
+                with self.assertRaises(RuntimeError):
+                    policy.apply(manifest, before, Path(directory))
+                api.assert_not_called()
+
+    def test_immutable_or_security_rejection_stops_without_bypass(self):
+        before = fixture(6)
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.object(policy, "apply_artifacts", return_value=[]), \
+                patch.object(policy, "tag_refs", return_value=[]), \
+                patch.object(policy, "release_guard", return_value=(before["releases"], [])), \
+                patch.object(policy, "release_assets"), \
+                patch.object(policy, "api", side_effect=[before["releases"][0],
+                    RuntimeError("HTTP 403 immutable")]) as api:
+            policy.write_json(Path(directory) / "tag-refs-preflight.json", [])
+            with self.assertRaisesRegex(RuntimeError, "immutable"):
+                policy.apply(policy.plan(**before), before, Path(directory))
+            self.assertEqual(api.call_count, 2)
 
 
 if __name__ == "__main__":
