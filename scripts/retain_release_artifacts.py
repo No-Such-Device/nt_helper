@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Keep five distinct nt_helper release versions; never modify releases or tags.
+"""Keep the five newest published nt_helper releases and their Actions artifacts.
+
+Delete older published releases/assets, never Git tags. Preserve unpublished work.
 
 Dry-run is the default. Requires gh authentication; --apply opts into deletion.
 Unknown artifacts are preserved. Any API/provenance/race error aborts cleanup.
@@ -31,6 +33,9 @@ def require(condition, message):
 def api(path, method="GET", missing_ok=False):
     require(path == f"repos/{REPO}" or path.startswith(f"repos/{REPO}/"),
             "Repository scope violation")
+    require(method == "GET" or (method == "DELETE" and re.fullmatch(
+        rf"repos/{re.escape(REPO)}/(?:actions/artifacts|releases)/[1-9][0-9]*", path)),
+        "Mutation endpoint not authorized")
     proc = subprocess.run(
         ["gh", "api", "--hostname", "github.com", "--include", "--method", method, path],
         capture_output=True, text=True, check=False,
@@ -67,7 +72,7 @@ def pages(path, key=None, fetch=api):
         result.extend(rows)
         if len(rows) < 100:
             require(expected is None or len(result) == expected, "Incomplete pagination")
-            ids = [x.get("id", x.get("name")) for x in result]
+            ids = [x.get("id", x.get("name", x.get("ref"))) for x in result]
             require(None not in ids and len(ids) == len(set(ids)), "Duplicate/missing identity")
             return result
     raise RuntimeError("Pagination limit exceeded")
@@ -93,7 +98,7 @@ def assert_idle(runs, own_id):
             continue
         require(str(run["id"]) == own_id
                 and run["path"] == CLEANUP_PATH
-                and run["event"] == "schedule"
+                and run["event"] in ("schedule", "workflow_run")
                 and run["head_branch"] == "main"
                 and run["repository"]["id"] == REPO_ID
                 and run["head_repository"]["id"] == REPO_ID,
@@ -101,15 +106,12 @@ def assert_idle(runs, own_id):
 
 
 def plan(artifacts, runs, releases, tags, historical_sources=None):
-    require(artifacts and runs and tags, "Empty inventory/provenance; refusing cleanup")
+    require(isinstance(artifacts, list) and runs and tags,
+            "Empty inventory/provenance; refusing cleanup")
     by_run = {r["id"]: r for r in runs}
     by_tag = {t["name"]: t["commit"]["sha"] for t in tags}
-    published = {}
-    for release in releases:
-        if not release["draft"]:
-            tag = release["tag_name"]
-            require(tag not in published, "Duplicate published release tag")
-            published[tag] = timestamp(release["published_at"])
+    selected, obsolete = select_releases(releases)
+    published = {r["tag_name"]: timestamp(r["published_at"]) for r in selected + obsolete}
     groups, unknown = {}, []
     for artifact in artifacts:
         require(type(artifact["id"]) is int and type(artifact["size_in_bytes"]) is int
@@ -142,37 +144,77 @@ def plan(artifacts, runs, releases, tags, historical_sources=None):
                 ("success", "failure", "cancelled", "timed_out", "startup_failure", "action_required", "stale", "neutral", "skipped"),
                 "Nonterminal or unknown release attempt")
         groups.setdefault(tag, []).append(artifact)
-    # Use original run creation, never updated_at or artifact upload time (reruns).
-    dates, successful = {}, set()
-    for tag, artifacts_for_tag in groups.items():
-        tag_runs = [r for r in runs if trusted(r) and r["head_branch"] == tag]
-        success = any(r["conclusion"] == "success" for r in tag_runs)
-        if success:
-            successful.add(tag)
-        if tag in published:
-            dates[tag] = published[tag]
-        elif success:
-            dates[tag] = min(timestamp(r["created_at"]) for r in tag_runs)
-        else:
-            # Failed unpublished attempts do not consume a keep slot; an attempt
-            # newer than the boundary is preserved below, not treated as old.
-            dates[tag] = min(timestamp(by_run[a["workflow_run"]["id"]]["created_at"])
-                             for a in artifacts_for_tag)
-    eligible = {t for t in groups if t in published or t in successful}
-    require(len(eligible) >= 5, "Fewer than five verified release versions; no cleanup")
-    newest = sorted(eligible, key=lambda t: (dates[t], t), reverse=True)[:5]
-    boundary = dates[newest[-1]]
-    # Retain ties and newer unpublished attempts; also retain the five latest
-    # successful versions if published failed attempts would displace them.
-    keep = {t for t in groups if dates[t] >= boundary}
-    keep.update(sorted(successful, key=lambda t: (dates[t], t), reverse=True)[:5])
+    keep = [r["tag_name"] for r in selected]
+    # Only artifacts belonging to explicitly obsolete published releases may go.
+    # Draft/unpublished attempts never consume slots and are never deleted.
+    old_tags = {r["tag_name"] for r in obsolete}
+    protected = {r["tag_name"] for r in releases if r["draft"] or r["published_at"] is None}
     return {
-        "keep": sorted(keep, key=lambda t: (dates[t], t), reverse=True),
-        "reason": "Publication chronology (including prereleases); original successful tag-push chronology fallback; preserve ties/new attempts and latest five successes",
+        "keep": keep,
+        "keep_release_ids": [r["id"] for r in selected],
+        "delete_releases": obsolete,
+        "reason": "Published_at descending, then release ID descending; includes prereleases",
         "unknown_preserved": unknown,
-        "delete": sorted([a for t, rows in groups.items() if t not in keep for a in rows],
-                         key=lambda a: a["id"]),
+        "delete": sorted([a for t, rows in groups.items() if t in old_tags - protected
+                          for a in rows], key=lambda a: a["id"]),
     }
+
+
+def select_releases(releases):
+    require(isinstance(releases, list), "Malformed releases")
+    ids, tags, published = set(), set(), []
+    for release in releases:
+        require(type(release["id"]) is int and release["id"] > 0
+                and release["id"] not in ids and type(release["draft"]) is bool
+                and type(release["prerelease"]) is bool
+                and isinstance(release["tag_name"], str) and release["tag_name"]
+                and isinstance(release["assets"], list), "Malformed release identity")
+        ids.add(release["id"])
+        if release["draft"] or release["published_at"] is None:
+            continue
+        timestamp(release["published_at"])
+        require(release["tag_name"] not in tags, "Duplicate published release tag")
+        tags.add(release["tag_name"])
+        published.append(release)
+    require(len(published) >= 5, "Fewer than five published releases; refusing cleanup")
+    published.sort(key=lambda r: (timestamp(r["published_at"]), r["id"]), reverse=True)
+    return published[:5], published[5:]
+
+
+def normalize_release(release):
+    for asset in release["assets"]:
+        asset.pop("download_count", None)
+    return release
+
+
+def release_assets(release):
+    assets = pages(f"repos/{REPO}/releases/{release['id']}/assets")
+    for asset in assets:
+        asset.pop("download_count", None)
+    require(assets == release["assets"], "Incomplete/changed release asset listing")
+    return assets
+
+
+def tag_refs():
+    # GitHub matching-refs is NOT paginated (it ignores page/per_page).
+    refs = api(f"repos/{REPO}/git/matching-refs/tags/")
+    require(isinstance(refs, list) and refs, "Missing tag refs")
+    names = []
+    for ref in refs:
+        require(ref["ref"].startswith("refs/tags/")
+                and re.fullmatch(r"[0-9a-f]{40}", ref["object"]["sha"]),
+                "Malformed tag ref")
+        names.append(ref["ref"])
+    require(len(names) == len(set(names)), "Duplicate tag refs")
+    return refs
+
+
+def release_guard():
+    # Re-list complete release and ref inventories before EVERY release deletion.
+    runs = pages(f"repos/{REPO}/actions/runs", "workflow_runs")
+    assert_idle(runs, os.environ.get("GITHUB_RUN_ID", ""))
+    releases = [normalize_release(r) for r in pages(f"repos/{REPO}/releases")]
+    return releases, tag_refs()
 
 
 def snapshot():
@@ -195,9 +237,7 @@ def snapshot():
             known.add(run_id)
     releases = pages(f"repos/{REPO}/releases")
     # Download counters are unrelated to retention and may change during cleanup.
-    for release in releases:
-        for asset in release["assets"]:
-            asset.pop("download_count", None)
+    releases = [normalize_release(r) for r in releases]
     tags = pages(f"repos/{REPO}/tags")
     names = {t["name"] for t in tags}
     historical_sources = {}
@@ -218,7 +258,7 @@ def write_json(path, value):
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
 
 
-def apply(manifest, before, directory):
+def apply_artifacts(manifest, before, directory):
     # Replan a complete fresh inventory before mutation, including release/tag
     # chronology. Abort on concurrent upload or changes to any keep/delete input.
     fresh = snapshot()
@@ -257,6 +297,50 @@ def apply(manifest, before, directory):
     return receipts
 
 
+def apply(manifest, before, directory):
+    # Artifact deletion runs first while all published provenance still exists.
+    artifact_receipts = apply_artifacts(manifest, before, directory)
+    expected = before["releases"]
+    refs = tag_refs()
+    require(refs == json.loads((directory / "tag-refs-preflight.json").read_text()),
+            "Tag refs changed since preflight")
+    write_json(directory / "tag-refs-before.json", refs)
+    receipts = []
+    for release in manifest["delete_releases"]:
+        current, current_refs = release_guard()
+        require(current == expected and current_refs == refs,
+                "Concurrent release/ref change; defer")
+        kept, obsolete = select_releases(current)
+        require([r["id"] for r in kept] == manifest["keep_release_ids"]
+                and release in obsolete, "Release keep set changed")
+        path = f"repos/{REPO}/releases/{release['id']}"
+        require(normalize_release(api(path)) == release, "Release identity changed")
+        release_assets(release)
+        receipt = {"id": release["id"], "tag": release["tag_name"],
+                   **api(path, "DELETE")}
+        # Persist the HTTP receipt even if subsequent absence verification fails.
+        receipts.append(receipt)
+        write_json(directory / "release-receipts.json", receipts)
+        require(api(path, missing_ok=True) is None, "Deleted release still exists")
+        receipt["verified_absent"] = True
+        write_json(directory / "release-receipts.json", receipts)
+        expected = [r for r in expected if r["id"] != release["id"]]
+    current, current_refs = release_guard()
+    require(current == expected and current_refs == refs, "Final release/ref mismatch")
+    for release in current:
+        release_assets(release)
+    after = snapshot()
+    require(after["releases"] == expected and after["tags"] == before["tags"],
+            "Final release/tag mismatch")
+    removed_artifacts = {a["id"] for a in manifest["delete"]}
+    require(after["artifacts"] == [a for a in before["artifacts"]
+                                   if a["id"] not in removed_artifacts],
+            "Final artifact inventory changed during release cleanup")
+    write_json(directory / "after.json", after)
+    write_json(directory / "tag-refs-after.json", current_refs)
+    return artifact_receipts + receipts
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
@@ -267,11 +351,21 @@ def main():
     before = snapshot()
     write_json(args.evidence_dir / "before.json", before)
     manifest = plan(**before)
+    # Paginate ALL assets, including drafts and every retained release, before mutation.
+    assets = {str(r["id"]): release_assets(r) for r in before["releases"]}
+    write_json(args.evidence_dir / "release-assets-before.json", assets)
+    refs = tag_refs()
+    require({r["ref"][10:] for r in refs} == {t["name"] for t in before["tags"]},
+            "Incomplete refs/tags inventory")
+    write_json(args.evidence_dir / "tag-refs-preflight.json", refs)
     write_json(args.evidence_dir / "manifest.json", manifest)
     digest = hashlib.sha256((args.evidence_dir / "manifest.json").read_bytes()).hexdigest()
     (args.evidence_dir / "manifest.sha256").write_text(digest + "\n")
     print(json.dumps({"keep": manifest["keep"], "delete_count": len(manifest["delete"]),
                       "delete_bytes": sum(a["size_in_bytes"] for a in manifest["delete"]),
+                      "delete_release_count": len(manifest["delete_releases"]),
+                      "delete_release_asset_bytes": sum(a["size"] for r in
+                          manifest["delete_releases"] for a in r["assets"]),
                       "manifest_sha256": digest, "apply": args.apply}))
     if args.apply:
         apply(manifest, before, args.evidence_dir)
