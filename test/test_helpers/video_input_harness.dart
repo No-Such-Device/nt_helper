@@ -10,6 +10,7 @@ final class VideoInputHarness {
   static const _events = MethodChannel(
     'com.example.nt_helper/usb_video_stream',
   );
+  bool available = true;
   final frames = Uint8List.fromList(
     img.encodeBmp(img.Image(width: 256, height: 64)),
   );
@@ -21,15 +22,18 @@ final class VideoInputHarness {
       _methods,
       (call) async => switch (call.method) {
         'isSupported' || 'requestUsbPermission' => true,
-        'listUsbCameras' => [
-          {
-            'deviceId': 'test-video',
-            'productName': 'Test NT',
-            'vendorId': 0x16C0,
-            'productId': 1,
-            'isDistingNT': true,
-          },
-        ],
+        'listUsbCameras' =>
+          !available
+              ? []
+              : [
+                  {
+                    'deviceId': 'test-video',
+                    'productName': 'Test NT',
+                    'vendorId': 0x16C0,
+                    'productId': 1,
+                    'isDistingNT': true,
+                  },
+                ],
         _ => null,
       },
     );

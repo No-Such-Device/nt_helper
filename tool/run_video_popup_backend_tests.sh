@@ -22,7 +22,7 @@ fi
 python3 - <<'PY'
 from pathlib import Path
 s = Path('windows/runner/windows_video_popup_manager.cpp').read_text()
-for method in ['remoteAcquire', 'remoteRead', 'remoteOpen', 'remoteAction', 'remoteClose', 'remoteDetach']:
+for method in ['remoteAcquire', 'remoteRead', 'remoteOpen', 'remoteAction', 'remoteClose', 'remoteDetach', 'getHardwareScreenshot']:
     assert f'call.method_name() == "{method}"' in s
 assert 'ForwardVideoPopupRemote(main_channel_.get(), method, arguments,' in s
 assert 'WM_SHOWWINDOW' in s and 'WA_INACTIVE' in s and 'SIZE_MINIMIZED' in s

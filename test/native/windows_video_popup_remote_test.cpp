@@ -54,6 +54,20 @@ int main() {
     assert(successes == 1);
     successes = 0;
   }
+  // Screenshot fallback uses the same result bridge, preserving binary PNG data.
+  Value png(std::vector<uint8_t>{137, 80, 78, 71, 13, 10, 26, 10});
+  int screenshots = 0;
+  auto screenshot_result = std::make_unique<flutter::MethodResultFunctions<Value>>(
+      [&](const Value* value) { ++screenshots; assert(*value == png); },
+      [](const std::string&, const std::string&, const Value*) { assert(false); },
+      []() { assert(false); });
+  ForwardVideoPopupRemote(&main, "getHardwareScreenshot", nullptr,
+                         std::move(screenshot_result), alive);
+  assert(messenger.call->method_name() == "getHardwareScreenshot");
+  assert(screenshots == 0);
+  messenger.Success(png);
+  assert(screenshots == 1);
+
   // Malformed input reaches main validation unchanged, and real errors return.
   Value invalid("not a map");
   ForwardVideoPopupRemote(&main, "remoteAction", &invalid, result(), alive);

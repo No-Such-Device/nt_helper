@@ -84,7 +84,9 @@ class VideoPopupWindow extends StatefulWidget {
 class _VideoPopupWindowState extends State<VideoPopupWindow>
     with WindowListener, WidgetsBindingObserver {
   final SettingsService _settings = SettingsService();
-  final UsbVideoManager _videoManager = UsbVideoManager();
+  late final UsbVideoManager _videoManager = UsbVideoManager(
+    takeScreenshot: _getHardwareScreenshot,
+  );
   final VideoFrameCubit _videoFrameCubit = VideoFrameCubit();
   StreamSubscription<VideoStreamState>? _videoStateSubscription;
   Future<void>? _videoStartup;
@@ -251,6 +253,15 @@ class _VideoPopupWindowState extends State<VideoPopupWindow>
       _videoFrameCubit.connectToStream(stream);
     }
     if (mounted) setState(() {});
+  }
+
+  Future<Uint8List?> _getHardwareScreenshot() async {
+    if (_windowsNative) {
+      return _windowsVideoPopupChannel.invokeMethod<Uint8List>(
+        'getHardwareScreenshot',
+      );
+    }
+    return _channel.invokeMethod<Uint8List>('getHardwareScreenshot');
   }
 
   Future<void> _setDisplayMode(DisplayMode mode) async {
@@ -986,8 +997,7 @@ class VideoPopupContent extends StatelessWidget {
           final opacity = 0.3 + 0.7 * Curves.easeOut.transform(fadeT);
 
           return Semantics(
-            label:
-                'Disting NT video feed. Long press to copy frame to clipboard.',
+            label: 'Disting NT display. Long press to copy frame to clipboard.',
             child: GestureDetector(
               onLongPress: onCopyToClipboard,
               child: SizedBox.expand(
