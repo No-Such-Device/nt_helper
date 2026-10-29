@@ -153,6 +153,21 @@ class VideoPopupWindowService {
   }
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
+    if (call.method == 'getHardwareScreenshot') {
+      final cubit = _cubit;
+      final state = cubit?.state;
+      if (cubit == null ||
+          cubit.isClosed ||
+          state is! DistingStateSynchronized ||
+          state.offline ||
+          state.demo) {
+        throw PlatformException(
+          code: 'screenshot_unavailable',
+          message: 'Screenshots require a synchronized live device.',
+        );
+      }
+      return cubit.getHardwareScreenshot();
+    }
     if (call.method.startsWith('remote')) {
       try {
         return await _handleRemote(call);

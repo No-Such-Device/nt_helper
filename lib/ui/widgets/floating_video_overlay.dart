@@ -428,7 +428,7 @@ class FloatingVideoContent extends StatelessWidget {
 
               return Semantics(
                 label:
-                    'Disting NT video feed. Long press to copy frame to clipboard.',
+                    'Disting NT display. Long press to copy frame to clipboard.',
                 child: GestureDetector(
                   onLongPress: onCopyToClipboard,
                   child: SizedBox.expand(

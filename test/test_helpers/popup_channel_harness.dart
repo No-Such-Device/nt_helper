@@ -76,6 +76,7 @@ final class PopupChannelHarness {
       final method = args['method'] as String;
       final inner = args['arguments'];
       calls.add(MethodCall(method, inner));
+      if (method == 'getHardwareScreenshot') return toMain(method, inner);
       if (method.startsWith('remote')) {
         if (method == 'remoteAction') {
           lastAction = Map<String, dynamic>.from(inner as Map);
@@ -127,7 +128,8 @@ final class PopupChannelHarness {
         }
         return toMain(call.method, call.arguments);
       }
-      if (call.method == 'setDisplayMode') {
+      if (call.method == 'setDisplayMode' ||
+          call.method == 'getHardwareScreenshot') {
         return toMain(call.method, call.arguments);
       }
       if (call.method == 'getBounds') {

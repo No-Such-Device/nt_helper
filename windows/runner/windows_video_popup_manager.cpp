@@ -516,7 +516,8 @@ class WindowsVideoPopupWindow : public Win32Window {
     PopupLog(L"Child channel method=" + Utf8ToWide(call.method_name()));
     if (call.method_name() == "remoteAcquire" || call.method_name() == "remoteRead" ||
         call.method_name() == "remoteOpen" || call.method_name() == "remoteAction" ||
-        call.method_name() == "remoteClose" || call.method_name() == "remoteDetach") {
+        call.method_name() == "remoteClose" || call.method_name() == "remoteDetach" ||
+        call.method_name() == "getHardwareScreenshot") {
       if (call.method_name() == "remoteAcquire") {
         const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
         if (args != nullptr && MapString(*args, "hostId").has_value()) {

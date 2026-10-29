@@ -75,8 +75,20 @@ class VideoFrameCubit extends Cubit<VideoFrameState> {
         return;
       }
 
-      // Validate BMP data format
-      if (frameData.length < 54) {
+      // USB video is BMP; the SysEx screenshot fallback returns PNG.
+      final isPng =
+          frameData.length >= 8 &&
+          listEquals(frameData.sublist(0, 8), [
+            137,
+            80,
+            78,
+            71,
+            13,
+            10,
+            26,
+            10,
+          ]);
+      if (!isPng && frameData.length < 54) {
         _debugLog(
           'ERROR: Frame data too small for BMP (${frameData.length} bytes, need at least 54)',
         );
@@ -84,7 +96,7 @@ class VideoFrameCubit extends Cubit<VideoFrameState> {
       }
 
       // Check BMP header
-      if (frameData[0] != 0x42 || frameData[1] != 0x4D) {
+      if (!isPng && (frameData[0] != 0x42 || frameData[1] != 0x4D)) {
         _debugLog(
           'ERROR: Invalid BMP header: [${frameData[0]}, ${frameData[1]}] (expected [66, 77])',
         );

@@ -66,7 +66,15 @@ class _MonitoringDelegate {
     }
 
     // Initialize video manager if not already created
-    _videoManager ??= UsbVideoManager();
+    _videoManager ??= UsbVideoManager(
+      takeScreenshot: () async {
+        final state = _cubit.state;
+        if (state is! DistingStateSynchronized || state.offline || state.demo) {
+          throw StateError('Screenshots require a synchronized live device.');
+        }
+        return _cubit.getHardwareScreenshot();
+      },
+    );
     await _videoManager!.initialize();
 
     // Subscribe to video state changes and update cubit state

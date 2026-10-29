@@ -11,8 +11,16 @@ class UsbVideoManager {
   final UsbVideoChannel _channel;
   final DebugService _debugService = DebugService();
 
-  UsbVideoManager({UsbVideoChannel? channel})
-    : _channel = channel ?? UsbVideoChannel();
+  UsbVideoManager({
+    UsbVideoChannel? channel,
+    Future<Uint8List?> Function()? takeScreenshot,
+  }) : _channel = channel ?? UsbVideoChannel(),
+       _takeScreenshot = takeScreenshot;
+
+  final Future<Uint8List?> Function()? _takeScreenshot;
+  StreamController<Uint8List>? _screenshotController;
+  Timer? _screenshotTimer;
+  int _screenshotGeneration = 0;
   StreamController<VideoStreamState>? _stateController;
   Timer? _recoveryTimer;
   Timer? _stallWatchdogTimer;
@@ -41,7 +49,7 @@ class UsbVideoManager {
   }
 
   Future<void> initialize() async {
-    _stateController = StreamController<VideoStreamState>.broadcast();
+    _stateController ??= StreamController<VideoStreamState>.broadcast();
     _updateState(const VideoStreamState.disconnected());
   }
 
@@ -77,6 +85,7 @@ class UsbVideoManager {
   }
 
   Future<void> connectToDevice(String deviceId) async {
+    _stopScreenshotFallback();
     try {
       _debugLog('Connecting to device: $deviceId');
       _updateState(const VideoStreamState.connecting());
@@ -146,6 +155,7 @@ class UsbVideoManager {
   }
 
   Future<void> disconnect() async {
+    _stopScreenshotFallback();
     try {
       await _channel.stopVideoStream();
       _stopRecoveryTimer();
@@ -159,6 +169,7 @@ class UsbVideoManager {
   }
 
   Future<void> autoConnect() async {
+    _stopScreenshotFallback();
     // First check if video is supported on this platform
     final supported = await isSupported();
     if (!supported) {
@@ -178,9 +189,74 @@ class UsbVideoManager {
     }
   }
 
-  void _updateState(VideoStreamState newState) {
+  void _updateState(
+    VideoStreamState newState, {
+    bool allowScreenshotFallback = true,
+  }) {
+    if (allowScreenshotFallback &&
+        _takeScreenshot != null &&
+        newState.maybeWhen(error: (_) => true, orElse: () => false)) {
+      _startScreenshotFallback();
+      return;
+    }
     _currentState = newState;
     _stateController?.add(newState);
+  }
+
+  // Use the existing display stream, but only request the next screenshot after
+  // the previous capture completes. Closing a host cancels pending refreshes and
+  // invalidates any in-flight response.
+  void _startScreenshotFallback() {
+    if (_screenshotController != null) return;
+    _stopRecoveryTimer();
+    _stopStallWatchdog();
+    final generation = ++_screenshotGeneration;
+    final controller = StreamController<Uint8List>(
+      onListen: () => unawaited(_pollScreenshot(generation)),
+      onCancel: _stopScreenshotFallback,
+    );
+    _screenshotController = controller;
+    _updateState(
+      VideoStreamState.streaming(
+        videoStream: controller.stream,
+        width: 266,
+        height: 74,
+        fps: 1,
+      ),
+    );
+  }
+
+  Future<void> _pollScreenshot(int generation) async {
+    if (generation != _screenshotGeneration) return;
+    try {
+      final screenshot = await _takeScreenshot!();
+      if (generation != _screenshotGeneration) return;
+      if (screenshot == null || screenshot.isEmpty) {
+        throw StateError('Screenshot unavailable');
+      }
+      _screenshotController?.add(screenshot);
+      _screenshotTimer = Timer(const Duration(seconds: 1), () {
+        unawaited(_pollScreenshot(generation));
+      });
+    } catch (_) {
+      if (generation != _screenshotGeneration) return;
+      _stopScreenshotFallback();
+      _updateState(
+        const VideoStreamState.error(
+          'USB video unavailable and screenshot capture failed',
+        ),
+        allowScreenshotFallback: false,
+      );
+    }
+  }
+
+  void _stopScreenshotFallback() {
+    _screenshotGeneration++;
+    _screenshotTimer?.cancel();
+    _screenshotTimer = null;
+    final controller = _screenshotController;
+    _screenshotController = null;
+    unawaited(controller?.close());
   }
 
   void _startRecoveryTimer() {
@@ -316,6 +392,7 @@ class UsbVideoManager {
   }
 
   Future<void> dispose() async {
+    _stopScreenshotFallback();
     _stopRecoveryTimer();
     _stopStallWatchdog();
     _stateController?.close();
