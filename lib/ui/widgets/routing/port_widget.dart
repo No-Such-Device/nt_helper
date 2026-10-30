@@ -212,6 +212,9 @@ class _PortWidgetState extends State<PortWidget> {
         widget.onDragUpdate != null ||
         widget.onDragEnd != null) {
       portWidget = GestureDetector(
+        // Include row padding and the label gap so near-dot drags do not
+        // fall through to the surrounding algorithm node's move gesture.
+        behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         // Use animated long press if callbacks are provided, otherwise immediate
         onLongPress: widget.onLongPressStart == null

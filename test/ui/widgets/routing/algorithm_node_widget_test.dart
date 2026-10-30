@@ -62,6 +62,97 @@ void main() {
     registerFallbackValue(PackedMappingData.filler());
   });
 
+  group('AlgorithmNodeWidget port hit testing', () {
+    for (final isInput in [true, false]) {
+      for (final area in ['top padding', 'bottom padding', 'label gap']) {
+        testWidgets(
+          '${isInput ? 'input' : 'output'} $area starts a cable drag, not a node drag',
+          (tester) async {
+            final cubit = MockDistingCubit();
+            when(() => cubit.state).thenReturn(DistingStateInitial());
+            final cableStarts = <String>[];
+            final cableUpdates = <String>[];
+            final cableEnds = <String>[];
+            final nodePositions = <Offset>[];
+            var nodeStarts = 0;
+
+            await tester.pumpWidget(
+              MaterialApp(
+                home: Scaffold(
+                  body: BlocProvider<DistingCubit>.value(
+                    value: cubit,
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: AlgorithmNodeWidget(
+                        algorithmName: 'Test Algorithm',
+                        slotNumber: 1,
+                        position: const Offset(100, 100),
+                        inputLabels: isInput ? ['Input'] : [],
+                        inputPortIds: isInput ? ['port'] : [],
+                        outputLabels: isInput ? [] : ['Output'],
+                        outputPortIds: isInput ? [] : ['port'],
+                        onDragStart: () => nodeStarts++,
+                        onPositionChanged: nodePositions.add,
+                        onPortDragStart: cableStarts.add,
+                        onPortDragUpdate: (id, _) => cableUpdates.add(id),
+                        onPortDragEnd: (id, _) => cableEnds.add(id),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+            await tester.pumpAndSettle();
+
+            final port = find.byType(PortWidget);
+            final portRect = tester.getRect(port);
+            final nodeRect = tester.getRect(find.byType(AlgorithmNodeWidget));
+            final dotRect = tester.getRect(
+              find.descendant(of: port, matching: find.byType(Container)),
+            );
+            final start = switch (area) {
+              'top padding' => Offset(dotRect.center.dx, portRect.top + 1),
+              'bottom padding' => Offset(
+                dotRect.center.dx,
+                portRect.bottom - 1,
+              ),
+              _ => Offset(
+                isInput ? dotRect.right + 2 : dotRect.left - 2,
+                dotRect.center.dy,
+              ),
+            };
+            expect(portRect.contains(start), isTrue);
+            expect(dotRect.contains(start), isFalse);
+
+            // A touch beginning inside the port's existing row must not fall
+            // through to the surrounding node's pan recognizer.
+            await tester.dragFrom(start, const Offset(60, 40));
+            await tester.pumpAndSettle();
+
+            expect(cableStarts, ['port']);
+            expect(cableUpdates, isNotEmpty);
+            expect(cableUpdates.every((id) => id == 'port'), isTrue);
+            expect(cableEnds, ['port']);
+            expect(nodeStarts, 0);
+            expect(nodePositions, isEmpty);
+            expect(tester.getRect(port), portRect);
+            expect(tester.getRect(find.byType(AlgorithmNodeWidget)), nodeRect);
+
+            // The fix must not disable intentional node movement elsewhere.
+            await tester.dragFrom(
+              tester.getCenter(find.text('#1 Test Algorithm')),
+              const Offset(60, 40),
+            );
+            await tester.pumpAndSettle();
+            expect(nodeStarts, 1);
+            expect(nodePositions, isNotEmpty);
+            expect(cableStarts, ['port']);
+          },
+        );
+      }
+    }
+  });
+
   group('AlgorithmNodeWidget Mapping Tests', () {
     late MockDistingCubit mockCubit;
     late MockDistingMidiManager mockManager;
