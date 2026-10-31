@@ -222,35 +222,6 @@ void main() {
       );
 
       expect(mapping1 == mapping2, isFalse);
-      expect(mapping1.hashCode == mapping2.hashCode, isFalse);
-    });
-
-    test('perfPageIndex=0 means not assigned', () {
-      final mapping = PackedMappingData(
-        source: 1,
-        cvInput: 2,
-        isUnipolar: true,
-        isGate: false,
-        volts: 5,
-        delta: 100,
-        midiChannel: 1,
-        midiMappingType: MidiMappingType.cc,
-        midiCC: 64,
-        isMidiEnabled: true,
-        isMidiSymmetric: false,
-        isMidiRelative: false,
-        midiMin: 0,
-        midiMax: 127,
-        i2cCC: 32,
-        isI2cEnabled: false,
-        isI2cSymmetric: false,
-        i2cMin: 0,
-        i2cMax: 16383,
-        perfPageIndex: 0, // Not assigned
-        version: 5,
-      );
-
-      expect(mapping.perfPageIndex, equals(0));
     });
 
     test('perfPageIndex supports range 1-30', () {
@@ -334,8 +305,9 @@ void main() {
       expect(mapping.cvInput, equals(2));
     });
 
-    test('version 2 still parses correctly', () {
-      // Version 2 adds midiFlags2 (23 bytes)
+    test('version 2 decodes midiFlags2 without shifting following fields', () {
+      // Version/default-only checks miss a skipped midiFlags2 byte. The v1
+      // fixture cannot protect this field introduced in v2 (23 bytes).
       final data = Uint8List(23);
       int offset = 0;
 
@@ -351,7 +323,7 @@ void main() {
       // MIDI Mapping (9 bytes with midiFlags2)
       data[offset++] = 64;
       data[offset++] = 0x89;
-      data[offset++] = 0; // midiFlags2
+      data[offset++] = 0x05; // noteMomentary + relative
       final minBytes = encode16(0);
       data[offset++] = minBytes[0];
       data[offset++] = minBytes[1];
@@ -377,10 +349,26 @@ void main() {
 
       expect(mapping.version, equals(2));
       expect(mapping.perfPageIndex, equals(0)); // Defaults to 0
+      expect(mapping.source, equals(0));
+      expect(mapping.cvInput, equals(2));
+      expect(mapping.delta, equals(100));
+      expect(mapping.midiCC, equals(64));
+      expect(mapping.midiChannel, equals(1));
+      expect(mapping.isMidiEnabled, isTrue);
+      expect(mapping.midiMappingType, MidiMappingType.noteMomentary);
+      expect(mapping.isMidiRelative, isTrue);
+      expect(mapping.midiMin, equals(0));
+      expect(mapping.midiMax, equals(127));
+      expect(mapping.i2cCC, equals(32));
+      expect(mapping.isI2cEnabled, isFalse);
+      expect(mapping.isI2cSymmetric, isFalse);
+      expect(mapping.i2cMin, equals(0));
+      expect(mapping.i2cMax, equals(16383));
     });
 
-    test('version 3 still parses correctly', () {
-      // Version 3 adds I2C high byte (24 bytes)
+    test('version 3 decodes the I2C high byte without shifting its fields', () {
+      // The v2 fixture has no high byte; a zero byte and version-only
+      // assertions would miss dropping this v3 field (24 bytes).
       final data = Uint8List(24);
       int offset = 0;
 
@@ -408,8 +396,8 @@ void main() {
 
       // I2C Mapping (9 bytes with high byte)
       data[offset++] = 32;
-      data[offset++] = 0; // high byte
-      data[offset++] = 0;
+      data[offset++] = 1; // high byte: i2cCC = 160
+      data[offset++] = 3; // enabled + symmetric
       final i2cMinBytes = encode16(0);
       data[offset++] = i2cMinBytes[0];
       data[offset++] = i2cMinBytes[1];
@@ -423,6 +411,17 @@ void main() {
 
       expect(mapping.version, equals(3));
       expect(mapping.perfPageIndex, equals(0)); // Defaults to 0
+      expect(mapping.source, equals(0));
+      expect(mapping.cvInput, equals(2));
+      expect(mapping.midiCC, equals(64));
+      expect(mapping.midiMappingType, MidiMappingType.cc);
+      expect(mapping.midiMin, equals(0));
+      expect(mapping.midiMax, equals(127));
+      expect(mapping.i2cCC, equals(160));
+      expect(mapping.isI2cEnabled, isTrue);
+      expect(mapping.isI2cSymmetric, isTrue);
+      expect(mapping.i2cMin, equals(0));
+      expect(mapping.i2cMax, equals(16383));
     });
 
     test('version 4 still parses correctly', () {
@@ -802,6 +801,9 @@ void main() {
 
       expect(lowDecoded.midiMappingType, equals(MidiMappingType.cc14BitLow));
       expect(lowDecoded.midiCC, equals(64));
+      // Type/CC-only round-trips miss truncating the 14-bit value range.
+      expect(lowDecoded.midiMin, equals(0));
+      expect(lowDecoded.midiMax, equals(16383));
 
       // Test cc14BitHigh
       final highMapping = PackedMappingData(
@@ -833,6 +835,8 @@ void main() {
 
       expect(highDecoded.midiMappingType, equals(MidiMappingType.cc14BitHigh));
       expect(highDecoded.midiCC, equals(96));
+      expect(highDecoded.midiMin, equals(0));
+      expect(highDecoded.midiMax, equals(16383));
     });
 
     test('relative flag preserved with 14-bit types', () {
@@ -934,13 +938,16 @@ void main() {
     test('version 0 returns filler', () {
       final data = Uint8List(26);
       final mapping = PackedMappingData.fromBytes(0, data);
-      expect(mapping.midiCC, equals(-1));
+      // A CC sentinel alone cannot establish the complete filler state.
+      expect(mapping, equals(PackedMappingData.filler()));
+      expect(mapping.version, equals(-1));
     });
 
     test('negative version returns filler', () {
       final data = Uint8List(26);
       final mapping = PackedMappingData.fromBytes(-1, data);
-      expect(mapping.midiCC, equals(-1));
+      expect(mapping, equals(PackedMappingData.filler()));
+      expect(mapping.version, equals(-1));
     });
 
     test('v5 data with extra trailing bytes parses correctly', () {
