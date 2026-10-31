@@ -155,6 +155,38 @@ void main() {
     },
   );
 
+  for (final dispose in [false, true]) {
+    testWidgets(
+      'late stall cleanup cannot restart video after ${dispose ? 'dispose' : 'disconnect'}',
+      (tester) async {
+        await initialize();
+        when(() => channel.listUsbCameras()).thenAnswer((_) async => [device]);
+        final connected = manager.autoConnect();
+        await tester.pump(const Duration(milliseconds: 100));
+        await connected;
+        final stopped = Completer<void>();
+        var stops = 0;
+        when(() => channel.stopVideoStream()).thenAnswer((_) {
+          return stops++ == 0 ? stopped.future : Future<void>.value();
+        });
+        now = now.add(const Duration(seconds: 4));
+        await tester.pump(const Duration(seconds: 1));
+        expect(stops, 1);
+        if (dispose) {
+          await manager.dispose();
+        } else {
+          await manager.disconnect();
+        }
+        final retainedState = manager.currentState;
+        stopped.complete();
+        await tester.pump(const Duration(seconds: 10));
+        expect(manager.currentState, same(retainedState));
+        expect(requests, 0, reason: 'A stale stall must not restart fallback');
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'slow captures never overlap and late disconnect responses are ignored',
     (tester) async {

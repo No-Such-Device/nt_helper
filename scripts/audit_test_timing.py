@@ -77,7 +77,7 @@ def markdown(report):
               for status in ("passed", "failed", "timeout")}
     lines = ["# Isolated Flutter test timing audit", "",
              f"Commit: `{report['commit']}`. Per-file limit: {report['timeout_seconds']:g} seconds.",
-             f"Files: {len(results)}; passed: {counts['passed']}; failed: {counts['failed']}; timed out: {counts['timeout']}.", "",
+             f"Files audited: {len(results)}/{report.get('total_files', len(results))}; passed: {counts['passed']}; failed: {counts['failed']}; timed out: {counts['timeout']}.", "",
              "The limit includes Flutter startup, compilation, setup, tests, and teardown. Files run serially to avoid Flutter startup-lock contention.",
              "A timeout is a **fix/review queue**, not a deletion recommendation. Later tests in a timed-out file may never have run.",
              "Individual completed-test timings come from Flutter JSON events and exclude wrapper startup.", "",
@@ -119,7 +119,9 @@ def main(argv=None):
         paths = ([r["file"] for r in report["results"]] if args.run == "all"
                  else report["categories"][args.run])
         current = {p.relative_to(ROOT).as_posix() for p in (ROOT / "test").rglob("*_test.dart")}
-        if args.run == "fast":
+        if args.run == "all":
+            paths = sorted(current)
+        elif args.run == "fast":
             # Newly added, unaudited files must run, not disappear silently.
             paths = sorted(current - set(report["categories"]["slow"]))
         elif not set(paths) <= current:
@@ -147,6 +149,7 @@ def main(argv=None):
         result = run_file(path, args.timeout, output / "logs", args.flutter)
         results.append(result)
         report = {"commit": commit, "timeout_seconds": args.timeout,
+                  "total_files": len(paths), "complete": len(results) == len(paths),
                   "results": results, "categories": categories(results)}
         manifest.write_text(json.dumps(report, indent=2) + "\n")
         (output / "report.md").write_text(markdown(report))
