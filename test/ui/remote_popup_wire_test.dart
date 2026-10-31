@@ -94,8 +94,10 @@ void main() {
           // Model the ongoing camera feed during long input/geometry scenarios.
           await video.sendFrame();
           if (poll) await tester.pump(const Duration(milliseconds: 200));
-          for (var i = 0; i < 30; i++) {
-            await tester.pump(const Duration(milliseconds: 1));
+          // Drain channel/timer work across a few frames, not 30 repaints.
+          // Keep the same 30 ms of virtual time for input coalescing.
+          for (var i = 0; i < 3; i++) {
+            await tester.pump(const Duration(milliseconds: 10));
           }
         }
 
