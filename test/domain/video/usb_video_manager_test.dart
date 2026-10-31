@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:mocktail/mocktail.dart';
@@ -35,8 +36,10 @@ void main() {
   late StreamController<Uint8List> usb;
   late Future<Uint8List?> Function() capture;
   var requests = 0;
+  late DateTime now;
 
   Future<void> initialize() async {
+    now = DateTime.utc(2026);
     channel = _Channel();
     usb = StreamController<Uint8List>.broadcast();
     when(() => channel.isSupported()).thenAnswer((_) async => true);
@@ -49,12 +52,15 @@ void main() {
     when(() => channel.dispose()).thenAnswer((_) async {});
     requests = 0;
     capture = () async => png;
-    manager = UsbVideoManager(
-      channel: channel,
-      takeScreenshot: () {
-        requests++;
-        return capture();
-      },
+    manager = withClock(
+      Clock(() => now),
+      () => UsbVideoManager(
+        channel: channel,
+        takeScreenshot: () {
+          requests++;
+          return capture();
+        },
+      ),
     );
     frames = VideoFrameCubit();
     await manager.initialize();
@@ -116,10 +122,7 @@ void main() {
         bmp,
       );
       expect(requests, 0);
-      // The production watchdog uses wall time as well as its periodic timer.
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(seconds: 4)),
-      );
+      now = now.add(const Duration(seconds: 4));
       await tester.pump(const Duration(seconds: 1));
       await tester.pump();
       expect(requests, 1);
@@ -140,9 +143,7 @@ void main() {
       final started = manager.autoConnect();
       await tester.pump(const Duration(milliseconds: 100));
       await started;
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(seconds: 4)),
-      );
+      now = now.add(const Duration(seconds: 4));
       await tester.pump(const Duration(seconds: 1));
       await tester.pump();
       expect(requests, 1);
@@ -153,6 +154,38 @@ void main() {
       await manager.disconnect();
     },
   );
+
+  for (final dispose in [false, true]) {
+    testWidgets(
+      'late stall cleanup cannot restart video after ${dispose ? 'dispose' : 'disconnect'}',
+      (tester) async {
+        await initialize();
+        when(() => channel.listUsbCameras()).thenAnswer((_) async => [device]);
+        final connected = manager.autoConnect();
+        await tester.pump(const Duration(milliseconds: 100));
+        await connected;
+        final stopped = Completer<void>();
+        var stops = 0;
+        when(() => channel.stopVideoStream()).thenAnswer((_) {
+          return stops++ == 0 ? stopped.future : Future<void>.value();
+        });
+        now = now.add(const Duration(seconds: 4));
+        await tester.pump(const Duration(seconds: 1));
+        expect(stops, 1);
+        if (dispose) {
+          await manager.dispose();
+        } else {
+          await manager.disconnect();
+        }
+        final retainedState = manager.currentState;
+        stopped.complete();
+        await tester.pump(const Duration(seconds: 10));
+        expect(manager.currentState, same(retainedState));
+        expect(requests, 0, reason: 'A stale stall must not restart fallback');
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets(
     'slow captures never overlap and late disconnect responses are ignored',

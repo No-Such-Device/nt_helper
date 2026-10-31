@@ -36,6 +36,13 @@ const _openAiSettings = ChatSettings(
   openaiModel: 'gpt-5-nano',
 );
 
+Future<void> _waitForChatIdle(ChatCubit cubit) async {
+  if (cubit.state case ChatReady(isProcessing: false)) return;
+  await cubit.stream.firstWhere(
+    (state) => state is ChatReady && !state.isProcessing,
+  );
+}
+
 void main() {
   late MockToolRegistry toolRegistry;
   late MockMemoryService memoryService;
@@ -207,7 +214,7 @@ void main() {
             ),
           ],
         );
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _waitForChatIdle(cubit);
 
         expect(await Directory('${tempDir.path}/uploads').exists(), isFalse);
       } finally {
@@ -254,7 +261,7 @@ void main() {
             ),
           ],
         );
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _waitForChatIdle(cubit);
       },
       expect: () => [
         isA<ChatReady>()
@@ -311,7 +318,7 @@ void main() {
           ),
         ],
       );
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await _waitForChatIdle(cubit);
 
       final captured = verify(
         () => provider.sendMessages(
@@ -358,7 +365,7 @@ void main() {
       },
       act: (cubit) async {
         await cubit.sendMessage('hello', _settings);
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _waitForChatIdle(cubit);
       },
       expect: () => [
         isA<ChatReady>()
@@ -400,7 +407,7 @@ void main() {
       },
       act: (cubit) async {
         await cubit.sendMessage('test message', _settings);
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _waitForChatIdle(cubit);
       },
       verify: (cubit) {
         final s = cubit.state;
@@ -436,7 +443,7 @@ void main() {
       },
       act: (cubit) async {
         await cubit.sendMessage('hi', _settings);
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _waitForChatIdle(cubit);
       },
       verify: (cubit) {
         final s = cubit.state as ChatReady;
@@ -563,7 +570,7 @@ void main() {
 
         // Send a message and let the loop complete
         await cubit.sendMessage('hello', _settings);
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _waitForChatIdle(cubit);
 
         final stateBeforeCancel = cubit.state as ChatReady;
         expect(stateBeforeCancel.isProcessing, isFalse);
@@ -588,7 +595,7 @@ void main() {
         );
 
         await cubit.sendMessage('second message', _settings);
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _waitForChatIdle(cubit);
 
         // The LLM should have received the full conversation history
         // (user + assistant from first turn, plus user from second turn).
@@ -630,6 +637,7 @@ void main() {
   group('Bug 4: cancelProcessing resets state', () {
     test('cancelProcessing resets isProcessing to false', () async {
       final completer = Completer<LlmResponse>();
+      final providerCalled = Completer<void>();
       final provider = MockLlmProvider();
       when(() => provider.dispose()).thenReturn(null);
       when(
@@ -638,7 +646,10 @@ void main() {
           tools: any(named: 'tools'),
           systemPrompt: any(named: 'systemPrompt'),
         ),
-      ).thenAnswer((_) => completer.future);
+      ).thenAnswer((_) {
+        providerCalled.complete();
+        return completer.future;
+      });
 
       final cubit = ChatCubit(
         toolRegistry: toolRegistry,
@@ -648,7 +659,7 @@ void main() {
       addTearDown(cubit.close);
 
       unawaited(cubit.sendMessage('hello', _settings));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await providerCalled.future;
 
       expect((cubit.state as ChatReady).isProcessing, isTrue);
 
@@ -663,6 +674,7 @@ void main() {
 
     test('cancelProcessing clears currentToolName', () async {
       final completer = Completer<LlmResponse>();
+      final providerCalled = Completer<void>();
       final provider = MockLlmProvider();
       when(() => provider.dispose()).thenReturn(null);
       when(
@@ -671,7 +683,10 @@ void main() {
           tools: any(named: 'tools'),
           systemPrompt: any(named: 'systemPrompt'),
         ),
-      ).thenAnswer((_) => completer.future);
+      ).thenAnswer((_) {
+        providerCalled.complete();
+        return completer.future;
+      });
 
       final cubit = ChatCubit(
         toolRegistry: toolRegistry,
@@ -681,7 +696,7 @@ void main() {
       addTearDown(cubit.close);
 
       unawaited(cubit.sendMessage('hello', _settings));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await providerCalled.future;
 
       cubit.cancelProcessing();
 
@@ -765,7 +780,7 @@ void main() {
 
       // Turn 1: builds up tool call history and triggers _needsCompaction
       await cubit.sendMessage('hello', _settings);
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await _waitForChatIdle(cubit);
 
       expect((cubit.state as ChatReady).isProcessing, isFalse);
 
@@ -773,7 +788,7 @@ void main() {
       // Before the fix, the trim could leave orphaned tool messages at the
       // start of history, causing OpenAI to reject with 400.
       await cubit.sendMessage('second question', _settings);
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await _waitForChatIdle(cubit);
 
       expect((cubit.state as ChatReady).isProcessing, isFalse);
 
@@ -847,11 +862,11 @@ void main() {
         addTearDown(cubit.close);
 
         await cubit.sendMessage('first', _settings);
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _waitForChatIdle(cubit);
         expect((cubit.state as ChatReady).isProcessing, isFalse);
 
         await cubit.sendMessage('second', _settings);
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _waitForChatIdle(cubit);
 
         verify(
           () => secondProvider.sendMessages(
@@ -906,11 +921,11 @@ void main() {
       addTearDown(cubit.close);
 
       await cubit.sendMessage('first', _settings);
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await _waitForChatIdle(cubit);
       expect(cubit.contextSummary.messageCount, 2);
 
       await cubit.sendMessage('second', _settings);
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await _waitForChatIdle(cubit);
 
       final state = cubit.state as ChatReady;
       expect(state.isProcessing, isFalse);
@@ -1016,12 +1031,12 @@ void main() {
         addTearDown(cubit.close);
 
         await cubit.sendMessage('remember this', _settings);
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _waitForChatIdle(cubit);
         expect(providerCallCount, 2);
         expect(readMemoryCalls, 1);
 
         await cubit.sendMessage('what do you remember?', _settings);
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await _waitForChatIdle(cubit);
 
         expect(providerCallCount, 3);
         expect(secondTurnSystemPrompt, firstTurnSystemPrompt);

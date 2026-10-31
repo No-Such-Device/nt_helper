@@ -137,6 +137,30 @@ push; it is not required after every local edit. Releases still require the full
 local suite on the release commit. See `test/AGENTS.md` for selection examples and
 `docs/developer-feedback.md` for CI routing and required-check configuration.
 
+## Deterministic, bounded tests
+
+Await observable completion: operation futures, a stream state (check current
+state before subscribing), or a test-controlled `Completer`. Test timers with
+`fakeAsync`/`elapse` or `WidgetTester.pump`; inject/capture a `Clock` when code
+also measures elapsed time. Hold mocked work with a completer while asserting
+loading state and geometry, then release it explicitly. Bound waits for real
+filesystem, isolate, or child-process work and clean up subscriptions/resources.
+
+| Best practice | Counterexample |
+|---|---|
+| Await `cubit.stream.firstWhere(done)` after checking current state | Sleep 100 ms and assume async work finished |
+| Advance virtual time just before/at a debounce deadline | Wait in real time for the debounce |
+| Coalesce repaint-only pump loops, preserving virtual time and verified async boundaries | Repaint the entire widget tree 30 times after every gesture |
+| Simulate `TimeoutException` in an HTTP mock to test retry handling | Give real localhost requests a 5 ms deadline |
+| Seed an old DB timestamp and require it to advance | Sleep, then accept an unchanged timestamp |
+| Profile slow tests; remove redundant non-regression smoke tests | Keep long tests whose only assertion is `expect(true, isTrue)` |
+
+Preserve bug regressions and meaningful assertions; make them deterministic
+rather than adding skips, larger sleeps/timeouts, or weakening coverage. Keep
+intentional virtual-time latency simulations. Real process-crash tests may use
+bounded checkpoint polling and a worker keep-alive timer; these synchronize
+external processes, not guessed application completion.
+
 ## Updating Flutter (fvm)
 
 ```

@@ -11,6 +11,7 @@ class PatchMapDevice implements PatchMapTransport {
   int revision = 0, lease = 0, firstSocket = 1;
   bool loseReply = false;
   Completer<void>? holdWrite;
+  final writeStarted = Completer<void>();
   final frames = <Map<String, List<int>>>[];
   void changeProperty(int parameter, int value) {
     frames.add({
@@ -143,7 +144,10 @@ class PatchMapDevice implements PatchMapTransport {
         map = map.moveExpander(request[21], request[22]);
       }
       revision++;
-      if (holdWrite != null) await holdWrite!.future;
+      if (holdWrite != null) {
+        if (!writeStarted.isCompleted) writeStarted.complete();
+        await holdWrite!.future;
+      }
       if (loseReply) throw TimeoutException('Lost acknowledgement');
     }
     final reply = Uint8List.fromList([

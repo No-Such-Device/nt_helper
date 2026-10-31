@@ -22,5 +22,18 @@ semantics checks. Fix flaky behavior rather than deleting tests or adding skips.
 Hardware/live-service tests retain their existing explicit opt-ins; ordinary CI
 runs the complete default suite without file, name, or tag exclusions.
 
+## Timing audit and local categories
+
+Run `python3 scripts/audit_test_timing.py --timeout 5` to audit each file in
+isolation. Results, raw Flutter JSON logs, and the slow-file fix queue go to
+`.dart_tool/test-timing/`. The deadline includes startup and compilation; a
+file timeout alone does not identify a slow individual test or justify deletion.
+Use `--resume` only on the same commit/deadline, or pass exact test paths for a
+focused audit. Run saved local categories with `--run fast`, `--run slow`, or
+`--run all`; new unaudited files remain in the fast selection. Slow files run
+only when explicitly selected by this local runner. Required CI/release commands
+still run the full suite. Delete a slow non-regression test only after confirming
+it adds no distinct behavior coverage; preserve and repair bug regressions.
+
 Record the actual selection and result in the PR; a focused pass is not evidence
 that the full suite passed. CI owns the full suite for ordinary changes.

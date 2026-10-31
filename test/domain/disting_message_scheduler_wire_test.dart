@@ -1407,10 +1407,10 @@ void main() {
       },
     );
 
-    test(
+    testWidgets(
       'rejects an old default same-slot 0x40 response while a newer strict read is active',
-      () async {
-        await expectLater(
+      (tester) async {
+        final expired = expectLater(
           manager.requestAlgorithmGuid(
             2,
             timeout: const Duration(milliseconds: 25),
@@ -1418,6 +1418,9 @@ void main() {
           ),
           throwsA(isA<TimeoutException>()),
         );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 25));
+        await expired;
 
         final newerRead = manager.requestAlgorithmGuid(
           2,
@@ -1425,7 +1428,7 @@ void main() {
           maxRetries: 1,
           rejectAmbiguousResponse: true,
         );
-        await Future<void>.delayed(const Duration(milliseconds: 60));
+        await tester.pump(const Duration(milliseconds: 60));
         _injectResponse(
           incoming,
           device,
@@ -1442,9 +1445,9 @@ void main() {
       },
     );
 
-    test(
+    testWidgets(
       'retains an ordinary same-slot response still owed after a retry',
-      () async {
+      (tester) async {
         final sentPackets = <Uint8List>[];
         when(() => midi.sendData(any(), deviceId: device.id)).thenAnswer((
           invocation,
@@ -1457,7 +1460,7 @@ void main() {
           timeout: const Duration(milliseconds: 25),
           maxRetries: 2,
         );
-        await Future<void>.delayed(const Duration(milliseconds: 40));
+        await tester.pump(const Duration(milliseconds: 40));
         expect(sentPackets, hasLength(2));
 
         _injectResponse(
@@ -1476,7 +1479,7 @@ void main() {
           maxRetries: 1,
           rejectAmbiguousResponse: true,
         );
-        await Future<void>.delayed(Duration.zero);
+        await tester.pump();
         expect(sentPackets, hasLength(3));
 
         _injectResponse(

@@ -42,7 +42,11 @@ void main() {
     when(() => distingCubit.state).thenReturn(state);
     when(() => distingCubit.stream).thenAnswer((_) => Stream.value(state));
     routingCubit = RoutingEditorCubit(distingCubit);
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+    if (routingCubit.state is! RoutingEditorStateLoaded) {
+      await routingCubit.stream.firstWhere(
+        (s) => s is RoutingEditorStateLoaded,
+      );
+    }
   }
 
   test(

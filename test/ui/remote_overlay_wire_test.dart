@@ -91,8 +91,9 @@ void main() {
   });
 
   Future<void> flush(WidgetTester tester) async {
-    for (var i = 0; i < 30; i++) {
-      await tester.pump(const Duration(milliseconds: 1));
+    // Preserve virtual time while avoiding 30 full widget repaints.
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
     }
     expect(
       cubit.remoteControlState.pending,
@@ -143,8 +144,8 @@ void main() {
     await tester.pump();
     await tester.tap(find.byTooltip('Video'));
     await tester.pump();
-    for (var i = 0; i < 6; i++) {
-      await tester.pump(const Duration(milliseconds: 50));
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
     }
     await video.sendFrame();
     await tester.pump();
@@ -642,8 +643,8 @@ void main() {
       await closeHeld.up();
       await tester.runAsync(() => cubit.stopVideoStream());
       await tester.tap(find.byTooltip('Video'));
-      for (var i = 0; i < 6; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
       }
       await video.sendFrame();
       await tester.pump();
@@ -786,8 +787,8 @@ void main() {
       await tester.pumpWidget(screenApp);
       await tester.pump();
       await tester.tap(find.byTooltip('Video'));
-      for (var i = 0; i < 6; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
       }
       await video.sendFrame();
       await tester.pump();
@@ -908,8 +909,8 @@ void main() {
             session,
             const RemoteEncoderTurn(0, 1),
           );
-          for (var i = 0; i < 10; i++) {
-            await tester.pump(const Duration(milliseconds: 1));
+          for (var i = 0; i < 2; i++) {
+            await tester.pump(const Duration(milliseconds: 5));
           }
           expect(cubit.remoteControlState.pending, isTrue);
           stable();
@@ -995,8 +996,8 @@ void main() {
           messenger.setMockMethodCallHandler(desktop, null);
         });
         await tester.tap(find.byTooltip('Video'));
-        for (var i = 0; i < 6; i++) {
-          await tester.pump(const Duration(milliseconds: 50));
+        for (var i = 0; i < 3; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
         }
         expect(created, 1);
         expect(

@@ -921,9 +921,10 @@ class ToolRegistry {
       ToolRegistryEntry(
         name: 'edit_parameter',
         description:
-            'Edit and save a single parameter value and/or mapping. Validation errors include '
-            'allowed enum labels or numeric ranges for a corrected retry. A successful response '
-            'has persisted=true. Device must be in connected mode.',
+            'Edit a single parameter value and/or mapping without saving by default '
+            '(persisted=false). Set save=true to save the entire preset, including other '
+            'unsaved edits (persisted=true). Validation errors include allowed enum labels '
+            'or numeric ranges for a corrected retry. Device must be in connected mode.',
         inputSchema: {
           'properties': {
             'slot_index': {
@@ -939,6 +940,12 @@ class ToolRegistry {
                 {'type': 'string'},
                 {'type': 'integer'},
               ],
+            },
+            'save': {
+              'type': 'boolean',
+              'default': false,
+              'description':
+                  'Save the entire preset, including other unsaved edits. Defaults to false.',
             },
             'value': {
               'description':

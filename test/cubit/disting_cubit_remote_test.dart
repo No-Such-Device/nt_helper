@@ -448,7 +448,7 @@ void main() {
         cubit.remoteControlState.error,
         contains('device release is unknown'),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(Duration.zero);
       expect(wire.remoteAttempts, hasLength(4));
       expect(wire.remotePackets, [
         remoteFrame([1, 3]),

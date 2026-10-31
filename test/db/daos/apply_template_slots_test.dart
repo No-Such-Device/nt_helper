@@ -373,10 +373,12 @@ void main() {
         slots: [_slot(slotIndex: 0, guid: 'AAAA')],
       );
       final targetId = await _savePreset(db, 'Target');
+      await (db.update(db.presets)..where((p) => p.id.equals(targetId))).write(
+        PresetsCompanion(lastModified: Value(DateTime.utc(2000))),
+      );
       final before = (await db.presetsDao.getPresetById(
         targetId,
       ))!.lastModified;
-      await Future<void>.delayed(const Duration(milliseconds: 5));
 
       await db.presetsDao.applyTemplateSlots(
         templateId: templateId,
@@ -386,7 +388,7 @@ void main() {
       );
 
       final after = (await db.presetsDao.getPresetById(targetId))!.lastModified;
-      expect(after.isAfter(before) || after.isAtSameMomentAs(before), isTrue);
+      expect(after.isAfter(before), isTrue);
     });
   });
 

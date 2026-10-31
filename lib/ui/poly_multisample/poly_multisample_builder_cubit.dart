@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:bloc/bloc.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
 
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
@@ -278,6 +279,10 @@ class PolyMultisampleBuilderCubit extends Cubit<PolyMultisampleBuilderState> {
   Timer? _loopEditPreviewDebounce;
   Timer? _waveformEditPreviewDebounce;
   var _hardwarePreviewInFlight = false;
+
+  /// Lets lifecycle tests await real filesystem work rather than guess a delay.
+  @visibleForTesting
+  bool get hardwarePreviewInFlight => _hardwarePreviewInFlight;
   var _importSequence = 0;
   var _waveformLoadSequence = 0;
 

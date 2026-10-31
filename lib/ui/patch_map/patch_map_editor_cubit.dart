@@ -47,6 +47,9 @@ class PatchMapEditorCubit extends Cubit<PatchMapEditorState> {
   DateTime _nextRetry = DateTime.fromMillisecondsSinceEpoch(0);
   DateTime _nextCompanionCheck = DateTime.fromMillisecondsSinceEpoch(0);
   bool _synchronizing = false;
+
+  /// Includes refresh work that has not yet published a busy state.
+  bool get isSynchronizing => _synchronizing || _refreshing != null;
   Timer? _watch;
   Future<void>? _refreshing;
   Map<String, int> _observedProperties = const {};

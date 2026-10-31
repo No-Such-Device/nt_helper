@@ -639,7 +639,12 @@ void main() {
         };
         await connectionCubit.initialize();
         await connectionCubit.connect();
-        await Future<void>.delayed(const Duration(milliseconds: 30));
+        if (settingsCubit.state.isLoadingMode ||
+            settingsCubit.state.modeMessage == null) {
+          await settingsCubit.stream.firstWhere(
+            (state) => !state.isLoadingMode && state.modeMessage != null,
+          );
+        }
 
         expect(settingsCubit.state.modeCapabilityEvidenced, isFalse);
         expect(settingsCubit.state.isLoadingMode, isFalse);

@@ -604,9 +604,9 @@ void main() {
       expect(result, isNull);
     });
 
-    test(
+    testWidgets(
       'retry persists handler — handler not moved to expired during retries',
-      () async {
+      (tester) async {
         final key = RequestKey(
           sysExId: _testSysExId,
           messageType: DistingNTRespMessageType.respNumAlgorithms,
@@ -620,7 +620,7 @@ void main() {
         );
 
         // Wait for first retry timeout
-        await Future.delayed(const Duration(milliseconds: 70));
+        await tester.pump(const Duration(milliseconds: 70));
 
         // Now inject a response — should still match the active handler
         _injectResponse(
@@ -640,9 +640,9 @@ void main() {
       },
     );
 
-    test(
+    testWidgets(
       'consecutive timeout recovery — auto-reset after 3 consecutive timeouts',
-      () async {
+      (tester) async {
         final setup = _createScheduler(defaultMaxRetries: 1);
         final sched = setup.scheduler;
         final inc = setup.incoming;
@@ -665,6 +665,8 @@ void main() {
             maxRetries: 1,
             timeout: const Duration(milliseconds: 50),
           );
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 50));
           await future;
         }
 
@@ -683,7 +685,7 @@ void main() {
         );
 
         // Allow the scheduler to process and re-subscribe
-        await Future.delayed(const Duration(milliseconds: 20));
+        await tester.pump(const Duration(milliseconds: 20));
         _injectResponse(
           inc,
           setup.device,

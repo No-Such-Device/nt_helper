@@ -61,12 +61,18 @@ void main() {
       ),
     );
 
+    final refreshed = cubit.stream.firstWhere(
+      (state) =>
+          state is DistingStateSynchronized &&
+          !state.loading &&
+          state.slots.isEmpty,
+    );
     await cubit.resetOutputs(slot, 0);
 
     verify(() => manager.setParameterValue(0, 0, 0)).called(1);
     verifyNever(() => manager.setParameterValue(0, 1, any()));
 
-    await Future<void>.delayed(const Duration(milliseconds: 75));
+    await refreshed;
     await cubit.close();
   });
 }

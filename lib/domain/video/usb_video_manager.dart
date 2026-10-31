@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
 import 'package:nt_helper/domain/video/usb_device_info.dart';
@@ -9,6 +11,7 @@ import 'package:nt_helper/services/debug_service.dart';
 
 class UsbVideoManager {
   final UsbVideoChannel _channel;
+  final Clock _clock = clock;
   final DebugService _debugService = DebugService();
 
   UsbVideoManager({
@@ -24,6 +27,8 @@ class UsbVideoManager {
   StreamController<VideoStreamState>? _stateController;
   Timer? _recoveryTimer;
   Timer? _stallWatchdogTimer;
+  bool _disposed = false;
+  int _connectionGeneration = 0;
   String? _lastConnectedDeviceId;
   DateTime? _lastFrameReceivedTime;
   Duration _currentBackoffDuration = _minBackoffDuration;
@@ -85,6 +90,8 @@ class UsbVideoManager {
   }
 
   Future<void> connectToDevice(String deviceId) async {
+    if (_disposed) return;
+    final generation = ++_connectionGeneration;
     _stopScreenshotFallback();
     try {
       _debugLog('Connecting to device: $deviceId');
@@ -92,6 +99,7 @@ class UsbVideoManager {
 
       // Request permission if needed (Android)
       final hasPermission = await _channel.requestUsbPermission(deviceId);
+      if (_disposed || generation != _connectionGeneration) return;
       _debugLog('USB permission: $hasPermission');
       if (!hasPermission) {
         _updateState(const VideoStreamState.error('USB permission denied'));
@@ -115,6 +123,7 @@ class UsbVideoManager {
 
       // Wait a moment to ensure the platform channel is fully set up
       await Future.delayed(const Duration(milliseconds: 100));
+      if (_disposed || generation != _connectionGeneration) return;
 
       // Store the device ID for recovery attempts
       _lastConnectedDeviceId = deviceId;
@@ -124,7 +133,7 @@ class UsbVideoManager {
 
       // Treat the stream as "alive" from now so a missing first-frame is
       // detected as a stall by the watchdog.
-      _lastFrameReceivedTime = DateTime.now();
+      _lastFrameReceivedTime = _clock.now();
 
       // Start stall watchdog to detect if frames stop coming
       _startStallWatchdog();
@@ -139,6 +148,7 @@ class UsbVideoManager {
         ),
       );
     } catch (e) {
+      if (_disposed || generation != _connectionGeneration) return;
       _updateState(
         VideoStreamState.error('Device disconnected or unavailable'),
       );
@@ -155,9 +165,14 @@ class UsbVideoManager {
   }
 
   Future<void> disconnect() async {
+    if (_disposed) return;
+    final generation = ++_connectionGeneration;
     _stopScreenshotFallback();
+    _stopRecoveryTimer();
+    _stopStallWatchdog();
     try {
       await _channel.stopVideoStream();
+      if (_disposed || generation != _connectionGeneration) return;
       _stopRecoveryTimer();
       _stopStallWatchdog();
       _lastFrameReceivedTime = null;
@@ -169,9 +184,12 @@ class UsbVideoManager {
   }
 
   Future<void> autoConnect() async {
+    if (_disposed) return;
+    final generation = ++_connectionGeneration;
     _stopScreenshotFallback();
     // First check if video is supported on this platform
     final supported = await isSupported();
+    if (_disposed || generation != _connectionGeneration) return;
     if (!supported) {
       _updateState(
         const VideoStreamState.error(
@@ -182,6 +200,7 @@ class UsbVideoManager {
     }
 
     final distingNT = await findDistingNT();
+    if (_disposed || generation != _connectionGeneration) return;
     if (distingNT != null) {
       await connectToDevice(distingNT.deviceId);
     } else {
@@ -193,6 +212,7 @@ class UsbVideoManager {
     VideoStreamState newState, {
     bool allowScreenshotFallback = true,
   }) {
+    if (_disposed) return;
     if (allowScreenshotFallback &&
         _takeScreenshot != null &&
         newState.maybeWhen(error: (_) => true, orElse: () => false)) {
@@ -207,7 +227,7 @@ class UsbVideoManager {
   // the previous capture completes. Closing a host cancels pending refreshes and
   // invalidates any in-flight response.
   void _startScreenshotFallback() {
-    if (_screenshotController != null) return;
+    if (_disposed || _screenshotController != null) return;
     _stopRecoveryTimer();
     _stopStallWatchdog();
     final generation = ++_screenshotGeneration;
@@ -260,13 +280,16 @@ class UsbVideoManager {
   }
 
   void _startRecoveryTimer() {
+    if (_disposed) return;
     _stopRecoveryTimer(); // Cancel any existing timer
 
     _debugLog(
       'Starting recovery timer with ${_currentBackoffDuration.inSeconds}s backoff',
     );
 
+    final generation = _connectionGeneration;
     _recoveryTimer = Timer(_currentBackoffDuration, () async {
+      if (_disposed || generation != _connectionGeneration) return;
       // Only attempt recovery if we're in error state
       if (!_currentState.maybeWhen(error: (_) => true, orElse: () => false)) {
         _stopRecoveryTimer();
@@ -284,6 +307,7 @@ class UsbVideoManager {
       // Try to reconnect to the last known device if it's still a Disting NT
       if (_lastConnectedDeviceId != null) {
         final devices = await listUsbCameras();
+        if (_disposed || generation != _connectionGeneration) return;
         final targetDevice = devices
             .where((d) => d.deviceId == _lastConnectedDeviceId && d.isDistingNT)
             .firstOrNull;
@@ -316,7 +340,7 @@ class UsbVideoManager {
 
   /// Called when a frame is received from the video stream
   void _onFrameReceived() {
-    final now = DateTime.now();
+    final now = _clock.now();
     final wasStalled =
         _lastFrameReceivedTime != null &&
         now.difference(_lastFrameReceivedTime!) > _stallThreshold;
@@ -345,7 +369,7 @@ class UsbVideoManager {
 
       // Check if frames have stalled
       if (_lastFrameReceivedTime != null) {
-        final timeSinceLastFrame = DateTime.now().difference(
+        final timeSinceLastFrame = _clock.now().difference(
           _lastFrameReceivedTime!,
         );
         if (timeSinceLastFrame > _stallThreshold) {
@@ -364,6 +388,7 @@ class UsbVideoManager {
   }
 
   Future<void> _handleStall() async {
+    final generation = _connectionGeneration;
     _stopStallWatchdog();
     _debugLog('Handling stall - disconnecting and attempting recovery');
 
@@ -373,6 +398,8 @@ class UsbVideoManager {
     } catch (e) {
       _debugLog('Error stopping stream during stall recovery: $e');
     }
+
+    if (_disposed || generation != _connectionGeneration) return;
 
     // Set error state and start recovery
     _updateState(const VideoStreamState.error('Video stream stalled'));
@@ -392,6 +419,9 @@ class UsbVideoManager {
   }
 
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
+    _connectionGeneration++;
     _stopScreenshotFallback();
     _stopRecoveryTimer();
     _stopStallWatchdog();

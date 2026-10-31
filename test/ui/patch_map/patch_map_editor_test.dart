@@ -8,24 +8,42 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nt_helper/ui/patch_map/patch_map_editor_cubit.dart';
 import 'package:nt_helper/domain/patch_map/patch_map.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/patch_map/patch_map_editor.dart';
 import '../../support/patch_map_device.dart';
 
-Future<void> settleCompanion(WidgetTester tester) async {
+Future<void> settleCompanion(
+  WidgetTester tester, {
+  bool Function()? until,
+}) async {
   await tester.pump(const Duration(milliseconds: 400));
-  for (var i = 0; i < 40; i++) {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 50)),
-    );
+  final consumer = tester
+      .widget<BlocConsumer<PatchMapEditorCubit, PatchMapEditorState>>(
+        find.byType(BlocConsumer<PatchMapEditorCubit, PatchMapEditorState>),
+      );
+  final cubit = consumer.bloc!;
+  bool settled(PatchMapEditorState state) =>
+      !state.busy &&
+      !state.pending &&
+      (state.document != null || state.error != null) &&
+      (until?.call() ?? true);
+  final deadline = Stopwatch()..start();
+  var turns = 0;
+  while ((turns < 4 || cubit.isSynchronizing || !settled(cubit.state)) &&
+      deadline.elapsed < const Duration(seconds: 5)) {
+    turns++;
+    // Lua runs in a real isolate; yield to it, then drain virtual UI work.
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     await tester.pump(const Duration(milliseconds: 100));
-    if (i >= 3 &&
-        find.byTooltip('Up to date').evaluate().isNotEmpty &&
-        find.byType(CircularProgressIndicator).evaluate().isEmpty) {
-      break;
-    }
   }
+  expect(
+    settled(cubit.state) && !cubit.isSynchronizing,
+    isTrue,
+    reason: 'Companion did not settle',
+  );
   await tester.pumpAndSettle();
 }
 
@@ -578,8 +596,10 @@ void main() {
       expect(device.map.connections[0].colour, 8);
       expect(device.map.connections[0].destination, isEmpty);
       device.changeProperty(1, 4);
-      await tester.pump(const Duration(seconds: 1));
-      await settleCompanion(tester);
+      await settleCompanion(
+        tester,
+        until: () => dotColour() == patchCableColours[4],
+      );
       expect(dotColour(), patchCableColours[4]);
       expect(tester.getRect(find.text('Socket')), header);
       await tester.pumpWidget(const SizedBox());
