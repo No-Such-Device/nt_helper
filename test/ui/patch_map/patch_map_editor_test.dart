@@ -15,7 +15,10 @@ import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/patch_map/patch_map_editor.dart';
 import '../../support/patch_map_device.dart';
 
-Future<void> settleCompanion(WidgetTester tester) async {
+Future<void> settleCompanion(
+  WidgetTester tester, {
+  bool Function()? until,
+}) async {
   await tester.pump(const Duration(milliseconds: 400));
   final consumer = tester
       .widget<BlocConsumer<PatchMapEditorCubit, PatchMapEditorState>>(
@@ -25,7 +28,8 @@ Future<void> settleCompanion(WidgetTester tester) async {
   bool settled(PatchMapEditorState state) =>
       !state.busy &&
       !state.pending &&
-      (state.document != null || state.error != null);
+      (state.document != null || state.error != null) &&
+      (until?.call() ?? true);
   final deadline = Stopwatch()..start();
   var turns = 0;
   while ((turns < 4 || cubit.isSynchronizing || !settled(cubit.state)) &&
@@ -592,8 +596,10 @@ void main() {
       expect(device.map.connections[0].colour, 8);
       expect(device.map.connections[0].destination, isEmpty);
       device.changeProperty(1, 4);
-      await tester.pump(const Duration(seconds: 1));
-      await settleCompanion(tester);
+      await settleCompanion(
+        tester,
+        until: () => dotColour() == patchCableColours[4],
+      );
       expect(dotColour(), patchCableColours[4]);
       expect(tester.getRect(find.text('Socket')), header);
       await tester.pumpWidget(const SizedBox());
