@@ -83,8 +83,11 @@ void main() {
           // The cubit should initialize and start listening to DistingCubit
           expect(routingEditorCubit.state, isA<RoutingEditorState>());
 
-          // Give some time for initialization
-          await Future.delayed(Duration(milliseconds: 10));
+          if (routingEditorCubit.state is! RoutingEditorStateLoaded) {
+            await routingEditorCubit.stream.firstWhere(
+              (state) => state is RoutingEditorStateLoaded,
+            );
+          }
 
           // Should have processed the initial state and be loaded (or loading)
           expect(routingEditorCubit.state, isA<RoutingEditorState>());
@@ -169,8 +172,11 @@ void main() {
         // Create a new cubit that will process this state
         final testCubit = RoutingEditorCubit(mockDistingCubit);
 
-        // Give some time for processing
-        await Future.delayed(Duration(milliseconds: 50));
+        if (testCubit.state is! RoutingEditorStateLoaded) {
+          await testCubit.stream.firstWhere(
+            (state) => state is RoutingEditorStateLoaded,
+          );
+        }
 
         // The cubit should have processed the slots and created routing data
         expect(testCubit.state, isA<RoutingEditorStateLoaded>());
@@ -220,8 +226,11 @@ void main() {
         // Create cubit with empty state
         final testCubit = RoutingEditorCubit(mockDistingCubit);
 
-        // Give some time for processing
-        await Future.delayed(Duration(milliseconds: 50));
+        if (testCubit.state is! RoutingEditorStateLoaded) {
+          await testCubit.stream.firstWhere(
+            (state) => state is RoutingEditorStateLoaded,
+          );
+        }
 
         // Should handle empty slots without crashing
         expect(testCubit.state, isA<RoutingEditorState>());
@@ -315,8 +324,11 @@ void main() {
         // Create cubit
         final testCubit = RoutingEditorCubit(mockDistingCubit);
 
-        // Give time for processing
-        await Future.delayed(Duration(milliseconds: 50));
+        if (testCubit.state is! RoutingEditorStateLoaded) {
+          await testCubit.stream.firstWhere(
+            (state) => state is RoutingEditorStateLoaded,
+          );
+        }
 
         // Check for backward connections
         if (testCubit.state is RoutingEditorStateLoaded) {

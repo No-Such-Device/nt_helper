@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/domain/video/usb_device_info.dart';
 import 'package:nt_helper/services/platform_channels/android_usb_video_channel.dart';
@@ -8,11 +9,22 @@ void main() {
 
     setUp(() {
       TestWidgetsFlutterBinding.ensureInitialized();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(const MethodChannel('uvccamera/native'), (
+            call,
+          ) {
+            throw MissingPluginException('No Android camera in unit tests');
+          });
       channel = AndroidUsbVideoChannel();
     });
 
-    tearDown(() {
-      channel.dispose();
+    tearDown(() async {
+      await channel.dispose();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('uvccamera/native'),
+            null,
+          );
     });
 
     group('Device Info Model', () {
@@ -118,7 +130,7 @@ void main() {
         subscription2.cancel();
       });
 
-      test('stopVideoStream completes without error', () async {
+      testWidgets('stopVideoStream completes without error', (tester) async {
         // Act & Assert - should not throw
         await channel.stopVideoStream();
         expect(true, isTrue);
@@ -146,7 +158,7 @@ void main() {
     });
 
     group('DebugService Integration', () {
-      test('debug logging methods do not throw', () async {
+      testWidgets('debug logging methods do not throw', (tester) async {
         // Act & Assert - internally calls debug logging
         expect(channel, isNotNull);
         // The channel will call debug logging in constructor and methods
@@ -155,7 +167,9 @@ void main() {
     });
 
     group('Error Handling', () {
-      test('stopVideoStream handles null state gracefully', () async {
+      testWidgets('stopVideoStream handles null state gracefully', (
+        tester,
+      ) async {
         // Arrange - create fresh channel that hasn't started a stream
         final newChannel = AndroidUsbVideoChannel();
 
@@ -181,7 +195,9 @@ void main() {
     });
 
     group('Platform Support Detection', () {
-      test('isSupported returns a boolean without error', () async {
+      testWidgets('isSupported returns a boolean without error', (
+        tester,
+      ) async {
         // Act
         final isSupported = await channel.isSupported();
 
@@ -189,7 +205,7 @@ void main() {
         expect(isSupported, isA<bool>());
       });
 
-      test('isSupported handles errors gracefully', () async {
+      testWidgets('isSupported handles errors gracefully', (tester) async {
         // Act
         final isSupported = await channel.isSupported();
 
@@ -199,7 +215,7 @@ void main() {
     });
 
     group('Device Detection Integration', () {
-      test('listUsbCameras returns list of devices', () async {
+      testWidgets('listUsbCameras returns list of devices', (tester) async {
         // Act
         final devices = await channel.listUsbCameras();
 
@@ -207,7 +223,7 @@ void main() {
         expect(devices, isA<List<UsbDeviceInfo>>());
       });
 
-      test('requestUsbPermission returns boolean', () async {
+      testWidgets('requestUsbPermission returns boolean', (tester) async {
         // Act
         final granted = await channel.requestUsbPermission('test-device');
 
@@ -217,7 +233,9 @@ void main() {
     });
 
     group('Controller Initialization (Story 2.2)', () {
-      test('startVideoStream initializes connection flow', () async {
+      testWidgets('startVideoStream initializes connection flow', (
+        tester,
+      ) async {
         // Act
         final stream = channel.startVideoStream('test-device');
 
@@ -225,16 +243,19 @@ void main() {
         expect(stream, isNotNull);
         expect(stream.isBroadcast, isTrue);
 
+        await tester.pump();
         // Verify cleanup
         await channel.stopVideoStream();
       });
 
-      test('Controller lifecycle handles initialization', () async {
+      testWidgets('Controller lifecycle handles initialization', (
+        tester,
+      ) async {
         // Act - simulate controller initialization
         final stream = channel.startVideoStream('test-device');
 
         // Give async operations time to complete
-        await Future.delayed(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
 
         // Assert - stream should be ready
         expect(stream, isNotNull);
@@ -243,7 +264,9 @@ void main() {
         await channel.stopVideoStream();
       });
 
-      test('Error handling in frame capture adds error to stream', () async {
+      testWidgets('Error handling in frame capture adds error to stream', (
+        tester,
+      ) async {
         // Act
         final stream = channel.startVideoStream('test-device');
 
@@ -256,7 +279,7 @@ void main() {
         );
 
         // Give async operations time to process
-        await Future.delayed(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
 
         // Cleanup
         await channel.stopVideoStream();
@@ -265,12 +288,14 @@ void main() {
         expect(true, isTrue);
       });
 
-      test('Device event subscriptions are cleaned up properly', () async {
+      testWidgets('Device event subscriptions are cleaned up properly', (
+        tester,
+      ) async {
         // Act
         channel.startVideoStream('test-device');
 
         // Give async operations time to initialize
-        await Future.delayed(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
 
         // Stop stream - should clean up all subscriptions
         await channel.stopVideoStream();
@@ -280,12 +305,14 @@ void main() {
         await channel.stopVideoStream();
       });
 
-      test('Resolution preset is set to low for Disting NT', () async {
+      testWidgets('Resolution preset is set to low for Disting NT', (
+        tester,
+      ) async {
         // Act
         final stream = channel.startVideoStream('test-device');
 
         // Give initialization time
-        await Future.delayed(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
 
         // Assert - stream is created with correct preset
         expect(stream, isNotNull);
@@ -294,27 +321,27 @@ void main() {
         await channel.stopVideoStream();
       });
 
-      test('Status events subscription does not throw', () async {
+      testWidgets('Status events subscription does not throw', (tester) async {
         // Act & Assert - should complete without error
         channel.startVideoStream('test-device');
 
         // Give initialization time for subscriptions
-        await Future.delayed(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
 
         // Cleanup - this tests that status event subscription is cleaned
         await channel.stopVideoStream();
         expect(true, isTrue);
       });
 
-      test('Multiple stream lifecycle cycles are safe', () async {
+      testWidgets('Multiple stream lifecycle cycles are safe', (tester) async {
         // Act
         final stream1 = channel.startVideoStream('device1');
-        await Future.delayed(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
         await channel.stopVideoStream();
 
         // Act - start new stream
         final stream2 = channel.startVideoStream('device2');
-        await Future.delayed(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
 
         // Assert
         expect(stream1, isNotNull);
@@ -326,13 +353,15 @@ void main() {
     });
 
     group('Frame Streaming (Story 2.3)', () {
-      test('Frame stream is broadcast type for multiple subscribers', () async {
+      testWidgets('Frame stream is broadcast type for multiple subscribers', (
+        tester,
+      ) async {
         // Arrange
         final stream = channel.startVideoStream('test-device');
 
         // Act
-        final sub1 = stream.listen((_) {});
-        final sub2 = stream.listen((_) {});
+        final sub1 = stream.listen((_) {}, onError: (_) {});
+        final sub2 = stream.listen((_) {}, onError: (_) {});
 
         // Assert - broadcast streams allow multiple listeners without error
         expect(stream.isBroadcast, isTrue);
@@ -340,12 +369,15 @@ void main() {
         expect(sub2, isNotNull);
 
         // Cleanup
+        await tester.pump();
         sub1.cancel();
         sub2.cancel();
         await channel.stopVideoStream();
       });
 
-      test('EventChannel streaming handles errors gracefully', () async {
+      testWidgets('EventChannel streaming handles errors gracefully', (
+        tester,
+      ) async {
         // Arrange
         final stream = channel.startVideoStream('test-device');
 
@@ -358,7 +390,7 @@ void main() {
         );
 
         // Give async operations time
-        await Future.delayed(const Duration(milliseconds: 150));
+        await tester.pump(const Duration(milliseconds: 150));
 
         // Cleanup
         subscription.cancel();
@@ -368,22 +400,28 @@ void main() {
         expect(true, isTrue);
       });
 
-      test('Frame stream state management works correctly', () async {
+      testWidgets('Frame stream state management works correctly', (
+        tester,
+      ) async {
         // Act
         final stream1 = channel.startVideoStream('device-1');
         expect(stream1, isNotNull);
         expect(stream1.isBroadcast, isTrue);
 
+        await tester.pump();
         // Act - stop and start new stream
         await channel.stopVideoStream();
         final stream2 = channel.startVideoStream('device-2');
+        await tester.pump();
         expect(stream2, isNotNull);
 
         // Cleanup
         await channel.stopVideoStream();
       });
 
-      test('Frame streaming setup completes without hanging', () async {
+      testWidgets('Frame streaming setup completes without hanging', (
+        tester,
+      ) async {
         // Act
         final stream = channel.startVideoStream('test-device');
 
@@ -391,14 +429,16 @@ void main() {
         expect(stream, isNotNull);
 
         // Give initialization time
-        await Future.delayed(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
 
         // Act & Assert - stop should complete quickly
         await channel.stopVideoStream();
         expect(true, isTrue);
       });
 
-      test('EventChannel is properly connected in frame streaming', () async {
+      testWidgets('EventChannel is properly connected in frame streaming', (
+        tester,
+      ) async {
         // Arrange
         final stream = channel.startVideoStream('test-device');
         bool subscriptionSucceeded = false;
@@ -413,16 +453,19 @@ void main() {
         }
 
         // Cleanup
+        await tester.pump();
         await channel.stopVideoStream();
 
         // Assert
         expect(subscriptionSucceeded, isTrue);
       });
 
-      test('Frame streaming handles multiple stop calls safely', () async {
+      testWidgets('Frame streaming handles multiple stop calls safely', (
+        tester,
+      ) async {
         // Act - multiple stops should not throw
         channel.startVideoStream('test-device');
-        await Future.delayed(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
 
         await channel.stopVideoStream();
         await channel.stopVideoStream();
@@ -434,10 +477,12 @@ void main() {
     });
 
     group('Lifecycle and Error Recovery (Story 2.4)', () {
-      test('pauseStreaming stops stream when app backgrounded', () async {
+      testWidgets('pauseStreaming stops stream when app backgrounded', (
+        tester,
+      ) async {
         // Arrange
         channel.startVideoStream('test-device');
-        await Future.delayed(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
 
         // Act
         await channel.pauseStreaming();
@@ -446,10 +491,12 @@ void main() {
         expect(true, isTrue);
       });
 
-      test('resumeStreaming restores stream when app foregrounded', () async {
+      testWidgets('resumeStreaming restores stream when app foregrounded', (
+        tester,
+      ) async {
         // Arrange
         channel.startVideoStream('test-device');
-        await Future.delayed(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
 
         // Act
         await channel.pauseStreaming();
@@ -459,10 +506,12 @@ void main() {
         expect(true, isTrue);
       });
 
-      test('pauseStreaming followed by stopVideoStream is safe', () async {
+      testWidgets('pauseStreaming followed by stopVideoStream is safe', (
+        tester,
+      ) async {
         // Arrange
         channel.startVideoStream('test-device');
-        await Future.delayed(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
 
         // Act
         await channel.pauseStreaming();
@@ -472,24 +521,28 @@ void main() {
         expect(true, isTrue);
       });
 
-      test('multiple pause/resume cycles do not leak resources', () async {
+      testWidgets('multiple pause/resume cycles do not leak resources', (
+        tester,
+      ) async {
         // Act - multiple cycles
         for (int i = 0; i < 3; i++) {
           channel.startVideoStream('device-$i');
-          await Future.delayed(const Duration(milliseconds: 30));
+          await tester.pump(const Duration(milliseconds: 30));
           await channel.pauseStreaming();
-          await Future.delayed(const Duration(milliseconds: 30));
+          await tester.pump(const Duration(milliseconds: 30));
           await channel.resumeStreaming();
-          await Future.delayed(const Duration(milliseconds: 30));
+          await tester.pump(const Duration(milliseconds: 30));
           await channel.stopVideoStream();
-          await Future.delayed(const Duration(milliseconds: 20));
+          await tester.pump(const Duration(milliseconds: 20));
         }
 
         // Assert - if we get here without timeout or error, test passed
         expect(true, isTrue);
       });
 
-      test('resumeStreaming without prior pause is safe', () async {
+      testWidgets('resumeStreaming without prior pause is safe', (
+        tester,
+      ) async {
         // Act - attempt resume without pause
         await channel.resumeStreaming();
 
@@ -497,10 +550,10 @@ void main() {
         expect(true, isTrue);
       });
 
-      test('dispose cleans up all lifecycle state', () async {
+      testWidgets('dispose cleans up all lifecycle state', (tester) async {
         // Arrange
         channel.startVideoStream('test-device');
-        await Future.delayed(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
         await channel.pauseStreaming();
 
         // Act
@@ -510,28 +563,30 @@ void main() {
         expect(true, isTrue);
       });
 
-      test('comprehensive lifecycle: start → pause → resume → stop', () async {
+      testWidgets('comprehensive lifecycle: start → pause → resume → stop', (
+        tester,
+      ) async {
         // Act - complete lifecycle
         final stream = channel.startVideoStream('test-device');
         expect(stream, isNotNull);
 
-        await Future.delayed(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
         await channel.pauseStreaming();
 
-        await Future.delayed(const Duration(milliseconds: 30));
+        await tester.pump(const Duration(milliseconds: 30));
         await channel.resumeStreaming();
 
-        await Future.delayed(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
         await channel.stopVideoStream();
 
         // Assert - test completed successfully
         expect(true, isTrue);
       });
 
-      test('lifecycle state transitions are idempotent', () async {
+      testWidgets('lifecycle state transitions are idempotent', (tester) async {
         // Act
         channel.startVideoStream('test-device');
-        await Future.delayed(const Duration(milliseconds: 30));
+        await tester.pump(const Duration(milliseconds: 30));
 
         // Multiple pauses
         await channel.pauseStreaming();
@@ -548,17 +603,17 @@ void main() {
         expect(true, isTrue);
       });
 
-      test(
+      testWidgets(
         'initialization retry state resets after successful connection',
-        () async {
+        (tester) async {
           // Act
           final stream1 = channel.startVideoStream('device-1');
-          await Future.delayed(const Duration(milliseconds: 50));
+          await tester.pump(const Duration(milliseconds: 50));
           await channel.stopVideoStream();
 
           // Second attempt should not carry over retry state
           final stream2 = channel.startVideoStream('device-2');
-          await Future.delayed(const Duration(milliseconds: 50));
+          await tester.pump(const Duration(milliseconds: 50));
 
           // Assert
           expect(stream1, isNotNull);
@@ -569,10 +624,10 @@ void main() {
         },
       );
 
-      test('recovery timer is cleaned up on disposal', () async {
+      testWidgets('recovery timer is cleaned up on disposal', (tester) async {
         // Arrange
         channel.startVideoStream('test-device');
-        await Future.delayed(const Duration(milliseconds: 50));
+        await tester.pump(const Duration(milliseconds: 50));
 
         // Act
         await channel.dispose();
@@ -581,17 +636,19 @@ void main() {
         expect(true, isTrue);
       });
 
-      test('error state tracking during lifecycle transitions', () async {
+      testWidgets('error state tracking during lifecycle transitions', (
+        tester,
+      ) async {
         // Act - trigger error conditions by starting/stopping rapidly
         channel.startVideoStream('test-device');
-        await Future.delayed(const Duration(milliseconds: 20));
+        await tester.pump(const Duration(milliseconds: 20));
         await channel.pauseStreaming();
-        await Future.delayed(const Duration(milliseconds: 20));
+        await tester.pump(const Duration(milliseconds: 20));
         await channel.stopVideoStream();
 
         // Start new stream after error state
         final newStream = channel.startVideoStream('test-device-2');
-        await Future.delayed(const Duration(milliseconds: 20));
+        await tester.pump(const Duration(milliseconds: 20));
 
         // Assert
         expect(newStream, isNotNull);
@@ -600,10 +657,12 @@ void main() {
         await channel.stopVideoStream();
       });
 
-      test('concurrent pause and stop operations do not deadlock', () async {
+      testWidgets('concurrent pause and stop operations do not deadlock', (
+        tester,
+      ) async {
         // Act
         channel.startVideoStream('test-device');
-        await Future.delayed(const Duration(milliseconds: 30));
+        await tester.pump(const Duration(milliseconds: 30));
 
         // Create concurrent futures (pseudo-concurrent in single thread)
         final pauseFuture = channel.pauseStreaming();
@@ -616,15 +675,17 @@ void main() {
         expect(true, isTrue);
       });
 
-      test('device reconnection detection with lifecycle', () async {
+      testWidgets('device reconnection detection with lifecycle', (
+        tester,
+      ) async {
         // Act
         final stream1 = channel.startVideoStream('device-1');
-        await Future.delayed(const Duration(milliseconds: 30));
+        await tester.pump(const Duration(milliseconds: 30));
         await channel.pauseStreaming();
 
         // Simulate device reattach by resuming with same device
         await channel.resumeStreaming();
-        await Future.delayed(const Duration(milliseconds: 30));
+        await tester.pump(const Duration(milliseconds: 30));
 
         // Assert
         expect(stream1, isNotNull);

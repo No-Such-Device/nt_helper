@@ -2268,7 +2268,9 @@ void main() {
       ).called(1);
     });
 
-    test('reconciles the optimistic style with the device readback', () async {
+    testWidgets('reconciles the optimistic style with the device readback', (
+      tester,
+    ) async {
       const requestedStyle = AlgorithmVisualStyle(leftIndent: 4);
       const deviceStyle = AlgorithmVisualStyle(
         rightIndent: 2,
@@ -2288,7 +2290,7 @@ void main() {
 
       cubit.emit(makeSyncState(firmwareVersion: '1.18.0', slots: [makeSlot()]));
       await cubit.setAlgorithmVisualStyle(0, requestedStyle);
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
 
       final state = cubit.state as DistingStateSynchronized;
       expect(state.slots.single.algorithm.visualStyle, deviceStyle);

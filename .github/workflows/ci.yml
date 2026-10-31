@@ -25,8 +25,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Test release artifact retention safety
-        run: python3 -m unittest discover -s scripts -p 'test_retain_release_artifacts.py' -v
+      - name: Test developer and release scripts
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
       - uses: subosito/flutter-action@v2
         with:
           channel: stable

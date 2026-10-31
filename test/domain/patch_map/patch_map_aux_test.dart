@@ -157,7 +157,7 @@ void main() {
       device.loseReply = true;
       cubit.queueAux(3, 'description', 'First');
       final writing = cubit.synchronize();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await device.writeStarted.future;
       cubit.queueAux(3, 'description', 'Latest');
       device.holdWrite!.complete();
       await writing;

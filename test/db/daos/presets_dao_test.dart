@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/db/database.dart';
@@ -823,14 +824,16 @@ void main() {
       // 3. Save preset
       final presetId = await database.presetsDao.saveFullPreset(presetDetails);
 
+      // Seed an old timestamp so the assertion cannot pass on an unchanged row.
+      await (database.update(database.presets)
+            ..where((p) => p.id.equals(presetId)))
+          .write(PresetsCompanion(lastModified: Value(DateTime.utc(2000))));
+
       // 4. Get initial timestamp
       final initialPreset = await database.presetsDao.getFullPresetDetails(
         presetId,
       );
       final initialTimestamp = initialPreset!.preset.lastModified;
-
-      // 5. Wait a bit to ensure timestamp changes
-      await Future.delayed(const Duration(milliseconds: 100));
 
       // 6. Toggle template status
       await database.presetsDao.toggleTemplateStatus(presetId, true);
@@ -842,12 +845,9 @@ void main() {
 
       expect(updatedPreset, isNotNull);
       expect(
-        updatedPreset!.preset.lastModified.isAfter(initialTimestamp) ||
-            updatedPreset.preset.lastModified.isAtSameMomentAs(
-              initialTimestamp,
-            ),
+        updatedPreset!.preset.lastModified.isAfter(initialTimestamp),
         isTrue,
-        reason: 'lastModified should be updated or remain the same',
+        reason: 'lastModified must advance from the seeded timestamp',
       );
     });
 

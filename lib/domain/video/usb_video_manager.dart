@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
 import 'package:nt_helper/domain/video/usb_device_info.dart';
@@ -9,6 +11,7 @@ import 'package:nt_helper/services/debug_service.dart';
 
 class UsbVideoManager {
   final UsbVideoChannel _channel;
+  final Clock _clock = clock;
   final DebugService _debugService = DebugService();
 
   UsbVideoManager({
@@ -124,7 +127,7 @@ class UsbVideoManager {
 
       // Treat the stream as "alive" from now so a missing first-frame is
       // detected as a stall by the watchdog.
-      _lastFrameReceivedTime = DateTime.now();
+      _lastFrameReceivedTime = _clock.now();
 
       // Start stall watchdog to detect if frames stop coming
       _startStallWatchdog();
@@ -316,7 +319,7 @@ class UsbVideoManager {
 
   /// Called when a frame is received from the video stream
   void _onFrameReceived() {
-    final now = DateTime.now();
+    final now = _clock.now();
     final wasStalled =
         _lastFrameReceivedTime != null &&
         now.difference(_lastFrameReceivedTime!) > _stallThreshold;
@@ -345,7 +348,7 @@ class UsbVideoManager {
 
       // Check if frames have stalled
       if (_lastFrameReceivedTime != null) {
-        final timeSinceLastFrame = DateTime.now().difference(
+        final timeSinceLastFrame = _clock.now().difference(
           _lastFrameReceivedTime!,
         );
         if (timeSinceLastFrame > _stallThreshold) {

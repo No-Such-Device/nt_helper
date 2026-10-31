@@ -1252,6 +1252,7 @@ void main() {
           'late reacquisition is invalidated after ${cancel ? 'cancel' : 'close'}',
           () async {
             final detection = Completer<bool>();
+            final detectionStarted = Completer<void>();
             var checks = 0;
             final progress = StreamController<FlashProgress>();
             when(
@@ -1260,6 +1261,7 @@ void main() {
             final cubit = createCubit(
               checkMidiDevices: () {
                 checks++;
+                detectionStarted.complete();
                 return detection.future;
               },
               midiPollInterval: Duration.zero,
@@ -1274,7 +1276,7 @@ void main() {
                 message: 'Done',
               ),
             );
-            await Future<void>.delayed(const Duration(milliseconds: 10));
+            await detectionStarted.future;
             expect(checks, 1);
             expect(cubit.state, isA<FirmwareUpdateStateVerifyingMidi>());
             if (cancel) {

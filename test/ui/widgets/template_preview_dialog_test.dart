@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -322,10 +324,11 @@ void main() {
     testWidgets('shows loading state when injecting', (tester) async {
       final template = createTestTemplate(name: 'Test Template', slotCount: 3);
 
-      // Mock injection to delay briefly
+      final injection = Completer<void>();
+      // Keep injection pending until loading assertions finish.
       when(
         () => mockCubit.injectTemplateToDevice(any(), any()),
-      ).thenAnswer((_) => Future.delayed(const Duration(milliseconds: 100)));
+      ).thenAnswer((_) => injection.future);
       when(
         () => mockCubit.state,
       ).thenReturn(const MetadataSyncState.loadingPreset());
@@ -343,15 +346,17 @@ void main() {
       expect(find.textContaining('Adding 3 algorithm'), findsOneWidget);
 
       // Clean up
+      injection.complete();
       await tester.pumpAndSettle();
     });
 
     testWidgets('prevents dialog dismissal during loading', (tester) async {
       final template = createTestTemplate(name: 'Test Template', slotCount: 3);
+      final injection = Completer<void>();
 
       when(
         () => mockCubit.injectTemplateToDevice(any(), any()),
-      ).thenAnswer((_) => Future.delayed(const Duration(milliseconds: 100)));
+      ).thenAnswer((_) => injection.future);
       when(
         () => mockCubit.state,
       ).thenReturn(const MetadataSyncState.loadingPreset());
@@ -371,6 +376,7 @@ void main() {
       expect(popScope.canPop, false);
 
       // Clean up
+      injection.complete();
       await tester.pumpAndSettle();
     });
   });

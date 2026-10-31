@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/services/gallery_service.dart';
 import 'package:nt_helper/services/settings_service.dart';
@@ -22,7 +24,6 @@ void main() {
     late int transientPluginStatus;
     late int transientCategoryFailures;
     late int categoryRequestCount;
-    late Duration? nextPluginResponseDelay;
 
     setUp(() async {
       totalPlugins = 120;
@@ -30,7 +31,6 @@ void main() {
       transientPluginStatus = HttpStatus.serviceUnavailable;
       transientCategoryFailures = 0;
       categoryRequestCount = 0;
-      nextPluginResponseDelay = null;
       resetAppDirectoryForTest();
       tempRoot = Directory.systemTemp.createTempSync(
         'gallery_service_pagination_test_',
@@ -62,12 +62,6 @@ void main() {
             request.response.statusCode = transientPluginStatus;
             await request.response.close();
             return;
-          }
-
-          final responseDelay = nextPluginResponseDelay;
-          nextPluginResponseDelay = null;
-          if (responseDelay != null) {
-            await Future.delayed(responseDelay);
           }
 
           final end = offset + limit < totalPlugins
@@ -179,22 +173,53 @@ void main() {
     });
 
     test('retries a plugin page after a request timeout', () async {
-      totalPlugins = 1;
-      nextPluginResponseDelay = const Duration(milliseconds: 50);
       final service = GalleryService(
         settingsService: settingsService,
-        graphqlRequestTimeout: const Duration(milliseconds: 5),
         graphqlRetryDelays: const [Duration.zero],
       );
+      var pluginAttempts = 0;
+      final client = MockClient((request) async {
+        final payload = jsonDecode(request.body) as Map<String, dynamic>;
+        if ((payload['query'] as String).contains('query GetPlugins')) {
+          final variables = payload['variables'] as Map<String, dynamic>;
+          pluginPageRequests.add((
+            limit: variables['limit'] as int,
+            offset: variables['offset'] as int,
+          ));
+          // Exercise retry handling without racing real sockets against 5 ms.
+          if (pluginAttempts++ == 0) {
+            throw TimeoutException('request timed out');
+          }
+          return http.Response(
+            jsonEncode({
+              'data': {
+                'plugins': [
+                  {'slug': 'plugin-0', 'name': 'Plugin 0', 'pluginType': 'CPP'},
+                ],
+              },
+            }),
+            HttpStatus.ok,
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'data': {'categories': <dynamic>[]},
+          }),
+          HttpStatus.ok,
+        );
+      });
+      addTearDown(client.close);
 
-      final gallery = await service.fetchGallery(forceRefresh: true);
+      final gallery = await http.runWithClient(
+        () => service.fetchGallery(forceRefresh: true),
+        () => client,
+      );
 
-      expect(gallery.plugins, hasLength(1));
+      expect(gallery.plugins.single.id, 'plugin-0');
       expect(pluginPageRequests, [
         (limit: 50, offset: 0),
         (limit: 50, offset: 0),
       ]);
-      await Future.delayed(const Duration(milliseconds: 60));
     });
 
     test(

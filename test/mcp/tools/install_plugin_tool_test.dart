@@ -15,11 +15,39 @@ import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/mcp/tool_registry.dart';
 import 'package:nt_helper/mcp/tools/plugin_tools.dart';
 import 'package:nt_helper/models/firmware_version.dart';
+import 'package:nt_helper/models/plugin_install_report.dart';
 import 'package:nt_helper/models/sd_card_file_system.dart';
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../test_helpers/mock_midi_command.dart';
+
+class _ObservedDistingCubit extends DistingCubit {
+  _ObservedDistingCubit(super.database) : super(midiCommand: MockMidiCommand());
+
+  final verificationStarted = Completer<void>();
+
+  @override
+  Future<PluginInstallReport> installPluginAndVerify(
+    String fileName,
+    Uint8List fileData, {
+    bool load = false,
+    int maxRescanAttempts = 5,
+    Duration rescanPollInterval = const Duration(seconds: 1),
+    Duration libraryReadyTimeout = const Duration(seconds: 10),
+  }) {
+    final result = super.installPluginAndVerify(
+      fileName,
+      fileData,
+      load: load,
+      maxRescanAttempts: maxRescanAttempts,
+      rescanPollInterval: rescanPollInterval,
+      libraryReadyTimeout: libraryReadyTimeout,
+    );
+    if (!verificationStarted.isCompleted) verificationStarted.complete();
+    return result;
+  }
+}
 
 class _MockAppDatabase extends Mock implements AppDatabase {}
 
@@ -174,7 +202,7 @@ void main() {
   late _MockMetadataDao metadataDao;
   late _MockDistingMidiManager manager;
   late _FakeDevice device;
-  late DistingCubit cubit;
+  late _ObservedDistingCubit cubit;
   late PluginTools tools;
   late Uint8List fixtureBytes;
 
@@ -283,7 +311,7 @@ void main() {
 
     manager = _MockDistingMidiManager();
     device = _FakeDevice()..wire(manager);
-    cubit = DistingCubit(database, midiCommand: MockMidiCommand());
+    cubit = _ObservedDistingCubit(database);
     cubit.emit(synchronized());
     tools = PluginTools(
       cubit,
@@ -869,10 +897,12 @@ void main() {
       when(
         () => manager.requestAlgorithmInfo(any()),
       ).thenAnswer((call) => read(call.positionalArguments[0] as int));
+      final partial = cubit.stream.firstWhere(
+        (state) =>
+            state is DistingStateSynchronized && state.algorithms.isNotEmpty,
+      );
       cubit.refreshAlgorithms();
-      for (var i = 0; i < 100 && currentAlgorithms().isEmpty; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      }
+      await partial;
       expect(cubit.isAlgorithmLibraryLoading, isTrue);
       expect(currentAlgorithms().map((a) => a.guid), ['clck']);
     }
@@ -886,10 +916,8 @@ void main() {
       final source = inAllowed('seq.o', fixtureBytes);
 
       final pending = install({'path': source});
-      // Give the install time to pass its file and session checks; without
-      // the wait it would check collisions against the partial list now and
-      // upload.
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // The real verifier has reached its library-ready wait, before upload.
+      await cubit.verificationStarted.future;
       expectNothingUploaded();
       pluginReadsReleased.complete();
       final result = await pending;

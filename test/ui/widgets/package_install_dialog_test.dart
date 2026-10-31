@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -199,7 +201,8 @@ void main() {
     testWidgets('shows progress indicator during installation', (tester) async {
       final analysis = createTestAnalysis();
 
-      // Mock installPackageFiles to delay completion
+      final installation = Completer<void>();
+      // Keep installation pending until loading assertions finish.
       when(
         () => mockDistingCubit.installPackageFiles(
           any(),
@@ -216,8 +219,7 @@ void main() {
         if (onFileStart != null) {
           onFileStart('file1.json', 1, 3);
         }
-        // Simulate a delay to keep progress visible
-        await Future.delayed(const Duration(milliseconds: 100));
+        await installation.future;
       });
 
       await tester.pumpWidget(createTestWidget(analysis: analysis));
@@ -230,6 +232,7 @@ void main() {
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(find.text('Installing: file1.json (0/3)'), findsOneWidget);
 
+      installation.complete();
       // Wait for installation to complete
       await tester.pumpAndSettle();
     });
@@ -237,7 +240,8 @@ void main() {
     testWidgets('disables buttons during installation', (tester) async {
       final analysis = createTestAnalysis();
 
-      // Mock installPackageFiles with delay
+      final installation = Completer<void>();
+      // Keep installation pending until loading assertions finish.
       when(
         () => mockDistingCubit.installPackageFiles(
           any(),
@@ -248,7 +252,7 @@ void main() {
           onFileError: any(named: 'onFileError'),
         ),
       ).thenAnswer((invocation) async {
-        await Future.delayed(const Duration(milliseconds: 100));
+        await installation.future;
       });
 
       await tester.pumpWidget(createTestWidget(analysis: analysis));
@@ -267,6 +271,7 @@ void main() {
 
       expect(installButton.onPressed, isNull);
       expect(cancelButton.onPressed, isNull);
+      installation.complete();
 
       await tester.pumpAndSettle();
     });
@@ -309,6 +314,8 @@ void main() {
 
     testWidgets('updates progress during installation', (tester) async {
       final analysis = createTestAnalysis();
+      final firstFile = Completer<void>();
+      final secondFile = Completer<void>();
 
       when(
         () => mockDistingCubit.installPackageFiles(
@@ -331,7 +338,7 @@ void main() {
         if (onFileStart != null) {
           onFileStart('file1.json', 1, 3);
         }
-        await Future.delayed(const Duration(milliseconds: 10));
+        await firstFile.future;
         if (onFileComplete != null) {
           onFileComplete('file1.json');
         }
@@ -339,7 +346,7 @@ void main() {
         if (onFileStart != null) {
           onFileStart('file2.json', 2, 3);
         }
-        await Future.delayed(const Duration(milliseconds: 10));
+        await secondFile.future;
         if (onFileComplete != null) {
           onFileComplete('file2.json');
         }
@@ -353,10 +360,12 @@ void main() {
       // Check initial progress
       expect(find.text('Installing: file1.json (0/3)'), findsOneWidget);
 
-      await tester.pump(const Duration(milliseconds: 15));
+      firstFile.complete();
+      await tester.pump();
 
       // Progress should update
-      expect(find.textContaining('Installing:'), findsOneWidget);
+      expect(find.text('Installing: file2.json (1/3)'), findsOneWidget);
+      secondFile.complete();
 
       await tester.pumpAndSettle();
     });

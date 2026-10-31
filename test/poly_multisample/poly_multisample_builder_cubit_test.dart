@@ -1046,7 +1046,7 @@ void main() {
         source.path,
         const PolyWaveformDraft(fadeInFrames: 4),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 120));
+      await _waitForCondition(() => adapter.playedPaths.length == 2);
 
       expect(adapter.playedPaths, hasLength(2));
       expect(cubit.state.previewState.visiblePath, source.path);
@@ -2001,7 +2001,7 @@ void main() {
         expect(hardwareService.completers.length, 1);
 
         hardwareService.complete(0, [1]);
-        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await _waitForCondition(() => !cubit.hardwarePreviewInFlight);
 
         expect(hardwareService.completers.length, 1);
         expect(cubit.state.editedRegions.single.rootMidi, 50);
@@ -2062,7 +2062,7 @@ void main() {
         expect(hardwareService.completers.length, 1);
 
         hardwareService.complete(0, [1]);
-        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await _waitForCondition(() => !cubit.hardwarePreviewInFlight);
         expect(hardwareService.completers.length, 1);
 
         cubit.selectRegion(
@@ -4333,7 +4333,8 @@ Future<void> _waitForCondition(bool Function() condition) async {
     if (DateTime.now().isAfter(deadline)) {
       fail('Timed out waiting for async condition.');
     }
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+    // Yield to real filesystem/isolate work without a wall-clock sleep.
+    await Future<void>.delayed(Duration.zero);
   }
 }
 

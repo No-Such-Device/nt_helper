@@ -9,6 +9,7 @@ import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/offline_disting_midi_manager.dart';
 import 'package:nt_helper/services/disting_controller_impl.dart';
 import 'package:nt_helper/ui/metadata_sync/metadata_sync_page.dart';
+import 'package:nt_helper/ui/metadata_sync/metadata_sync_cubit.dart';
 import 'package:nt_helper/ui/widgets/slot_detail_view.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode_selector.dart';
@@ -16,6 +17,17 @@ import 'package:nt_helper/ui/widgets/algorithm_controller/algorithm_controller_s
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../test_helpers/mock_midi_command.dart';
+
+Future<void> _waitForLocalData(WidgetTester tester) async {
+  final metadata = tester
+      .element(find.byType(Scaffold).last)
+      .read<MetadataSyncCubit>();
+  await tester.runAsync(() async {
+    if (metadata.state is! ViewingLocalData) {
+      await metadata.stream.firstWhere((state) => state is ViewingLocalData);
+    }
+  });
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -94,9 +106,7 @@ void main() {
           child: MaterialApp(home: MetadataSyncPage(distingCubit: cubit)),
         ),
       );
-      await tester.runAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-      });
+      await _waitForLocalData(tester);
       await tester.pumpAndSettle();
 
       final savedTile = find.byKey(ValueKey(presetId));
@@ -105,9 +115,7 @@ void main() {
 
       await tester.tap(find.text('Templates'));
       await tester.pumpAndSettle();
-      await tester.runAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-      });
+      await _waitForLocalData(tester);
       await tester.pumpAndSettle();
       final templateTiles = tester.widgetList<ListTile>(
         find.byKey(ValueKey(presetId)),
@@ -117,9 +125,7 @@ void main() {
 
       await tester.runAsync(cubit.newPreset);
       await tester.pumpAndSettle();
-      await tester.runAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-      });
+      await _waitForLocalData(tester);
       await tester.pumpAndSettle();
       expect(
         (cubit.requireDisting() as OfflineDistingMidiManager).loadedPresetId,
@@ -207,9 +213,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.runAsync(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-      });
+      await _waitForLocalData(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Load Preset Offline'));
       await tester.pumpAndSettle();

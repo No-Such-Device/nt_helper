@@ -319,7 +319,7 @@ void main() {
     device.loseReply = true;
     cubit.queueConnection(0, 'destination', 'First');
     final writing = cubit.synchronize();
-    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await device.writeStarted.future;
     cubit.queueConnection(0, 'destination', 'Latest');
     device.holdWrite!.complete();
     await writing;
@@ -490,7 +490,7 @@ void main() {
       final pending = cubit.setConnection(
         PatchConnection(socket: 0, destination: 'Changed'),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await device.writeStarted.future;
       expect(cubit.state.busy, isTrue);
       expect(cubit.state.map!.connections[0].destination, '');
       device.holdWrite!.complete();

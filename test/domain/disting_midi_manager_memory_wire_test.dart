@@ -139,7 +139,7 @@ void main() {
 
     harness.injectMemory();
     expect(await first, isNotNull);
-    await Future<void>.delayed(const Duration(milliseconds: 1));
+    await Future<void>.delayed(Duration.zero);
     expect(harness.memoryRequests, hasLength(2));
 
     harness.injectMemory();

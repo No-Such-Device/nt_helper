@@ -253,7 +253,7 @@ void main() {
           ),
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await Future<void>.delayed(Duration.zero);
       expect(wire.remoteAttempts, hasLength(1));
       expect(wire.remotePackets, isEmpty);
       await wire.manager.requestWake();
