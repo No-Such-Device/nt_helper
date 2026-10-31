@@ -112,6 +112,19 @@ void main() {
       expect(name['maxLength'], 31);
     });
 
+    test('edit_parameter advertises opt-in whole-preset saving', () {
+      final registry = ToolRegistry(MockDistingCubit());
+      final tool = registry.findByName('edit_parameter')!;
+      final properties = tool.inputSchema['properties'] as Map<String, dynamic>;
+
+      expect(properties['save']['type'], 'boolean');
+      expect(properties['save']['default'], isFalse);
+      expect(tool.inputSchema['required'], isNot(contains('save')));
+      expect(tool.description, contains('persisted=false'));
+      expect(tool.description, contains('save=true'));
+      expect(properties['save']['description'], contains('entire preset'));
+    });
+
     test('edit_parameter advertises profile-aware CV mapping buses', () {
       final registry = ToolRegistry(MockDistingCubit());
       final tool = registry.findByName('edit_parameter');

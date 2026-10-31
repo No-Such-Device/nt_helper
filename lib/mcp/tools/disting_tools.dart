@@ -3838,6 +3838,15 @@ class DistingTools {
   /// Allows updating parameter value and/or mapping without sending full slot data
   Future<String> editParameter(Map<String, dynamic> params) async {
     try {
+      if (params.containsKey('save') && params['save'] is! bool) {
+        return jsonEncode(
+          convertToSnakeCaseKeys(
+            MCPUtils.buildError('"save" must be a boolean (true or false).'),
+          ),
+        );
+      }
+      final bool save = params['save'] as bool? ?? false;
+
       // Step 1: Validate input parameters
       final int? slotIndex = params['slot_index'] as int?;
       if (slotIndex == null) {
@@ -4077,9 +4086,11 @@ class DistingTools {
         await _applyMappingUpdates(slotIndex, resolvedParameterNumber, mapping);
       }
 
-      // Flush queued parameter writes, then save so the preset includes them.
+      // Confirm queued writes before readback, even when leaving edits unsaved.
       await _controller.flushParameterQueue();
-      await _controller.savePreset();
+      if (save) {
+        await _controller.savePreset();
+      }
 
       // Step 8: Format return value
       final updatedParamValue = await _controller.getParameterValue(
@@ -4089,7 +4100,7 @@ class DistingTools {
       final updatedValue = updatedParamValue?.value ?? 0;
 
       final Map<String, dynamic> result = {
-        'persisted': true,
+        'persisted': save,
         'slot_index': slotIndex,
         'parameter_number': resolvedParameterNumber,
         'parameter_name': parameterName,

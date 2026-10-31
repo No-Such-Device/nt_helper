@@ -325,6 +325,7 @@ void main() {
         'slot_index': 0,
         'parameter_number': 5,
         'value': 80,
+        'save': true,
       });
 
       verifyInOrder([
@@ -350,6 +351,7 @@ void main() {
         'slot_index': 0,
         'parameter_number': 5,
         'value': 80,
+        'save': true,
       });
 
       verifyInOrder([
@@ -379,6 +381,138 @@ void main() {
       final json = jsonDecode(result) as Map<String, dynamic>;
 
       expect(json['value'], equals(80));
+    });
+  });
+
+  group('editParameter — opt-in persistence', () {
+    late Mapping currentMapping;
+
+    setUp(() {
+      currentMapping = testMappings[1];
+      when(
+        () => controller.updateParameterValue(0, 5, 80),
+      ).thenAnswer((_) async {});
+      when(() => controller.getParameterValue(0, 5)).thenAnswer(
+        (_) async =>
+            ParameterValue(algorithmIndex: 0, parameterNumber: 5, value: 80),
+      );
+      when(
+        () => controller.getParameterMapping(0, 5),
+      ).thenAnswer((_) async => currentMapping);
+      when(() => controller.saveMapping(0, 5, any())).thenAnswer((inv) async {
+        currentMapping = Mapping(
+          algorithmIndex: 0,
+          parameterNumber: 5,
+          packedMappingData: inv.positionalArguments[2] as PackedMappingData,
+        );
+      });
+    });
+
+    for (final save in <bool?>[null, false, true]) {
+      for (final edit in ['value', 'mapping', 'both']) {
+        test('$edit edit with save=${save ?? "omitted"}', () async {
+          final result =
+              jsonDecode(
+                    await distingTools.editParameter({
+                      'slot_index': 0,
+                      'parameter_number': 5,
+                      if (edit != 'mapping') 'value': 80,
+                      if (edit != 'value') 'mapping': {'performance_page': 2},
+                      'save': ?save,
+                    }),
+                  )
+                  as Map<String, dynamic>;
+
+          expect(result, isNot(contains('error')));
+          expect(result['persisted'], save == true);
+          expect(result['value'], 80);
+          if (edit != 'value') {
+            expect(result['mapping']['performance_page'], 2);
+            expect(
+              currentMapping.packedMappingData.midiChannel,
+              testMappings[1].packedMappingData.midiChannel,
+            );
+          }
+          verifyInOrder([
+            if (edit != 'mapping')
+              () => controller.updateParameterValue(0, 5, 80),
+            if (edit != 'value') () => controller.saveMapping(0, 5, any()),
+            () => controller.flushParameterQueue(),
+            if (save == true) () => controller.savePreset(),
+            () => controller.getParameterValue(0, 5),
+          ]);
+          if (save != true) {
+            verifyNever(() => controller.savePreset());
+          }
+        });
+      }
+    }
+
+    for (final invalid in [null, 'true', 'false', 0, 1]) {
+      test('rejects non-boolean save=$invalid before editing', () async {
+        final result =
+            jsonDecode(
+                  await distingTools.editParameter({
+                    'slot_index': 0,
+                    'parameter_number': 5,
+                    'value': 80,
+                    'mapping': {'performance_page': 2},
+                    'save': invalid,
+                  }),
+                )
+                as Map<String, dynamic>;
+
+        expect(result['success'], isFalse);
+        expect(result['error'], contains('save'));
+        verifyNever(() => controller.updateParameterValue(any(), any(), any()));
+        verifyNever(() => controller.saveMapping(any(), any(), any()));
+        verifyNever(() => controller.flushParameterQueue());
+        verifyNever(() => controller.savePreset());
+      });
+    }
+
+    test('a failed flush does not save or report persistence', () async {
+      when(
+        () => controller.flushParameterQueue(),
+      ).thenThrow(StateError('flush failed'));
+
+      final result =
+          jsonDecode(
+                await distingTools.editParameter({
+                  'slot_index': 0,
+                  'parameter_number': 5,
+                  'value': 80,
+                  'save': true,
+                }),
+              )
+              as Map<String, dynamic>;
+
+      expect(result['success'], isFalse);
+      expect(result, isNot(contains('persisted')));
+      verifyNever(() => controller.savePreset());
+      verifyNever(() => controller.getParameterValue(0, 5));
+    });
+
+    test('a failed explicit save does not report persistence', () async {
+      when(() => controller.savePreset()).thenThrow(StateError('save failed'));
+
+      final result =
+          jsonDecode(
+                await distingTools.editParameter({
+                  'slot_index': 0,
+                  'parameter_number': 5,
+                  'value': 80,
+                  'save': true,
+                }),
+              )
+              as Map<String, dynamic>;
+
+      expect(result['success'], isFalse);
+      expect(result, isNot(contains('persisted')));
+      verifyInOrder([
+        () => controller.flushParameterQueue(),
+        () => controller.savePreset(),
+      ]);
     });
   });
 

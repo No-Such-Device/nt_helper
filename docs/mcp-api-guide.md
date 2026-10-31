@@ -617,14 +617,19 @@ require its construction specifications. A successful response reports
 
 #### edit_parameter
 
-Edit and save a single parameter value and/or mapping. A successful response
-reports `persisted: true`.
+Edit a single parameter value and/or mapping without saving the preset by
+default. Writes are flushed before readback; a successful unsaved edit reports
+`persisted: false`. Set `save: true` to save the **entire preset**, including other
+unsaved edits, and report `persisted: true`. Use the separate `save` tool when you
+are ready to persist a series of edits. This default differs from `edit_slot`
+and `edit_preset`, which still save.
 
 **Parameters**:
 - `slot_index` (required, integer): Slot index (0-39)
-- `parameter` (required, string or integer): Parameter name or number (0-based)
-- `value` (optional, number): Parameter value (omit to update only mapping)
+- `parameter_number` (required, string or integer): Parameter name or number (0-based)
+- `value` (optional, number or string): Numeric value or exact enum label (omit to update only mapping)
 - `mapping` (optional, object): CV/MIDI/i2c/performance page mapping
+- `save` (optional, boolean, default `false`): Save the whole preset after editing
 
 **Use when**: Quick tweaks, mapping updates, individual value changes.
 
@@ -633,7 +638,7 @@ reports `persisted: true`.
   "tool": "edit_parameter",
   "arguments": {
     "slot_index": 0,
-    "parameter": "Cutoff Frequency",
+    "parameter_number": "Cutoff Frequency",
     "value": 0.65,
     "mapping": {
       "cv": {
