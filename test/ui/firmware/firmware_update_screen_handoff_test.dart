@@ -88,8 +88,8 @@ Future<void> _pumpScreen(
 
 Future<void> _pumpBootloaderWait(WidgetTester tester) async {
   await tester.pump();
-  for (var tick = 0; tick < 50; tick++) {
-    await tester.pump(const Duration(milliseconds: 100));
+  for (var tick = 0; tick < 5; tick++) {
+    await tester.pump(const Duration(seconds: 1));
   }
   await tester.pump();
 }

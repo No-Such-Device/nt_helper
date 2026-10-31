@@ -150,6 +150,7 @@ filesystem, isolate, or child-process work and clean up subscriptions/resources.
 |---|---|
 | Await `cubit.stream.firstWhere(done)` after checking current state | Sleep 100 ms and assume async work finished |
 | Advance virtual time just before/at a debounce deadline | Wait in real time for the debounce |
+| Coalesce repaint-only pump loops, preserving virtual time and verified async boundaries | Repaint the entire widget tree 30 times after every gesture |
 | Simulate `TimeoutException` in an HTTP mock to test retry handling | Give real localhost requests a 5 ms deadline |
 | Seed an old DB timestamp and require it to advance | Sleep, then accept an unchanged timestamp |
 | Profile slow tests; remove redundant non-regression smoke tests | Keep long tests whose only assertion is `expect(true, isTrue)` |

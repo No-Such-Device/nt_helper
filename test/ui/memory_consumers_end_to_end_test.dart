@@ -110,8 +110,8 @@ void main() {
       await _pumpUntilMemoryRequests(tester, wire, 1);
 
       final mcpCall = ToolRegistry(cubit).executeTool('show_memory', {});
-      for (var i = 0; i < 10; i++) {
-        await tester.pump(const Duration(milliseconds: 1));
+      for (var i = 0; i < 2; i++) {
+        await tester.pump(const Duration(milliseconds: 5));
       }
       expect(
         wire.memoryRequests,

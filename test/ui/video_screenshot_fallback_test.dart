@@ -113,8 +113,8 @@ void main() {
         // Let the overlay's existing post-layout positioning finish first.
         await tester.pump();
         final before = tester.getRect(content);
-        for (var i = 0; i < 6; i++) {
-          await tester.pump(const Duration(milliseconds: 50));
+        for (var i = 0; i < 3; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
         }
         expect(screenshots, greaterThanOrEqualTo(1));
         final frame = find.byKey(
