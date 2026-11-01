@@ -14,6 +14,9 @@ import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 import 'package:nt_helper/ui/widgets/rtt_stats_dialog.dart';
 import 'package:nt_helper/ui/widgets/theme_seed_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'mcp_ipad_settings.dart';
+import 'mcp_server_service.dart';
+import '../ui/widgets/mcp_ipad_settings.dart';
 
 /// A service to manage application settings
 class SettingsService {
@@ -51,6 +54,7 @@ class SettingsService {
   static const String _interMessageDelayKey = 'inter_message_delay_ms';
   static const String _hapticsEnabledKey = 'haptics_enabled';
   static const String _mcpEnabledKey = 'mcp_enabled';
+  static const String _mcpIpadConfigurationKey = 'mcp_ipad_configuration';
   static const String _startPagesCollapsedKey = 'start_pages_collapsed';
   static const String _galleryUrlKey = 'gallery_url';
   static const String _graphqlEndpointKey = 'graphql_endpoint';
@@ -107,6 +111,7 @@ class SettingsService {
     _interMessageDelayKey,
     _hapticsEnabledKey,
     _mcpEnabledKey,
+    _mcpIpadConfigurationKey,
     _startPagesCollapsedKey,
     _galleryUrlKey,
     _graphqlEndpointKey,
@@ -324,7 +329,27 @@ class SettingsService {
   }
 
   /// Check if MCP service is enabled
-  bool get mcpEnabled => _prefs?.getBool(_mcpEnabledKey) ?? defaultMcpEnabled;
+  /// Restoring this receipt never arms the runtime. Only Settings Enable does.
+  McpIpadSettings? get mcpIpadConfiguration {
+    final raw = _prefs?.get(_mcpIpadConfigurationKey);
+    if (raw is! String) return null;
+    try {
+      return McpIpadSettings.decode(jsonDecode(raw));
+    } on FormatException {
+      return null;
+    }
+  }
+
+  Future<bool> setMcpIpadConfiguration(McpIpadSettings value) async =>
+      await _prefs?.setString(
+        _mcpIpadConfigurationKey,
+        jsonEncode(value.toJson()),
+      ) ??
+      false;
+
+  bool get mcpEnabled => _prefs?.get(_mcpEnabledKey) is bool
+      ? _prefs!.getBool(_mcpEnabledKey)!
+      : defaultMcpEnabled;
 
   /// Set whether MCP service is enabled
   Future<bool> setMcpEnabled(bool value) async {
@@ -332,8 +357,9 @@ class SettingsService {
   }
 
   /// Check if MCP remote connections are allowed
-  bool get mcpRemoteConnections =>
-      _prefs?.getBool(_mcpRemoteConnectionsKey) ?? defaultMcpRemoteConnections;
+  bool get mcpRemoteConnections => _prefs?.get(_mcpRemoteConnectionsKey) is bool
+      ? _prefs!.getBool(_mcpRemoteConnectionsKey)!
+      : defaultMcpRemoteConnections;
 
   /// Set whether MCP remote connections are allowed
   Future<bool> setMcpRemoteConnections(bool value) async {
@@ -862,12 +888,14 @@ class SettingsDialog extends StatefulWidget {
   final IDistingMidiManager? midiManager;
   final List<AlgorithmInfo>? algorithms;
   final Map<String, dynamic>? ccNotificationDiagnostics;
+  final McpServerService? mcpService;
 
   const SettingsDialog({
     super.key,
     this.midiManager,
     this.algorithms,
     this.ccNotificationDiagnostics,
+    this.mcpService,
   });
 
   @override
@@ -937,8 +965,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
         int.parse(_algorithmCacheDaysController.text),
       );
       await settings.setHapticsEnabled(_hapticsEnabled);
-      await settings.setMcpEnabled(_mcpEnabled);
-      await settings.setMcpRemoteConnections(_mcpRemoteConnections);
+      if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+        await settings.setMcpEnabled(_mcpEnabled);
+        await settings.setMcpRemoteConnections(_mcpRemoteConnections);
+      }
       await settings.setStartPagesCollapsed(_startPagesCollapsed);
       await settings.setShowDebugPanel(_showDebugPanel);
       await settings.setShowContextualHelp(_showContextualHelp);
@@ -972,7 +1002,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Manage Settings'),
+      title: Semantics(header: true, child: const Text('Manage Settings')),
       content: Form(
         key: _formKey,
         child: Column(
@@ -980,494 +1010,507 @@ class _SettingsDialogState extends State<SettingsDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Settings content
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 400),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Request timeout setting
-                    _SettingSection(
-                      title: 'Request Timeout',
-                      subtitle: 'Default timeout for requests',
-                      child: DigitShortcutBlocker(
-                        child: TextFormField(
-                          controller: _requestTimeoutController,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            suffixText: 'ms',
-                          ),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a value';
-                            }
-                            final number = int.tryParse(value);
-                            if (number == null) {
-                              return 'Please enter a valid number';
-                            }
-                            if (number <= 0) {
-                              return 'Value must be greater than 0';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Inter-message delay setting
-                    _SettingSection(
-                      title: 'Inter-Message Delay',
-                      subtitle: 'Minimum time between messages',
-                      child: DigitShortcutBlocker(
-                        child: TextFormField(
-                          controller: _interMessageDelayController,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            suffixText: 'ms',
-                          ),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a value';
-                            }
-                            final number = int.tryParse(value);
-                            if (number == null) {
-                              return 'Please enter a valid number';
-                            }
-                            if (number < 0) {
-                              return 'Value must be 0 or greater';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Algorithm cache duration setting
-                    _SettingSection(
-                      title: 'Algorithm Cache Duration',
-                      subtitle:
-                          'How long to cache algorithm info before refreshing',
-                      child: DigitShortcutBlocker(
-                        child: TextFormField(
-                          controller: _algorithmCacheDaysController,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            suffixText: 'days',
-                          ),
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a value';
-                            }
-                            final number = int.tryParse(value);
-                            if (number == null) {
-                              return 'Please enter a valid number';
-                            }
-                            if (number < 0) {
-                              return 'Value must be 0 or greater';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ),
-
-                    // RTT Statistics button
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: widget.midiManager != null
-                          ? () {
-                              context.showRttStatsDialog(
-                                widget.midiManager,
-                                algorithms: widget.algorithms,
-                                ccNotificationDiagnostics:
-                                    widget.ccNotificationDiagnostics,
-                              );
-                            }
-                          : null,
-                      icon: const Icon(Icons.speed),
-                      label: const Text('View RTT Statistics'),
-                    ),
-                    if (widget.midiManager == null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'Connect to device to view RTT stats',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+            Flexible(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 400),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Request timeout setting
+                      _SettingSection(
+                        title: 'Request Timeout',
+                        subtitle: 'Default timeout for requests',
+                        child: DigitShortcutBlocker(
+                          child: TextFormField(
+                            controller: _requestTimeoutController,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
                               ),
-                        ),
-                      ),
-
-                    const SizedBox(height: 24),
-
-                    // UI scale setting
-                    _SettingSection(
-                      title: 'UI Scale',
-                      subtitle:
-                          'Adjust interface size (shortcuts: ${Platform.isMacOS ? 'Cmd' : 'Ctrl'}+= to zoom in, ${Platform.isMacOS ? 'Cmd' : 'Ctrl'}+- to zoom out)',
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Slider(
-                              value: _uiScale,
-                              min: SettingsService.minUiScale,
-                              max: SettingsService.maxUiScale,
-                              divisions:
-                                  ((SettingsService.maxUiScale -
-                                              SettingsService.minUiScale) /
-                                          SettingsService.uiScaleStep)
-                                      .round(),
-                              label: '${(_uiScale * 100).round()}%',
-                              onChanged: (value) {
-                                setState(() {
-                                  _uiScale = (value * 10).roundToDouble() / 10;
-                                });
-                              },
+                              suffixText: 'ms',
                             ),
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter a value';
+                              }
+                              final number = int.tryParse(value);
+                              if (number == null) {
+                                return 'Please enter a valid number';
+                              }
+                              if (number <= 0) {
+                                return 'Value must be greater than 0';
+                              }
+                              return null;
+                            },
                           ),
-                          SizedBox(
-                            width: 56,
-                            child: Text(
-                              '${(_uiScale * 100).round()}%',
-                              textAlign: TextAlign.end,
-                              style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Inter-message delay setting
+                      _SettingSection(
+                        title: 'Inter-Message Delay',
+                        subtitle: 'Minimum time between messages',
+                        child: DigitShortcutBlocker(
+                          child: TextFormField(
+                            controller: _interMessageDelayController,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              suffixText: 'ms',
                             ),
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter a value';
+                              }
+                              final number = int.tryParse(value);
+                              if (number == null) {
+                                return 'Please enter a valid number';
+                              }
+                              if (number < 0) {
+                                return 'Value must be 0 or greater';
+                              }
+                              return null;
+                            },
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.refresh),
-                            tooltip: 'Reset to 100%',
-                            onPressed:
-                                _uiScale == SettingsService.defaultUiScale
-                                ? null
-                                : () {
-                                    setState(() {
-                                      _uiScale = SettingsService.defaultUiScale;
-                                    });
-                                  },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    ThemeSeedPicker(
-                      value: _themeSeedColor,
-                      defaultValue: SettingsService.defaultThemeSeedColor,
-                      onChanged: (value) {
-                        setState(() => _themeSeedColor = value);
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Haptics enabled setting
-                    SwitchListTile(
-                      title: Text(
-                        'Enable Haptics',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      subtitle: const Text(
-                        'Provide tactile feedback when interacting with the app',
-                      ),
-                      value: _hapticsEnabled,
-                      onChanged: (value) {
-                        setState(() {
-                          _hapticsEnabled = value;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                    ),
-
-                    // CPU monitor enabled setting
-                    SwitchListTile(
-                      title: Text(
-                        'Enable CPU Monitor',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      subtitle: const Text(
-                        'Show CPU usage in toolbar (disabling reduces MIDI traffic)',
-                      ),
-                      value: _cpuMonitorEnabled,
-                      onChanged: (value) {
-                        setState(() {
-                          _cpuMonitorEnabled = value;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                    ),
-
-                    // Start pages collapsed setting
-                    SwitchListTile(
-                      title: Text(
-                        'Collapse Algorithm Pages by Default',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      subtitle: const Text(
-                        'When viewing an algorithm, all parameter pages will start collapsed',
-                      ),
-                      value: _startPagesCollapsed,
-                      onChanged: (value) {
-                        setState(() {
-                          _startPagesCollapsed = value;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                    ),
-
-                    // Contextual help setting
-                    SwitchListTile(
-                      title: Text(
-                        'Show Contextual Help Hints',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      subtitle: const Text(
-                        'Display helpful hints when hovering over interactive elements',
-                      ),
-                      value: _showContextualHelp,
-                      onChanged: (value) {
-                        setState(() {
-                          _showContextualHelp = value;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                    ),
-
-                    // Auto-center on algorithm selection setting
-                    SwitchListTile(
-                      title: Text(
-                        'Auto-Center on Algorithm Selection',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      subtitle: const Text(
-                        'Automatically scroll the routing canvas to the selected algorithm',
-                      ),
-                      value: _autoCenterOnSelection,
-                      onChanged: (value) {
-                        setState(() {
-                          _autoCenterOnSelection = value;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                    ),
-
-                    // Backward connection visibility setting
-                    SwitchListTile(
-                      title: Text(
-                        'Show Back Connections',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      subtitle: const Text(
-                        'Show connections that route from a later slot back to an earlier slot on the routing canvas',
-                      ),
-                      value: _showBackwardConnections,
-                      onChanged: (value) {
-                        setState(() {
-                          _showBackwardConnections = value;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                    ),
-
-                    if (Platform.isMacOS ||
-                        Platform.isWindows ||
-                        Platform.isLinux)
-                      SwitchListTile(
-                        title: Text(
-                          'Open Video in Separate Window',
-                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        subtitle: const Text(
-                          'Use a native floating video window instead of the in-app overlay',
-                        ),
-                        value: _videoPopupNativeWindowEnabled,
-                        onChanged: (value) {
-                          setState(() {
-                            _videoPopupNativeWindowEnabled = value;
-                          });
-                        },
-                        contentPadding: EdgeInsets.zero,
                       ),
 
-                    SwitchListTile(
-                      title: Text(
-                        'Always Show Video Toolbar',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      subtitle: const Text(
-                        'Keep video controls visible instead of hiding them when not hovering',
-                      ),
-                      value: _videoToolbarAlwaysVisible,
-                      onChanged: (value) {
-                        setState(() {
-                          _videoToolbarAlwaysVisible = value;
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                    ),
+                      const SizedBox(height: 24),
 
-                    const SizedBox(height: 24),
-
-                    // Gallery URL setting
-                    _SettingSection(
-                      title: 'Gallery URL',
-                      subtitle: 'URL for the plugin gallery JSON feed',
-                      child: DigitShortcutBlocker(
-                        child: TextFormField(
-                          controller: _galleryUrlController,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
+                      // Algorithm cache duration setting
+                      _SettingSection(
+                        title: 'Algorithm Cache Duration',
+                        subtitle:
+                            'How long to cache algorithm info before refreshing',
+                        child: DigitShortcutBlocker(
+                          child: TextFormField(
+                            controller: _algorithmCacheDaysController,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              suffixText: 'days',
                             ),
-                            hintText: 'https://...',
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter a value';
+                              }
+                              final number = int.tryParse(value);
+                              if (number == null) {
+                                return 'Please enter a valid number';
+                              }
+                              if (number < 0) {
+                                return 'Value must be 0 or greater';
+                              }
+                              return null;
+                            },
                           ),
-                          keyboardType: TextInputType.url,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Please enter a URL';
-                            }
-                            final uri = Uri.tryParse(value.trim());
-                            if (uri == null || !uri.hasScheme) {
-                              return 'Please enter a valid URL';
-                            }
-                            return null;
-                          },
                         ),
                       ),
-                    ),
 
-                    // MCP enabled setting (desktop only)
-                    if (Platform.isMacOS ||
-                        Platform.isWindows ||
-                        Platform.isLinux) ...[
-                      SwitchListTile(
-                        title: Text(
-                          'Enable MCP Service',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        subtitle: const Text(
-                          'Enable the MCP server for desktop integrations',
-                        ),
-                        value: _mcpEnabled,
-                        onChanged: (value) {
-                          setState(() {
-                            _mcpEnabled = value;
-                          });
-                        },
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      SwitchListTile(
-                        title: Text(
-                          'Allow Remote MCP Connections',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        subtitle: const Text(
-                          'Allow connections from other devices on the network',
-                        ),
-                        value: _mcpRemoteConnections,
-                        onChanged: _mcpEnabled
-                            ? (value) {
-                                setState(() {
-                                  _mcpRemoteConnections = value;
-                                });
+                      // RTT Statistics button
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: widget.midiManager != null
+                            ? () {
+                                context.showRttStatsDialog(
+                                  widget.midiManager,
+                                  algorithms: widget.algorithms,
+                                  ccNotificationDiagnostics:
+                                      widget.ccNotificationDiagnostics,
+                                );
                               }
                             : null,
-                        contentPadding: EdgeInsets.zero,
+                        icon: const Icon(Icons.speed),
+                        label: const Text('View RTT Statistics'),
                       ),
-                    ],
+                      if (widget.midiManager == null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Connect to device to view RTT stats',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
 
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    // Reset App Data section
-                    _SettingSection(
-                      title: 'Reset App Data',
-                      subtitle:
-                          'Delete all local data including cached algorithm metadata, '
-                          'presets, plugin records, and settings. '
-                          'Use this if you experience connection issues or data corruption. '
-                          'The app will close after reset.',
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final confirmed = await showDialog<bool>(
-                            context: context,
-                            builder: (dialogCtx) => AlertDialog(
-                              title: const Text('Reset App Data?'),
-                              content: const Text(
-                                'This will delete all local data:\n\n'
-                                '• Cached algorithm metadata\n'
-                                '• Saved presets\n'
-                                '• Plugin installation records\n'
-                                '• App settings and preferences\n\n'
-                                'Your Disting NT hardware is not affected.\n'
-                                'The app will close and you will need to reopen it.',
+                      // UI scale setting
+                      _SettingSection(
+                        title: 'UI Scale',
+                        subtitle:
+                            'Adjust interface size (shortcuts: ${Platform.isMacOS ? 'Cmd' : 'Ctrl'}+= to zoom in, ${Platform.isMacOS ? 'Cmd' : 'Ctrl'}+- to zoom out)',
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Slider(
+                                value: _uiScale,
+                                min: SettingsService.minUiScale,
+                                max: SettingsService.maxUiScale,
+                                divisions:
+                                    ((SettingsService.maxUiScale -
+                                                SettingsService.minUiScale) /
+                                            SettingsService.uiScaleStep)
+                                        .round(),
+                                label: '${(_uiScale * 100).round()}%',
+                                onChanged: (value) {
+                                  setState(() {
+                                    _uiScale =
+                                        (value * 10).roundToDouble() / 10;
+                                  });
+                                },
                               ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(dialogCtx).pop(false),
-                                  child: const Text('Cancel'),
-                                ),
-                                FilledButton(
-                                  onPressed: () =>
-                                      Navigator.of(dialogCtx).pop(true),
-                                  child: const Text('Reset'),
-                                ),
-                              ],
                             ),
-                          );
-                          if (confirmed == true) {
-                            await DatabaseIntegrityService.resetAll();
-                            exit(0);
-                          }
-                        },
-                        icon: const Icon(Icons.delete_forever),
-                        label: const Text('Reset App Data'),
+                            SizedBox(
+                              width: 56,
+                              child: Text(
+                                '${(_uiScale * 100).round()}%',
+                                textAlign: TextAlign.end,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.refresh),
+                              tooltip: 'Reset to 100%',
+                              onPressed:
+                                  _uiScale == SettingsService.defaultUiScale
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _uiScale =
+                                            SettingsService.defaultUiScale;
+                                      });
+                                    },
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
 
-                    // Debug panel visibility setting (debug mode only)
-                    if (kDebugMode)
+                      const SizedBox(height: 24),
+
+                      ThemeSeedPicker(
+                        value: _themeSeedColor,
+                        defaultValue: SettingsService.defaultThemeSeedColor,
+                        onChanged: (value) {
+                          setState(() => _themeSeedColor = value);
+                        },
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Haptics enabled setting
                       SwitchListTile(
                         title: Text(
-                          'Show Debug Log',
+                          'Enable Haptics',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         subtitle: const Text(
-                          'Display debug log panel (debug mode only)',
+                          'Provide tactile feedback when interacting with the app',
                         ),
-                        value: _showDebugPanel,
+                        value: _hapticsEnabled,
                         onChanged: (value) {
                           setState(() {
-                            _showDebugPanel = value;
+                            _hapticsEnabled = value;
                           });
                         },
                         contentPadding: EdgeInsets.zero,
                       ),
-                  ],
+
+                      // CPU monitor enabled setting
+                      SwitchListTile(
+                        title: Text(
+                          'Enable CPU Monitor',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        subtitle: const Text(
+                          'Show CPU usage in toolbar (disabling reduces MIDI traffic)',
+                        ),
+                        value: _cpuMonitorEnabled,
+                        onChanged: (value) {
+                          setState(() {
+                            _cpuMonitorEnabled = value;
+                          });
+                        },
+                        contentPadding: EdgeInsets.zero,
+                      ),
+
+                      // Start pages collapsed setting
+                      SwitchListTile(
+                        title: Text(
+                          'Collapse Algorithm Pages by Default',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        subtitle: const Text(
+                          'When viewing an algorithm, all parameter pages will start collapsed',
+                        ),
+                        value: _startPagesCollapsed,
+                        onChanged: (value) {
+                          setState(() {
+                            _startPagesCollapsed = value;
+                          });
+                        },
+                        contentPadding: EdgeInsets.zero,
+                      ),
+
+                      // Contextual help setting
+                      SwitchListTile(
+                        title: Text(
+                          'Show Contextual Help Hints',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        subtitle: const Text(
+                          'Display helpful hints when hovering over interactive elements',
+                        ),
+                        value: _showContextualHelp,
+                        onChanged: (value) {
+                          setState(() {
+                            _showContextualHelp = value;
+                          });
+                        },
+                        contentPadding: EdgeInsets.zero,
+                      ),
+
+                      // Auto-center on algorithm selection setting
+                      SwitchListTile(
+                        title: Text(
+                          'Auto-Center on Algorithm Selection',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        subtitle: const Text(
+                          'Automatically scroll the routing canvas to the selected algorithm',
+                        ),
+                        value: _autoCenterOnSelection,
+                        onChanged: (value) {
+                          setState(() {
+                            _autoCenterOnSelection = value;
+                          });
+                        },
+                        contentPadding: EdgeInsets.zero,
+                      ),
+
+                      // Backward connection visibility setting
+                      SwitchListTile(
+                        title: Text(
+                          'Show Back Connections',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        subtitle: const Text(
+                          'Show connections that route from a later slot back to an earlier slot on the routing canvas',
+                        ),
+                        value: _showBackwardConnections,
+                        onChanged: (value) {
+                          setState(() {
+                            _showBackwardConnections = value;
+                          });
+                        },
+                        contentPadding: EdgeInsets.zero,
+                      ),
+
+                      if (Platform.isMacOS ||
+                          Platform.isWindows ||
+                          Platform.isLinux)
+                        SwitchListTile(
+                          title: Text(
+                            'Open Video in Separate Window',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          subtitle: const Text(
+                            'Use a native floating video window instead of the in-app overlay',
+                          ),
+                          value: _videoPopupNativeWindowEnabled,
+                          onChanged: (value) {
+                            setState(() {
+                              _videoPopupNativeWindowEnabled = value;
+                            });
+                          },
+                          contentPadding: EdgeInsets.zero,
+                        ),
+
+                      SwitchListTile(
+                        title: Text(
+                          'Always Show Video Toolbar',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        subtitle: const Text(
+                          'Keep video controls visible instead of hiding them when not hovering',
+                        ),
+                        value: _videoToolbarAlwaysVisible,
+                        onChanged: (value) {
+                          setState(() {
+                            _videoToolbarAlwaysVisible = value;
+                          });
+                        },
+                        contentPadding: EdgeInsets.zero,
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Gallery URL setting
+                      _SettingSection(
+                        title: 'Gallery URL',
+                        subtitle: 'URL for the plugin gallery JSON feed',
+                        child: DigitShortcutBlocker(
+                          child: TextFormField(
+                            controller: _galleryUrlController,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              hintText: 'https://...',
+                            ),
+                            keyboardType: TextInputType.url,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Please enter a URL';
+                              }
+                              final uri = Uri.tryParse(value.trim());
+                              if (uri == null || !uri.hasScheme) {
+                                return 'Please enter a valid URL';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ),
+
+                      if (widget.mcpService ?? McpServerService.maybeInstance
+                          case final service?)
+                        ListenableBuilder(
+                          listenable: service,
+                          builder: (context, _) => service.ipadSupported
+                              ? McpIpadSettingsPanel(service: service)
+                              : const SizedBox.shrink(),
+                        ),
+
+                      // MCP enabled setting (desktop only)
+                      if (Platform.isMacOS ||
+                          Platform.isWindows ||
+                          Platform.isLinux) ...[
+                        SwitchListTile(
+                          title: Text(
+                            'Enable MCP Service',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          subtitle: const Text(
+                            'Enable the MCP server for desktop integrations',
+                          ),
+                          value: _mcpEnabled,
+                          onChanged: (value) {
+                            setState(() {
+                              _mcpEnabled = value;
+                            });
+                          },
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        SwitchListTile(
+                          title: Text(
+                            'Allow Remote MCP Connections',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          subtitle: const Text(
+                            'Allow connections from other devices on the network',
+                          ),
+                          value: _mcpRemoteConnections,
+                          onChanged: _mcpEnabled
+                              ? (value) {
+                                  setState(() {
+                                    _mcpRemoteConnections = value;
+                                  });
+                                }
+                              : null,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ],
+
+                      const SizedBox(height: 24),
+
+                      // Reset App Data section
+                      _SettingSection(
+                        title: 'Reset App Data',
+                        subtitle:
+                            'Delete all local data including cached algorithm metadata, '
+                            'presets, plugin records, and settings. '
+                            'Use this if you experience connection issues or data corruption. '
+                            'The app will close after reset.',
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (dialogCtx) => AlertDialog(
+                                title: const Text('Reset App Data?'),
+                                content: const Text(
+                                  'This will delete all local data:\n\n'
+                                  '• Cached algorithm metadata\n'
+                                  '• Saved presets\n'
+                                  '• Plugin installation records\n'
+                                  '• App settings and preferences\n\n'
+                                  'Your Disting NT hardware is not affected.\n'
+                                  'The app will close and you will need to reopen it.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(dialogCtx).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () =>
+                                        Navigator.of(dialogCtx).pop(true),
+                                    child: const Text('Reset'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed == true) {
+                              await DatabaseIntegrityService.resetAll();
+                              exit(0);
+                            }
+                          },
+                          icon: const Icon(Icons.delete_forever),
+                          label: const Text('Reset App Data'),
+                        ),
+                      ),
+
+                      // Debug panel visibility setting (debug mode only)
+                      if (kDebugMode)
+                        SwitchListTile(
+                          title: Text(
+                            'Show Debug Log',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          subtitle: const Text(
+                            'Display debug log panel (debug mode only)',
+                          ),
+                          value: _showDebugPanel,
+                          onChanged: (value) {
+                            setState(() {
+                              _showDebugPanel = value;
+                            });
+                          },
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

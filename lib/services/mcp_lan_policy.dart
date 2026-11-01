@@ -122,6 +122,23 @@ class McpLanNativeAddress {
 
   McpLanNativeAddress._(this.address, this.mask, this.prefix);
 
+  /// Reuse the admission pool/mask rules for the Settings address list.
+  bool get isSelectable {
+    final b = address.bytes;
+    final poolPrefix = b.length == 16
+        ? 8
+        : b[0] == 10
+        ? 8
+        : b[0] == 172
+        ? 12
+        : 16;
+    final network = List.generate(b.length, (i) => b[i] & mask[i]);
+    return address.isEligible &&
+        prefix >= poolPrefix &&
+        prefix < b.length * 8 &&
+        !(b.length == 16 && McpLanPolicy._overlapsTailscale(network, prefix));
+  }
+
   factory McpLanNativeAddress.decode(Object? value) {
     final data = _map(value);
     final family = data['family'];
@@ -287,16 +304,7 @@ class McpLanPolicy {
     );
     // Each eligible pool is a single CIDR; IPv6 must also avoid any intersection
     // with the excluded /48, even when neither endpoint lies inside that /48.
-    final poolPrefix = b.length == 16
-        ? 8
-        : b[0] == 10
-        ? 8
-        : b[0] == 172
-        ? 12
-        : 16;
-    if (!selected.address.isEligible ||
-        selected.prefix < poolPrefix ||
-        (b.length == 16 && _overlapsTailscale(network, selected.prefix))) {
+    if (!selected.isSelectable) {
       _invalid('Connected block leaves the eligible address pool');
     }
     final unique = <String, LanAddress>{};

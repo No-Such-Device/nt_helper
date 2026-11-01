@@ -626,6 +626,47 @@ const _effectBody = {
 };
 
 void _ipadRuntimeTests() {
+  // AC-007: prior rotation tests reject old credentials but do not search
+  // observable diagnostics for synthetic raw headers/URI/session data.
+  test(
+    'AC-007 synthetic secrets never enter iPad diagnostics; failed rotation retains no authority',
+    () {
+      fakeAsync((time) {
+        DebugService().clearMessages();
+        final h = _IpadHarness(time)..enable();
+        final token = h.service.ipadToken!;
+        final session = h.session();
+        const pasted = 'synthetic-user-private-value';
+        final uri = 'http://192.168.2.1:3847/mcp?private=$pasted';
+        h.send(
+          target: uri,
+          session: session,
+          headers: ['Host: 192.168.2.1:3847', 'Authorization: Bearer $pasted'],
+        );
+        final diagnostic =
+            jsonEncode(h.service.connectionDiagnostics) +
+            DebugService().debugMessages.join();
+        for (final value in [token, session, pasted, uri]) {
+          expect(diagnostic, isNot(contains(value)));
+        }
+        h.rngFails = true;
+        unawaited(
+          h.service.regenerateIpad(
+            policy: h.policy,
+            persistSettings: () async => true,
+          ),
+        );
+        expect(h.service.ipadToken, isNull);
+        h.flush();
+        expect(h.service.ipadState, McpIpadState.failed);
+        expect(h.service.isRunning, isFalse);
+        expect(h.listeners.every((s) => s.closes == 1), isTrue);
+        expect(h.service.connectionDiagnostics['active_servers'], 0);
+        expect(h.effects, 0);
+        h.clean();
+      });
+    },
+  );
   group('iPad generation runtime (simulated socket identity)', () {
     // AC-003/005/006: loopback bytes complement simulated identities with a
     // full real socket/HTTP/SDK round trip. No LAN/hardware or time-based waits.

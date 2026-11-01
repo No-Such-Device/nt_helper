@@ -13,6 +13,27 @@ class McpStatusIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final service = context.watch<McpServerService>();
+    if (service.usesIpadProfile || Platform.isIOS) {
+      if (!service.ipadSupported) return const SizedBox.shrink();
+      final label =
+          'iPad LAN MCP: ${service.ipadState.name}. '
+          '${service.ipadReason ?? 'Manage consent in Settings.'}';
+      return Semantics(
+        liveRegion: true,
+        label: label,
+        child: IconButton(
+          tooltip: '$label Open Settings to enable or retry.',
+          onPressed: () => showDialog<bool>(
+            context: context,
+            builder: (_) => SettingsDialog(mcpService: service),
+          ),
+          icon: ExcludeSemantics(
+            child: Icon(service.isRunning ? Icons.lan : Icons.lan_outlined),
+          ),
+        ),
+      );
+    }
     final settings = SettingsService(); // Get SettingsService instance
     final mcpInstance =
         McpServerService.instance; // Get McpServerService instance

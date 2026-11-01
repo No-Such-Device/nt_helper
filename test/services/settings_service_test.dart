@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:nt_helper/services/mcp_ipad_settings.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +17,8 @@ const Map<String, Object> _nonDefaultSeeds = {
   'inter_message_delay_ms': 999,
   'haptics_enabled': false,
   'mcp_enabled': true,
+  'mcp_ipad_configuration':
+      '{"version":1,"consentVersion":1,"interfaceIndex":7,"address":"192.168.2.1","peers":["192.168.2.2"]}',
   'start_pages_collapsed': true,
   'gallery_url': 'https://example.invalid/gallery.json',
   'graphql_endpoint': 'https://example.invalid/graphql',
@@ -95,6 +99,79 @@ void main() {
     },
   );
 
+  // AC-011: the exhaustive reset test does not prove generic desktop flags
+  // survive reload without introducing the iPad consent requirement.
+  test(
+    'AC-011 desktop MCP remains default off with independently persisted enable and remote flags',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService();
+      await settings.init();
+      expect(settings.mcpEnabled, isFalse);
+      expect(settings.mcpRemoteConnections, isFalse);
+      expect(await settings.setMcpEnabled(true), isTrue);
+      expect(await settings.setMcpRemoteConnections(true), isTrue);
+      await settings.init();
+      expect(settings.mcpEnabled, isTrue);
+      expect(settings.mcpRemoteConnections, isTrue);
+      expect(settings.mcpIpadConfiguration, isNull);
+      SharedPreferences.setMockInitialValues({
+        'mcp_enabled': 'invalid',
+        'mcp_remote_connections': 1,
+      });
+      await settings.init();
+      expect(settings.mcpEnabled, isFalse);
+      expect(settings.mcpRemoteConnections, isFalse);
+    },
+  );
+
+  // AC-001/007: generic default/reset coverage cannot validate the versioned
+  // nonsecret receipt, malformed restoration or the persistence whitelist.
+  test(
+    'AC-001 AC-007 iPad receipt rejects invalid restoration and stores only configuration',
+    () async {
+      final settings = SettingsService();
+      for (final raw in [
+        true,
+        1,
+        'bad JSON',
+        '{}',
+        '{"version":2,"consentVersion":1}',
+        '{"version":true,"consentVersion":1}',
+        '{"version":1,"consentVersion":"1"}',
+        '{"version":1,"consentVersion":1,"interfaceIndex":7,"address":"192.168.2.1","peers":[false]}',
+      ]) {
+        SharedPreferences.setMockInitialValues({'mcp_ipad_configuration': raw});
+        await settings.init();
+        expect(settings.mcpIpadConfiguration, isNull);
+      }
+      SharedPreferences.setMockInitialValues({
+        'mcp_enabled': true,
+        'mcp_remote_connections': true,
+      });
+      await settings.init();
+      expect(settings.mcpIpadConfiguration, isNull);
+      const configuration = McpIpadSettings(
+        interfaceIndex: 7,
+        address: '192.168.2.1',
+        peers: ['192.168.2.2'],
+      );
+      expect(await settings.setMcpIpadConfiguration(configuration), isTrue);
+      await settings.init();
+      expect(settings.mcpIpadConfiguration!.address, configuration.address);
+      final prefs = await SharedPreferences.getInstance();
+      final value =
+          jsonDecode(prefs.getString('mcp_ipad_configuration')!) as Map;
+      expect(value.keys.toSet(), {
+        'version',
+        'consentVersion',
+        'interfaceIndex',
+        'address',
+        'peers',
+      });
+    },
+  );
+
   group('SettingsService.resetToDefaults', () {
     late SettingsService settings;
 
@@ -155,9 +232,11 @@ void main() {
         expect(settings.chatLocalDirectory, isNotNull);
         expect(settings.allowedFileRoots, isNotEmpty);
 
+        expect(settings.mcpIpadConfiguration, isNotNull);
         expect(settings.companionColumnWidths, isNotEmpty);
         await settings.resetToDefaults();
         expect(settings.companionColumnWidths, isEmpty);
+        expect(settings.mcpIpadConfiguration, isNull);
 
         expect(settings.requestTimeout, SettingsService.defaultRequestTimeout);
         expect(

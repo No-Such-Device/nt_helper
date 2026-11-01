@@ -140,6 +140,10 @@ final class RunnerTests: XCTestCase {
         let provider = Provider()
         let plugin = IpadLanContextPlugin(provider: provider, idiom: { .pad })
         var response: Any?
+        // AC-001: Settings eligibility is available without a working LAN snapshot.
+        plugin.handle(FlutterMethodCall(methodName: "idiom", arguments: nil)) { response = $0 }
+        XCTAssertEqual(response as? String, "pad")
+        XCTAssertNil(provider.seen)
         plugin.handle(FlutterMethodCall(methodName: "snapshot", arguments: nil)) { response = $0 }
         XCTAssertEqual(provider.seen, .pad)
         XCTAssertEqual((response as? [String: Any])?["idiom"] as? String, "pad")

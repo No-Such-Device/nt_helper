@@ -203,6 +203,9 @@ class DistingPage extends StatefulWidget {
 }
 
 class _DistingPageState extends State<DistingPage> {
+  AppLifecycleListener? _mcpLifecycle;
+  McpServerService? _mcp;
+
   @override
   void initState() {
     super.initState();
@@ -211,6 +214,18 @@ class _DistingPageState extends State<DistingPage> {
         try {
           final distingCubit = context.read<DistingCubit>();
           McpServerService.initialize(distingCubit: distingCubit);
+          _mcp = McpServerService.instance;
+          if (Platform.isIOS) {
+            _mcpLifecycle = AppLifecycleListener(
+              onStateChange: (state) =>
+                  unawaited(_mcp!.ipadLifecycleChanged(state.name)),
+            );
+            unawaited(
+              _mcp!.ipadLifecycleChanged(
+                WidgetsBinding.instance.lifecycleState?.name ?? 'unknown',
+              ),
+            );
+          }
           final settings = SettingsService();
           if ((Platform.isMacOS || Platform.isWindows || Platform.isLinux) &&
               settings.mcpEnabled) {
@@ -294,6 +309,8 @@ class _DistingPageState extends State<DistingPage> {
 
   @override
   void dispose() {
+    _mcpLifecycle?.dispose();
+    if (Platform.isIOS) _mcp?.dispose();
     super.dispose();
   }
 

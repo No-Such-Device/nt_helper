@@ -16,6 +16,17 @@ class MethodChannelMcpLanContext implements McpLanContext {
           channel ??
           const MethodChannel('com.example.nt_helper/ipad_lan_context');
 
+  Future<bool> isPad() async =>
+      await _channel.invokeMethod<Object?>('idiom') == 'pad';
+
+  void watch(void Function(bool failed) onChange) {
+    _channel.setMethodCallHandler((call) async {
+      onChange(call.method != 'networkChanged');
+    });
+  }
+
+  void dispose() => _channel.setMethodCallHandler(null);
+
   @override
   Future<McpLanSnapshot> snapshot() async {
     final snapshot = McpLanSnapshot.decode(

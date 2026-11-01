@@ -149,8 +149,14 @@ final class NativeIpadLanContext: IpadLanContextProviding {
     private let queue = DispatchQueue(label: "dev.nosuch.ntHelper.ipad-lan-context")
     private let observation = LanPathObservation()
 
+    var onChange: (() -> Void)?
+
     init() {
-        monitor.pathUpdateHandler = { [weak self] path in self?.observation.observe(LanPathState(path)) }
+        monitor.pathUpdateHandler = { [weak self] path in
+            guard let self = self else { return }
+            self.observation.observe(LanPathState(path))
+            DispatchQueue.main.async { [weak self] in self?.onChange?() }
+        }
         monitor.start(queue: queue)
     }
 
@@ -222,10 +228,13 @@ final class IpadLanContextPlugin: NSObject, FlutterPlugin {
 
     static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "com.example.nt_helper/ipad_lan_context", binaryMessenger: registrar.messenger())
-        registrar.addMethodCallDelegate(IpadLanContextPlugin(provider: NativeIpadLanContext()), channel: channel)
+        let provider = NativeIpadLanContext()
+        provider.onChange = { channel.invokeMethod("networkChanged", arguments: nil) }
+        registrar.addMethodCallDelegate(IpadLanContextPlugin(provider: provider), channel: channel)
     }
 
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        if call.method == "idiom" { result(LanPathObservation.idiom(idiom())); return }
         guard call.method == "snapshot" else { result(FlutterMethodNotImplemented); return }
         provider.snapshot(idiom: idiom()) { response in
             switch response {

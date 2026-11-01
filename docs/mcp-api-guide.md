@@ -58,6 +58,50 @@ its `resumptionToken` / `onResumptionToken` cursor; it must retain the same
 Authorization. This profile does not establish browser, cloud connector,
 commercial-client or direct-Tailscale compatibility.
 
+### Explicit Settings consent and status
+
+Only native iPad identity enables this profile, including compact split view;
+iPhone, other platforms and unknown identity are unsupported. In **Settings**,
+select one physical Wi-Fi/Ethernet numeric address and its native connected CIDR,
+enter 1–8 exact same-subnet clients, acknowledge the warnings, then choose
+**Enable / retry in Settings**. No address is silently substituted. Refresh the
+address list explicitly after DHCP or network changes.
+
+Saved versioned configuration and the warning receipt are not runtime authority.
+Fresh/restored/legacy/malformed preferences, canceled edits, unrelated Save and
+restart stay OFF. Failed persistence cannot enable. Editing a running selection
+revokes first, even if canceled. Disable revokes without depending on a save;
+Regenerate revokes before replacement and a failed replacement leaves no old
+authority. The status control opens Settings; it never quick-enables or retries.
+
+State and bounded reasons describe the listener (OFF, STARTING, RUNNING,
+STOPPING, PAUSED, FAILED), not remote reachability. Keep nt_helper foreground:
+background/lock, observed network changes, monitor failure and restart require
+explicit re-enable and client re-pairing with a fresh token. Only transient
+inactive interruptions may recover after an unchanged fresh native snapshot.
+
+Reveal, Copy endpoint and Copy token are separate deliberate actions. Tokens
+stay in memory, hidden by default, never in URLs/preferences/diagnostics and
+never automatically copied. Revocation clears app references, without promising
+secure heap or clipboard erasure. Commands/results, including preset and MIDI
+data, can be captured, replayed or modified on plaintext HTTP. A client may also
+send data to its AI provider. Revocation does not undo past effects.
+
+App consent is neither an OS Local Network grant nor client authentication.
+Inbound TCP listening/acceptance does not itself require Local Network permission;
+no prompt or grant is promised, and no discovery/probe is added to cause one.
+Binding is not proof of OS permission or client reachability. iPad suspension
+prevents continuous background service.
+
+Eligible pools are RFC1918 and supported unscoped locally assigned ULA (not
+Tailscale's reserved ULA). Global/link-local-only IPv6, browser/cloud connectors,
+DNS/proxy/redirect endpoints and direct Tailscale are unsupported. Interface
+metadata cannot attest physical ingress, geography or VPN provider; allowed
+routers/peers can forward remote traffic. Unobserved transitions, callback delay
+and check/use windows remain risks. A Tailscale subnet-router-to-iPad HTTP leg
+would remain plaintext even if its WireGuard segment were encrypted. This is
+not an IPv6-only or App Store readiness claim.
+
 ### iPad capacity and cleanup
 
 Each listener generation admits at most **8 live or initializing sessions**,

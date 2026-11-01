@@ -72,7 +72,9 @@ class McpServerService extends ChangeNotifier {
     required List<int> Function() randomBytes,
     HttpServer Function(ServerSocket) listenOn = HttpServer.listenOn,
     Future<void> Function()? beforeSessionConnect,
+    bool ipadSupported = true,
   }) : _distingCubit = distingCubit {
+    _ipadSupported = ipadSupported;
     _ipad = _IpadRuntime(
       this,
       context,
@@ -88,6 +90,37 @@ class McpServerService extends ChangeNotifier {
   }
 
   _IpadRuntime? _ipad;
+  MethodChannelMcpLanContext? _nativeContext;
+  bool _ipadSupported = false;
+  bool get ipadSupported => _ipadSupported;
+  bool get usesIpadProfile => _ipad != null;
+  Future<McpLanSnapshot> ipadSnapshot() => _ipad!.context.snapshot();
+  McpLanPolicy? get ipadPolicy => _ipad?.consent?.policy;
+  String? get ipadEndpoint {
+    final p = ipadPolicy;
+    if (p == null) return null;
+    final host = p.address.bytes.length == 16
+        ? '[${p.address.text}]'
+        : p.address.text;
+    return 'http://$host:3847/mcp';
+  }
+
+  Future<void> _prepareNativeIpad() async {
+    final context = MethodChannelMcpLanContext();
+    _nativeContext = context;
+    _ensureIpadRuntime(context);
+    context.watch((failed) => unawaited(ipadNetworkChanged(failed: failed)));
+    try {
+      final supported = await context.isPad();
+      if (!_disposed) {
+        _ipadSupported = supported;
+        _notifyIpad();
+      }
+    } on Object {
+      if (!_disposed) unawaited(ipadNetworkChanged(failed: true));
+    }
+  }
+
   bool _disposed = false;
   McpIpadState get ipadState => _ipad?.state ?? McpIpadState.off;
   String? get ipadReason => _ipad?.reason;
@@ -100,10 +133,14 @@ class McpServerService extends ChangeNotifier {
     required McpLanPolicy policy,
     required Future<bool> Function() persistSettings,
   }) {
-    if (_disposed) return Future.value();
+    if (_disposed || !ipadSupported) return Future.value();
+    return _ipad!.enable(policy, persistSettings);
+  }
+
+  void _ensureIpadRuntime(McpLanContext context) {
     _ipad ??= _IpadRuntime(
       this,
-      MethodChannelMcpLanContext(),
+      context,
       (address, port, {required shared, required v6Only}) =>
           ServerSocket.bind(address, port, shared: shared, v6Only: v6Only),
       () {
@@ -113,7 +150,6 @@ class McpServerService extends ChangeNotifier {
       HttpServer.listenOn,
       null,
     );
-    return _ipad!.enable(policy, persistSettings);
   }
 
   Future<void> regenerateIpad({
@@ -136,6 +172,9 @@ class McpServerService extends ChangeNotifier {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    _nativeContext?.dispose();
+    _nativeContext = null;
+    if (identical(_instance, this)) _instance = null;
     final runtime = _ipad;
     if (runtime != null) {
       runtime.disposed = true;
@@ -148,6 +187,7 @@ class McpServerService extends ChangeNotifier {
   }
 
   static McpServerService? _instance;
+  static McpServerService? get maybeInstance => _instance;
 
   static McpServerService get instance {
     if (_instance == null) {
@@ -162,7 +202,11 @@ class McpServerService extends ChangeNotifier {
     if (_instance != null) {
       return;
     }
-    _instance = McpServerService._(distingCubit);
+    final service = McpServerService._(distingCubit);
+    _instance = service;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      unawaited(service._prepareNativeIpad());
+    }
   }
 
   final DistingCubit _distingCubit;
@@ -428,6 +472,8 @@ class McpServerService extends ChangeNotifier {
     if (!validHost || rawHeaders['origin'] != null) {
       return deny(HttpStatus.forbidden);
     }
+    final expectedToken = g.consent.token;
+    if (expectedToken == null) return deny(HttpStatus.unauthorized);
     final credentials = rawHeaders['authorization'];
     var validCredential = false;
     if (credentials != null &&
@@ -441,7 +487,7 @@ class McpServerService extends ChangeNotifier {
         final supplied = match[1]!;
         var difference = 0;
         for (var i = 0; i < 43; i++) {
-          difference |= supplied.codeUnitAt(i) ^ g.consent.token.codeUnitAt(i);
+          difference |= supplied.codeUnitAt(i) ^ expectedToken.codeUnitAt(i);
         }
         validCredential = difference == 0;
       }

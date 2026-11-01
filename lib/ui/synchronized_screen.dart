@@ -1971,9 +1971,10 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
             ),
           ),
 
-          // MCP server status indicator (desktop only)
-          if (isWideScreen &&
-              (Platform.isMacOS || Platform.isWindows || Platform.isLinux))
+          // iPad eligibility is native identity, independent of split-view width.
+          if (Platform.isIOS ||
+              (isWideScreen &&
+                  (Platform.isMacOS || Platform.isWindows || Platform.isLinux)))
             ChangeNotifierProvider.value(
               value: McpServerService.instance,
               child: Consumer<McpServerService>(

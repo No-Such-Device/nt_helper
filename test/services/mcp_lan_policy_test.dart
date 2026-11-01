@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -46,6 +47,50 @@ McpLanPolicy select(Map<String, Object?> data, String ip, List<String> peers) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  // AC-001/006: snapshot-only fixtures do not prove identity discovery without
+  // LAN availability or the unsolicited native invalidation channel.
+  test(
+    'AC-001 AC-006 native identity is exact pad and observed changes are delivered',
+    () async {
+      const channel = MethodChannel('com.example.nt_helper/ipad_lan_context');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      final provider = MethodChannelMcpLanContext(channel: channel);
+      final changes = <bool>[];
+      provider.watch(changes.add);
+      for (final identity in [
+        'pad',
+        'phone',
+        'other',
+        'unknown',
+        null,
+        true,
+        1,
+      ]) {
+        messenger.setMockMethodCallHandler(channel, (call) async {
+          expect(call.method, 'idiom');
+          return identity;
+        });
+        expect(await provider.isPad(), identity == 'pad');
+      }
+      Future<void> event(String method) async {
+        final done = Completer<void>();
+        messenger.handlePlatformMessage(
+          channel.name,
+          const StandardMethodCodec().encodeMethodCall(MethodCall(method)),
+          (_) => done.complete(),
+        );
+        await done.future;
+      }
+
+      await event('networkChanged');
+      await event('monitorFailed');
+      expect(changes, [false, true]);
+      provider.dispose();
+      messenger.setMockMethodCallHandler(channel, null);
+    },
+  );
 
   // REQ-003 / AC-002: existing HTTP tests have no native CIDR or exact-peer policy.
   test('AC-002 accept table uses native CIDR, including /23, /31 and ULA', () {

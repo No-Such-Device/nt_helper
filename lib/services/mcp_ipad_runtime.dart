@@ -14,7 +14,7 @@ typedef McpSocketBinder =
 class _IpadConsent {
   _IpadConsent(this.policy, this.token);
   final McpLanPolicy policy;
-  final String token;
+  String? token;
 }
 
 class _McpResources {
@@ -79,7 +79,10 @@ class _IpadRuntime {
 
   void revoke({bool retainConsent = false}) {
     revision++;
-    if (!retainConsent) consent = null;
+    if (!retainConsent) {
+      consent?.token = null;
+      consent = null;
+    }
     final old = current;
     current = null;
     if (old != null) {
