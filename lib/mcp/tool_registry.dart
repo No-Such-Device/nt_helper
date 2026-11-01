@@ -53,6 +53,7 @@ class ToolRegistry {
 
   final List<ToolRegistryEntry> _entries = [];
   final DistingCubit _cubit;
+  Future<bool> Function()? _canDispatch;
   final ToolReferenceStore _referenceStore;
   late final DistingController _controller;
   late final MCPAlgorithmTools _algoTools;
@@ -119,6 +120,9 @@ class ToolRegistry {
     Map<String, dynamic> arguments,
   ) async {
     try {
+      if (_canDispatch != null && !await _canDispatch!()) {
+        return jsonEncode({'success': false, 'error': 'MCP authority revoked'});
+      }
       final resultJson = await entry
           .handler(arguments)
           .timeout(
@@ -145,7 +149,11 @@ class ToolRegistry {
   /// Memory tools are excluded — they are for the in-app chat only.
   /// Local-file and plugin-install tools are added here with the MCP actor,
   /// so they read only roots that grant MCP permission.
-  void applyToMcpServer(McpServer server) {
+  void applyToMcpServer(
+    McpServer server, {
+    Future<bool> Function()? canDispatch,
+  }) {
+    _canDispatch = canDispatch;
     for (final entry in _entries) {
       if (_chatOnlyToolNames.contains(entry.name)) continue;
       _registerMcpEntry(server, entry);
