@@ -19,6 +19,69 @@ The Disting NT MCP (Model Context Protocol) API provides individual, well-named 
 - Correct: `midi_channel`, `is_midi_enabled`, `cv_input`
 - Incorrect: `midiChannel`, `isMidiEnabled`, `cvInput`
 
+## Native iPad LAN reference profile
+
+The supported engineering reference client is native Dart/Flutter **mcp_dart
+2.4.0**, using Streamable HTTP at the selected numeric LAN address on port 3847,
+path `/mcp`. It requires explicit Settings consent, an allowed exact peer, a
+current in-memory bearer credential and a foreground listener. Plain HTTP
+exposes credentials, commands and results to on-path capture, replay and
+modification; private-address filtering is not encryption.
+
+```dart
+final client = McpClient(
+  Implementation(name: 'native-client', version: '1'),
+  options: const McpClientOptions(
+    protocolVersion: '2025-06-18',
+    useServerDiscover: false,
+  ),
+);
+final transport = StreamableHttpClientTransport(
+  endpoint, // Numeric selected address: http://<address>:3847/mcp (IPv6 bracketed).
+  opts: StreamableHttpClientTransportOptions(
+    requestInit: {'headers': {'Authorization': 'Bearer $token'}},
+  ),
+);
+await client.connect(transport); // initialize, initialized, standalone GET/SSE
+await client.listTools();
+await client.ping();
+// When finished:
+await transport.terminateSession(); // Authenticated DELETE
+await client.close();
+```
+
+`requestInit` supplies Authorization on **every POST, GET (including SSE
+resumption with Last-Event-ID), and DELETE**. Keep the token out of the endpoint
+URL. Use no `authProvider`, Origin, redirects, DNS endpoint or proxy. Request
+resumption uses the SDK transport's `send` API with the original request ID and
+its `resumptionToken` / `onResumptionToken` cursor; it must retain the same
+Authorization. This profile does not establish browser, cloud connector,
+commercial-client or direct-Tailscale compatibility.
+
+### iPad capacity and cleanup
+
+Each listener generation admits at most **8 live or initializing sessions**,
+**16 accepted sockets**, and **16 in-flight HTTP handlers**, including open SSE
+responses. Excess sockets are closed before HTTP handoff. Authenticated session
+or handler exhaustion returns **429**, without evicting valid sessions. Session
+termination, failed initialization and generation revocation release owned
+resources.
+
+POST bodies are limited to **1 MiB of measured bytes**, including chunked
+bodies, not merely their declared Content-Length. Overflow returns **413**; an
+absolute **10-second body-receive deadline** returns **408**. Rejected bodies
+never dispatch MCP work. The receive deadline stops before tool execution;
+existing ToolRegistry execution timeouts/cancellation and MCP file-root ACLs
+remain in force. These iPad limits do not migrate desktop authentication or
+change desktop defaults.
+
+Replay storage is unchanged: `InMemoryEventStore` retains up to 1000 events per
+stream and removes events older than 24 hours when that stream is written.
+It has **no global bound on retained stream keys** and does not globally sweep
+idle streams. Session/generation cleanup releases the store with its transport;
+the per-session retained-key limitation remains and is not claimed solved. No
+additional replay buffer is introduced.
+
 ## Tool Reference
 
 ### Remote Controls

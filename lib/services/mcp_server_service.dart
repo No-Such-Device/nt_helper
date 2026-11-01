@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:mcp_dart/mcp_dart.dart';
@@ -277,6 +278,15 @@ class McpServerService extends ChangeNotifier {
   }) async {
     if (generation != null) {
       if (!await _admitIpadRequest(request, generation)) return;
+      if (generation.handlers >= 16) {
+        _sendErrorResponse(
+          request,
+          HttpStatus.tooManyRequests,
+          'Capacity reached',
+        );
+        return;
+      }
+      generation.handlers++;
       final guarded = _IpadHttpRequest(request);
       try {
         switch (request.method) {
@@ -287,6 +297,8 @@ class McpServerService extends ChangeNotifier {
           case 'DELETE':
             await _handleDeleteRequest(guarded, generation: generation);
         }
+        // Include streaming responses and executing tools, not just SDK handoff.
+        await request.response.done;
       } on Object {
         if (_active(generation)) {
           _sendErrorResponse(
@@ -295,6 +307,8 @@ class McpServerService extends ChangeNotifier {
             'Internal server error',
           );
         }
+      } finally {
+        generation.handlers--;
       }
       return;
     }
@@ -463,11 +477,14 @@ class McpServerService extends ChangeNotifier {
   }) async {
     final resources = _resources(generation);
     final sessionId = request.headers.value('mcp-session-id');
+    StreamableHTTPServerTransport? created;
     try {
-      final bodyBytes = await request.fold<List<int>>(
-        <int>[],
-        (previous, element) => previous..addAll(element),
-      );
+      final bodyBytes = generation == null
+          ? await request.fold<List<int>>(
+              <int>[],
+              (previous, element) => previous..addAll(element),
+            )
+          : await _readIpadBody(request);
       if (!await _fresh(generation)) return;
       final bodyString = utf8.decode(bodyBytes);
       final parsedBody = jsonDecode(bodyString);
@@ -477,7 +494,17 @@ class McpServerService extends ChangeNotifier {
 
       var transport = resources.transports[sessionId];
       if (transport == null) {
-        transport = await _createNewTransport(
+        // Registries own both live sessions and initializations still connecting.
+        // _createNewTransport registers synchronously before its first await.
+        if (generation != null && resources.registries.length >= 8) {
+          _sendErrorResponse(
+            request,
+            HttpStatus.tooManyRequests,
+            'Capacity reached',
+          );
+          return;
+        }
+        transport = created = await _createNewTransport(
           sessionId: sessionId,
           generation: generation,
         );
@@ -518,6 +545,10 @@ class McpServerService extends ChangeNotifier {
       }
       if (!await _fresh(generation)) return;
       await transport.handleRequest(request, parsedBody);
+    } on _IpadBodyRejected catch (e) {
+      if (_active(generation)) {
+        _sendErrorResponse(request, e.status, 'Request body rejected');
+      }
     } on Object catch (e) {
       if (generation == null) DebugService().addLocalMessage('MCP error: $e');
       if (_active(generation)) {
@@ -529,6 +560,52 @@ class McpServerService extends ChangeNotifier {
               : 'Internal server error',
         );
       }
+    } finally {
+      // Invalid/non-initialize requests must not strand a reservation. Closing
+      // invokes this transport's owner callback, never another session's cleanup.
+      if (generation != null &&
+          created != null &&
+          !identical(resources.transports[created.sessionId], created)) {
+        await created.close();
+      }
+    }
+  }
+
+  /// An absolute receive deadline; never wraps dispatch or tool execution.
+  Future<Uint8List> _readIpadBody(HttpRequest request) async {
+    const maxBytes = 1024 * 1024;
+    final bytes = BytesBuilder(copy: false);
+    final complete = Completer<Uint8List>();
+    final timer = Timer(const Duration(seconds: 10), () {
+      if (!complete.isCompleted) {
+        complete.completeError(_IpadBodyRejected(HttpStatus.requestTimeout));
+      }
+    });
+    final subscription = request.listen(
+      (chunk) {
+        if (complete.isCompleted) return;
+        if (chunk.length > maxBytes - bytes.length) {
+          complete.completeError(
+            _IpadBodyRejected(HttpStatus.requestEntityTooLarge),
+          );
+        } else {
+          bytes.add(chunk);
+        }
+      },
+      onDone: () {
+        if (!complete.isCompleted) complete.complete(bytes.takeBytes());
+      },
+      onError: (Object error, StackTrace stack) {
+        if (!complete.isCompleted) complete.completeError(error, stack);
+      },
+    );
+    try {
+      return await complete.future;
+    } finally {
+      timer.cancel();
+      // HttpRequest cancellation may drain unread input. Do not wait for an
+      // uncooperative sender before returning 413/408 and closing the connection.
+      unawaited(subscription.cancel());
     }
   }
 
@@ -779,6 +856,7 @@ class McpServerService extends ChangeNotifier {
             return;
           }
           if (servers.containsKey(initializedSessionId)) {
+            if (generation != null) throw StateError('Session already exists');
             unawaited(
               _cleanupSession(initializedSessionId, generation: generation),
             );
@@ -878,6 +956,11 @@ class McpServerService extends ChangeNotifier {
       }
     }
   }
+}
+
+class _IpadBodyRejected implements Exception {
+  _IpadBodyRejected(this.status);
+  final int status;
 }
 
 /// Transport wrapper that logs outgoing JSON-RPC responses via [DebugService].

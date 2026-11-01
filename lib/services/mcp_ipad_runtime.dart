@@ -30,6 +30,7 @@ class _IpadGeneration extends _McpResources {
   HttpServer? httpServer;
   StreamSubscription<HttpRequest>? subscription;
   final sockets = <_AcceptedSocket>{};
+  int handlers = 0;
   bool revoked = false;
   Future<void>? closing;
 }
@@ -333,6 +334,7 @@ class _AcceptedServerSocket extends Stream<Socket> implements ServerSocket {
           try {
             final p = generation.consent.policy;
             if (runtime.admits(generation) &&
+                generation.sockets.length < 16 &&
                 socket.port == 3847 &&
                 p.address.sameAddress(
                   LanAddress.parse(socket.address.address),

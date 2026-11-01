@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:mcp_dart/mcp_dart.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
@@ -16,6 +17,8 @@ import 'package:nt_helper/services/mcp_lan_context.dart';
 import 'package:nt_helper/services/mcp_lan_policy.dart';
 import 'package:nt_helper/services/debug_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+part 'mcp_ipad_capacity_cases.dart';
 
 class MockDistingCubit extends Mock implements DistingCubit {}
 
@@ -208,12 +211,19 @@ class _MemorySocket extends Stream<Uint8List> implements Socket {
     required this.peerPort,
   });
   final Socket? real;
+  final received = <int>[];
   final String local;
   final String peer;
   final int localPort;
   final int peerPort;
   final input = StreamController<Uint8List>();
   final output = <int>[];
+  void Function()? onOutput;
+  void capture(List<int> bytes) {
+    output.addAll(bytes);
+    onOutput?.call();
+  }
+
   late final consumer = _CaptureConsumer(output);
   late final sink = IOSink(consumer);
   final ended = Completer<void>();
@@ -236,6 +246,7 @@ class _MemorySocket extends Stream<Uint8List> implements Socket {
   void add(List<int> bytes) {
     if (!destroyed) {
       if (real != null) {
+        capture(bytes);
         real!.add(bytes);
       } else {
         sink.add(bytes);
@@ -245,7 +256,13 @@ class _MemorySocket extends Stream<Uint8List> implements Socket {
 
   @override
   Future addStream(Stream<List<int>> stream) =>
-      real?.addStream(stream) ?? sink.addStream(stream);
+      real?.addStream(
+        stream.map((bytes) {
+          capture(bytes);
+          return bytes;
+        }),
+      ) ??
+      sink.addStream(stream);
 
   @override
   void write(Object? object) => add(encoding.encode('$object'));
@@ -262,9 +279,11 @@ class _MemorySocket extends Stream<Uint8List> implements Socket {
     if (destroyed) return;
     destroyed = true;
     real?.destroy();
-    if (real == null) consumer.destroy();
+    if (real == null) {
+      consumer.destroy();
+      unawaited(close());
+    }
     unawaited(input.close());
-    unawaited(close());
   }
 
   void receive(String bytes) {
@@ -279,12 +298,19 @@ class _MemorySocket extends Stream<Uint8List> implements Socket {
     Function? onError,
     void Function()? onDone,
     bool? cancelOnError,
-  }) => (real ?? input.stream).listen(
-    onData,
-    onError: onError,
-    onDone: onDone,
-    cancelOnError: cancelOnError,
-  );
+  }) =>
+      (real == null
+              ? input.stream
+              : real!.map((bytes) {
+                  received.addAll(bytes);
+                  return bytes;
+                }))
+          .listen(
+            onData,
+            onError: onError,
+            onDone: onDone,
+            cancelOnError: cancelOnError,
+          );
 }
 
 class _MemoryListener extends Stream<Socket> implements ServerSocket {
@@ -321,6 +347,7 @@ class _MemoryListener extends Stream<Socket> implements ServerSocket {
 class _LoopbackListener extends Stream<Socket> implements ServerSocket {
   _LoopbackListener(this.inner);
   final ServerSocket inner;
+  final sockets = <_MemorySocket>[];
   @override
   InternetAddress get address => InternetAddress('192.168.2.1');
   @override
@@ -338,7 +365,11 @@ class _LoopbackListener extends Stream<Socket> implements ServerSocket {
     void Function()? onDone,
     bool? cancelOnError,
   }) => inner
-      .map((s) => _MemorySocket(real: s, peerPort: s.remotePort))
+      .map((s) {
+        final socket = _MemorySocket(real: s, peerPort: s.remotePort);
+        sockets.add(socket);
+        return socket;
+      })
       .listen(
         onData,
         onError: onError,
@@ -377,7 +408,8 @@ class _Info extends Mock implements HttpConnectionInfo {
 }
 
 class _ObservedHttpServer extends Mock implements HttpServer {
-  _ObservedHttpServer(this.inner, this.changeInfo);
+  _ObservedHttpServer(this.inner, this.changeInfo, {this.observe});
+  final void Function(HttpRequest)? observe;
   final HttpServer inner;
   final HttpConnectionInfo? Function(HttpRequest)? changeInfo;
   int closes = 0;
@@ -399,7 +431,10 @@ class _ObservedHttpServer extends Mock implements HttpServer {
     void Function()? onDone,
     bool? cancelOnError,
   }) => inner
-      .map((r) => changeInfo == null ? r : _ChangedRequest(r, changeInfo!(r)))
+      .map((r) {
+        observe?.call(r);
+        return changeInfo == null ? r : _ChangedRequest(r, changeInfo!(r));
+      })
       .listen(
         onData,
         onError: onError,
@@ -507,6 +542,18 @@ class _IpadHarness {
     flush();
   }
 
+  _MemorySocket accept({String? local, String? peer, int port = 3847}) {
+    final socket = _MemorySocket(
+      local: local ?? policy.address.text,
+      peer: peer ?? policy.peers.single.text,
+      localPort: port,
+      peerPort: nextPort++,
+    );
+    listeners.last.incoming.add(socket);
+    flush();
+    return socket;
+  }
+
   _MemorySocket send({
     String method = 'POST',
     String target = '/mcp',
@@ -518,13 +565,8 @@ class _IpadHarness {
     int port = 3847,
     bool partial = false,
   }) {
-    final socket = _MemorySocket(
-      local: local ?? policy.address.text,
-      peer: peer ?? policy.peers.single.text,
-      localPort: port,
-      peerPort: nextPort++,
-    );
-    listeners.last.incoming.add(socket);
+    final socket = accept(local: local, peer: peer, port: port);
+    if (socket.destroyed) return socket;
     final payload = jsonEncode(body ?? _initBody);
     final h =
         headers ??
@@ -1251,6 +1293,8 @@ void _ipadRuntimeTests() {
 
 void main() {
   _ipadRuntimeTests();
+  _ipadCapacityTests();
+  _ipadNativeClientTests();
   group('McpServerService transports', () {
     late McpServerService service;
     late MockDistingCubit distingCubit;
