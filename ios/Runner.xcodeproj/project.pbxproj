@@ -31,11 +31,11 @@
 		ADC1AF769CE4250A31F5CBB6 /* InitialSdpUserClient.iig in Sources */ = {isa = PBXBuildFile; fileRef = EC4B9BF24903BB4F44E740DE /* InitialSdpUserClient.iig */; };
 		AF6EB01889F9EA0488E093F7 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		CA7A50F2512C2ED166717ECD /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6FFCE51CB95FC911C3C0B608 /* Pods_RunnerTests.framework */; };
+		CBB6E090E5A10444421A4463 /* Pods_RunnerInitialSdp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 56AFB1BD58C069C5A152CCFE /* Pods_RunnerInitialSdp.framework */; };
 		D42635E4538B3C78658CAB03 /* InitialSdpDriver.iig in Sources */ = {isa = PBXBuildFile; fileRef = 7BDCBFAB38AA370DE3502558 /* InitialSdpDriver.iig */; };
 		D71AD1BB7A1762D71E368BF8 /* InitialSdpPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACC8C1CF0FD924446E63E95D /* InitialSdpPlugin.swift */; };
 		E5702D736B2C59DDCE53BD57 /* InitialSdpUserClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CE84D57F7432AA9C6AB33391 /* InitialSdpUserClient.cpp */; };
 		F50FAC7F8032159741D67046 /* IosFileAccessPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD56D15C2DE51B05003776D8 /* IosFileAccessPlugin.swift */; };
-		FA9B4FDF22E8952C32D033BA /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 65849FD5E8867C9FC1C8A183 /* Pods_Runner.framework */; };
 		FD223FAF2DE6C7FE009E00C1 /* IosFileAccessPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD56D15C2DE51B05003776D8 /* IosFileAccessPlugin.swift */; };
 		FD224FB02DE6C8FF009E00C2 /* UsbVideoCapturePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD57D16D2DE51C06003776D9 /* UsbVideoCapturePlugin.swift */; };
 /* End PBXBuildFile section */
@@ -107,6 +107,7 @@
 		3616BF4F8F585F4F506028F5 /* InitialSdpDriver.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = InitialSdpDriver.entitlements; sourceTree = "<group>"; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		4229BE3CEFAF836998EB0A85 /* DriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DriverKit.framework; path = System/DriverKit/System/Library/Frameworks/DriverKit.framework; sourceTree = SDKROOT; };
+		56AFB1BD58C069C5A152CCFE /* Pods_RunnerInitialSdp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerInitialSdp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		576C66A9106CED8B113C9BC1 /* InitialSdp.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = InitialSdp.entitlements; sourceTree = "<group>"; };
 		6532CFBF01B16D9777791609 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		65849FD5E8867C9FC1C8A183 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -126,10 +127,12 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9DCF9BB508C6E8B99B8AA492 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		9EB4956A251F1E83DA6D6226 /* dev.nosuch.ntHelper.initialSdp.driver.dext */ = {isa = PBXFileReference; explicitFileType = "wrapper.driver-extension"; includeInIndex = 0; path = dev.nosuch.ntHelper.initialSdp.driver.dext; sourceTree = BUILT_PRODUCTS_DIR; };
+		A01234567890123456789012 /* InitialSdp.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Flutter/InitialSdp.xcconfig; sourceTree = "<group>"; };
 		AC57F833089C9E90391A0004 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		ACC8C1CF0FD924446E63E95D /* InitialSdpPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InitialSdpPlugin.swift; sourceTree = "<group>"; };
 		C4B7622B43B70AC6E9AE38F4 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		CE84D57F7432AA9C6AB33391 /* InitialSdpUserClient.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = InitialSdpUserClient.cpp; sourceTree = "<group>"; };
+		D67209621704AABFB1450EB7 /* Pods-RunnerInitialSdp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerInitialSdp.debug.xcconfig"; path = "Target Support Files/Pods-RunnerInitialSdp/Pods-RunnerInitialSdp.debug.xcconfig"; sourceTree = "<group>"; };
 		E88F20FB4D463310566B0DC9 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		EC4B9BF24903BB4F44E740DE /* InitialSdpUserClient.iig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.iig; path = InitialSdpUserClient.iig; sourceTree = "<group>"; };
 		FD56D15C2DE51B05003776D8 /* IosFileAccessPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IosFileAccessPlugin.swift; path = Runner/IosFileAccessPlugin.swift; sourceTree = "<group>"; };
@@ -143,15 +146,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				8434EB080B8182CE9BD9BD03 /* FlutterGeneratedPluginSwiftPackage in Frameworks */,
-				FA9B4FDF22E8952C32D033BA /* Pods_Runner.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		5A7600AC54CB1549A77A79FE /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 				1051B60B0D65AD504E01867A /* IOKit.framework in Frameworks */,
+				CBB6E090E5A10444421A4463 /* Pods_RunnerInitialSdp.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -221,6 +217,7 @@
 				78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */,
 				3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */,
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
+				A01234567890123456789012 /* InitialSdp.xcconfig */,
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
 			);
@@ -282,6 +279,7 @@
 				4229BE3CEFAF836998EB0A85 /* DriverKit.framework */,
 				73F719EBCA58E42E54E93FE7 /* USBDriverKit.framework */,
 				AC57F833089C9E90391A0004 /* IOKit.framework */,
+				56AFB1BD58C069C5A152CCFE /* Pods_RunnerInitialSdp.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -295,6 +293,7 @@
 				C4B7622B43B70AC6E9AE38F4 /* Pods-RunnerTests.debug.xcconfig */,
 				2283D5FC874D3C6B38123395 /* Pods-RunnerTests.release.xcconfig */,
 				28A09E376F1E1EEBF2EC2686 /* Pods-RunnerTests.profile.xcconfig */,
+				D67209621704AABFB1450EB7 /* Pods-RunnerInitialSdp.debug.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -374,16 +373,15 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 12A1B2A087AFD5565BAA8B9A /* Build configuration list for PBXNativeTarget "RunnerInitialSdp" */;
 			buildPhases = (
-				5A7600AC54CB1549A77A79FE /* Frameworks */,
-				F3DDE8DBF7A47B5AA33DE10B /* [CP] Check Pods Manifest.lock */,
+				E2A13A9F3BB48D2253A53AE2 /* [CP] Check Pods Manifest.lock */,
 				BA8035B912009192AEA27534 /* Run Script */,
 				D957056BF4F90CBE8FACC120 /* Sources */,
 				44EC39C275066592F12DD2F9 /* Frameworks */,
 				1D492F65060CF96EF3F9B467 /* Resources */,
 				29642ECDC90C7814FA5FD302 /* Embed Frameworks */,
-				6F0634FC8C0627DE4972FA7C /* Thin Binary */,
-				A19E379ED89AB8D5506403F2 /* [CP] Embed Pods Frameworks */,
 				987D04992ADC22DDB7F4C5C9 /* Embed Initial SDP Driver (development only) */,
+				6F0634FC8C0627DE4972FA7C /* Thin Binary */,
+				2EDBFE372CDD2ADBF88640B2 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -503,6 +501,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		2EDBFE372CDD2ADBF88640B2 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-RunnerInitialSdp/Pods-RunnerInitialSdp-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-RunnerInitialSdp/Pods-RunnerInitialSdp-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-RunnerInitialSdp/Pods-RunnerInitialSdp-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		3B06AD1E1E4923F5004D2608 /* Thin Binary */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -567,23 +582,6 @@
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
 		};
-		A19E379ED89AB8D5506403F2 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		A1F9EB88A09F727D9C3E9D33 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -643,7 +641,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		F3DDE8DBF7A47B5AA33DE10B /* [CP] Check Pods Manifest.lock */ = {
+		E2A13A9F3BB48D2253A53AE2 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -658,7 +656,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-Runner-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-RunnerInitialSdp-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -821,6 +819,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 			};
@@ -962,6 +961,7 @@
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -1015,6 +1015,7 @@
 				SUPPORTED_PLATFORMS = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 			};
@@ -1086,7 +1087,7 @@
 		};
 		D9C478EEA21C4A0B6B9C7002 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
+			baseConfigurationReference = A01234567890123456789012 /* InitialSdp.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -1094,6 +1095,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 0;
+				DART_DEFINES = TlRfSU5JVElBTF9TRFBfRVhQRVJJTUVOVD10cnVl;
 				DEVELOPMENT_TEAM = KN424RZG26;
 				ENABLE_BITCODE = NO;
 				FLUTTER_BUILD_MODE = debug;
