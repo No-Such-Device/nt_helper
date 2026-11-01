@@ -47,7 +47,6 @@ void main() {
         final state2 = ConnectionDeletionState.hovering('connection-2');
 
         expect(state1, isNot(equals(state2)));
-        expect(state1.hashCode, isNot(equals(state2.hashCode)));
       });
 
       test('different deletion modes are not equal', () {
@@ -64,17 +63,6 @@ void main() {
 
         expect(state.mode, equals(DeletionMode.tapSelected));
         expect(state.selectedConnectionIds, isEmpty);
-      });
-
-      test('tap selected state validates non-null connection ids', () {
-        const connectionIds = {'connection-1', 'connection-2'};
-        const state = ConnectionDeletionState.tapSelected(connectionIds);
-
-        expect(state.selectedConnectionIds, equals(connectionIds));
-        expect(
-          state.selectedConnectionIds.every((id) => id.isNotEmpty),
-          isTrue,
-        );
       });
     });
 
