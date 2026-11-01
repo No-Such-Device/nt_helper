@@ -626,6 +626,40 @@ const _effectBody = {
 };
 
 void _ipadRuntimeTests() {
+  // AC-001: restored-OFF widget checks had no native path/lifecycle events;
+  // initial monitor callbacks and unarmed interruptions must still show OFF.
+  test(
+    'AC-001 unarmed native and lifecycle observations stay OFF without binds',
+    () {
+      fakeAsync((time) {
+        final h = _IpadHarness(time);
+        for (final transition in [
+          'inactive',
+          'resumed',
+          'paused',
+          'resumed',
+          'unknown',
+          'resumed',
+        ]) {
+          unawaited(h.service.ipadLifecycleChanged(transition));
+          unawaited(h.service.ipadNetworkChanged());
+          h.flush();
+          expect(h.service.ipadState, McpIpadState.off);
+          expect(h.binds, isEmpty);
+          expect(h.service.ipadToken, isNull);
+        }
+        h.enable(save: () async => false);
+        final reason = h.service.ipadReason;
+        unawaited(h.service.ipadNetworkChanged());
+        unawaited(h.service.ipadLifecycleChanged('inactive'));
+        h.flush();
+        expect(h.service.ipadState, McpIpadState.failed);
+        expect(h.service.ipadReason, reason);
+        expect(h.binds, isEmpty);
+        h.clean();
+      });
+    },
+  );
   // AC-007: prior rotation tests reject old credentials but do not search
   // observable diagnostics for synthetic raw headers/URI/session data.
   test(

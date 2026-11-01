@@ -174,6 +174,11 @@ class _IpadRuntime {
 
   Future<void> invalidate(String why, {bool failure = false}) async {
     if (disposed) return;
+    // Observations cannot turn an unarmed/restored OFF profile into PAUSED,
+    // or overwrite a failed-enable reason. Pending persistence still revokes.
+    if (consent == null && current == null && state != McpIpadState.starting) {
+      return;
+    }
     revoke();
     report(failure ? McpIpadState.failed : McpIpadState.paused, why);
     await cleanup;
@@ -183,6 +188,11 @@ class _IpadRuntime {
     if (disposed) return;
     if (transition == 'inactive') {
       foreground = false;
+      if (consent == null &&
+          current == null &&
+          state != McpIpadState.starting) {
+        return;
+      }
       revoke(retainConsent: true);
       report(McpIpadState.paused, 'Temporarily inactive.');
       await cleanup;
