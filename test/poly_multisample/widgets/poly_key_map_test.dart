@@ -83,7 +83,7 @@ void main() {
       ),
       isFalse,
     );
-  });
+  }, tags: ['regression']);
 
   test('piano geometry lays out white keys in C-D-E-F-G-A-B order', () {
     final geometry = PolyKeyboardGeometry(
@@ -517,7 +517,7 @@ void main() {
       findsOneWidget,
     );
     semantics.dispose();
-  });
+  }, tags: ['regression']);
 
   testWidgets('renders without mapped regions', (tester) async {
     await tester.pumpWidget(
