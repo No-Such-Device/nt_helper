@@ -327,7 +327,7 @@ void main() {
           expect(cubit.remoteControlState.sessionId, isNull);
         }
       },
-    );
+    , tags: ['regression']);
 
     test(
       '$facade gates unavailable firmware, offline, demo, and non-writer managers',
@@ -427,7 +427,7 @@ void main() {
       });
       expect(next['success'], isTrue, reason: '$next');
     },
-  );
+  , tags: ['regression']);
 
   test(
     'two registry clients cannot take ownership of an active gesture',
@@ -469,7 +469,7 @@ void main() {
         await other.dispose();
       }
     },
-  );
+  , tags: ['regression']);
 
   test(
     'registry disposal cancels held gesture and refuses future remote writes',
@@ -501,7 +501,7 @@ void main() {
         remoteFrame([2, 5]),
       ]);
     },
-  );
+  , tags: ['regression']);
 
   test(
     'six second gesture deadline and two second cleanup budget terminate a blocked writer',
@@ -561,7 +561,7 @@ void main() {
         );
       });
     },
-  );
+  , tags: ['regression']);
 
   test(
     'transport and cleanup failures report unknown release without hardware acknowledgement',
@@ -588,7 +588,7 @@ void main() {
       expect(wire.remoteAttempts, anyElement(equals(remoteFrame([2, 4]))));
       wire.failRemoteSend = false;
     },
-  );
+  , tags: ['regression']);
 
   test(
     'disconnect during a wait drops later actions and reports unknown release',
@@ -612,7 +612,7 @@ void main() {
       expect(wire.remotePackets.where((packet) => packet[7] == 3), isEmpty);
       expect((await call('remote_state', {}))['available'], isFalse);
     },
-  );
+  , tags: ['regression']);
 
   test(
     'actual MCP HTTP lists remote schemas and executes the registered control tool',
@@ -869,7 +869,7 @@ void main() {
         HttpOverrides.global = previous;
       }
     },
-  );
+  , tags: ['regression']);
 }
 
 Future<(HttpClientResponse, Map<String, dynamic>)> _rpc(
