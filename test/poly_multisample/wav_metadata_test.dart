@@ -129,7 +129,7 @@ void main() {
       );
 
       expect(_pcm16Samples(rendered), [4000, 2000, 3000, 4000, 2000]);
-    });
+    }, tags: ['regression']);
 
     test('renderPitchedPreview lowers pitch by extending frame count', () {
       final bytes = _pcm16Wav(
