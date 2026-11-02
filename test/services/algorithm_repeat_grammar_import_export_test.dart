@@ -151,7 +151,7 @@ void main() {
       await database.select(database.algorithmRepeatGrammars).get(),
       isEmpty,
     );
-  });
+  }, tags: ['regression']);
 
   test('clear paths remove output usage and grammar rows', () async {
     await database
