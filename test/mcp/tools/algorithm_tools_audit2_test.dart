@@ -135,7 +135,7 @@ void main() {
             );
           }
         },
-      );
+      tags: ['regression']);
 
       test(
         'algorithms with only Freq params should not show resonance category',
@@ -434,6 +434,6 @@ void main() {
       final mapping = json['mapping'] as Map<String, dynamic>;
       expect(mapping.containsKey('cv'), isTrue);
       expect((mapping['cv'] as Map<String, dynamic>)['source'], equals(3));
-    });
+    }, tags: ['regression']);
   });
 }

@@ -209,7 +209,7 @@ void main() {
           isTrue,
         );
       },
-    );
+    tags: ['regression']);
 
     test(
       'does not read directory import samples outside selected root',
@@ -254,7 +254,7 @@ void main() {
           isEmpty,
         );
       },
-    );
+    tags: ['regression']);
 
     test(
       'does not read absolute local sample paths inside selected root',
@@ -296,7 +296,7 @@ void main() {
           isEmpty,
         );
       },
-    );
+    tags: ['regression']);
 
     test(
       'does not treat Windows rooted local paths as missing samples',
@@ -338,7 +338,7 @@ void main() {
           isEmpty,
         );
       },
-    );
+    tags: ['regression']);
 
     test(
       'does not follow local sample symlinks outside common parent',
@@ -387,7 +387,7 @@ void main() {
           isEmpty,
         );
       },
-    );
+    tags: ['regression']);
 
     test('ignores macOS archive metadata entries', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -434,7 +434,7 @@ void main() {
       expect(result.outputFolders.single, endsWith('Antique_Harmonium'));
       expect(result.copiedFiles, 1);
       expect(result.warnings, isEmpty);
-    });
+    }, tags: ['regression']);
 
     test('imports Decent Sampler zip archives', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -520,7 +520,7 @@ void main() {
         ),
         isEmpty,
       );
-    });
+    }, tags: ['regression']);
 
     test('does not rebase unsafe archive preset entries above root', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -558,7 +558,7 @@ void main() {
         throwsA(isA<FormatException>()),
       );
       expect(Directory('${tempDir.path}/out').existsSync(), isFalse);
-    });
+    }, tags: ['regression']);
 
     test('does not read absolute archive sample paths', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -602,7 +602,7 @@ void main() {
         ),
         isEmpty,
       );
-    });
+    }, tags: ['regression']);
 
     test('does not read Windows absolute archive sample paths', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -648,7 +648,7 @@ void main() {
         ),
         isEmpty,
       );
-    });
+    }, tags: ['regression']);
 
     test('lets user choose velocity layers for ambiguous groups', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -926,7 +926,7 @@ void main() {
             ..sort();
 
       expect(copiedDocs, ['LICENSE.txt', 'readme.md']);
-    });
+    }, tags: ['regression']);
 
     test('can skip source docs when requested', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -1452,7 +1452,7 @@ void main() {
 
       expect(outputFiles, ['Remapped_RR_C3_RR1.wav', 'Remapped_RR_C3_RR2.wav']);
       expect(result.warnings, isEmpty);
-    });
+    }, tags: ['regression']);
 
     test('remapped tag key ranges keep velocity suffixes', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -1515,7 +1515,7 @@ void main() {
       ]);
       expect(result.copiedFiles, 2);
       expect(result.warnings, isEmpty);
-    });
+    }, tags: ['regression']);
 
     test('single edited tag velocity keeps other selected tag layer', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -1635,7 +1635,7 @@ void main() {
         ]);
         expect(result.warnings, isEmpty);
       },
-    );
+    tags: ['regression']);
 
     test(
       'selected tag options apply ranges, layers and round robins',

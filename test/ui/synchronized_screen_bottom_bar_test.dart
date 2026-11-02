@@ -281,7 +281,7 @@ void main() {
           1440: const Size(48, 48),
         });
       },
-    );
+    tags: ['regression']);
 
     testWidgets(
       'supported live shortcut keeps all device-reported detail in the viewport',
@@ -358,7 +358,7 @@ void main() {
         }
         semantics.dispose();
       },
-    );
+    tags: ['regression']);
 
     testWidgets('memory bars populate and update while detail stays closed', (
       tester,

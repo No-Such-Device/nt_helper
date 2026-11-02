@@ -95,7 +95,7 @@ void main() {
       );
       expect(field.model.choices.map((choice) => choice.value), profile.buses);
     },
-  );
+  tags: ['regression']);
 
   testWidgets('hides algorithm style controls before firmware 1.18', (
     tester,
@@ -130,7 +130,7 @@ void main() {
       find.byKey(const ValueKey('slot-editor-algorithm-style')),
       findsNothing,
     );
-  });
+  }, tags: ['regression']);
 
   testWidgets('shows algorithm style preview control offline', (tester) async {
     final slot = _slotWithOutputAndMode();
@@ -582,7 +582,7 @@ void main() {
       find.text('Respecify requires confirmed firmware 1.19 beta or later.'),
       findsOneWidget,
     );
-  });
+  }, tags: ['regression']);
 
   testWidgets('rechecks the prepared slot target before mutation', (
     tester,
@@ -630,7 +630,7 @@ void main() {
       ),
       findsOneWidget,
     );
-  });
+  }, tags: ['regression']);
 }
 
 DistingCubit _createCubit(AppDatabase database) {

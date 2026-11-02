@@ -75,7 +75,7 @@ void main() {
     verify(() => midiCommand.disconnectDevice(output)).called(1);
     verify(() => manager.dispose()).called(1);
     verifyNever(() => midiCommand.dispose());
-  });
+  }, tags: ['regression']);
 
   test(
     'duplex endpoint is disconnected only once during deliberate handoff',
@@ -115,7 +115,7 @@ void main() {
       verify(() => midiCommand.devices).called(1);
       verifyNever(() => midiCommand.dispose());
     },
-  );
+  tags: ['regression']);
 
   test(
     'explicit disconnect releases the synchronized manager and distinct endpoints',
@@ -213,7 +213,7 @@ void main() {
       verifyNever(() => manager.requestCpuUsage());
       subscription.cancel();
     });
-  });
+  }, tags: ['regression']);
 
   test(
     'uses a fresh snapshot and refreshes device selection on completion',
@@ -309,7 +309,7 @@ void main() {
       verify(() => replacementCommand.devices).called(1);
       verifyNever(() => originalCommand.devices);
     },
-  );
+  tags: ['regression']);
 
   test(
     'saved endpoint names take precedence and retain directional matching',
@@ -366,7 +366,7 @@ void main() {
       );
       expect(snapshots, 2);
     },
-  );
+  tags: ['regression']);
 
   test('manual MIDI selection survives an explicit device refresh', () async {
     final input = device('input', 'Forever', MidiPortType.IN);
@@ -399,7 +399,7 @@ void main() {
     verifyNever(() => midiCommand.connectToDevice(output));
     verifyNever(() => midiCommand.connectToDevice(refreshedInput));
     verifyNever(() => midiCommand.connectToDevice(refreshedOutput));
-  });
+  }, tags: ['regression']);
 
   test('selection made during refresh survives its completion', () async {
     final input = device('input', 'Forever', MidiPortType.IN);
@@ -431,7 +431,7 @@ void main() {
     expect(state.selectedInputDevice, same(refreshedInput));
     expect(state.selectedOutputDevice, same(refreshedOutput));
     expect(state.selectedSysExId, 12);
-  });
+  }, tags: ['regression']);
 
   test('failed refresh keeps the existing manual selection', () async {
     final input = device('input', 'Forever', MidiPortType.IN);
@@ -457,7 +457,7 @@ void main() {
     expect(state.selectedInputDevice, same(input));
     expect(state.selectedOutputDevice, same(output));
     expect(state.selectedSysExId, 7);
-  });
+  }, tags: ['regression']);
 
   test(
     'initialize shows all MIDI devices without reconnecting saved ports',
@@ -501,5 +501,5 @@ void main() {
       verifyNever(() => midiCommand.connectToDevice(distingInput));
       verifyNever(() => midiCommand.connectToDevice(distingOutput));
     },
-  );
+  tags: ['regression']);
 }

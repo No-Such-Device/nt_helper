@@ -262,6 +262,6 @@ void main() {
         expect(documents, hasLength(1));
         expect(documents.single['title'], 'binary.pdf');
       },
-    );
+    tags: ['regression']);
   });
 }

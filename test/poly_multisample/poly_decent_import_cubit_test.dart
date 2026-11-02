@@ -22,7 +22,7 @@ void main() {
 
       expect(service.stageCallCount, 0);
       expect(cubit.state.error, contains('overlap'));
-    });
+    }, tags: ['regression']);
 
     test('manual range edits do not auto-shift other rows', () async {
       final service = _FakeImportService(_overlappingAnalysis());
@@ -48,7 +48,7 @@ void main() {
         'group:1:Group 2',
       ]);
       expect(cubit.state.status, PolyDecentImportStatus.completed);
-    });
+    }, tags: ['regression']);
 
     test('analyzeSource seeds tag ranges and preset selection', () async {
       final service = _FakeImportService(_taggedAnalysis());
@@ -212,7 +212,7 @@ void main() {
 
         expect(service.lastOptions!.groupRoundRobins, isEmpty);
       },
-    );
+    tags: ['regression']);
 
     test('group modes do not forward stale selected tag options', () async {
       final service = _FakeImportService(_taggedAnalysis());
@@ -233,7 +233,7 @@ void main() {
       expect(options.tagVelocityLayers, isEmpty);
       expect(options.tagKeyRanges, isEmpty);
       expect(options.tagRoundRobins, isEmpty);
-    });
+    }, tags: ['regression']);
 
     test('tagMapping forwards selected tag options', () async {
       final service = _FakeImportService(_taggedAnalysis());

@@ -135,7 +135,7 @@ void main() {
       semantics.dispose();
       await tester.pumpWidget(const SizedBox());
     },
-  );
+  tags: ['regression']);
 
   testWidgets(
     'AUX picker, editing, deletion and compact selection preserve the physical table',
@@ -380,7 +380,7 @@ void main() {
       expect(find.text('Patch Helper'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
-  );
+  tags: ['regression']);
 
   testWidgets(
     'overlong text is rejected without shifting or desynchronizing rows',
@@ -424,7 +424,7 @@ void main() {
       );
       await tester.pumpWidget(const SizedBox());
     },
-  );
+  tags: ['regression']);
   testWidgets(
     'Lua action dialog adds each model, cancels without writes and keeps layout stable',
     (tester) async {

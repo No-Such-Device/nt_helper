@@ -405,7 +405,7 @@ void main() {
       expect(tester.takeException(), isNull);
       semantics.dispose();
     },
-  );
+  tags: ['regression']);
 
   testWidgets('shows empty message when there are no algorithms', (
     tester,

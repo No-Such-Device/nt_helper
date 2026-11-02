@@ -123,7 +123,7 @@ void main() {
         clipboard.slots.map((s) => s.slot.slotIndex).toList(),
         [0, 1, 2],
       );
-    });
+    }, tags: ['regression']);
 
     test('upserts missing algorithm metadata before persisting', () async {
       final state = _syncedState([_slot(0, 'NEW1', 'New Algo')]);

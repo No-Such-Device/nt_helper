@@ -86,7 +86,7 @@ void main() {
       await publish(current.copyWith(algorithms: const []));
       expect(loaded().algorithms.single.inputPorts, hasLength(1));
     },
-  );
+  tags: ['regression']);
 
   test(
     'batching retains library-only changes until its single rebuild',
@@ -98,7 +98,7 @@ void main() {
       });
       expect(loaded().algorithms.single.inputPorts, hasLength(2));
     },
-  );
+  tags: ['regression']);
 
   test(
     'changing base buses and construction values moves the whole span',

@@ -153,7 +153,7 @@ void main() {
       // Only one clipboard row exists.
       final allTemplates = await database.presetsDao.getTemplates();
       expect(allTemplates, isEmpty);
-    });
+    }, tags: ['regression']);
 
     test('clipboard is hidden from getTemplates()', () async {
       await database.metadataDao.upsertAlgorithms([algo('ALG1', 'Alg 1')]);

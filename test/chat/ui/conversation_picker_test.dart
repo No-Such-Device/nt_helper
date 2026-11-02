@@ -210,7 +210,7 @@ void main() {
       expect(find.text('Saved first'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
-  );
+  tags: ['regression']);
   testWidgets('Escape cancels without selecting or deleting', (tester) async {
     await open(tester);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -242,7 +242,7 @@ void main() {
     await tester.tap(find.byTooltip('Close conversations'));
     await tester.pumpAndSettle();
     expect(selected, isNull);
-  });
+  }, tags: ['regression']);
   testWidgets('keyboard insets leave the search and results usable', (
     tester,
   ) async {
@@ -253,7 +253,7 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Saved');
     await tester.pumpAndSettle();
     expect(find.text('Saved first'), findsOneWidget);
-  });
+  }, tags: ['regression']);
 
   testWidgets(
     'capture native-widget evidence in both themes and compact sizes',

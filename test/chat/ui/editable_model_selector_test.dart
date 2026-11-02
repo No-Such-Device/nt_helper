@@ -179,5 +179,5 @@ void main() {
         expect(state.$3, loading.$3);
       }
     }
-  });
+  }, tags: ['regression']);
 }

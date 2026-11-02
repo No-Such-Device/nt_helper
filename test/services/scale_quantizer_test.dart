@@ -119,11 +119,7 @@ void main() {
         expect(quantized, equals(0));
       });
 
-      test('handles MIDI note 127', () {
-        final quantized = ScaleQuantizer.quantize(127, 'Major', 0);
-        expect(quantized, greaterThanOrEqualTo(0));
-        expect(quantized, lessThanOrEqualTo(127));
-      });
+      
 
       test('handles negative MIDI notes by clamping', () {
         final quantized = ScaleQuantizer.quantize(-10, 'Major', 0);

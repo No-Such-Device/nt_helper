@@ -181,10 +181,7 @@ void main() {
         );
       });
 
-      test('throws exception when metadata format is invalid', () async {
-        // Can't easily test this without mocking rootBundle
-        // But the code should handle this case
-      });
+      
     });
 
     group('performUpgradeIfNeeded', () {
@@ -292,12 +289,7 @@ void main() {
     });
 
     group('data preservation', () {
-      test('upgrade only modifies ioFlags field', () async {
-        // This test would require mocking rootBundle to provide test metadata
-        // For now, we verify the SQL query structure is correct by inspection
-        // The actual query: UPDATE parameters SET io_flags = ? WHERE ...
-        // This ensures only ioFlags is modified
-      });
+      
     });
   });
 }

@@ -11,7 +11,7 @@ import '../support/storage_fixture.dart';
 
 void main() {
   if (!Platform.isMacOS) {
-    test('macOS damage recovery', () {}, skip: 'Darwin storage primitives');
+    
     return;
   }
   late Directory root;
@@ -135,7 +135,7 @@ void main() {
             await opened.close();
           }
         },
-      );
+      tags: ['regression']);
     }
   }
 
@@ -181,7 +181,7 @@ void main() {
           writer.close();
         }
       },
-    );
+    tags: ['regression']);
   }
 
   test(
@@ -206,7 +206,7 @@ void main() {
       await app.close();
       assertRetained(originals);
     },
-  );
+  tags: ['regression']);
 
   test(
     'confirmed damage with duplicate unique keys cannot be reported repaired',
@@ -241,7 +241,7 @@ void main() {
       await db.close();
       assertRetained(originals);
     },
-  );
+  tags: ['regression']);
 
   for (final scenario in [
     'competing',
@@ -324,7 +324,7 @@ void main() {
       ].contains(scenario)) {
         expect((await prepare()).recovery, LibraryRecovery.repaired);
       }
-    });
+    }, tags: ['regression']);
   }
 
   test(
@@ -380,5 +380,5 @@ void main() {
       );
       expect((await prepare()).recovery, isNull);
     },
-  );
+  tags: ['regression']);
 }

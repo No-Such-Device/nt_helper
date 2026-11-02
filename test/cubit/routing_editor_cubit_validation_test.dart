@@ -355,14 +355,7 @@ void main() {
         standaloneCubit.close();
       });
 
-      test('should handle cubit state changes', () async {
-        // The cubit should be listening to state changes
-        expect(routingEditorCubit.state, isA<RoutingEditorState>());
-
-        // Verify it's set up to listen to the mock
-        verify(() => mockDistingCubit.stream).called(1);
-        verify(() => mockDistingCubit.state).called(greaterThan(0));
-      });
+      
     });
   });
 }

@@ -92,7 +92,7 @@ void main() {
         hasLength(5),
       );
     },
-  );
+  tags: ['regression']);
 
   test(
     'malformed grammar falls back to the complete canonical shape',
@@ -112,7 +112,7 @@ void main() {
       expect((await manager.requestParameterInfo(0, 4))!.name, '2:CV output');
       expect((await manager.requestParameterPages(0))!.pages, hasLength(3));
     },
-  );
+  tags: ['regression']);
 
   test('out-of-range vector falls back atomically', () async {
     await manager.initializeFromDb(

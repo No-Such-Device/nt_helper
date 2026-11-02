@@ -149,7 +149,7 @@ void main() {
         );
         expect(savedDetails!.slots.single.specificationValues, [4]);
       },
-    );
+    tags: ['regression']);
 
     test('failed local saves propagate and can be retried', () async {
       await manager.initializeFromDb(null);
@@ -185,7 +185,7 @@ void main() {
       expect(manager.loadedPresetId, saved!.id);
       final restored = await database.presetsDao.getFullPresetDetails(saved.id);
       expect(restored!.slots.single.specificationValues, [2]);
-    });
+    }, tags: ['regression']);
 
     test('unbuildable local presets report a save failure', () async {
       await manager.initializeFromDb(null);

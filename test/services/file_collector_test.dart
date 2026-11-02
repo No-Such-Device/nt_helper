@@ -192,7 +192,7 @@ void main() {
       // No "not installed" warning — the GUID is in pluginPaths so it's
       // considered resolved.
       expect(result.warnings, isEmpty);
-    });
+    }, tags: ['regression']);
 
     test('does not package plugins that are in pluginPaths but not referenced '
         'by the preset', () async {
@@ -221,7 +221,7 @@ void main() {
       // Unused plugins must not be read from the SD card.
       verifyNever(() => mockFileSystem.readFile('programs/plug-ins/UnusedA.o'));
       verifyNever(() => mockFileSystem.readFile('programs/plug-ins/UnusedB.o'));
-    });
+    }, tags: ['regression']);
 
     test('matches community plugin GUIDs with trailing-space padding', () {
       // Analyzer preserves trailing spaces on raw GUIDs
@@ -246,7 +246,7 @@ void main() {
             expect(result.files, hasLength(1));
             expect(result.warnings, isEmpty);
           });
-    });
+    }, tags: ['regression']);
   });
 
   group('FileCollector - PackageConfig flags', () {
@@ -446,7 +446,7 @@ void main() {
       verifyNever(
         () => mockFileSystem.readFile('wavetables/01-Gentle Speech.wav.wav'),
       );
-    });
+    }, tags: ['regression']);
 
     test('collects granulator samples under /samples/', () async {
       final deps = PresetDependencies();
@@ -550,7 +550,7 @@ void main() {
         expect(paths, contains('samples/MD16_Kit/kick.wav'));
         expect(paths, contains('samples/MD16_Kit/snare.wav'));
       },
-    );
+    tags: ['regression']);
 
     test('wavetable folder with many slices collects all of them', () async {
       // Regression guard: wavetables are folders of WAV slices. Earlier
@@ -579,7 +579,7 @@ void main() {
 
       expect(result.files, hasLength(64));
       expect(result.warnings, isEmpty);
-    });
+    }, tags: ['regression']);
   });
 
   group('FileCollector - whole-tree bundling', () {

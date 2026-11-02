@@ -36,7 +36,7 @@ void main() {
     expect(cubit.state.pending, isFalse);
     expect(device.map.connections.first.destination, 'D' * 32);
     expect(device.map.connections.first.group, 'G' * 32);
-  });
+  }, tags: ['regression']);
 
   test(
     'SD Lua owns dialog labels and choices; invalid or stale choices cannot write',
@@ -69,7 +69,7 @@ void main() {
       expect(device.map.expanders, isEmpty);
       await cubit.close();
     },
-  );
+  tags: ['regression']);
 
   test(
     'choice schema rejects unsupported actions, duplicate and invalid model values',
@@ -125,7 +125,7 @@ void main() {
     expect(cubit.state.editable, isTrue);
     expect(reads, 2);
     await cubit.close();
-  });
+  }, tags: ['regression']);
 
   test(
     'background checks pick up changed SD Lua without reloading the map',
@@ -149,7 +149,7 @@ void main() {
       expect(device.frames.last['request']![7], 9);
       await cubit.close();
     },
-  );
+  tags: ['regression']);
 
   test(
     'SD Lua scratch cache reuses files, refreshes, separates devices and recovers',
@@ -205,7 +205,7 @@ void main() {
       expect((await load()).source, 'repaired Lua');
       expect(downloads, 6);
     },
-  );
+  tags: ['regression']);
 
   test('cache failures do not block the established SD transfer', () async {
     final source = await SdCardCompanion.load(
@@ -216,7 +216,7 @@ void main() {
           throw const FileSystemException('unavailable'),
     );
     expect(source.source, contains('return companion'));
-  });
+  }, tags: ['regression']);
 
   test(
     'notification cannot return a write and failure keeps the last view',
@@ -242,7 +242,7 @@ void main() {
       expect(device.frames.last['request']![7], 9);
       await cubit.close();
     },
-  );
+  tags: ['regression']);
 
   test(
     'NT properties notify Lua, unchanged polls are quiet, and live wire matches native fixture',
@@ -287,7 +287,7 @@ void main() {
       }
       await cubit.close();
     },
-  );
+  tags: ['regression']);
 
   test('automatic field edits merge with concurrent NT changes', () async {
     final device = PatchMapDevice();
@@ -305,7 +305,7 @@ void main() {
     expect(cubit.state.pending, isFalse);
     expect(cubit.state.error, isNull);
     await cubit.close();
-  });
+  }, tags: ['regression']);
 
   test('latest edit survives a lost acknowledgement and converges', () async {
     final device = PatchMapDevice();
@@ -332,7 +332,7 @@ void main() {
     expect(device.revision, 2);
     expect(cubit.state.pending, isFalse);
     await cubit.close();
-  });
+  }, tags: ['regression']);
 
   test(
     'already applied edit is acknowledged by reread without a duplicate write',
@@ -355,7 +355,7 @@ void main() {
       expect(cubit.state.error, isNull);
       await cubit.close();
     },
-  );
+  tags: ['regression']);
 
   test(
     'expired lease stops watch and cannot silently follow another preset',
@@ -373,7 +373,7 @@ void main() {
       expect(device.frames.length, before);
       await cubit.close();
     },
-  );
+  tags: ['regression']);
 
   test('notifications fall back to render for older companions', () async {
     const source =
@@ -405,7 +405,7 @@ void main() {
     source.complete(await download('/programs/helper/ThPh.lua'));
     await loading;
     expect(device.frames, isEmpty);
-  });
+  }, tags: ['regression']);
   test(
     'SD discovery is GUID-based and rejects unsafe filenames and mismatched scripts',
     () async {
@@ -505,7 +505,7 @@ void main() {
       expect(device.frames.where((f) => f['request']?[7] == 3), isEmpty);
       await cubit.close();
     },
-  );
+  tags: ['regression']);
   test(
     'missing, incompatible and infinite companions fail without a fallback editor',
     () async {
@@ -571,5 +571,5 @@ void main() {
       expect(map.expanders.last.name, 'Right');
       expect(() => map.expanders.clear(), throwsUnsupportedError);
     },
-  );
+  tags: ['regression']);
 }

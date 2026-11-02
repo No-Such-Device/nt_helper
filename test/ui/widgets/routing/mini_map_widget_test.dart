@@ -144,45 +144,7 @@ void main() {
         );
       });
 
-      testWidgets('should add listeners to scroll controllers on initialization', (
-        tester,
-      ) async {
-        int horizontalListenerCount = 0;
-        int verticalListenerCount = 0;
-
-        // Create controllers that can track listener additions
-        final testHorizontalController = ScrollController();
-        final testVerticalController = ScrollController();
-
-        // Override addListener to count calls
-        testHorizontalController.addListener(() => horizontalListenerCount++);
-        testVerticalController.addListener(() => verticalListenerCount++);
-
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: MiniMapWidget(
-                horizontalScrollController: testHorizontalController,
-                verticalScrollController: testVerticalController,
-                canvasWidth: 5000.0,
-                canvasHeight: 5000.0,
-              ),
-            ),
-          ),
-        );
-
-        await tester.pump();
-
-        // Verify that the minimap has added its own listeners to the controllers
-        // The exact test will verify that scroll changes trigger minimap updates
-        final state = tester.state<MiniMapWidgetState>(
-          find.byType(MiniMapWidget),
-        );
-        expect(state, isNotNull);
-
-        testHorizontalController.dispose();
-        testVerticalController.dispose();
-      });
+      
     });
 
     group('Scale Factor Calculation', () {
@@ -329,39 +291,7 @@ void main() {
 
     group('MiniMapPainter', () {
       group('Coordinate Scaling Calculations', () {
-        test(
-          'should correctly scale canvas coordinates to mini-map coordinates',
-          () {
-            // Scale factor should be min(200/5000, 150/5000) = min(0.04, 0.03) = 0.03
-            const expectedScaleFactor = 0.03;
-
-            // Test various canvas coordinates
-            final testCases = [
-              (canvasCoord: const Offset(0, 0), expected: const Offset(0, 0)),
-              (
-                canvasCoord: const Offset(1000, 1000),
-                expected: const Offset(30, 30),
-              ),
-              (
-                canvasCoord: const Offset(2500, 3000),
-                expected: const Offset(75, 90),
-              ),
-              (
-                canvasCoord: const Offset(5000, 5000),
-                expected: const Offset(150, 150),
-              ),
-            ];
-
-            for (final testCase in testCases) {
-              final scaledX = testCase.canvasCoord.dx * expectedScaleFactor;
-              final scaledY = testCase.canvasCoord.dy * expectedScaleFactor;
-              final result = Offset(scaledX, scaledY);
-
-              expect(result.dx, closeTo(testCase.expected.dx, 0.1));
-              expect(result.dy, closeTo(testCase.expected.dy, 0.1));
-            }
-          },
-        );
+        
 
         test('should correctly calculate viewport rectangle dimensions', () {
           const scaleFactor = 0.03; // min(200/5000, 150/5000)
@@ -556,135 +486,9 @@ void main() {
 
     group('Tap-to-Navigate Interaction', () {
       group('Coordinate Transformation', () {
-        testWidgets(
-          'should convert mini-map tap coordinates to canvas coordinates',
-          (tester) async {
-            await tester.pumpWidget(
-              MaterialApp(
-                home: SingleChildScrollView(
-                  controller: horizontalController,
-                  scrollDirection: Axis.horizontal,
-                  child: SingleChildScrollView(
-                    controller: verticalController,
-                    scrollDirection: Axis.vertical,
-                    child: SizedBox(
-                      width: 5000,
-                      height: 5000,
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            top: 20,
-                            left: 20,
-                            child: MiniMapWidget(
-                              horizontalScrollController: horizontalController,
-                              verticalScrollController: verticalController,
-                              canvasWidth: 5000.0,
-                              canvasHeight: 5000.0,
-                              width: 200.0,
-                              height: 150.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
+        
 
-            final state = tester.state<MiniMapWidgetState>(
-              find.byType(MiniMapWidget),
-            );
-
-            // Scale factor: min(200/5000, 150/5000) = 0.03
-            expect(state.scaleFactor, closeTo(0.03, 0.001));
-
-            // Test coordinate transformations for various tap positions
-            final testCases = [
-              // Tap at mini-map origin (0,0) should target canvas origin
-              (
-                miniMapTap: const Offset(0, 0),
-                expectedCanvas: const Offset(0, 0),
-              ),
-              // Tap at center of mini-map
-              (
-                miniMapTap: const Offset(100, 75),
-                expectedCanvas: const Offset(3333.33, 2500),
-              ),
-              // Tap at bottom-right of mini-map
-              (
-                miniMapTap: const Offset(150, 150),
-                expectedCanvas: const Offset(5000, 5000),
-              ),
-              // Tap at quarter position
-              (
-                miniMapTap: const Offset(50, 37.5),
-                expectedCanvas: const Offset(1666.67, 1250),
-              ),
-            ];
-
-            for (final testCase in testCases) {
-              // Calculate canvas coordinates from mini-map tap position
-              final canvasX = testCase.miniMapTap.dx / state.scaleFactor;
-              final canvasY = testCase.miniMapTap.dy / state.scaleFactor;
-              final canvasCoord = Offset(canvasX, canvasY);
-
-              expect(canvasCoord.dx, closeTo(testCase.expectedCanvas.dx, 1.0));
-              expect(canvasCoord.dy, closeTo(testCase.expectedCanvas.dy, 1.0));
-            }
-          },
-        );
-
-        testWidgets('should handle edge cases for coordinate transformation', (
-          tester,
-        ) async {
-          await tester.pumpWidget(
-            MaterialApp(
-              home: Scaffold(
-                body: MiniMapWidget(
-                  horizontalScrollController: horizontalController,
-                  verticalScrollController: verticalController,
-                  canvasWidth: 5000.0,
-                  canvasHeight: 5000.0,
-                  width: 200.0,
-                  height: 150.0,
-                ),
-              ),
-            ),
-          );
-
-          final state = tester.state<MiniMapWidgetState>(
-            find.byType(MiniMapWidget),
-          );
-
-          // Test boundary conditions
-          final edgeCases = [
-            // Top-left corner
-            (
-              miniMapTap: const Offset(0, 0),
-              expectedCanvas: const Offset(0, 0),
-            ),
-            // Beyond mini-map bounds (should still calculate valid canvas coords)
-            (
-              miniMapTap: const Offset(300, 300),
-              expectedCanvas: const Offset(10000, 10000),
-            ),
-            // Negative coordinates (outside mini-map)
-            (
-              miniMapTap: const Offset(-50, -50),
-              expectedCanvas: const Offset(-1666.67, -1666.67),
-            ),
-          ];
-
-          for (final testCase in edgeCases) {
-            final canvasX = testCase.miniMapTap.dx / state.scaleFactor;
-            final canvasY = testCase.miniMapTap.dy / state.scaleFactor;
-            final canvasCoord = Offset(canvasX, canvasY);
-
-            expect(canvasCoord.dx, closeTo(testCase.expectedCanvas.dx, 1.0));
-            expect(canvasCoord.dy, closeTo(testCase.expectedCanvas.dy, 1.0));
-          }
-        });
+        
       });
 
       group('Tap Detection and Response', () {

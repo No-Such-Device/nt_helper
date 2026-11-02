@@ -51,7 +51,7 @@ void main() {
       // The mid-session Add at slot 1 must never be flipped to Replace.
       expect(m.replaces.map((r) => r.slot).toList(), [5]);
       expect(m.replaces.any((r) => r.slot == 1 || r.slot == 0), isFalse);
-    });
+    }, tags: ['regression']);
 
     test('leaves overlapping sessions untouched', () {
       final buses = [

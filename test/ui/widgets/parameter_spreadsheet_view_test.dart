@@ -256,7 +256,7 @@ void main() {
       expect(data.hint, contains('Invalid value'));
 
       semanticsHandle.dispose();
-    });
+    }, tags: ['regression']);
 
     testWidgets('Escape cancels without submitting or navigating', (
       tester,
@@ -359,7 +359,7 @@ void main() {
 
       final textField = tester.widget<TextField>(find.byType(TextField));
       expect(textField.controller!.text, '8');
-    });
+    }, tags: ['regression']);
 
     testWidgets('digit entry does not invoke ancestor digit shortcuts', (
       tester,
@@ -409,7 +409,7 @@ void main() {
 
       expect(shortcutInvocations, 0);
       expect(find.byType(TextField), findsOneWidget);
-    });
+    }, tags: ['regression']);
 
     testWidgets('global shortcuts do not fire while a value is being edited', (
       tester,
@@ -462,7 +462,7 @@ void main() {
 
       expect(shortcutInvocations, 0);
       expect(find.byType(TextField), findsOneWidget);
-    });
+    }, tags: ['regression']);
 
     testWidgets('global shortcuts still fire when a value cell is selected', (
       tester,
@@ -512,7 +512,7 @@ void main() {
 
       expect(shortcutInvocations, 1);
       expect(find.byType(TextField), findsNothing);
-    });
+    }, tags: ['regression']);
   });
 
   group('SynchronizedScreen spreadsheet toggle', () {
@@ -691,7 +691,7 @@ void main() {
         controllerSections().map((section) => section.controller!.isExpanded),
         [isTrue, isFalse],
       );
-    });
+    }, tags: ['regression']);
 
     testWidgets('digit 6 opens Quad Mixer Channel 4 in controller mode', (
       tester,

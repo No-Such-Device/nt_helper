@@ -449,7 +449,7 @@ void main() {
         );
         expect(priorCall['namespace'], 'functions');
       },
-    );
+    tags: ['regression']);
 
     test('refreshes on 401 and retries once when allowed', () async {
       final auth = _FakeAuthService(
@@ -575,7 +575,7 @@ void main() {
           contains('notes.txt'),
         );
       },
-    );
+    tags: ['regression']);
   });
 }
 

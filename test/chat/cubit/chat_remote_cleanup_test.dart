@@ -133,6 +133,6 @@ void main() {
           systemPrompt: any(named: 'systemPrompt'),
         ),
       ).called(1);
-    });
+    }, tags: ['regression']);
   }
 }

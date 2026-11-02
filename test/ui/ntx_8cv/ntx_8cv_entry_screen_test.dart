@@ -125,7 +125,7 @@ void main() {
           );
         }
       },
-    );
+    tags: ['regression']);
 
     testWidgets('uses one aggregate sync light that fades after confirmation', (
       tester,
@@ -273,7 +273,7 @@ void main() {
         ),
         disconnectedChannelGroupRect,
       );
-    });
+    }, tags: ['regression']);
 
     testWidgets('opens directly from the Expanders overflow item', (
       tester,

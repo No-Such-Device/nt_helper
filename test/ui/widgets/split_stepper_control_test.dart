@@ -158,7 +158,7 @@ void main() {
         semantics.dispose();
       }
     },
-  );
+  tags: ['regression']);
 
   testWidgets('contextual help toggle preserves descendant state', (
     tester,
@@ -192,7 +192,7 @@ void main() {
 
     expect(disposeCount, 0);
     expect(find.text('probe 1'), findsOneWidget);
-  });
+  }, tags: ['regression']);
 
   testWidgets('split stepper supports keyboard focus activation', (
     tester,

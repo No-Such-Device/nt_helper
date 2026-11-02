@@ -236,7 +236,7 @@ void main() {
         expect(announcements.toString(), contains('Library ready'));
       },
       skip: !Platform.isMacOS,
-    );
+    tags: ['regression']);
   }
 
   for (final scenario in [
@@ -339,7 +339,7 @@ void main() {
         }
       },
       skip: !Platform.isMacOS,
-    );
+    tags: ['regression']);
   }
 
   for (final legacy in ['absent', 'denied', 'older-version write']) {
@@ -397,7 +397,7 @@ void main() {
         expect(activations, 1);
       },
       skip: !Platform.isMacOS,
-    );
+    tags: ['regression']);
   }
 
   for (final loss in ['missing', 'replaced', 'denied', 'recovery journal']) {
@@ -478,7 +478,7 @@ void main() {
         expect(legacyReads, 0);
       },
       skip: !Platform.isMacOS,
-    );
+    tags: ['regression']);
   }
 
   testWidgets(
@@ -549,7 +549,7 @@ void main() {
       expect(tester.takeException(), isNull);
       semantics.dispose();
     },
-  );
+  tags: ['regression']);
 
   for (final failure in ['native', 'I/O', 'access', 'busy']) {
     testWidgets(
@@ -597,7 +597,7 @@ void main() {
         );
       },
       skip: !Platform.isMacOS,
-    );
+    tags: ['regression']);
   }
 
   testWidgets(
@@ -649,7 +649,7 @@ void main() {
       expect(activations, 1);
     },
     skip: !Platform.isMacOS,
-  );
+  tags: ['regression']);
 
   for (final closeWhilePending in [false, true]) {
     testWidgets(
@@ -715,7 +715,7 @@ void main() {
         await controller.retry();
         expect(opens, 1);
       },
-    );
+    tags: ['regression']);
   }
 
   testWidgets(
@@ -766,7 +766,7 @@ void main() {
       expect(admitted!['metadata_cache']!.join(), contains('wal-only'));
       expect(admitted!['presets']!.join(), contains('Library preset'));
     },
-  );
+  tags: ['regression']);
 
   testWidgets(
     'close between dependent services prevents later activation and normal admission',
@@ -809,7 +809,7 @@ void main() {
       expect(controller.ready, isFalse);
       expect(find.textContaining('Expected library admitted'), findsNothing);
     },
-  );
+  tags: ['regression']);
 
   for (final repairable in [false, true]) {
     testWidgets(
@@ -911,7 +911,7 @@ void main() {
         semantics.dispose();
       },
       skip: !Platform.isMacOS,
-    );
+    tags: ['regression']);
   }
 
   for (final kind in [StorageFailureKind.access, StorageFailureKind.busy]) {
@@ -1031,7 +1031,7 @@ void main() {
         expect(allText, isNot(contains('contact Neal')));
         semantics.dispose();
       },
-    );
+    tags: ['regression']);
   }
 
   for (final brightness in Brightness.values) {
@@ -1101,7 +1101,7 @@ void main() {
           expect(tester.takeException(), isNull);
           await tester.pumpWidget(const SizedBox.shrink());
         },
-      );
+      tags: ['regression']);
     }
   }
 

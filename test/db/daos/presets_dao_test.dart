@@ -120,7 +120,7 @@ void main() {
 
       final loaded = await database.presetsDao.getFullPresetDetails(presetId);
       expect(loaded!.slots.single.specificationValues, const [4]);
-    });
+    }, tags: ['regression']);
   });
 
   group('PresetsDao - perfPageIndex persistence', () {

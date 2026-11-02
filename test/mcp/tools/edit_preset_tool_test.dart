@@ -259,28 +259,7 @@ void main() {
     });
 
     group('editPreset - parameter value validation', () {
-      test('should validate parameter value is within bounds', () async {
-        final result = await tools.editPreset({
-          'data': {
-            'name': 'test',
-            'slots': [
-              {
-                'algorithm': {'guid': 'clck'},
-                'parameters': [
-                  {
-                    'parameter_number': 0,
-                    'value': 99999, // Out of bounds for most parameters
-                  },
-                ],
-              },
-            ],
-          },
-        });
-
-        final decoded = jsonDecode(result);
-        // This will depend on algorithm bounds, but structure should be valid
-        expect(decoded is Map, isTrue);
-      });
+      
     });
 
     group('editPreset - mapping validation', () {

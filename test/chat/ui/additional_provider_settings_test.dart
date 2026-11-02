@@ -1,9 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-import 'dart:ui' as ui;
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/chat/models/chat_settings.dart';
@@ -236,7 +232,7 @@ void main() {
       expect(tester.getRect(find.widgetWithText(FilledButton, 'Save')), save);
       expect(settings.chatLlmProvider, LlmProviderType.gemini);
     },
-  );
+  tags: ['regression']);
   testWidgets(
     'late model discovery cannot contaminate another provider or move Save',
     (tester) async {
@@ -276,7 +272,7 @@ void main() {
       );
       expect(tester.getRect(find.widgetWithText(FilledButton, 'Save')), save);
     },
-  );
+  tags: ['regression']);
   testWidgets(
     'Claude subscription toggle does not turn Gemini into a Claude provider',
     (tester) async {
@@ -288,7 +284,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(settings.chatLlmProvider, LlmProviderType.gemini);
     },
-  );
+  tags: ['regression']);
   testWidgets(
     'Cancel never persists edited credentials or provider selection',
     (tester) async {
@@ -306,85 +302,8 @@ void main() {
         'router-key',
       );
     },
-  );
-  testWidgets(
-    'capture the actual provider settings widgets',
-    (tester) async {
-      for (final entry in {
-        'Evidence': '/System/Library/Fonts/SFNS.ttf',
-        'MaterialIcons':
-            '/Users/nealsanche/fvm/default/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
-      }.entries) {
-        final file = File(entry.value);
-        if (file.existsSync()) {
-          final loader = FontLoader(entry.key)
-            ..addFont(
-              Future.value(ByteData.sublistView(file.readAsBytesSync())),
-            );
-          await loader.load();
-        }
-      }
-      for (final capture in [
-        (
-          'gemini-light',
-          LlmProviderType.gemini,
-          Brightness.light,
-          const Size(920, 760),
-          1.0,
-        ),
-        (
-          'openrouter-dark',
-          LlmProviderType.openrouter,
-          Brightness.dark,
-          const Size(920, 760),
-          1.0,
-        ),
-        (
-          'local-dark',
-          LlmProviderType.local,
-          Brightness.dark,
-          const Size(920, 760),
-          1.0,
-        ),
-        (
-          'local-compact',
-          LlmProviderType.local,
-          Brightness.light,
-          const Size(380, 640),
-          1.5,
-        ),
-      ]) {
-        tester.view.physicalSize = capture.$4;
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        await settings.setChatLlmProvider(capture.$2);
-        final boundary = GlobalKey();
-        await open(
-          tester,
-          brightness: capture.$3,
-          scale: capture.$5,
-          boundary: boundary,
-          evidenceFonts: true,
-        );
-        expect(tester.takeException(), isNull);
-        await tester.runAsync(() async {
-          final render =
-              boundary.currentContext!.findRenderObject()!
-                  as RenderRepaintBoundary;
-          final image = await render.toImage();
-          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-          final file = File('docs/evidence/chat-providers/${capture.$1}.png');
-          await file.parent.create(recursive: true);
-          await file.writeAsBytes(bytes!.buffer.asUint8List());
-          image.dispose();
-        });
-        await tester.pumpWidget(const SizedBox());
-        await tester.pumpAndSettle();
-      }
-    },
-    skip: Platform.environment['CAPTURE_CHAT_PROVIDERS'] != '1',
-  );
+  tags: ['regression']);
+  
 
   testWidgets(
     'compact enlarged settings have named controls and remain scrollable',

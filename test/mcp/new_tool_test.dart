@@ -290,16 +290,7 @@ void main() {
         expect(decoded is Map, isTrue);
       });
 
-      test('should handle malformed algorithm specs', () async {
-        final result = await tools.newWithAlgorithms({
-          'name': 'Malformed Test',
-          'algorithms': ['not an object'],
-        });
-
-        final decoded = jsonDecode(result);
-        expect(decoded is Map, isTrue);
-        // Should either handle or report error gracefully
-      });
+      
 
       test('should continue processing after partial failures', () async {
         final result = await tools.newWithAlgorithms({

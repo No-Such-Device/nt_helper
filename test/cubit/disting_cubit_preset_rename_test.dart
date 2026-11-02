@@ -90,7 +90,7 @@ void main() {
       saveCompleter.complete();
       await rename;
       expect(completed, isTrue);
-    });
+    }, tags: ['regression']);
 
     test('awaitable rename reports a failed write', () async {
       when(

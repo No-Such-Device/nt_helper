@@ -97,7 +97,7 @@ void main() {
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.text('12% | 34%'), findsOneWidget);
-  });
+  }, tags: ['regression']);
 
   testWidgets('labels CPU values by their actual meaning', (tester) async {
     await tester.pumpWidget(

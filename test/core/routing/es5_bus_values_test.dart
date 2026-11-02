@@ -252,7 +252,7 @@ void main() {
             .toList();
 
         expect(algoConnections, isEmpty);
-      });
+      }, tags: ['regression']);
     });
 
     group('BusLabelFormatter', () {

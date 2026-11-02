@@ -195,7 +195,7 @@ void main() {
       expect(primaryCalls, 2);
       expect(fallbackCalls, 2);
       expect(diagnosedHosts, ['api.github.com', 'github.com']);
-    });
+    }, tags: ['regression']);
 
     test('reports rejected certificate details when trusted retry fails', () {
       final manager = FlashToolManager(

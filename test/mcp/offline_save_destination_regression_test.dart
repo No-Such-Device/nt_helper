@@ -138,6 +138,6 @@ void main() {
         expect(unchanged.slots.single.parameterValues[1], 1);
         expect(unchanged.slots.single.parameterValues[11], 1);
       },
-    );
+    tags: ['regression']);
   }
 }

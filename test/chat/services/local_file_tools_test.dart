@@ -82,7 +82,7 @@ void main() {
       expect(readResult['success'], isTrue);
       expect(readResult['encoding'], 'utf8');
       expect(readResult['content'], content);
-    });
+    }, tags: ['regression']);
 
     test('extracts readable text from PDFs', () async {
       await _setRoots(settings, [
@@ -159,7 +159,7 @@ void main() {
       );
       expect(listResult['success'], isFalse);
       expect(listResult['error'], 'root_not_found_on_disk');
-    });
+    }, tags: ['regression']);
 
     test('enforces search permission separately from read', () async {
       await _setRoots(settings, [
@@ -363,7 +363,7 @@ void main() {
           await outside.delete(recursive: true);
         }
       }
-    });
+    }, tags: ['regression']);
   });
 }
 

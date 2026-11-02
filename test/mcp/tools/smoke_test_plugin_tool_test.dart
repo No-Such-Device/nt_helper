@@ -375,7 +375,7 @@ void main() {
       final result = smoke(base());
       expect(device.guids, contains('USER'), reason: '$result');
       verifyNever(() => manager.requestRemoveAlgorithm(2));
-    });
+    }, tags: ['regression']);
 
     test('preserves edits and their dirty flag during a successful test', () {
       device.onChecks = () {
@@ -409,7 +409,7 @@ void main() {
       final result = smoke(base());
       expect(device.reloads, 0, reason: '$result');
       expect(device.values[0], 77, reason: '$result');
-    });
+    }, tags: ['regression']);
 
     test('refuses an out-of-range Channels specification before adding', () {
       final result = smoke(
@@ -493,7 +493,7 @@ void main() {
         verifyNever(() => manager.requestRemoveAlgorithm(any()));
         verifyNever(() => manager.requestLoadPreset(any(), any()));
       },
-    );
+    tags: ['regression']);
 
     test(
       'null required budget returns a validation error without mutation',
@@ -519,7 +519,7 @@ void main() {
       });
       expect(first?['success'], isTrue);
       expectBaselineRestored();
-    });
+    }, tags: ['regression']);
   });
 
   group('registration', () {
@@ -831,7 +831,7 @@ void main() {
       expect(result!['success'], isTrue, reason: '$result');
       expect(cubit.isAlgorithmLibraryLoading, isFalse);
       expectBaselineRestored();
-    });
+    }, tags: ['regression']);
 
     test('refuses with algorithm_library_loading if loading never ends', () {
       Map<String, dynamic>? result;
@@ -848,7 +848,7 @@ void main() {
       expect(result!['error'], 'algorithm_library_loading');
       expect(result!['message'], contains('preset was not changed'));
       expectPresetUntouched();
-    });
+    }, tags: ['regression']);
   });
 
   group('argument validation', () {
@@ -1060,7 +1060,7 @@ void main() {
       expect(result['rollback'], 'failed');
       expect(result['rollback_error'], contains('reload_saved_on_failure'));
       expect(device.reloads, 0);
-    });
+    }, tags: ['regression']);
   });
 
   group('removal not confirmed', () {

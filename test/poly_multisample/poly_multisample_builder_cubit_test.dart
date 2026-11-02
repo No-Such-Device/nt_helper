@@ -286,7 +286,7 @@ void main() {
 
       expect(adapter.stopCount, 1);
       expect(cubit.state.previewState.visiblePath, isNull);
-    });
+    }, tags: ['regression']);
 
     test('mirrors audio preview state from the preview service', () async {
       final adapter = _FakePreviewAdapter();
@@ -1160,7 +1160,7 @@ void main() {
         );
         expect(cubit.state.wavEditDrafts, isEmpty);
       },
-    );
+    tags: ['regression']);
 
     test(
       'keyboard note preview selects and plays a rendered local wav',
@@ -1313,7 +1313,7 @@ void main() {
         expect(adapter.playedPaths.first, adapter.playedPaths.last);
         expect(adapter.stopCount, 1);
       },
-    );
+    tags: ['regression']);
 
     test('keyboard note preview honors an explicit switch boundary', () async {
       final lower = File('${tempRoot.path}/Lower_C3.wav');
@@ -1612,7 +1612,7 @@ void main() {
 
       expect(adapter.playedPaths, hasLength(1));
       expect(cubit.state.previewState.visiblePath, d4.path);
-    });
+    }, tags: ['regression']);
 
     test('keyboard note preview single-flights identical renders', () async {
       final source = File('${tempRoot.path}/Piano_C4.wav');
@@ -1648,7 +1648,7 @@ void main() {
       await Future.wait([first, second]);
 
       expect(adapter.playedPaths, hasLength(1));
-    });
+    }, tags: ['regression']);
 
     test(
       'keyboard note preview ignores stale render failures after newer success',
@@ -1699,7 +1699,7 @@ void main() {
         expect(cubit.state.previewState.visiblePath, d4.path);
         expect(cubit.state.error, isNull);
       },
-    );
+    tags: ['regression']);
 
     test(
       'keyboard note preview invalidates cache when source file changes',
@@ -1779,7 +1779,7 @@ void main() {
           isEmpty,
         );
       },
-    );
+    tags: ['regression']);
 
     test('keyboard note preview cleans temp files on close', () async {
       final source = File('${tempRoot.path}/Piano_C4.wav');
@@ -2007,7 +2007,7 @@ void main() {
         expect(cubit.state.editedRegions.single.rootMidi, 50);
         expect(cubit.state.editedRegions.single.velocityLayer, 2);
       },
-    );
+    tags: ['regression']);
 
     test(
       'hardware selection auto-preview drops stale selections without backlog',
@@ -2081,7 +2081,7 @@ void main() {
           '/samples/Piano/Piano_D3.wav',
         );
       },
-    );
+    tags: ['regression']);
 
     test('saveDestructiveWav forwards fade curve and strength', () {
       const draft = PolyWaveformDraft(
@@ -2174,7 +2174,7 @@ void main() {
 
       expect(cubit.state.loopDrafts, isNot(contains('/tmp/a.wav')));
       expect(cubit.state.isDirty, isFalse);
-    });
+    }, tags: ['regression']);
 
     test('loop draft edits automatically snap to nearest zero crossings', () {
       final source = File('${tempRoot.path}/snap.wav');
@@ -2314,7 +2314,7 @@ void main() {
         expect(rendered?.frameCount, 422);
         expect(timers.last.isActive, isFalse);
       },
-    );
+    tags: ['regression']);
 
     test('discardChanges clears waveform drafts', () {
       final cubit = _ExposedPolyMultisampleBuilderCubit(
@@ -2979,7 +2979,7 @@ void main() {
         expect(cubit.state.currentInstrument, isNull);
         expect(cubit.state.effect, isNull);
       },
-    );
+    tags: ['regression']);
 
     test('saveCustomDraft refuses to clear unsaved waveform drafts', () async {
       final cubit = _ExposedPolyMultisampleBuilderCubit(
@@ -3017,7 +3017,7 @@ void main() {
 
       expect(cubit.state.loopDrafts, contains('/tmp/a.wav'));
       expect(cubit.state.error, contains('Save or discard waveform edits'));
-    });
+    }, tags: ['regression']);
 
     test(
       'overwrite destructive wav refreshes an existing waveform summary',
@@ -3101,7 +3101,7 @@ void main() {
         expect(cubit.state.waveformLoadingPaths, isNot(contains('/tmp/a.wav')));
         expect(cubit.state.waveformSummaries, contains('/tmp/a.wav'));
       },
-    );
+    tags: ['regression']);
 
     test(
       'stale waveform load completion is ignored after returning to sources',
@@ -3123,7 +3123,7 @@ void main() {
         expect(cubit.state.waveformSummaries, isNot(contains('/tmp/a.wav')));
         expect(cubit.state.waveformLoadingPaths, isEmpty);
       },
-    );
+    tags: ['regression']);
 
     test(
       'older same-path waveform load cannot overwrite forced refresh',
@@ -3148,7 +3148,7 @@ void main() {
 
         expect(cubit.state.waveformSummaries['/tmp/a.wav']!.frameCount, 2000);
       },
-    );
+    tags: ['regression']);
 
     test(
       'mapping edit during waveform load clears stale loading state',
@@ -3192,7 +3192,7 @@ void main() {
         expect(cubit.state.waveformLoadingPaths, isEmpty);
         expect(cubit.state.waveformSummaries, isNot(contains('/tmp/a.wav')));
       },
-    );
+    tags: ['regression']);
 
     test('forced waveform refresh failure removes stale summary', () async {
       final wavService = _FailingWavService();
@@ -3211,7 +3211,7 @@ void main() {
 
       expect(cubit.state.waveformSummaries, isNot(contains('/tmp/a.wav')));
       expect(cubit.state.waveformFailedPaths, contains('/tmp/a.wav'));
-    });
+    }, tags: ['regression']);
 
     test('downloads hardware samples to a local preview cache', () async {
       final adapter = _FakePreviewAdapter();
@@ -3355,7 +3355,7 @@ void main() {
         expect(tempImport.existsSync(), isTrue);
         expect(outputFolder.existsSync(), isTrue);
       },
-    );
+    tags: ['regression']);
 
     test(
       'hardware folder list clears a previously loaded instrument',
@@ -3411,7 +3411,7 @@ void main() {
       );
 
       await expectLater(load, completes);
-    });
+    }, tags: ['regression']);
 
     test('ignores delayed local scan after returning to sources', () async {
       final folderService = _DelayedFolderService();
@@ -3450,7 +3450,7 @@ void main() {
       expect(cubit.state.sourceMode, PolySampleSourceMode.none);
       expect(cubit.state.status, PolyMultisampleLoadStatus.idle);
       expect(cubit.state.currentInstrument, isNull);
-    });
+    }, tags: ['regression']);
 
     test('ignores delayed local scan after hardware list starts', () async {
       final folderService = _DelayedFolderService();
@@ -3494,7 +3494,7 @@ void main() {
       expect(cubit.state.sourceMode, PolySampleSourceMode.hardware);
       expect(cubit.state.hardwareFolders, ['/samples/Piano']);
       expect(cubit.state.currentInstrument, isNull);
-    });
+    }, tags: ['regression']);
 
     test(
       'ignores delayed hardware folder after returning to sources',
@@ -3531,7 +3531,7 @@ void main() {
         expect(cubit.state.status, PolyMultisampleLoadStatus.idle);
         expect(cubit.state.currentInstrument, isNull);
       },
-    );
+    tags: ['regression']);
 
     test('cleans staged import temp roots on close', () async {
       final tempImport = Directory('${tempRoot.path}/import_temp')
@@ -3577,7 +3577,7 @@ void main() {
 
         expect(tempImport.existsSync(), isFalse);
       },
-    );
+    tags: ['regression']);
 
     test(
       'defers import temp cleanup while a custom draft save is active',
@@ -3613,7 +3613,7 @@ void main() {
 
         expect(tempImport.existsSync(), isFalse);
       },
-    );
+    tags: ['regression']);
 
     test(
       'defers replaced import temp cleanup while a custom draft save is active',
@@ -3665,7 +3665,7 @@ void main() {
         await cubit.close();
         expect(secondTemp.existsSync(), isFalse);
       },
-    );
+    tags: ['regression']);
 
     test('does not let stale save use a newer import draft', () async {
       final firstTemp = Directory('${tempRoot.path}/first_stale_save_temp')
@@ -3711,7 +3711,7 @@ void main() {
         ),
         contains('SoftPiano_C3.wav'),
       );
-    });
+    }, tags: ['regression']);
 
     test(
       'latest concurrent import wins when imports complete out of order',
@@ -3749,7 +3749,7 @@ void main() {
         expect(firstTemp.existsSync(), isFalse);
         expect(secondTemp.existsSync(), isTrue);
       },
-    );
+    tags: ['regression']);
   });
 }
 

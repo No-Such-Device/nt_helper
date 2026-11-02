@@ -248,7 +248,7 @@ void main() {
         expect(port.busValue, isNull);
         expect(port.busParam, isNull);
         expect(port.parameterNumber, isNull);
-      });
+      }, tags: ['regression']);
 
       test('should handle mixed JSON with some direct properties', () {
         final mixedJson = {

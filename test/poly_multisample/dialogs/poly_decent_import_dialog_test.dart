@@ -359,7 +359,7 @@ void main() {
 
     expect(adapter.stopCount, 1);
     expect(find.text('Import Decent Sampler'), findsOneWidget);
-  });
+  }, tags: ['regression']);
 }
 
 _PreviewFixture _previewFixture() {

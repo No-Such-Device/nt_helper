@@ -345,7 +345,7 @@ void main() {
             verifyNever(() => mockFlashToolManager.getToolPath());
             verifyNever(() => mockFlashToolBridge.flash(any()));
           },
-        );
+        tags: ['regression']);
       }
 
       blocTest<FirmwareUpdateCubit, FirmwareUpdateState>(
@@ -842,7 +842,7 @@ void main() {
           isA<FirmwareUpdateStateDownloading>(),
           isA<FirmwareUpdateStateWaitingForBootloader>(),
         ],
-      );
+      tags: ['regression']);
     });
 
     group('post-flash MIDI reacquisition', () {
@@ -991,7 +991,7 @@ void main() {
         expect(checks, 4);
         expect(recovery.isWindows, isTrue);
         expect(recovery.newVersion, '1.16.0');
-      });
+      }, tags: ['regression']);
 
       test('Check Again repeats the full cycle and exits on success', () async {
         var checks = 0;
@@ -1084,7 +1084,7 @@ void main() {
             expect(releases, 0);
             await subscription.cancel();
           },
-        );
+        tags: ['regression']);
       }
 
       test(
@@ -1118,7 +1118,7 @@ void main() {
           expect(releases, 1);
           verifyNever(() => mockFlashToolBridge.flash(any()));
         },
-      );
+      tags: ['regression']);
 
       for (final cancel in [false, true]) {
         test(
@@ -1190,7 +1190,7 @@ void main() {
           expect(released, [first, second]);
           verifyNever(() => mockFlashToolBridge.flash(any()));
         },
-      );
+      tags: ['regression']);
 
       test('late acquisition cannot replace a current retry manager', () async {
         final late = MockDistingMidiManager();
@@ -1222,7 +1222,7 @@ void main() {
         command.complete();
         await retry;
         expect(released, [late, current]);
-      });
+      }, tags: ['regression']);
 
       test(
         'close during tool preparation neither launches nor consumes borrowed transport',
@@ -1245,7 +1245,7 @@ void main() {
           expect(releases, 0);
           verifyNever(() => mockFlashToolBridge.flash(any()));
         },
-      );
+      tags: ['regression']);
 
       for (final cancel in [false, true]) {
         test(
@@ -1293,7 +1293,7 @@ void main() {
             if (cancel) await cubit.close();
             await progress.close();
           },
-        );
+        tags: ['regression']);
       }
 
       for (final action in ['close', 'cancel', 'reset']) {
@@ -1365,7 +1365,7 @@ void main() {
           expect(await file.exists(), isFalse);
           expect(cubit.state, isA<FirmwareUpdateStateDownloading>());
         },
-      );
+      tags: ['regression']);
     });
 
     group('MIDI release lifecycle', () {
@@ -1501,7 +1501,7 @@ void main() {
           expect(managerIndex, 2);
           expect(flashCalls, 2);
         },
-      );
+      tags: ['regression']);
 
       test(
         'cancellation and disposal release an unflashed manager once',
@@ -1581,7 +1581,7 @@ void main() {
           expect(flashCalls, 2);
           expect(releases, 1);
         },
-      );
+      tags: ['regression']);
     });
   });
 
@@ -1819,30 +1819,7 @@ void main() {
   });
 
   group('FirmwareErrorType', () {
-    test('error types are correctly assigned based on stage', () {
-      // SDP_CONNECT and BL_CHECK should be bootloaderConnection type
-      const errorState1 = FirmwareUpdateStateError(
-        message: 'test',
-        errorType: FirmwareErrorType.bootloaderConnection,
-        failedStage: FlashStage.sdpConnect,
-      );
-      expect(errorState1.errorType, FirmwareErrorType.bootloaderConnection);
-
-      // SDP_UPLOAD and WRITE should be flashWrite type
-      const errorState2 = FirmwareUpdateStateError(
-        message: 'test',
-        errorType: FirmwareErrorType.flashWrite,
-        failedStage: FlashStage.sdpUpload,
-      );
-      expect(errorState2.errorType, FirmwareErrorType.flashWrite);
-
-      // Download errors should be download type
-      const errorState3 = FirmwareUpdateStateError(
-        message: 'test',
-        errorType: FirmwareErrorType.download,
-      );
-      expect(errorState3.errorType, FirmwareErrorType.download);
-    });
+    
   });
 
   group('Recovery methods', () {

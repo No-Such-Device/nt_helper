@@ -302,7 +302,7 @@ void main() {
       final records = await database.pluginInstallationsDao
           .getAllInstalledPlugins();
       expect(records, isEmpty);
-    });
+    }, tags: ['regression']);
 
     test('records correct path for plugin with subdirectory', () async {
       // Arrange

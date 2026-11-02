@@ -90,7 +90,7 @@ void main() {
     );
     final ports = routing(slot, info: info);
     expect(ports.inputPorts.map((p) => p.busValue), [11, 12, 13]);
-  });
+  }, tags: ['regression']);
 
   for (final name in ['Channels', 'channel count', ' Width ']) {
     test('accepts the explicit channel-span definition "$name"', () {
@@ -142,7 +142,7 @@ void main() {
       expect(ports.outputPorts.map((p) => p.busValue), [23, 24]);
       expect(ports.inputPorts.every((p) => p.parameterNumber != null), isTrue);
     },
-  );
+  tags: ['regression']);
 
   test('factory-style numbered routing is not treated as an implicit span', () {
     final base = groupedAudioSlot(guid: 'eqpa', name: 'EQ Parametric');

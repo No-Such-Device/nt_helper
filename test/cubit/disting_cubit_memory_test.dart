@@ -210,7 +210,7 @@ void main() {
       expect(cubit.displayMemoryState.status, MemoryDisplayStatus.unavailable);
       expect(cubit.displayMemoryState.sample, isNull);
     },
-  );
+  tags: ['regression']);
 
   test(
     'old wire response after former debt expiry is never cached as fresh',
@@ -261,7 +261,7 @@ void main() {
         expect(cubit.displayMemoryState.sample?.sram.current, 50);
       });
     },
-  );
+  tags: ['regression']);
 
   test('fresh-only failure never falls back to the display sample', () async {
     final manager = _ControlledMemoryManager();
@@ -282,7 +282,7 @@ void main() {
     expect(cubit.displayMemoryState.status, MemoryDisplayStatus.available);
     expect(cubit.displayMemoryState.sample, same(firstSample));
     expect(cubit.supportsMemoryUsage, isTrue);
-  });
+  }, tags: ['regression']);
 
   test('unsupported firmware makes no catalogue or memory request', () async {
     final manager = _ControlledMemoryManager();
@@ -326,7 +326,7 @@ void main() {
       expect(await freshOnly, same(secondSample));
       expect(manager.maximumActiveMemoryRequests, 1);
     },
-  );
+  tags: ['regression']);
 
   test(
     'a delayed old completion cannot cross a connection replacement',
@@ -354,7 +354,7 @@ void main() {
       expect(firstManager.maximumActiveMemoryRequests, 1);
       expect(secondManager.maximumActiveMemoryRequests, 1);
     },
-  );
+  tags: ['regression']);
 
   test(
     'an old fresh-only completion fails after connection replacement',
@@ -374,7 +374,7 @@ void main() {
       firstManager.memoryResponses.single.complete(firstSample);
       await expectLater(oldFresh, throwsA(isA<StateError>()));
     },
-  );
+  tags: ['regression']);
 
   test(
     'disconnect and offline or demo state discard the remembered sample',
@@ -443,5 +443,5 @@ void main() {
     manager.memoryResponses.single.complete(firstSample);
     await refresh;
     expect(cubit.displayMemoryState.sample, isNull);
-  });
+  }, tags: ['regression']);
 }

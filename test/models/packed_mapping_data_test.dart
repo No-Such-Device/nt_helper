@@ -364,7 +364,7 @@ void main() {
       expect(mapping.isI2cSymmetric, isFalse);
       expect(mapping.i2cMin, equals(0));
       expect(mapping.i2cMax, equals(16383));
-    });
+    }, tags: ['regression']);
 
     test('version 3 decodes the I2C high byte without shifting its fields', () {
       // The v2 fixture has no high byte; a zero byte and version-only
@@ -422,7 +422,7 @@ void main() {
       expect(mapping.isI2cSymmetric, isTrue);
       expect(mapping.i2cMin, equals(0));
       expect(mapping.i2cMax, equals(16383));
-    });
+    }, tags: ['regression']);
 
     test('version 4 still parses correctly', () {
       // Version 4 adds source byte (25 bytes)
@@ -933,7 +933,7 @@ void main() {
       expect(mapping.source, equals(1));
       expect(mapping.cvInput, equals(2));
       expect(mapping.version, equals(6));
-    });
+    }, tags: ['regression']);
 
     test('version 0 returns filler', () {
       final data = Uint8List(26);
@@ -1135,7 +1135,7 @@ void main() {
 
       expect(decoded.midiCC, equals(128));
       expect(decoded.midiMappingType, equals(MidiMappingType.cc));
-    });
+    }, tags: ['regression']);
 
     test('v7 maps legacy aftertouch CC 128 to channel pressure', () {
       final mapping = _mappingWithMidiType(
@@ -1149,7 +1149,7 @@ void main() {
       final decoded = PackedMappingData.fromBytes(7, bytes);
       expect(decoded.midiCC, equals(0));
       expect(decoded.midiMappingType, equals(MidiMappingType.channelPressure));
-    });
+    }, tags: ['regression']);
 
     test('v7 does not rewrite flag bit 2 to aftertouch CC 128', () {
       final data = _mappingWithMidiType(MidiMappingType.cc).toBytes();
@@ -1159,6 +1159,6 @@ void main() {
 
       expect(decoded.midiCC, equals(64));
       expect(decoded.midiMappingType, equals(MidiMappingType.cc));
-    });
+    }, tags: ['regression']);
   });
 }

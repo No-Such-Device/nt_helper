@@ -40,7 +40,7 @@ void main() {
     expect(activations, 1);
     await controller.close();
     controller.dispose();
-  });
+  }, tags: ['regression']);
 
   test(
     'failed real schema open settles teardown before any Retry can reopen',
@@ -83,7 +83,7 @@ void main() {
       await controller.close();
       controller.dispose();
     },
-  );
+  tags: ['regression']);
 
   test(
     'close wins over an opener returning a ready but stale real database',
@@ -116,7 +116,7 @@ void main() {
       expect(activations, 0);
       controller.dispose();
     },
-  );
+  tags: ['regression']);
 }
 
 class _DelayedCloseDatabase extends AppDatabase {

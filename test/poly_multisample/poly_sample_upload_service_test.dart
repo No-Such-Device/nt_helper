@@ -149,7 +149,7 @@ void main() {
     expect(beforeFileSwitch, const Duration(seconds: 1));
     expect(afterFileSwitch, const Duration(seconds: 1));
     expect(estimator.sampleCount, 3);
-  });
+  }, tags: ['regression']);
 
   test('adaptive ETA estimator excludes extreme outlier samples', () {
     final estimator = AdaptiveTransferRateEstimator(
@@ -176,7 +176,7 @@ void main() {
       estimator.estimate(remainingBytes: 1000),
       lessThanOrEqualTo(const Duration(milliseconds: 1100)),
     );
-  });
+  }, tags: ['regression']);
 
   test(
     'uploadMountedSd copies renamed files and preserves unrelated files',
@@ -348,7 +348,7 @@ void main() {
 
     expect(result.filesUploaded, 1);
     expect(chunkCalls.single.path, '/multisamples/Piano/Piano_C3.wav');
-  });
+  }, tags: ['regression']);
 
   test('uploadSysEx keeps progress details on every uploading line', () async {
     final manager = MockDistingMidiManager();
@@ -712,7 +712,7 @@ void main() {
       expect(result.failedVerificationFiles, 1);
       verifyNever(() => manager.requestFileDownloadChunk(any(), any(), any()));
     },
-  );
+  tags: ['regression']);
 
   test(
     'uploadSysEx failed chunk upload surfaces PolySampleUploadException',

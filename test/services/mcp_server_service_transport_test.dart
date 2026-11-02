@@ -196,7 +196,7 @@ void main() {
         expect(service.connectionDiagnostics['active_servers'], 0);
         expect(service.connectionDiagnostics['active_transports'], 0);
       },
-    );
+    tags: ['regression']);
 
     test('DELETE disposes only the terminated session registry', () async {
       await service.start(port: 0, bindAddress: InternetAddress.loopbackIPv4);
@@ -366,7 +366,7 @@ void main() {
         expect(saveMessage['id'], equals(13));
         expect(saveMessage.containsKey('result'), isTrue);
       },
-    );
+    tags: ['regression']);
 
     test(
       'show_memory is listed and returns fresh byte values over MCP',

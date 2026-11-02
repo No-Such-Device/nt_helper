@@ -274,7 +274,7 @@ void main() {
     );
     expect(result.remountRequested, false);
     verifyNever(() => manager.requestRemountSd());
-  });
+  }, tags: ['regression']);
 
   test('reports a remount failure after deleting the cache', () async {
     const plan = WaveCacheCleanupPlan(

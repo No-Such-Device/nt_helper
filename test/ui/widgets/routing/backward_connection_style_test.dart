@@ -300,7 +300,7 @@ void main() {
               'an opaque non-warning pixel near the destination endpoint '
               'means the port-color endpoint circle was drawn',
         );
-      });
+      }, tags: ['regression']);
     });
   });
 }

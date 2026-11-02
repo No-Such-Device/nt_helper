@@ -22,7 +22,7 @@ void main() {
   late DistingCubit cubit;
   late ToolRegistry registry;
 
-  setUp(() async {
+  setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     database = AppDatabase.forTesting(NativeDatabase.memory());
     expect(
@@ -32,6 +32,9 @@ void main() {
       isTrue,
     );
     await AlgorithmMetadataService().initialize(database);
+  });
+
+  setUp(() async {
     cubit = DistingCubit(database, midiCommand: MockMidiCommand());
     await cubit.goOffline();
     registry = ToolRegistry(cubit);
@@ -39,6 +42,9 @@ void main() {
 
   tearDown(() async {
     await cubit.close();
+  });
+
+  tearDownAll(() async {
     await database.close();
   });
 
@@ -430,7 +436,7 @@ void main() {
         original.slots.single.values.map((value) => value.value),
       );
     },
-  );
+  tags: ['regression']);
 
   for (final corrupt in [false, true]) {
     test(

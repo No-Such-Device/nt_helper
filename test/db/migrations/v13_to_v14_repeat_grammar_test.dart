@@ -43,5 +43,5 @@ void main() {
       await database.select(database.algorithmRepeatGrammars).get(),
       isEmpty,
     );
-  });
+  }, tags: ['regression']);
 }

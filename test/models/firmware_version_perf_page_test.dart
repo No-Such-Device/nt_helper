@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nt_helper/models/algorithm_respecification.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 
 void main() {
@@ -90,9 +89,7 @@ void main() {
   });
 
   group('FirmwareVersion.hasAlgorithmRespecification', () {
-    test('uses the owner-provided 1.19.0 minimum', () {
-      expect(ownerProvidedRespecifyMinimumFirmwareVersion, '1.19.0');
-    });
+    
 
     test('admits 1.19 beta spellings and later numeric versions', () {
       for (final version in [

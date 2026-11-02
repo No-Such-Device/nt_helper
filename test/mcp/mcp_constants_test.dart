@@ -129,7 +129,7 @@ void main() {
         expect(MCPUtils.scaleToRaw(0.3, 1), 3);
         // 19.99 * 100 = 1998.9999999999998
         expect(MCPUtils.scaleToRaw(19.99, 2), 1999);
-      });
+      }, tags: ['regression']);
     });
 
     group('levenshteinDistance', () {
@@ -532,7 +532,7 @@ void main() {
         );
         // message should remain 'done' regardless of data contents
         expect(result['message'], 'done');
-      });
+      }, tags: ['regression']);
     });
   });
 

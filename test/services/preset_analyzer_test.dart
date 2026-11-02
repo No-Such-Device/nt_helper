@@ -180,7 +180,7 @@ void main() {
         'LUAX': 'programs/lua/my_script.lua',
         'TPOT': 'programs/three_pot/knob_demo.3pot',
       });
-    });
+    }, tags: ['regression']);
 
     test('prepends plug-ins dir even when filename has a subfolder', () {
       // Firmware returns filenames relative to the plugin directory, so
@@ -201,7 +201,7 @@ void main() {
       final result = PresetAnalyzer.extractPluginPaths(algorithmInfos);
 
       expect(result, {'ThCo': 'programs/plug-ins/corrupter/corrupter.o'});
-    });
+    }, tags: ['regression']);
 
     test('trusts filenames that already start with programs/', () {
       // If the firmware does return a full SD-rooted path (e.g. on newer
@@ -272,7 +272,7 @@ void main() {
 
       // pyms timbre folder
       expect(deps.multisampleFolders, contains('LABS Soft Pno - PedOn'));
-    });
+    }, tags: ['regression']);
 
     test('Automatronic: pyfm banks + waos wavetable', () {
       final preset = _loadFixture('automatronic.json');
@@ -305,7 +305,7 @@ void main() {
       final deps = PresetAnalyzer.analyzeDependencies(preset);
 
       expect(deps.fmBanks, {'!ROM1A.syx'});
-    });
+    }, tags: ['regression']);
 
     test('community plugin GUID detection preserves trailing space', () {
       // Synthetic preset to verify the analyzer:
@@ -332,7 +332,7 @@ void main() {
       final deps = PresetAnalyzer.analyzeDependencies(preset);
 
       expect(deps.luaScripts, {'my_script.lua'});
-    });
+    }, tags: ['regression']);
 
     test('pymu collects top-level folder as multisample folder', () {
       // `pymu` (current Poly Multisample, firmware >= 1.10) has no
@@ -355,7 +355,7 @@ void main() {
       expect(deps.multisampleFolders, {'!CORec_Modular Percussion Stereo'});
       // saveFolder is a record destination, not a dependency.
       expect(deps.sampleFolders, isEmpty);
-    });
+    }, tags: ['regression']);
 
     test('granulator slot collects sample when populated', () {
       final preset = {

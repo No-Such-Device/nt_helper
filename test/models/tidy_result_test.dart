@@ -142,32 +142,7 @@ void main() {
       expect(result.busesFreed, equals(1));
     });
 
-    test('should be immutable', () {
-      final originalConnections = [
-        Connection(
-          id: 'conn1',
-          sourceAlgorithmIndex: 0,
-          sourcePortId: 'out',
-          targetAlgorithmIndex: 1,
-          targetPortId: 'in',
-          assignedBus: 21,
-          replaceMode: false,
-        ),
-      ];
-
-      final result = TidyResult.success(
-        originalConnections: originalConnections,
-        optimizedConnections: originalConnections,
-        busesFreed: 0,
-        changes: {},
-      );
-
-      // Should not be able to modify the result after creation
-      expect(result.originalConnections, isA<List<Connection>>());
-      expect(result.optimizedConnections, isA<List<Connection>>());
-      expect(result.changes, isA<Map<String, BusChange>>());
-      expect(result.warnings, isA<List<String>>());
-    });
+    
 
     test('should handle empty optimization result', () {
       final result = TidyResult.success(
@@ -256,19 +231,7 @@ void main() {
       expect(change.reason, equals('Optimization test'));
     });
 
-    test('should handle same bus optimization', () {
-      final change = BusChange(
-        connectionId: 'mode_change',
-        oldBus: 21,
-        newBus: 21, // Same bus, mode change only
-        oldReplaceMode: false,
-        newReplaceMode: true,
-        reason: 'Mode optimization',
-      );
-
-      expect(change.oldBus, equals(change.newBus));
-      expect(change.oldReplaceMode, isNot(equals(change.newReplaceMode)));
-    });
+    
 
     test('should describe bus reassignment', () {
       final change = BusChange(

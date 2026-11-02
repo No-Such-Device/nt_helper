@@ -100,7 +100,7 @@ void main() {
       verifyNever(() => toolRegistry.dispose());
       await cubit.close();
     },
-  );
+  tags: ['regression']);
 
   test('chat closes even if remote cleanup fails', () async {
     when(() => toolRegistry.dispose()).thenThrow(StateError('release unknown'));
@@ -110,7 +110,7 @@ void main() {
     );
     await cubit.close();
     expect(cubit.isClosed, isTrue);
-  });
+  }, tags: ['regression']);
 
   test('cancelled bootstrap cannot start a new tool loop afterwards', () async {
     final memory = Completer<String>();
@@ -131,7 +131,7 @@ void main() {
     expect(createdProvider, isFalse);
     verifyNever(() => toolRegistry.executeTool(any(), any()));
     await cubit.close();
-  });
+  }, tags: ['regression']);
 
   group('Attachment validation', () {
     blocTest<ChatCubit, ChatState>(
@@ -222,7 +222,7 @@ void main() {
           await tempDir.delete(recursive: true);
         }
       }
-    });
+    }, tags: ['regression']);
 
     blocTest<ChatCubit, ChatState>(
       'uses plural placeholder text for multiple image-only attachments',
@@ -384,7 +384,7 @@ void main() {
               contains('Error'),
             ),
       ],
-    );
+    tags: ['regression']);
 
     blocTest<ChatCubit, ChatState>(
       'resets isProcessing when stream ends after ChatLoopError event',
@@ -414,7 +414,7 @@ void main() {
         expect(s, isA<ChatReady>());
         expect((s as ChatReady).isProcessing, isFalse);
       },
-    );
+    tags: ['regression']);
 
     blocTest<ChatCubit, ChatState>(
       'resets isProcessing when provider returns final response normally',
@@ -514,7 +514,7 @@ void main() {
               contains('filesystem error'),
             ),
       ],
-    );
+    tags: ['regression']);
 
     blocTest<ChatCubit, ChatState>(
       'shows error message to user when exception occurs',
@@ -631,7 +631,7 @@ void main() {
         // Second-turn user message should be present
         expect(secondCallMessages[2].content, 'second message');
       },
-    );
+    tags: ['regression']);
   });
 
   group('Bug 4: cancelProcessing resets state', () {
@@ -810,7 +810,7 @@ void main() {
             'After compaction trim, history must start with a user message. '
             'Got: ${lastMessages.map((m) => m.role.name).join(', ')}',
       );
-    });
+    }, tags: ['regression']);
 
     test(
       'recomputes compaction need after resolving the next provider window',
@@ -931,7 +931,7 @@ void main() {
       expect(state.isProcessing, isFalse);
       expect(state.messages.last.content, contains('Compaction failed'));
       expect(cubit.contextSummary.messageCount, 2);
-    });
+    }, tags: ['regression']);
   });
 
   group('Prompt cache prefix stability', () {
@@ -1044,6 +1044,6 @@ void main() {
         expect(secondTurnToolPrefix, firstTurnToolPrefix);
         expect(readMemoryCalls, 1);
       },
-    );
+    tags: ['regression']);
   });
 }

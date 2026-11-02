@@ -195,111 +195,6 @@ Future<List<ParameterEntry>> getParametersForAlgorithm(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('MetadataSyncService - Parameter Prefix Preservation', () {
-    late AppDatabase database;
-    late MetadataSyncService service;
-
-    setUpAll(() async {
-      database = AppDatabase.forTesting(NativeDatabase.memory());
-    });
-
-    tearDownAll(() async {
-      await database.close();
-    });
-
-    test('should preserve numeric channel prefixes in parameter names', () async {
-      // Arrange - create test data with channel prefixes
-      final mockManager = TestMockDistingMidiManager(
-        testAlgorithms: [
-          AlgorithmInfo(
-            algorithmIndex: 0,
-            guid: 'mchn',
-            name: 'Multi Channel Test',
-            specifications: [],
-            isPlugin: false,
-            isLoaded: true,
-          ),
-        ],
-      );
-
-      // Create test parameters through the metadata sync service
-      // For this we need to mock the parameters returned by the algorithm
-      // Since AlgorithmInfo doesn't have a parameters field, we need to check
-      // how the service actually gets parameters
-
-      service = MetadataSyncService(mockManager, database);
-
-      // Act - sync algorithms (this will scan the device)
-      await service.syncAllAlgorithmMetadata(
-        onProgress: (progress, processed, total, mainMessage, subMessage) {},
-      );
-
-      // For this test to work properly, we need to understand how the service
-      // actually gets parameter information. Let's check the implementation...
-
-      // Note: The test structure shows we need to modify MetadataSyncService
-      // to preserve prefixes. The current test setup needs refinement based on
-      // actual service implementation.
-    });
-
-    test('should handle parameters without prefixes correctly', () async {
-      // This test will verify that parameters without channel prefixes
-      // remain unchanged during sync
-
-      final mockManager = TestMockDistingMidiManager(
-        testAlgorithms: [
-          AlgorithmInfo(
-            algorithmIndex: 1,
-            guid: 'simple-algo',
-            name: 'Simple Test',
-            specifications: [],
-            isPlugin: false,
-            isLoaded: true,
-          ),
-        ],
-      );
-
-      service = MetadataSyncService(mockManager, database);
-
-      // The actual test implementation depends on how MetadataSyncService
-      // retrieves parameter information from the device
-    });
-
-    test('should preserve letter channel prefixes (A:, B:, C:, D:)', () async {
-      // This test verifies that letter-based channel prefixes are preserved
-
-      final mockManager = TestMockDistingMidiManager(
-        testAlgorithms: [
-          AlgorithmInfo(
-            algorithmIndex: 2,
-            guid: 'letter-channel-algo',
-            name: 'Letter Channel Test',
-            specifications: [],
-            isPlugin: false,
-            isLoaded: true,
-          ),
-        ],
-      );
-
-      service = MetadataSyncService(mockManager, database);
-
-      // Test implementation pending understanding of parameter retrieval
-    });
-
-    test('should distinguish parameters from different channels', () async {
-      // Verifies that parameters with same base name but different channel
-      // prefixes are stored as distinct entries
-
-      // Test implementation pending
-    });
-
-    test('should create unique parameter entries for each channel', () async {
-      // Ensures each channel parameter gets a unique parameterNumber
-
-      // Test implementation pending
-    });
-  });
-
   group('MetadataSyncService - Scan Spec Values', () {
     late AppDatabase database;
 
@@ -679,7 +574,7 @@ void main() {
           async.elapse(const Duration(seconds: 1));
         });
       },
-    );
+    tags: ['regression']);
 
     test(
       'syncAllAlgorithmMetadata: retry fails then deferred rescan+reboot succeeds',
@@ -796,7 +691,7 @@ void main() {
         database.close();
         async.elapse(const Duration(seconds: 1));
       });
-    });
+    }, tags: ['regression']);
   });
 }
 

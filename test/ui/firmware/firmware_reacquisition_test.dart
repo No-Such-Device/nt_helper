@@ -429,7 +429,7 @@ void main() {
       expect(find.text('Open Firmware'), findsOneWidget);
       expect(find.text('Firmware Installed'), findsNothing);
     },
-  );
+  tags: ['regression']);
 
   testWidgets('successful reacquisition refreshes and closes the route', (
     tester,

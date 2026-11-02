@@ -237,7 +237,7 @@ void main() {
         expect(settingsCubit.state.hasPendingUsbAudioChannelChange(0), isFalse);
         expect(settingsCubit.state.confirmedUsbAudioChannelEnabled(0), isFalse);
       },
-    );
+    tags: ['regression']);
 
     test(
       'reboots only the selected NTX-8CV then revalidates and refreshes settings',
@@ -334,7 +334,7 @@ void main() {
         expect(connectionCubit.state.isConnected, isTrue);
         expect(settingsCubit.state.rebootMessage, isNull);
       },
-    );
+    tags: ['regression']);
 
     test('changes ES-5 only after matching same-setting readback', () async {
       midiConnection.transport.onSend = (packet) {
@@ -364,7 +364,7 @@ void main() {
         midiConnection.transport.sent[22],
         orderedEquals(Ntx8cvSysExFixtures.readEs5EnabledSetting),
       );
-    });
+    }, tags: ['regression']);
 
     test('serializes writes without blocking unrelated settings', () async {
       var es5WriteStarted = false;
@@ -420,7 +420,7 @@ void main() {
             .map((packet) => packet[7]),
         orderedEquals([0x01, 0x1B]),
       );
-    });
+    }, tags: ['regression']);
 
     test(
       'confirms a Channel Group only after matching readback and manual retry',
@@ -546,7 +546,7 @@ void main() {
           0x31,
         );
       },
-    );
+    tags: ['regression']);
 
     test(
       'keeps a timed-out ES-5 write pending and labels it uncertain',
@@ -574,7 +574,7 @@ void main() {
         expect(settingsCubit.state.es5Message, contains('not confirmed'));
         expect(settingsCubit.state.es5Message, contains('uncertain'));
       },
-    );
+    tags: ['regression']);
 
     test(
       'keeps an interrupted ES-5 write pending and labels it uncertain',
@@ -608,7 +608,7 @@ void main() {
         expect(settingsCubit.state.es5Message, contains('disconnected'));
         expect(settingsCubit.state.es5Message, contains('uncertain'));
       },
-    );
+    tags: ['regression']);
 
     test(
       'keeps Mode disabled when its capability probe is not evidenced',
@@ -650,7 +650,7 @@ void main() {
         expect(settingsCubit.state.isLoadingMode, isFalse);
         expect(settingsCubit.state.modeMessage, contains('not evidenced'));
       },
-    );
+    tags: ['regression']);
 
     test('confirms every supported Mode without changing ES-5', () async {
       var deviceMode = Ntx8cvExpansionMode.cv8x8.value;
@@ -764,7 +764,7 @@ void main() {
           orderedEquals(Ntx8cvSysExFixtures.readModeSetting),
         );
       },
-    );
+    tags: ['regression']);
   });
 }
 

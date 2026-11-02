@@ -141,7 +141,7 @@ void main() {
       expect(horizontal.pixels, 0);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-  );
+  tags: ['regression']);
 
   testWidgets('trackpad pan still scrolls the table horizontally', (
     tester,

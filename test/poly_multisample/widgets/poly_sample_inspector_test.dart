@@ -191,7 +191,7 @@ void main() {
         _expectStableRect(entry.value, _stableRect(tester, entry.key));
       }
     },
-  );
+  tags: ['regression']);
 
   testWidgets(
     'mapping stepper focus and rect stay stable after keyboard activation',
@@ -227,7 +227,7 @@ void main() {
         _stableRect(tester, 'poly-sidebar-mapping-velocity-increase'),
       );
     },
-  );
+  tags: ['regression']);
 
   testWidgets('mapping stepper auto-previews when enabled', (tester) async {
     final adapter = _FakePreviewAdapter();
@@ -848,7 +848,7 @@ void main() {
     expect(loopDraft.loopEnd, 500);
     expect(wavDraft.trimStart, 499);
     expect(wavDraft.trimEnd, 500);
-  });
+  }, tags: ['regression']);
 
   testWidgets(
     'waveform nudge geometry stays fixed across frame digit changes',
@@ -920,7 +920,7 @@ void main() {
         100,
       );
     },
-  );
+  tags: ['regression']);
 
   testWidgets(
     'waveform slider geometry stays fixed across gain and peak value changes',
@@ -993,7 +993,7 @@ void main() {
         _stableRect(tester, 'poly-sidebar-normalize-peak-value'),
       );
     },
-  );
+  tags: ['regression']);
 
   testWidgets(
     'fade geometry stays fixed across curve and strength value changes',
@@ -1041,7 +1041,7 @@ void main() {
         _expectStableRect(entry.value, _stableRect(tester, entry.key));
       }
     },
-  );
+  tags: ['regression']);
 
   testWidgets('duplicate sample names show a disambiguated edit target', (
     tester,

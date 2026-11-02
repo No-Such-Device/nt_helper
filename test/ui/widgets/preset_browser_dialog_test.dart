@@ -638,58 +638,8 @@ void main() {
   });
 
   group('Package Installation Dialog Integration', () {
-    testWidgets('has state variables for package installation', (tester) async {
-      // This test verifies that the state structure exists for E3.4
-      when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
-          currentPath: '/',
-          leftPanelItems: const [],
-          centerPanelItems: const [],
-          rightPanelItems: const [],
-          selectedLeftItem: null,
-          selectedCenterItem: null,
-          selectedRightItem: null,
-          navigationHistory: const [],
-          sortByDate: false,
-        ),
-      );
-      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
+    
 
-      await tester.pumpWidget(
-        createTestWidget(
-          child: PresetBrowserDialog(distingCubit: mockDistingCubit),
-        ),
-      );
-
-      // Verify widget builds successfully (implies state variables exist)
-      expect(find.byType(PresetBrowserDialog), findsOneWidget);
-    });
-
-    testWidgets('imports PackageInstallDialog', (tester) async {
-      // This test verifies the import is present by checking compilation
-      when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
-          currentPath: '/',
-          leftPanelItems: const [],
-          centerPanelItems: const [],
-          rightPanelItems: const [],
-          selectedLeftItem: null,
-          selectedCenterItem: null,
-          selectedRightItem: null,
-          navigationHistory: const [],
-          sortByDate: false,
-        ),
-      );
-      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
-
-      await tester.pumpWidget(
-        createTestWidget(
-          child: PresetBrowserDialog(distingCubit: mockDistingCubit),
-        ),
-      );
-
-      // If this builds, the import is present and correct
-      expect(find.byType(PresetBrowserDialog), findsOneWidget);
-    });
+    
   });
 }

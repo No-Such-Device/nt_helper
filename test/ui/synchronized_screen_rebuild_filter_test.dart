@@ -230,7 +230,7 @@ void main() {
     await emit(tester, sync().copyWith(offline: true));
     expect(scaffoldBuilds, builds + 2);
     expect(refresh().onPressed, isNull);
-  });
+  }, tags: ['regression']);
 
   testWidgets('resizing between narrow, wide and wider layouts switches '
       'layout', (tester) async {

@@ -91,7 +91,7 @@ void main() {
       );
       storage.dispose();
     },
-  );
+  tags: ['regression']);
 
   test(
     'another writer at publication is retained; Retry adopts it without overwrite',
@@ -118,7 +118,7 @@ void main() {
       expect(storage.file.readAsStringSync(), newer);
       storage.dispose();
     },
-  );
+  tags: ['regression']);
 
   test(
     'new service after interrupted transfer progresses without deleting partial work',
@@ -152,7 +152,7 @@ void main() {
       expect(work.readAsBytesSync(), bytes);
       restarted.dispose();
     },
-  );
+  tags: ['regression']);
 
   test(
     'no legacy cache is ordinary empty cache availability, not failed transfer',
@@ -200,5 +200,5 @@ void main() {
       );
       storage.dispose();
     },
-  );
+  tags: ['regression']);
 }

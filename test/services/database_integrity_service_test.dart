@@ -15,7 +15,7 @@ void main() {
         DatabaseIntegrityService.isDatabaseCorruptionError(error),
         isFalse,
       );
-    });
+    }, tags: ['regression']);
 
     for (final code in [11, 26, 267, 523, 779]) {
       test('classifies SQLite damage result $code, not message text', () {

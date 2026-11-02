@@ -114,7 +114,7 @@ void main() {
 
     expect(result, isNotNull);
     expect(find.text('Import WAV files'), findsNothing);
-  });
+  }, tags: ['regression']);
 }
 
 Future<void> _pumpDialogButton(

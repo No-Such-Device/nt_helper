@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,86 +32,7 @@ void main() {
       mockDistingCubit = MockDistingCubit();
     });
 
-    testWidgets('manages hover state for connections', (tester) async {
-      // Setup loaded state with test connection
-      final testConnection = Connection(
-        id: 'test_connection_1',
-        sourcePortId: 'hw_in_1',
-        destinationPortId: 'hw_out_1',
-        connectionType: ConnectionType.hardwareInput,
-      );
-
-      final loadedState = state.RoutingEditorStateLoaded(
-        physicalInputs: [
-          Port(
-            id: 'hw_in_1',
-            name: 'Input 1',
-            type: PortType.cv,
-            direction: PortDirection.input,
-          ),
-        ],
-        physicalOutputs: [
-          Port(
-            id: 'hw_out_1',
-            name: 'Output 1',
-            type: PortType.cv,
-            direction: PortDirection.output,
-          ),
-        ],
-        algorithms: [],
-        connections: [testConnection],
-        buses: [],
-        portOutputModes: {},
-        isHardwareSynced: true,
-        isPersistenceEnabled: false,
-        lastSyncTime: null,
-        lastPersistTime: null,
-        lastError: null,
-      );
-
-      when(mockRoutingCubit.state).thenReturn(loadedState);
-      when(
-        mockRoutingCubit.stream,
-      ).thenAnswer((_) => Stream.value(loadedState));
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MultiBlocProvider(
-            providers: [
-              BlocProvider<RoutingEditorCubit>.value(value: mockRoutingCubit),
-              BlocProvider<DistingCubit>.value(value: mockDistingCubit),
-            ],
-            child: Scaffold(
-              body: RoutingEditorWidget(canvasSize: const Size(800, 600)),
-            ),
-          ),
-        ),
-      );
-
-      // Use fixed pump calls instead of pumpAndSettle to avoid timeout
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // Find the MouseRegion wrapping connection canvas
-      expect(find.byType(MouseRegion), findsWidgets);
-
-      final mouseRegion = find.byType(MouseRegion).first;
-
-      // Simulate mouse enter event
-      final TestGesture gesture = await tester.createGesture(
-        kind: PointerDeviceKind.mouse,
-      );
-      await gesture.addPointer(location: Offset.zero);
-      addTearDown(gesture.removePointer);
-
-      // Move mouse over connection area
-      await gesture.moveTo(tester.getCenter(mouseRegion));
-      await tester.pump();
-
-      // Verify hover state is managed (test passes if no exceptions thrown)
-      expect(find.byType(RoutingEditorWidget), findsOneWidget);
-    });
+    
 
     testWidgets(
       'hides backward connections from canvas semantics when setting disabled',

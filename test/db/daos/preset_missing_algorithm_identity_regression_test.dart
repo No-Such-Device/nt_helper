@@ -67,7 +67,7 @@ void main() {
           await database.close();
         }
       },
-    );
+    tags: ['regression']);
   }
 }
 

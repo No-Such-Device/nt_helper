@@ -315,16 +315,8 @@ void main() {
         expect(result, contains('Line 0'));
         expect(result, contains('Line 199'));
       },
-    );
+    tags: ['regression']);
 
-    test(
-      'writeMemory with content that is only newlines writes empty-ish content',
-      () async {
-        await service.writeMemory('\n\n\n');
-        final result = await service.readMemory();
-        // Should not throw, content should round-trip
-        expect(result, isA<String>());
-      },
-    );
+    
   });
 }

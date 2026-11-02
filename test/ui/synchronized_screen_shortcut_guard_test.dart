@@ -105,7 +105,7 @@ void main() {
         find.text('${Platform.isMacOS ? 'Cmd' : 'Ctrl'}+T'),
         findsOneWidget,
       );
-    });
+    }, tags: ['regression']);
 
     testWidgets(
       'Cmd+/ can reopen shortcut help after previous dialog is dismissed',
@@ -140,7 +140,7 @@ void main() {
 
         expect(find.byType(ShortcutHelpOverlay), findsOneWidget);
       },
-    );
+    tags: ['regression']);
 
     testWidgets('add FAB stays disabled until verification completes', (
       tester,

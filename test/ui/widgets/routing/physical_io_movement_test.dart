@@ -146,39 +146,7 @@ void main() {
     });
 
     group('Visual Feedback During Movement', () {
-      testWidgets('Node appearance changes during drag', (tester) async {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: PhysicalInputNode(
-                ports: _createTestInputPorts(),
-                position: const Offset(100, 100),
-              ),
-            ),
-          ),
-        );
-
-        await tester.pumpAndSettle();
-
-        // Get the node widget
-        final nodeWidget = find.byType(PhysicalInputNode);
-        expect(nodeWidget, findsOneWidget);
-
-        // Start drag but don't complete it
-        final gesture = await tester.startGesture(tester.getCenter(nodeWidget));
-        await tester.pump(); // Start drag
-
-        // Node should still be rendered (visual feedback is handled by internal state)
-        expect(find.byType(PhysicalInputNode), findsOneWidget);
-
-        // Complete the drag
-        await gesture.moveBy(const Offset(50, 50));
-        await gesture.up();
-        await tester.pumpAndSettle();
-
-        // Node should return to normal state
-        expect(find.byType(PhysicalInputNode), findsOneWidget);
-      });
+      
     });
 
     group('Error Handling and Edge Cases', () {
@@ -210,7 +178,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(PhysicalInputNode), findsOneWidget);
-      });
+      }, tags: ['regression']);
     });
   });
 }

@@ -266,7 +266,7 @@ void main() {
       ]);
       expect(result.pluginFiles.map((entry) => entry.key), ['plugin.o']);
     },
-  );
+  tags: ['regression']);
 
   test('wavetable-only archive still requires an installable plugin', () async {
     await expectLater(

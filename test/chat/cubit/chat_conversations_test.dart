@@ -229,7 +229,7 @@ void main() {
       expect((await store.loadActive())!.promptCacheKey, saved.promptCacheKey);
       expect((await store.loadActive())!.history.last.content, 'Answer B');
     },
-  );
+  tags: ['regression']);
 
   test(
     'New chat archives, changes session key, and switching restores isolated history without replay',
@@ -331,7 +331,7 @@ void main() {
       );
       await again.close();
     },
-  );
+  tags: ['regression']);
 
   test(
     'Clear chat deletes current checkpoint and makes an empty replacement active',
@@ -371,7 +371,7 @@ void main() {
       expect(await file.readAsString(), original);
       await cubit.close();
     },
-  );
+  tags: ['regression']);
 
   test(
     'save failure is visible, does not discard chat on New chat, and can be retried',
@@ -392,7 +392,7 @@ void main() {
       expect((await store.load(id!)).history.last.content, 'Still visible');
       await cubit.close();
     },
-  );
+  tags: ['regression']);
 
   test(
     'an old Cubit closing does not reactivate its chat over the newly selected one',
@@ -408,7 +408,7 @@ void main() {
       expect((await store.loadActive())!.summary.id, newId);
       await replacement.close();
     },
-  );
+  tags: ['regression']);
 
   test(
     'closing while restoration is pending cannot start a queued send or replace the active chat',
@@ -430,5 +430,5 @@ void main() {
       );
       verifyNever(() => registry.executeTool(any(), any()));
     },
-  );
+  tags: ['regression']);
 }

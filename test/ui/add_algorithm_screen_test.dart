@@ -346,7 +346,7 @@ void main() {
               ?.text,
           '8',
         );
-      });
+      }, tags: ['regression']);
     }
 
     testWidgets(
@@ -378,7 +378,7 @@ void main() {
           hasLength(1),
         );
       },
-    );
+    tags: ['regression']);
 
     testWidgets('Add retains the first GUID entry and its specifications', (
       tester,
@@ -902,7 +902,7 @@ void main() {
 
         // Verify loadPlugin was called
         verify(() => mockCubit.loadPlugin('TestPlugin')).called(1);
-      });
+      }, tags: ['regression']);
 
       testWidgets('handles plugin loading failure gracefully', (tester) async {
         // Initial state: unloaded plugin
@@ -1185,7 +1185,7 @@ void main() {
         expect(find.text('Clock added'), findsNothing);
         expect(find.text('Select Algorithm'), findsOneWidget);
       },
-    );
+    tags: ['regression']);
 
     testWidgets('bottom actions use a brief state transition', (tester) async {
       when(
@@ -1251,7 +1251,7 @@ void main() {
 
       addCompleter.complete();
       await tester.pumpAndSettle();
-    });
+    }, tags: ['regression']);
 
     testWidgets('Shift changes add button labels while held', (tester) async {
       addTearDown(() async {

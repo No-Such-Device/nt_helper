@@ -113,7 +113,7 @@ void main() {
         setupFirstRelease.platformAssets['windows'],
         contains('windows-setup.exe'),
       );
-    });
+    }, tags: ['regression']);
 
     test('handles missing assets gracefully', () {
       final json = Map<String, dynamic>.from(_sampleRelease);
@@ -344,7 +344,7 @@ void main() {
 
       expect(script, contains(r"$sourceDir = 'C:\Users\Neal''s PC\update'"));
       expect(script, contains(r"$appDir = 'C:\Users\Neal''s PC\NT Helper'"));
-    });
+    }, tags: ['regression']);
 
     test('buildWindowsInstallerArguments runs current-user installer', () {
       final arguments = AppUpdateService.buildWindowsInstallerArguments(

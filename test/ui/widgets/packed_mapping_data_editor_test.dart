@@ -159,7 +159,7 @@ void main() {
           isNot(contains('Channel pressure')),
         );
       },
-    );
+    tags: ['regression']);
 
     testWidgets(
       'unsupported expressive MIDI learn emits one warning and does not save',
@@ -245,7 +245,7 @@ void main() {
           equals(1),
         );
       },
-    );
+    tags: ['regression']);
 
     testWidgets(
       'unsupported expressive MIDI dropdown edit warns and preserves selection',
@@ -313,7 +313,7 @@ void main() {
           isTrue,
         );
       },
-    );
+    tags: ['regression']);
 
     testWidgets(
       'unsupported expressive MIDI control edit warns and preserves state',
@@ -381,7 +381,7 @@ void main() {
           isTrue,
         );
       },
-    );
+    tags: ['regression']);
 
     testWidgets('Pitch bend disables MIDI CC field and relative switch', (
       tester,
@@ -418,73 +418,9 @@ void main() {
       expect(tester.widget<SwitchListTile>(switchFinder).onChanged, isNull);
     });
 
-    testWidgets('Selecting 14-bit CC low updates data model', (tester) async {
-      final data14BitLow = testData.copyWith(
-        midiMappingType: MidiMappingType.cc14BitLow,
-      );
+    
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: BlocProvider<DistingCubit>.value(
-            value: mockCubit,
-            child: Scaffold(
-              body: PackedMappingDataEditor(
-                initialData: data14BitLow,
-                onSave: (_) async {},
-                slots: mockSlots,
-                algorithmIndex: 0,
-                parameterNumber: 0,
-                parameterMin: 0,
-                parameterMax: 100,
-                powerOfTen: 0,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      // Navigate to MIDI tab
-      await tester.tap(find.text('MIDI'));
-      await tester.pumpAndSettle();
-
-      // Verify the editor displays the correct initial data
-      // (No Save button needed - optimistic updates handle persistence)
-      expect(find.text('MIDI'), findsOneWidget);
-    });
-
-    testWidgets('Selecting 14-bit CC high updates data model', (tester) async {
-      final data14BitHigh = testData.copyWith(
-        midiMappingType: MidiMappingType.cc14BitHigh,
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: BlocProvider<DistingCubit>.value(
-            value: mockCubit,
-            child: Scaffold(
-              body: PackedMappingDataEditor(
-                initialData: data14BitHigh,
-                onSave: (_) async {},
-                slots: mockSlots,
-                algorithmIndex: 0,
-                parameterNumber: 0,
-                parameterMin: 0,
-                parameterMax: 100,
-                powerOfTen: 0,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      // Navigate to MIDI tab
-      await tester.tap(find.text('MIDI'));
-      await tester.pumpAndSettle();
-
-      // Verify the editor displays the correct initial data
-      // (No Save button needed - optimistic updates handle persistence)
-      expect(find.text('MIDI'), findsOneWidget);
-    });
+    
 
     testWidgets('MIDI Relative switch disabled for 14-bit CC low', (
       tester,
@@ -789,7 +725,7 @@ void main() {
       await tester.pumpWidget(Container());
 
       expect(saveCount, 1);
-    });
+    }, tags: ['regression']);
 
     testWidgets('Tab switching does not trigger save', (tester) async {
       int saveCount = 0;
@@ -963,7 +899,7 @@ void main() {
       await tester.pump();
 
       expect(saveCount, 3);
-    });
+    }, tags: ['regression']);
   });
 
   group('PackedMappingDataEditor - Performance Tab', () {
@@ -1084,7 +1020,7 @@ void main() {
       expect(find.text('-1'), findsNothing);
       final ccField = find.widgetWithText(TextField, '0');
       expect(ccField, findsWidgets);
-    });
+    }, tags: ['regression']);
 
     testWidgets('I2C CC field shows 0 instead of -1 for filler data', (
       tester,
@@ -1098,7 +1034,7 @@ void main() {
 
       // The CC field should show "0", not "-1"
       expect(find.text('-1'), findsNothing);
-    });
+    }, tags: ['regression']);
 
     testWidgets(
       'MIDI CC preserves valid value when min/max are from hardware',

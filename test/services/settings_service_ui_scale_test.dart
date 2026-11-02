@@ -63,7 +63,7 @@ void main() {
       SharedPreferences.setMockInitialValues({'ui_scale': 99.0});
       await settings.init();
       expect(settings.uiScale, SettingsService.maxUiScale);
-    });
+    }, tags: ['regression']);
 
     test('zoomInUi increments by one step and clamps at maximum', () async {
       await settings.setUiScale(1.0);

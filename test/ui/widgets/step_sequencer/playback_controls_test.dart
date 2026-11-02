@@ -726,5 +726,5 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byType(Slider), findsNothing);
     },
-  );
+  tags: ['regression']);
 }
