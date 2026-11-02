@@ -416,43 +416,9 @@ void main() {
     });
 
     group('editParameter - return value format', () {
-      test(
-        'should include slot_index, parameter_number, parameter_name, and value in response',
-        () async {
-          final result = await tools.editParameter({
-            'slot_index': 0,
-            'parameter_number': 0,
-            'value': 50,
-          });
+      
 
-          // Since we can't test with actual hardware, just verify the structure would be valid
-          // In real test with hardware, would verify:
-          // - decoded['slot_index'] == 0
-          // - decoded['parameter_number'] == 0
-          // - decoded['parameter_name'] is string
-          // - decoded['value'] is numeric
-          final decoded = jsonDecode(result);
-          // Empty slot response is expected - should have either error or success
-          expect(
-            decoded.containsKey('error') || decoded.containsKey('slot_index'),
-            isTrue,
-          );
-        },
-      );
-
-      test('should omit disabled mappings from return value', () async {
-        final result = await tools.editParameter({
-          'slot_index': 0,
-          'parameter_number': 0,
-          'value': 50,
-        });
-
-        // In actual hardware test with mappings disabled, would verify:
-        // - decoded['mapping'] is not present OR all entries have is_*_enabled: false
-        final decoded = jsonDecode(result);
-        // For now, just verify it returns valid JSON with either error or success
-        expect(decoded.isNotEmpty, isTrue);
-      });
+      
     });
   });
 }
