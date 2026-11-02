@@ -300,7 +300,7 @@ void main() {
     expect(stepperStripRect.center.dy, closeTo(rowRect.center.dy, 0.5));
     expect(rootStepperRect.center.dy, closeTo(rowRect.center.dy, 0.5));
     expect(previewRect.center.dy, closeTo(rowRect.center.dy, 0.5));
-  });
+  }, tags: ['regression']);
 
   testWidgets('mobile widths keep inline steppers usable after filename', (
     tester,
@@ -354,7 +354,7 @@ void main() {
       expect(rootStepperRect.center.dy, closeTo(rowRect.center.dy, 0.5));
       expect(previewRect.center.dy, closeTo(rowRect.center.dy, 0.5));
     }
-  });
+  }, tags: ['regression']);
 
   testWidgets('inline steppers emit clamped mapping updates', (tester) async {
     int? root;
