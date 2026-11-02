@@ -110,7 +110,7 @@ void main() {
           hasLength(9),
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     for (final (guid, cachedCount, savedCount) in const [
       ('attn', 21, 41),
