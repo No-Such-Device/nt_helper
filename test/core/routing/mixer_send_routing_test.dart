@@ -400,7 +400,7 @@ void main() {
       expect(inputPorts.any((p) => p.name == 'Audio input'), isTrue);
       expect(outputPorts.any((p) => p.name == 'Left output'), isTrue);
       expect(outputPorts.any((p) => p.name == 'Right output'), isTrue);
-    });
+    }, tags: ['regression']);
 
     test('should handle mixer with no sends correctly', () {
       // Create a mixer without sends
