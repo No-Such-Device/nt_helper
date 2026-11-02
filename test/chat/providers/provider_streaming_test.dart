@@ -105,7 +105,7 @@ void main() {
         HttpOverrides.global = previous;
       }
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'OpenAI emits real text deltas before completion and assembles fragmented tools',
@@ -196,7 +196,7 @@ void main() {
       expect(result.usage!.cacheReadInputTokens, 8);
       expect(result.usage!.contextInputTokens, 20);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   for (final subscription in [false, true]) {
     test(
@@ -332,5 +332,5 @@ void main() {
         throwsA(isA<LlmApiException>()),
       );
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 }
