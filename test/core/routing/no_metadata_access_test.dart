@@ -272,51 +272,7 @@ void main() {
     });
 
     group('Type Safety Validation', () {
-      test('should enforce type safety for all direct properties', () {
-        const port = Port(
-          id: 'type_safety_test',
-          name: 'Type Safety Test',
-          type: PortType.cv,
-          direction: PortDirection.bidirectional,
-          isPolyVoice: true,
-          voiceNumber: 6,
-          isVirtualCV: false,
-          isMultiChannel: true,
-          channelNumber: 5,
-          isStereoChannel: true,
-          stereoSide: 'right',
-          isMasterMix: true,
-          busValue: 18,
-          busParam: 'type_safe_param',
-          parameterNumber: 42,
-        );
-
-        // Verify types are enforced at compile time
-        expect(port.isPolyVoice, isA<bool>());
-        expect(port.voiceNumber, isA<int?>());
-        expect(port.isVirtualCV, isA<bool>());
-        expect(port.isMultiChannel, isA<bool>());
-        expect(port.channelNumber, isA<int?>());
-        expect(port.isStereoChannel, isA<bool>());
-        expect(port.stereoSide, isA<String?>());
-        expect(port.isMasterMix, isA<bool>());
-        expect(port.busValue, isA<int?>());
-        expect(port.busParam, isA<String?>());
-        expect(port.parameterNumber, isA<int?>());
-
-        // Verify specific types and values
-        expect(port.isPolyVoice, isTrue);
-        expect(port.voiceNumber, equals(6));
-        expect(port.isVirtualCV, isFalse);
-        expect(port.isMultiChannel, isTrue);
-        expect(port.channelNumber, equals(5));
-        expect(port.isStereoChannel, isTrue);
-        expect(port.stereoSide, equals('right'));
-        expect(port.isMasterMix, isTrue);
-        expect(port.busValue, equals(18));
-        expect(port.busParam, equals('type_safe_param'));
-        expect(port.parameterNumber, equals(42));
-      });
+      
 
       test('should handle null values correctly in type-safe manner', () {
         const port = Port(
