@@ -307,7 +307,7 @@ void main() {
       ]);
       await close(tester);
     },
-  );
+  , tags: ['regression']);
 
   testWidgets(
     'each pot is silent at midpoint, retains adjustments and clamps without wrapping',
@@ -369,7 +369,7 @@ void main() {
       expect(cubit.remoteControlState.potValues, [32, 32, 32]);
       await close(tester);
     },
-  );
+  , tags: ['regression']);
 
   testWidgets(
     'both encoders retain fractional drag remainder and split signed movement totals',
@@ -425,7 +425,7 @@ void main() {
       }
       await close(tester);
     },
-  );
+  , tags: ['regression']);
 
   testWidgets(
     'keyboard holds, arrows, duplicate events and pointer capture/focus cleanup',
@@ -550,7 +550,7 @@ void main() {
       await close(tester);
       semantics.dispose();
     },
-  );
+  , tags: ['regression']);
 
   testWidgets(
     'fold, hide, view focus loss and close clean holds without resetting local pots',
@@ -654,7 +654,7 @@ void main() {
       expect(payloads().length, closeStart + 1);
       await close(tester);
     },
-  );
+  , tags: ['regression']);
 
   for (final closeOverlay in [false, true]) {
     testWidgets(
@@ -751,7 +751,7 @@ void main() {
         }
         semantics.dispose();
       },
-    );
+    , tags: ['regression']);
   }
 
   testWidgets(
@@ -820,7 +820,7 @@ void main() {
       }
       await close(tester);
     },
-  );
+  , tags: ['regression']);
 
   testWidgets(
     'overlay open-host firmware and connection matrix is explanatory and silent when gated',
@@ -959,7 +959,7 @@ void main() {
       }
       await close(tester);
     },
-  );
+  , tags: ['regression']);
 
   for (final popupResult in ['success', 'throw', 'unsupported']) {
     testWidgets(
@@ -1140,5 +1140,5 @@ void main() {
       await close(tester);
       semantics.dispose();
     },
-  );
+  , tags: ['regression']);
 }
