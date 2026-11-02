@@ -115,5 +115,5 @@ void main() {
       (await manager.requestCurrentPresetDetails())?.slots[1].parameterValues,
       {0: 12, 34: 99},
     );
-  });
+  }, tags: ['regression']);
 }
