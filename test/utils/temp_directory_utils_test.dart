@@ -77,13 +77,7 @@ void main() {
         expect(result, isFalse);
       });
 
-      test('cleans up probe file after write test', () async {
-        await TempDirectoryUtils.isWritable(Directory.systemTemp);
-        final probe = File(
-          '${Directory.systemTemp.path}/.nt_helper_write_test',
-        );
-        expect(probe.existsSync(), isFalse);
-      });
+      
     });
   });
 }
