@@ -398,7 +398,7 @@ void main() {
         expect(saveCount, 3);
         expect(lastSavedData?.volts, equals(9));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   });
 
   group('PackedMappingDataEditor - Dropdown and Switch Autosave', () {
