@@ -159,7 +159,7 @@ void main() {
           isNot(contains('Channel pressure')),
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     testWidgets(
       'unsupported expressive MIDI learn emits one warning and does not save',
@@ -245,7 +245,7 @@ void main() {
           equals(1),
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     testWidgets(
       'unsupported expressive MIDI dropdown edit warns and preserves selection',
@@ -313,7 +313,7 @@ void main() {
           isTrue,
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     testWidgets(
       'unsupported expressive MIDI control edit warns and preserves state',
@@ -381,7 +381,7 @@ void main() {
           isTrue,
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     testWidgets('Pitch bend disables MIDI CC field and relative switch', (
       tester,
