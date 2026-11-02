@@ -206,10 +206,21 @@ void main() {
   late PluginTools tools;
   late Uint8List fixtureBytes;
 
-  setUpAll(() {
+  Future<void> clearDirectory(Directory directory) async {
+    await for (final entity in directory.list()) {
+      await entity.delete(recursive: true);
+    }
+  }
+
+  setUpAll(() async {
     registerFallbackValue(Uint8List(0));
     registerFallbackValue(<AlgorithmInfo>[]);
     fixtureBytes = File(_fixture).readAsBytesSync();
+    allowed = await Directory.systemTemp.createTemp('nt_install_allowed_');
+    outside = await Directory.systemTemp.createTemp('nt_install_outside_');
+    SharedPreferences.setMockInitialValues({});
+    settings = SettingsService();
+    await settings.init();
   });
 
   DistingStateSynchronized synchronized({
@@ -262,11 +273,8 @@ void main() {
   }
 
   setUp(() async {
-    allowed = await Directory.systemTemp.createTemp('nt_install_allowed_');
-    outside = await Directory.systemTemp.createTemp('nt_install_outside_');
-    SharedPreferences.setMockInitialValues({});
-    settings = SettingsService();
-    await settings.init();
+    await clearDirectory(allowed);
+    await clearDirectory(outside);
     await settings.setAllowedFileRoots([
       AllowedFileRoot(
         id: 'builds',
@@ -323,6 +331,9 @@ void main() {
 
   tearDown(() async {
     await cubit.close();
+  });
+
+  tearDownAll(() async {
     for (final dir in [allowed, outside]) {
       if (await dir.exists()) await dir.delete(recursive: true);
     }
