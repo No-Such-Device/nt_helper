@@ -548,7 +548,7 @@ return {
       units: const [],
     );
     expect((document.root as AlgorithmControllerText).text, 'nil');
-  });
+  }, tags: ['regression']);
 
   test('rejects unknown UI primitives', () {
     const source = r'''
