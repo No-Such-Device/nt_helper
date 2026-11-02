@@ -12,7 +12,6 @@ import 'package:nt_helper/domain/patch_map/patch_map.dart';
 import 'package:nt_helper/domain/patch_map/patch_map_client.dart';
 import 'package:nt_helper/services/key_binding_service.dart';
 import 'patch_map_editor_cubit.dart';
-import 'package:nt_helper/algorithm_controller/sd_card_companion.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 
 /// Resolves the live endpoint again when the connection changes. Demo/offline
@@ -67,13 +66,11 @@ class PatchMapEditor extends StatefulWidget {
     this.watchInterval = const Duration(seconds: 1),
     this.companionCacheKey,
     this.slotName = 'Patch Helper',
-    this.evaluationRunner,
   });
   final Future<Uint8List?> Function(String) download;
   final Duration? watchInterval;
   final String? companionCacheKey;
   final String slotName;
-  final CompanionEvaluationRunner? evaluationRunner;
   final PatchMapTransport transport;
   final int slotIndex;
   @override
@@ -101,7 +98,6 @@ class _PatchMapEditorState extends State<PatchMapEditor>
       widget.download,
       watchInterval: widget.watchInterval,
       companionCacheKey: widget.companionCacheKey,
-      evaluationRunner: widget.evaluationRunner,
     );
     _cubit.load();
     WidgetsBinding.instance.addObserver(this);

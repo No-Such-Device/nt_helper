@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:nt_helper/algorithm_controller/sd_card_companion.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,7 +40,6 @@ void main() {
                 ),
                 home: Scaffold(
                   body: PatchMapEditor(
-                    evaluationRunner: evaluateCompanionDocument,
                     transport: device,
                     slotIndex: 0,
                     watchInterval: null,

@@ -8,21 +8,9 @@ import 'package:nt_helper/utils/temp_directory_utils.dart';
 import 'dart:typed_data';
 import 'lua_algorithm_controller_engine.dart';
 
-/// Execution boundary for companion Lua. Production uses a bounded isolate;
-/// widget tests can inject [evaluateCompanionDocument] without spawning workers.
-typedef CompanionEvaluationRunner =
-    FutureOr<String> Function({
-      required String source,
-      required String guid,
-      required Map<String, Object?> snapshot,
-      Map<String, Object?>? event,
-      Map<String, Object?>? change,
-    });
-
 /// SD Lua source with an optional endpoint-scoped scratch-file cache.
 class SdCardCompanion {
-  SdCardCompanion._(this.source, this.guid, this.evaluationRunner);
-  final CompanionEvaluationRunner? evaluationRunner;
+  SdCardCompanion._(this.source, this.guid);
   static String pathForGuid(String guid) {
     if (!RegExp(r'^[A-Za-z0-9 _-]{4}$').hasMatch(guid)) {
       throw const FormatException('Unsupported companion GUID');
@@ -41,7 +29,6 @@ class SdCardCompanion {
     String? cacheKey,
     bool refresh = false,
     Future<Directory> Function()? temporaryDirectory,
-    CompanionEvaluationRunner? evaluationRunner,
   }) async {
     final sdPath = pathForGuid(guid);
     File? cache;
@@ -63,7 +50,7 @@ class SdCardCompanion {
         );
         if (!refresh && await cache.exists()) {
           try {
-            return _decode(await cache.readAsBytes(), guid, evaluationRunner);
+            return _decode(await cache.readAsBytes(), guid);
           } on FormatException {
             // Invalid/partial scratch files are replaced by a fresh SD download.
           }
@@ -74,7 +61,7 @@ class SdCardCompanion {
       }
     }
     final data = await download(sdPath);
-    final companion = _decode(data, guid, evaluationRunner);
+    final companion = _decode(data, guid);
     if (cache != null) {
       Directory? staging;
       try {
@@ -98,11 +85,7 @@ class SdCardCompanion {
     return companion;
   }
 
-  static SdCardCompanion _decode(
-    Uint8List? data,
-    String guid,
-    CompanionEvaluationRunner? evaluationRunner,
-  ) {
+  static SdCardCompanion _decode(Uint8List? data, String guid) {
     if (data == null || data.isEmpty) {
       throw FormatException(
         'Install $guid.lua in /programs/helper/ on the NT SD card.',
@@ -113,7 +96,7 @@ class SdCardCompanion {
         'Companion exceeds the 64 KiB source budget.',
       );
     }
-    return SdCardCompanion._(utf8.decode(data), guid, evaluationRunner);
+    return SdCardCompanion._(utf8.decode(data), guid);
   }
 
   Future<Map<String, dynamic>> evaluate(
@@ -121,30 +104,17 @@ class SdCardCompanion {
     Map<String, Object?>? event,
     Map<String, Object?>? change,
   }) async {
-    ReceivePort? reply;
+    final reply = ReceivePort();
     Isolate? worker;
     try {
-      final runner = evaluationRunner;
-      final Object? response;
-      if (runner != null) {
-        response = await runner(
-          source: source,
-          guid: guid,
-          snapshot: snapshot,
-          event: event,
-          change: change,
-        );
-      } else {
-        reply = ReceivePort();
-        worker = await Isolate.spawn(
-          _evaluate,
-          (reply.sendPort, source, snapshot, event, guid, change),
-          onError: reply.sendPort,
-          onExit: reply.sendPort,
-          errorsAreFatal: true,
-        );
-        response = await reply.first.timeout(const Duration(seconds: 2));
-      }
+      worker = await Isolate.spawn(
+        _evaluate,
+        (reply.sendPort, source, snapshot, event, guid, change),
+        onError: reply.sendPort,
+        onExit: reply.sendPort,
+        errorsAreFatal: true,
+      );
+      final response = await reply.first.timeout(const Duration(seconds: 2));
       if (response is! String) {
         throw const FormatException(
           'Companion evaluation failed. Reload the companion.',
@@ -166,7 +136,7 @@ class SdCardCompanion {
       );
     } finally {
       worker?.kill(priority: Isolate.immediate);
-      reply?.close();
+      reply.close();
     }
   }
 }
@@ -182,32 +152,12 @@ void _evaluate(
   )
   request,
 ) {
-  request.$1.send(
-    evaluateCompanionDocument(
-      source: request.$2,
-      guid: request.$5,
-      snapshot: request.$3,
-      event: request.$4,
-      change: request.$6,
-    ),
-  );
-}
-
-/// Evaluates trusted companion source in-process, without scheduling a worker.
-/// Untrusted production source must use [SdCardCompanion]'s default runner.
-String evaluateCompanionDocument({
-  required String source,
-  required String guid,
-  required Map<String, Object?> snapshot,
-  Map<String, Object?>? event,
-  Map<String, Object?>? change,
-}) {
   final value = const LuaAlgorithmControllerEngine().evaluateCompanion(
-    source: source,
-    guid: guid,
-    snapshot: snapshot,
-    event: event,
-    change: change,
+    source: request.$2,
+    guid: request.$5,
+    snapshot: request.$3,
+    event: request.$4,
+    change: request.$6,
   );
   Object? normalize(Object? input) {
     if (input is Map) {
@@ -226,5 +176,5 @@ String evaluateCompanionDocument({
   if (encoded.length > 65536) {
     throw const FormatException('Companion output exceeds budget');
   }
-  return encoded;
+  request.$1.send(encoded);
 }
