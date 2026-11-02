@@ -103,7 +103,7 @@ void main() {
         reason:
             'defaultOutputMode must not override a mode set by outputModeMap',
       );
-    });
+    }, tags: ['regression']);
 
     test('does not override existing outputMode from pattern fallback', () {
       // Slot has 'Out mode' parameter but empty outputModeMap → pattern fallback
@@ -129,7 +129,7 @@ void main() {
         reason:
             'defaultOutputMode must not override a mode set via pattern matching',
       );
-    });
+    }, tags: ['regression']);
 
     test('null defaultOutputMode preserves existing null-mode behaviour', () {
       final slot = _createSimpleOutputSlot(guid: 'unkn', name: 'Unknown');
