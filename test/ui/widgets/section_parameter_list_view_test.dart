@@ -137,7 +137,7 @@ void main() {
         );
         expect(_headerInkColor(tester, _performanceHeader), expectedShade);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   }
 
   testWidgets('preserves individual and expand-all section behavior', (
