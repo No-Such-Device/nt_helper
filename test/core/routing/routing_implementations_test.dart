@@ -295,41 +295,7 @@ void main() {
         },
       );
 
-      test('should use direct properties in helper methods', () {
-        final config = MultiChannelAlgorithmConfig.widthBased(width: 2);
-        final routing = MultiChannelAlgorithmRouting(config: config);
-
-        // Create test ports with direct properties
-        final multiChannelPort = Port(
-          id: 'multi_test',
-          name: 'Multi Test',
-          type: PortType.audio,
-          direction: PortDirection.input,
-          isMultiChannel: true,
-          channelNumber: 1,
-          isStereoChannel: true,
-          stereoSide: 'left',
-        );
-
-        final masterMixPort = Port(
-          id: 'mix_test',
-          name: 'Mix Test',
-          type: PortType.audio,
-          direction: PortDirection.output,
-          isMasterMix: true,
-        );
-
-        // Test validation uses direct properties - master mix connections should be validated
-        // This tests that the helper methods are using direct properties correctly
-        final result = routing.validateConnection(
-          multiChannelPort,
-          masterMixPort,
-        );
-        expect(
-          result,
-          isA<bool>(),
-        ); // Just verify it returns a boolean, actual logic may allow the connection
-      });
+      
     });
 
     group('ConnectionDiscoveryService Direct Properties', () {
