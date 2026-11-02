@@ -436,7 +436,7 @@ void main() {
         original.slots.single.values.map((value) => value.value),
       );
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   for (final corrupt in [false, true]) {
     test(
