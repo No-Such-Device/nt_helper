@@ -115,7 +115,7 @@ void main() {
         // because bundled metadata asset is not available
         // But we verified the detection logic works
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('user presets are preserved during upgrade detection', () async {
       // Create algorithm
