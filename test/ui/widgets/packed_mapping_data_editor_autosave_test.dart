@@ -398,7 +398,7 @@ void main() {
         expect(saveCount, 3);
         expect(lastSavedData?.volts, equals(9));
       },
-    );
+    , tags: ['regression']);
   });
 
   group('PackedMappingDataEditor - Dropdown and Switch Autosave', () {
@@ -873,7 +873,7 @@ void main() {
 
       expect(saveCount, 1);
       expect(lastSavedData?.volts, equals(9));
-    });
+    }, tags: ['regression']);
 
     testWidgets('No save triggered on dispose if no pending changes', (
       tester,
@@ -962,7 +962,7 @@ void main() {
 
       expect(saveCount, 1);
       expect(lastSavedData?.midiCC, equals(100));
-    });
+    }, tags: ['regression']);
   });
 
   group('PackedMappingDataEditor - Dirty State Indicator', () {
@@ -1158,7 +1158,7 @@ void main() {
       save.complete();
       await tester.pump();
       expect(saveCompleted, true);
-    });
+    }, tags: ['regression']);
 
     testWidgets('Indicator clears when save completes', (tester) async {
       await tester.pumpWidget(createTestWidget(onSave: (data) async {}));
@@ -1237,7 +1237,7 @@ void main() {
         ),
         findsNothing,
       );
-    });
+    }, tags: ['regression']);
 
     testWidgets('Indicator tooltip displays correct message for dirty state', (
       tester,
