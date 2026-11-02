@@ -581,7 +581,7 @@ void main() {
       );
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test(
     'waits for installed hydration before routing and verified completion',
@@ -678,7 +678,7 @@ void main() {
       expect(manager.mutationCommands, ['respecify']);
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('another manager and device reject a late polling reply', () {
     fakeAsync((async) {
@@ -750,7 +750,7 @@ void main() {
       expect(replacementManager.mutationCommands, isEmpty);
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('cancelled hydration cannot overwrite output-mode cache', () {
     fakeAsync((async) {
@@ -853,7 +853,7 @@ void main() {
       expect(manager.routingRequests, isEmpty);
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('cancelled hydration discards queued shape retries', () {
     fakeAsync((async) {
@@ -921,7 +921,7 @@ void main() {
       expect(manager.mutationCommands, ['respecify']);
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('late routing cannot update a replacement connection', () {
     fakeAsync((async) {
@@ -975,7 +975,7 @@ void main() {
       expect(replacementManager.routingRequests, isEmpty);
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('does not report verified completion for incomplete hydration', () {
     fakeAsync((async) {
@@ -1077,7 +1077,7 @@ void main() {
       expect(skippedManager.routingRequests, isEmpty);
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('conflicting before/after device fixtures replace indexed state, '
       'rebuild CC lookup, and finish before routing', () {
@@ -1356,7 +1356,7 @@ void main() {
       );
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('uses decoded metadata, sends 0x3A once, and waits one second for '
       'matching fresh 0x40 state', () {
@@ -1477,7 +1477,7 @@ void main() {
       expect(manager.mutationCommands, ['respecify']);
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('deadline cancels a polling delay that would span ten seconds', () {
     fakeAsync((async) {
@@ -1510,7 +1510,7 @@ void main() {
       expect(manager.readbackSlots, hasLength(sendsAtDeadline));
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('deadline cancels an in-flight readback without later sends', () {
     fakeAsync((async) {
@@ -1547,7 +1547,7 @@ void main() {
       expect(manager.readbackSlots, [2]);
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('polls then hydrates differing authoritative device state', () {
     fakeAsync((async) {
@@ -1598,7 +1598,7 @@ void main() {
       expect(manager.routingRequests, [0, 1, 2]);
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test(
     'ambiguous stale readback cannot become matching or differing state',
@@ -1625,7 +1625,7 @@ void main() {
         expect(async.pendingTimers, isEmpty);
       });
     },
-  );
+  , tags: ['regression']);
 
   test('missing, malformed, cached, wrong-target, and late data cannot become '
       'a valid observation', () {
@@ -1694,7 +1694,7 @@ void main() {
       expect(status, AlgorithmRespecificationStatus.unverifiable);
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('suppresses duplicate submissions until the bounded operation ends', () {
     fakeAsync((async) {
@@ -1744,7 +1744,7 @@ void main() {
       expect(nextStatus, AlgorithmRespecificationStatus.observedMatchingState);
       expect(async.pendingTimers, isEmpty);
     });
-  });
+  }, tags: ['regression']);
 
   test('matching unchanged values still hydrate authoritative state', () {
     fakeAsync((async) {
