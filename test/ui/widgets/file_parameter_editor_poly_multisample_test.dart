@@ -154,7 +154,7 @@ void main() {
           findsWidgets,
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     testWidgets('plain Multisamples folder candidate is enumerated', (
       tester,
