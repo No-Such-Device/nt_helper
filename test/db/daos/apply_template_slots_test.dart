@@ -479,7 +479,7 @@ void main() {
         )..where((v) => v.presetSlotId.equals(slotIdsBeforeReplace[2]!))).get();
         expect(specificationValuesLeft, isEmpty);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('replace into empty positions still inserts', () async {
       await _seedAlgorithm(db, 'AAAA');
@@ -635,7 +635,7 @@ void main() {
         expect(loaded!.slots, hasLength(2));
         expect(loaded.slots.every((s) => s.algorithm.guid == 'AAAA'), isTrue);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('space check uses non-skipped count', () async {
       await _seedAlgorithm(db, 'AAAA');
