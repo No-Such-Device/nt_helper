@@ -154,7 +154,7 @@ void main() {
           findsWidgets,
         );
       },
-    );
+    , tags: ['regression']);
 
     testWidgets('plain Multisamples folder candidate is enumerated', (
       tester,
@@ -197,7 +197,7 @@ void main() {
 
       expect(find.text('Multisample'), findsOneWidget);
       expect(find.text('Alpha_C3'), findsNothing);
-    });
+    }, tags: ['regression']);
 
     testWidgets('negative Sample value displays Multisample defensively', (
       tester,
