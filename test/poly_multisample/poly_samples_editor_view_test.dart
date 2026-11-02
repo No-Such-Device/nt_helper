@@ -407,7 +407,7 @@ void main() {
     );
     expect(find.byType(PolySampleList), findsOneWidget);
     expect(find.byType(PolySampleInspector), findsOneWidget);
-  });
+  }, tags: ['regression']);
 
   testWidgets('toolbar discard label is selection scoped', (tester) async {
     final cubit = _TestPolyMultisampleBuilderCubit()..setTestState(_state());
