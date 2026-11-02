@@ -33,11 +33,13 @@ class PatchMapEditorCubit extends Cubit<PatchMapEditorState> {
     this.download, {
     this.watchInterval,
     this.companionCacheKey,
+    this.evaluationRunner,
     this.retryDelay = const Duration(seconds: 5),
     this.companionCheckInterval = const Duration(minutes: 1),
   }) : super(const PatchMapEditorState());
   final Duration? watchInterval;
   final String? companionCacheKey;
+  final CompanionEvaluationRunner? evaluationRunner;
   final _pending = <int, Map<String, Object>>{};
   final _pendingAux = <int, Map<String, Object>>{};
   final _pendingNames = <int, String>{};
@@ -318,6 +320,7 @@ class PatchMapEditorCubit extends Cubit<PatchMapEditorState> {
           guid: 'ThPh',
           cacheKey: companionCacheKey,
           refresh: true,
+          evaluationRunner: evaluationRunner,
         );
       }
       final document = CompanionTable.parse(
@@ -373,6 +376,7 @@ class PatchMapEditorCubit extends Cubit<PatchMapEditorState> {
       guid: 'ThPh',
       cacheKey: companionCacheKey,
       refresh: refreshCompanion,
+      evaluationRunner: evaluationRunner,
     );
     if (isClosed) throw StateError('Editor closed');
     final PatchMap map;
