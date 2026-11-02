@@ -154,6 +154,6 @@ void main() {
       } finally {
         semantics.dispose();
       }
-    });
+    }, tags: ['regression']);
   }
 }
