@@ -135,7 +135,7 @@ void main() {
         ),
         isFalse,
       );
-    });
+    }, tags: ['regression']);
 
     test('physical output bus 18 uses hw path instead of direct algo→algo', () {
       final a = _FakeRouting(
@@ -178,7 +178,7 @@ void main() {
         ),
         isFalse,
       );
-    });
+    }, tags: ['regression']);
 
     test('aux bus 25 yields only algo→algo (no hardware edges)', () {
       final a = _FakeRouting(
@@ -383,7 +383,7 @@ void main() {
         ),
         isFalse,
       );
-    });
+    }, tags: ['regression']);
 
     test('legacy firmware: bus 29 creates ES-5 L, bus 65 is not ES-5', () {
       final a = _FakeUsbFromRouting(
@@ -540,7 +540,7 @@ void main() {
           expect(edge.isPartial, isFalse);
           expect(edge.outputMode, core.OutputMode.add);
         },
-      );
+      , tags: ['regression']);
 
       test(
         'self-write: same-algorithm in/out on same bus is not connected',
@@ -568,7 +568,7 @@ void main() {
             isFalse,
           );
         },
-      );
+      , tags: ['regression']);
 
       test('Replace + forward: writer in lower slot produces forward edge', () {
         // Routings list [writer, reader]: writer.algorithmIndex == 0,
@@ -604,7 +604,7 @@ void main() {
         expect(edge.isBackwardEdge, isFalse);
         expect(edge.isPartial, isFalse);
         expect(edge.outputMode, core.OutputMode.replace);
-      });
+      }, tags: ['regression']);
 
       test(
         'multiple Replace writers in higher slots produce one backward edge per writer',
