@@ -100,6 +100,6 @@ void main() {
               ),
         ),
       );
-    });
+    }, tags: ['regression']);
   });
 }
