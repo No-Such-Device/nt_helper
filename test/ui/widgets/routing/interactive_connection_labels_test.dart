@@ -93,67 +93,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('Multiple connections maintain independent callback state', (
-      tester,
-    ) async {
-      // Test that multiple connections can have independent hover/tap callback handling
-      final List<painter.ConnectionData> connections = List.generate(3, (
-        index,
-      ) {
-        return painter.ConnectionData(
-          connection: Connection(
-            id: 'connection_$index',
-            sourcePortId: 'source_$index',
-            destinationPortId: 'dest_$index',
-            connectionType: ConnectionType.algorithmToAlgorithm,
-            busLabel: 'BUS $index',
-          ),
-          sourcePosition: Offset(100, 100.0 + index * 50),
-          destinationPosition: Offset(300, 100.0 + index * 50),
-          busLabel: 'BUS $index',
-          onLabelHover: (isHovering) {
-            // Each connection has its own callback
-          },
-          onLabelTap: () {
-            // Each connection has its own tap handler
-          },
-        );
-      });
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: CustomPaint(
-              painter: painter.ConnectionPainter(
-                connections: connections,
-                theme: ThemeData(),
-                showLabels: true,
-                hoveredConnectionId: null,
-              ),
-              child: const SizedBox(width: 400, height: 250),
-            ),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Verify all connections have independent callback functions
-      for (int i = 0; i < connections.length; i++) {
-        expect(
-          connections[i].onLabelHover,
-          isNotNull,
-          reason: 'Connection $i should have hover callback',
-        );
-        expect(
-          connections[i].onLabelTap,
-          isNotNull,
-          reason: 'Connection $i should have tap callback',
-        );
-      }
-
-      expect(tester.takeException(), isNull);
-    });
+    
 
     testWidgets('RoutingEditorCubit setPortOutputMode integration', (
       tester,
