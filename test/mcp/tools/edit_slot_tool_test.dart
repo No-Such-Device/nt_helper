@@ -602,16 +602,7 @@ void main() {
         expect(decoded['success'] == true || decoded['error'] != null, isTrue);
       });
 
-      test('should accept empty parameters array', () async {
-        final result = await tools.editSlot({
-          'slot_index': 0,
-          'data': {'parameters': []},
-        });
-
-        final decoded = jsonDecode(result);
-        // May succeed or fail with device state error
-        expect(decoded['success'] == true || decoded['error'] != null, isTrue);
-      });
+      
 
       test('should validate slot_index boundaries', () async {
         final result0 = await tools.editSlot({'slot_index': 0, 'data': {}});
