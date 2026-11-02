@@ -125,7 +125,7 @@ void main() {
       );
       expect(harness.memoryRequests, hasLength(5));
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('serializes concurrent memory requests through the scheduler', () async {
     final harness = _MemoryWireHarness();
@@ -166,7 +166,7 @@ void main() {
       await freshFailure;
       expect(harness.memoryRequests, hasLength(5));
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'extra retry responses make a newer memory query fail explicitly',
@@ -201,7 +201,7 @@ void main() {
       final recoveredResult = await recovered;
       expect(recoveredResult?.sram.current, 50);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'connection replacement rejects a response from the disposed manager',
@@ -235,7 +235,7 @@ void main() {
       final recoveredResult = await recovered;
       expect(recoveredResult?.sram.current, 50);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'timed-out response debt stays ambiguous beyond the former expiry',
@@ -276,7 +276,7 @@ void main() {
         expect(recoveredResult?.sram.current, 50);
       });
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('replacement debt stays ambiguous beyond the former expiry', () async {
     var currentTime = DateTime.utc(2026);
