@@ -267,7 +267,7 @@ void main() {
         expect(paramInfo1, isNotNull);
         expect(paramInfo1!.ioFlags, 0);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'requestParameterInfo handles all valid ioFlags values (0-15)',
