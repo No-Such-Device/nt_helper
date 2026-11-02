@@ -468,7 +468,7 @@ void main() {
 
       // Assert - installation should complete without throwing
       verify(() => mockDisting.requestRescanPlugins()).called(1);
-    });
+    }, tags: ['regression']);
 
     test('triggers rescan for .O extension (case insensitive)', () async {
       // Arrange
@@ -622,6 +622,6 @@ void main() {
           createAlways: any(named: 'createAlways'),
         ),
       ).called(greaterThan(0));
-    });
+    }, tags: ['regression']);
   });
 }
