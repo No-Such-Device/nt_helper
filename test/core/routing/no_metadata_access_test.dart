@@ -233,7 +233,7 @@ void main() {
         expect(port.busValue, isNull);
         expect(port.busParam, isNull);
         expect(port.parameterNumber, isNull);
-      });
+      }, tags: ['regression']);
 
       test('should maintain forward compatibility', () {
         // Create a port with current direct properties
