@@ -150,10 +150,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: production-release
     steps:
-      - name: Check out candidate tag
+      - name: Check out baseline resolver
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.verify-candidate.outputs.tag }}
+          ref: main
           fetch-depth: 0
 
       - name: Set up Python
