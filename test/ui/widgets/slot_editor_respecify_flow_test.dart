@@ -448,7 +448,7 @@ void main() {
       );
       semantics.dispose();
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   testWidgets(
     'conflicting returned indices replace displayed parameters, mappings, and routing',
@@ -520,7 +520,7 @@ void main() {
         containsAll(<double>[77, 10]),
       );
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   testWidgets(
     'matching unchanged values establish current state without acknowledgement',
@@ -650,7 +650,7 @@ void main() {
         reason: 'reopening must not retain or resend the submitted proposal',
       );
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   testWidgets(
     'missing and late readback exits waiting at ten seconds without resending',
@@ -752,7 +752,7 @@ void main() {
       ]);
       expect(find.byTooltip('Refresh'), findsOneWidget);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   testWidgets('hydration failure exits waiting without showing stale success', (
     tester,
