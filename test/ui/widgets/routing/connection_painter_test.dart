@@ -760,7 +760,7 @@ void main() {
 
         // Labels should not overlap
         expect(rect1.overlaps(rect2), isFalse);
-      });
+      }, tags: ['regression']);
 
       test('non-overlapping labels remain unchanged', () {
         // Two connections with very different positions
