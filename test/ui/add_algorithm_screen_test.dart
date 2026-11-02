@@ -378,7 +378,7 @@ void main() {
           hasLength(1),
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     testWidgets('Add retains the first GUID entry and its specifications', (
       tester,
@@ -1185,7 +1185,7 @@ void main() {
         expect(find.text('Clock added'), findsNothing);
         expect(find.text('Select Algorithm'), findsOneWidget);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     testWidgets('bottom actions use a brief state transition', (tester) async {
       when(
