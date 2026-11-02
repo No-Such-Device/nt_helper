@@ -190,7 +190,7 @@ void main() {
       expect((await store.loadActive())!.summary.id, 'second');
       expect(await File('${directory.path}/first.json').exists(), isFalse);
     },
-  );
+  , tags: ['regression']);
 
   test(
     'overlapping store instances serialize complete record and summary replacements',
@@ -212,7 +212,7 @@ void main() {
         isEmpty,
       );
     },
-  );
+  , tags: ['regression']);
 
   test(
     'rejects unsafe IDs and corrupt/unsupported records without overwriting files',
@@ -230,5 +230,5 @@ void main() {
       await expectLater(store.loadActive(), throwsFormatException);
       expect(await file.readAsString(), corrupt);
     },
-  );
+  , tags: ['regression']);
 }
