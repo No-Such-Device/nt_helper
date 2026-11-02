@@ -198,7 +198,7 @@ void main() {
         final cached = await database.pluginInstallationsDao
             .getAllInstalledPlugins();
         expect(cached, isEmpty);
-      });
+      }, tags: ['regression']);
 
       test('GUID detection works without database caching', () async {
         // Note: Database recording is now handled by DistingCubit.installPlugin(),
@@ -447,7 +447,7 @@ void main() {
         // Should detect update via date comparison
         expect(updateInfo, contains('date-plugin'));
         expect(updateInfo['date-plugin']!.updateAvailable, isTrue);
-      });
+      }, tags: ['regression']);
 
       test(
         'no update when gallery updatedAt is older than installation',
@@ -610,7 +610,7 @@ void main() {
         // even though date suggests no update
         expect(updateInfo, contains('version-priority'));
         expect(updateInfo['version-priority']!.updateAvailable, isTrue);
-      });
+      }, tags: ['regression']);
     });
   });
 }
