@@ -144,7 +144,7 @@ void main() {
         // Should be 'samples/Drums/kick.wav' not 'samples/Drums//kick.wav'
         expect(result, ['samples/Drums/kick.wav']);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('directories are not included in file results', () async {
       when(() => mockManager.requestDirectoryListing('samples')).thenAnswer(
