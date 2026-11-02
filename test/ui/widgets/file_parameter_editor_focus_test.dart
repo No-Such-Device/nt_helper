@@ -174,6 +174,6 @@ void main() {
               'ancestor page-navigation Focus widget.',
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   });
 }
