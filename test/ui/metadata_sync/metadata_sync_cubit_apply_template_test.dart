@@ -736,7 +736,7 @@ void main() {
         );
         verifyNever(() => mockManager.requestSetMapping(any(), any(), any()));
       },
-    );
+    , tags: ['regression']);
 
     test(
       'downgrades non-expressive v7 mappings when attached firmware is before 1.17',
@@ -826,7 +826,7 @@ void main() {
         expect(captured.midiMappingType, equals(MidiMappingType.cc));
         expect(captured.midiCC, equals(74));
       },
-    );
+    , tags: ['regression']);
 
     test(
       'refreshes attached DistingCubit slots after appending template',
