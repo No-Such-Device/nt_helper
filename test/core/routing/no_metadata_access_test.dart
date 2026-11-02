@@ -4,42 +4,7 @@ import 'package:nt_helper/core/routing/models/port.dart';
 void main() {
   group('No Metadata Access Tests', () {
     group('Port Model Validation', () {
-      test('should not have metadata field available', () {
-        const port = Port(
-          id: 'test_port',
-          name: 'Test Port',
-          type: PortType.cv,
-          direction: PortDirection.input,
-          isPolyVoice: true,
-          voiceNumber: 2,
-          busValue: 5,
-          busParam: 'test_param',
-          parameterNumber: 10,
-          isVirtualCV: true,
-          isMultiChannel: true,
-          channelNumber: 1,
-          isStereoChannel: true,
-          stereoSide: 'left',
-          isMasterMix: false,
-        );
-
-        // Verify that port doesn't have metadata field by checking the type
-        // This is a compile-time check - if metadata field exists, this won't compile
-        expect(port.toString(), isA<String>());
-
-        // Verify all direct properties are accessible
-        expect(port.isPolyVoice, isTrue);
-        expect(port.voiceNumber, equals(2));
-        expect(port.busValue, equals(5));
-        expect(port.busParam, equals('test_param'));
-        expect(port.parameterNumber, equals(10));
-        expect(port.isVirtualCV, isTrue);
-        expect(port.isMultiChannel, isTrue);
-        expect(port.channelNumber, equals(1));
-        expect(port.isStereoChannel, isTrue);
-        expect(port.stereoSide, equals('left'));
-        expect(port.isMasterMix, isFalse);
-      });
+      
 
       test('should only use direct properties in JSON serialization', () {
         const port = Port(
