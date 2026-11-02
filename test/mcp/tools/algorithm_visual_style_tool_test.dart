@@ -173,7 +173,7 @@ void main() {
     expect(result['success'], isFalse);
     expect(result['error'], contains('Slot 0 is empty'));
     verifyNever(() => cubit.setAlgorithmVisualStyle(any(), any()));
-  });
+  }, tags: ['regression']);
 
   test('rejects connected firmware older than 1.18', () async {
     final cubit = _MockDistingCubit();
