@@ -195,29 +195,6 @@ Future<List<ParameterEntry>> getParametersForAlgorithm(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('MetadataSyncService - Parameter Prefix Preservation', () {
-    late AppDatabase database;
-    late MetadataSyncService service;
-
-    setUpAll(() async {
-      database = AppDatabase.forTesting(NativeDatabase.memory());
-    });
-
-    tearDownAll(() async {
-      await database.close();
-    });
-
-    
-
-    
-
-    
-
-    
-
-    
-  });
-
   group('MetadataSyncService - Scan Spec Values', () {
     late AppDatabase database;
 
