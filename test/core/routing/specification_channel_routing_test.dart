@@ -142,7 +142,7 @@ void main() {
       expect(ports.outputPorts.map((p) => p.busValue), [23, 24]);
       expect(ports.inputPorts.every((p) => p.parameterNumber != null), isTrue);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('factory-style numbered routing is not treated as an implicit span', () {
     final base = groupedAudioSlot(guid: 'eqpa', name: 'EQ Parametric');
