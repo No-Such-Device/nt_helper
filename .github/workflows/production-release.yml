@@ -260,10 +260,12 @@ jobs:
             enabled: ${{ inputs.submit_ios }}
             bundle_id: dev.nosuch.ntHelper
             platform: ios
+            locale: en-CA
           - name: macOS
             enabled: ${{ inputs.submit_macos }}
             bundle_id: dev.nosuch.macos.ntHelper
             platform: osx
+            locale: en-US
     steps:
       - name: Stop when this Apple platform is not selected
         if: matrix.enabled != true
@@ -291,6 +293,7 @@ jobs:
           BUILD_NUMBER: ${{ needs.verify-candidate.outputs.build_number }}
           BUNDLE_ID: ${{ matrix.bundle_id }}
           APP_PLATFORM: ${{ matrix.platform }}
+          APP_LOCALE: ${{ matrix.locale }}
         run: |
           set -euo pipefail
           umask 077
@@ -310,9 +313,10 @@ jobs:
             abort 'Invalid App Store Connect key: expected JSON containing a private P-256 PEM key.'
           end
           RUBY
-          mkdir -p fastlane/metadata/en-US
-          printf '%s' "$APP_STORE_NOTES" > fastlane/metadata/en-US/release_notes.txt
+          mkdir -p "fastlane/metadata/$APP_LOCALE"
+          printf '%s' "$APP_STORE_NOTES" > "fastlane/metadata/$APP_LOCALE/release_notes.txt"
           gem install fastlane --version 2.241.2 --no-document
+          # Fastlane's IAP precheck does not support API keys. Keep other prechecks enabled.
           fastlane deliver \
             --api_key_path "$RUNNER_TEMP/app-store-connect-api-key.json" \
             --app_identifier "$BUNDLE_ID" \
@@ -323,6 +327,7 @@ jobs:
             --skip_binary_upload true \
             --skip_screenshots true \
             --submit_for_review true \
+            --precheck_include_in_app_purchases false \
             --automatic_release false \
             --force
 
