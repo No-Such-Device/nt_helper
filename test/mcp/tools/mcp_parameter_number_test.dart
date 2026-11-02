@@ -871,7 +871,7 @@ void main() {
           verifyNever(() => controller.getParameterMapping(0, 1));
           verifyNever(() => controller.getParameterMapping(0, 2));
         },
-      , tags: ['regression']);
+      tags: ['regression']);
     },
   );
 
@@ -985,7 +985,7 @@ void main() {
         verify(() => controller.getParameterEnumStrings(0, 5)).called(1);
         verifyNever(() => controller.getParameterEnumStrings(0, 1));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'read-back calls getParameterMapping with hardware numbers, not array indices',
@@ -1048,7 +1048,7 @@ void main() {
         verifyNever(() => controller.getParameterMapping(0, 1));
         verifyNever(() => controller.getParameterMapping(0, 2));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   });
 
   group('searchParameters — display-scaled values', () {
@@ -1169,7 +1169,7 @@ void main() {
         final match = matches[0] as Map<String, dynamic>;
         expect(match['parameter_name'], equals('Speed '));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   });
 
   group('getMultipleParameters — value extraction', () {
@@ -1645,7 +1645,7 @@ void main() {
         expect(json['success'], isFalse);
         expect(json['error'], contains('bounds'));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'accepts display value 50 (within display bounds 0-100) for existing algorithm',
