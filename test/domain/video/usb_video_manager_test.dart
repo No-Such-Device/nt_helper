@@ -153,7 +153,7 @@ void main() {
       );
       await manager.disconnect();
     },
-  );
+  , tags: ['regression']);
 
   for (final dispose in [false, true]) {
     testWidgets(
@@ -184,7 +184,7 @@ void main() {
         expect(requests, 0, reason: 'A stale stall must not restart fallback');
         expect(tester.takeException(), isNull);
       },
-    );
+    , tags: ['regression']);
   }
 
   testWidgets(
@@ -212,7 +212,7 @@ void main() {
         isTrue,
       );
     },
-  );
+  , tags: ['regression']);
 
   for (final failure in ['null', 'empty', 'exception']) {
     testWidgets(
@@ -245,6 +245,6 @@ void main() {
         );
         await manager.disconnect();
       },
-    );
+    , tags: ['regression']);
   }
 }
