@@ -276,7 +276,7 @@ void main() {
         routing.inputPorts.where((port) => port.name == 'Gate 1'),
         isEmpty,
       );
-    });
+    }, tags: ['regression']);
 
     /// Builds a poly algorithm slot (guid `pymu`) with a single connected
     /// gate input and a configurable `Gate 1 CV count`.
@@ -486,6 +486,6 @@ void main() {
       );
       // gateBus=2, CV1 on bus 3.
       expect(cvPort.busValue, equals(3));
-    });
+    }, tags: ['regression']);
   });
 }
