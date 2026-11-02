@@ -325,7 +325,7 @@ void main() {
       verifyNever(() => mockDisting.requestFileDownload(any()));
       verifyNever(() => mockDisting.requestFileDelete(any()));
     },
-  );
+  , tags: ['regression']);
 
   test('GalleryCubit queue passes the outcome to the UI callback', () async {
     final service = MockGalleryService();
