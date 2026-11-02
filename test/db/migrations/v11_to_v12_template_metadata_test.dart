@@ -107,6 +107,6 @@ void main() {
         expect(preset.templateMetadata, isNull);
         expect(preset.isTemplate, isFalse);
       },
-    );
+    , tags: ['regression']);
   });
 }
