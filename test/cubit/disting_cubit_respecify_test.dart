@@ -1625,7 +1625,7 @@ void main() {
         expect(async.pendingTimers, isEmpty);
       });
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('missing, malformed, cached, wrong-target, and late data cannot become '
       'a valid observation', () {
