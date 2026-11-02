@@ -50,5 +50,5 @@ void main() {
         .select(database.presetSpecificationValues)
         .getSingle();
     expect(savedValue.value, 4);
-  });
+  }, tags: ['regression']);
 }
