@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:nt_helper/services/ipad_local_network.dart';
+import 'package:nt_helper/services/settings_service.dart';
 import 'package:mcp_dart/mcp_dart.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/mcp/tool_registry.dart';
@@ -56,8 +59,83 @@ String generateUUID() {
 
 /// MCP server service using Streamable HTTP transport on /mcp.
 /// Manages multiple MCP server instances, one per client session.
-class McpServerService extends ChangeNotifier {
-  McpServerService._(this._distingCubit);
+class McpServerService extends ChangeNotifier with WidgetsBindingObserver {
+  McpServerService._(this._distingCubit)
+    : _isIos = Platform.isIOS,
+      _readNetwork = IpadLocalNetwork.read,
+      _bindHttp = ((address, port) => HttpServer.bind(address, port)) {
+    if (_isIos) WidgetsBinding.instance.addObserver(this);
+  }
+
+  @visibleForTesting
+  McpServerService.forTesting({
+    required DistingCubit distingCubit,
+    required Future<IpadLocalNetwork> Function() readNetwork,
+    required Future<HttpServer> Function(InternetAddress, int) bindHttp,
+  }) : _distingCubit = distingCubit,
+       _isIos = true,
+       _readNetwork = readNetwork,
+       _bindHttp = bindHttp;
+
+  final bool _isIos;
+  final Future<IpadLocalNetwork> Function() _readNetwork;
+  final Future<HttpServer> Function(InternetAddress, int) _bindHttp;
+  bool _foreground = true;
+  Future<void> _settingsWork = Future.value();
+  List<String> _localEndpoints = const [];
+  final Set<String> _ipadHosts = {'localhost'};
+  List<String> get localEndpoints => _localEndpoints;
+
+  /// All settings entry points share the same start/stop behavior.
+  Future<void> applySettings() {
+    return _settingsWork = _settingsWork.then((_) async {
+      final settings = SettingsService();
+      final enabled = _isIos ? settings.ipadMcpEnabled : settings.mcpEnabled;
+      if (!enabled || (_isIos && !_foreground)) {
+        await stop();
+        return;
+      }
+      if (!_isIos &&
+          !(Platform.isMacOS || Platform.isLinux || Platform.isWindows)) {
+        return;
+      }
+      try {
+        var address = settings.mcpRemoteConnections
+            ? InternetAddress.anyIPv4
+            : InternetAddress.loopbackIPv4;
+        if (_isIos) {
+          final network = await _readNetwork();
+          if (!network.isIpad || network.subnets.isEmpty) {
+            throw StateError(
+              'Connect this iPad to Wi-Fi or Ethernet to use MCP.',
+            );
+          }
+          _localEndpoints = network.subnets.map((s) => s.endpoint).toList();
+          address = InternetAddress.anyIPv6;
+          if (!_foreground || !settings.ipadMcpEnabled) return;
+        }
+        if (isRunning && boundAddress?.address != address.address) await stop();
+        await start(bindAddress: address);
+      } catch (error) {
+        await stop();
+        _lastError = error.toString();
+        notifyListeners();
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_isIos) return;
+    _foreground = state == AppLifecycleState.resumed;
+    unawaited(applySettings());
+  }
+
+  @override
+  void dispose() {
+    if (_isIos) WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   static McpServerService? _instance;
 
@@ -126,7 +204,7 @@ class McpServerService extends ChangeNotifier {
       final address = bindAddress ?? InternetAddress.loopbackIPv4;
 
       // Create HTTP server
-      _httpServer = await HttpServer.bind(address, port);
+      _httpServer = await _bindHttp(address, port);
 
       // Handle HTTP requests
       _httpSubscription = _httpServer!.listen(
@@ -167,6 +245,33 @@ class McpServerService extends ChangeNotifier {
   }
 
   Future<void> _handleHttpRequest(HttpRequest request) async {
+    if (_isIos) {
+      final server = _httpServer;
+      var allowed = false;
+      try {
+        final network = await _readNetwork();
+        // The SDK defaults to localhost-only Host validation. Keep protection
+        // enabled while accepting this iPad's current numeric LAN addresses.
+        _ipadHosts
+          ..clear()
+          ..add('localhost') // Internal stale-session reinitialization request.
+          ..addAll(network.subnets.map((subnet) => subnet.address.address));
+        allowed =
+            _foreground &&
+            SettingsService().ipadMcpEnabled &&
+            identical(server, _httpServer) &&
+            isRunning &&
+            network.allows(request.connectionInfo);
+      } catch (_) {
+        // Missing network evidence must not allow a request.
+      }
+      if (!allowed) {
+        request.response.statusCode = HttpStatus.forbidden;
+        request.response.persistentConnection = false;
+        await request.response.close();
+        return;
+      }
+    }
     _log('Request: ${request.method} ${request.uri}');
     // Apply CORS headers to all responses
     _setCorsHeaders(request.response);
@@ -512,6 +617,7 @@ class McpServerService extends ChangeNotifier {
     // SSE for request responses and standalone server streams.
     transport = StreamableHTTPServerTransport(
       options: StreamableHTTPServerTransportOptions(
+        allowedHosts: _isIos ? _ipadHosts : null,
         sessionIdGenerator: sessionId != null
             ? () => sessionId
             : () => generateUUID(),

@@ -11,6 +11,7 @@ import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/services/database_integrity_service.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
+import 'package:nt_helper/ui/widgets/ipad_mcp_settings.dart';
 import 'package:nt_helper/ui/widgets/rtt_stats_dialog.dart';
 import 'package:nt_helper/ui/widgets/theme_seed_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -51,6 +52,7 @@ class SettingsService {
   static const String _interMessageDelayKey = 'inter_message_delay_ms';
   static const String _hapticsEnabledKey = 'haptics_enabled';
   static const String _mcpEnabledKey = 'mcp_enabled';
+  static const String _ipadMcpEnabledKey = 'ipad_mcp_enabled';
   static const String _startPagesCollapsedKey = 'start_pages_collapsed';
   static const String _galleryUrlKey = 'gallery_url';
   static const String _graphqlEndpointKey = 'graphql_endpoint';
@@ -107,6 +109,7 @@ class SettingsService {
     _interMessageDelayKey,
     _hapticsEnabledKey,
     _mcpEnabledKey,
+    _ipadMcpEnabledKey,
     _startPagesCollapsedKey,
     _galleryUrlKey,
     _graphqlEndpointKey,
@@ -324,10 +327,19 @@ class SettingsService {
   }
 
   /// Check if MCP service is enabled
-  bool get mcpEnabled => _prefs?.getBool(_mcpEnabledKey) ?? defaultMcpEnabled;
+  bool get mcpEnabled => Platform.isIOS
+      ? ipadMcpEnabled
+      : _prefs?.getBool(_mcpEnabledKey) ?? defaultMcpEnabled;
+
+  /// Separate opt-in: restored desktop preferences must never enable iPad MCP.
+  bool get ipadMcpEnabled => _prefs?.getBool(_ipadMcpEnabledKey) ?? false;
+
+  Future<bool> setIpadMcpEnabled(bool value) async =>
+      await _prefs?.setBool(_ipadMcpEnabledKey, value) ?? false;
 
   /// Set whether MCP service is enabled
   Future<bool> setMcpEnabled(bool value) async {
+    if (Platform.isIOS) return setIpadMcpEnabled(value);
     return await _prefs?.setBool(_mcpEnabledKey, value) ?? false;
   }
 
@@ -1360,7 +1372,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
                       ),
                     ),
 
-                    // MCP enabled setting (desktop only)
+                    if (Platform.isIOS)
+                      IpadMcpSettings(
+                        value: _mcpEnabled,
+                        onChanged: (value) =>
+                            setState(() => _mcpEnabled = value),
+                      ),
+
+                    // Desktop settings retain their existing behavior.
                     if (Platform.isMacOS ||
                         Platform.isWindows ||
                         Platform.isLinux) ...[

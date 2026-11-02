@@ -46,7 +46,13 @@ class McpStatusIndicator extends StatelessWidget {
 
     // Build tooltip message based on state
     final String tooltip;
-    if (isRunning) {
+    if (Platform.isIOS) {
+      tooltip = isRunning
+          ? 'MCP running on the local subnet. Change in Settings.\n${mcpService.localEndpoints.join('\n')}'
+          : hasError
+          ? 'MCP failed: $lastError. Change in Settings.'
+          : 'MCP is off. Enable in Settings.';
+    } else if (isRunning) {
       tooltip =
           'MCP server running at http://localhost:$mcpPort (Tap to disable)';
     } else if (hasError) {
@@ -55,7 +61,9 @@ class McpStatusIndicator extends StatelessWidget {
       tooltip = 'MCP server is disabled (Tap to enable)';
     }
 
-    final semanticLabel = isRunning
+    final semanticLabel = Platform.isIOS
+        ? tooltip
+        : isRunning
         ? 'MCP server running. Double tap to disable'
         : hasError
         ? 'MCP server error. Double tap to retry'
@@ -68,43 +76,47 @@ class McpStatusIndicator extends StatelessWidget {
         iconSize: 16,
         constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         tooltip: tooltip,
-        onPressed: () async {
-          if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  "MCP Service can only be toggled on desktop platforms.",
-                ),
-              ),
-            );
-            return;
-          }
+        onPressed: Platform.isIOS
+            ? null
+            : () async {
+                if (!(Platform.isMacOS ||
+                    Platform.isWindows ||
+                    Platform.isLinux)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        "MCP Service can only be toggled on desktop platforms.",
+                      ),
+                    ),
+                  );
+                  return;
+                }
 
-          final bindAddress = settings.mcpRemoteConnections
-              ? InternetAddress.anyIPv4
-              : InternetAddress.loopbackIPv4;
+                final bindAddress = settings.mcpRemoteConnections
+                    ? InternetAddress.anyIPv4
+                    : InternetAddress.loopbackIPv4;
 
-          if (mcpInstance.hasError) {
-            await mcpInstance.start(bindAddress: bindAddress);
-            return;
-          }
+                if (mcpInstance.hasError) {
+                  await mcpInstance.start(bindAddress: bindAddress);
+                  return;
+                }
 
-          final bool currentMcpSetting = settings.mcpEnabled;
-          final newMcpSetting = !currentMcpSetting;
-          await settings.setMcpEnabled(newMcpSetting);
+                final bool currentMcpSetting = settings.mcpEnabled;
+                final newMcpSetting = !currentMcpSetting;
+                await settings.setMcpEnabled(newMcpSetting);
 
-          final bool isServerCurrentlyRunning = mcpInstance.isRunning;
+                final bool isServerCurrentlyRunning = mcpInstance.isRunning;
 
-          if (newMcpSetting) {
-            if (!isServerCurrentlyRunning) {
-              await mcpInstance.start(bindAddress: bindAddress);
-            }
-          } else {
-            if (isServerCurrentlyRunning) {
-              await mcpInstance.stop();
-            }
-          }
-        },
+                if (newMcpSetting) {
+                  if (!isServerCurrentlyRunning) {
+                    await mcpInstance.start(bindAddress: bindAddress);
+                  }
+                } else {
+                  if (isServerCurrentlyRunning) {
+                    await mcpInstance.stop();
+                  }
+                }
+              },
         icon: ExcludeSemantics(
           child: Container(
             width: 16,

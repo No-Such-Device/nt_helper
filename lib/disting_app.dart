@@ -211,18 +211,7 @@ class _DistingPageState extends State<DistingPage> {
         try {
           final distingCubit = context.read<DistingCubit>();
           McpServerService.initialize(distingCubit: distingCubit);
-          final settings = SettingsService();
-          if ((Platform.isMacOS || Platform.isWindows || Platform.isLinux) &&
-              settings.mcpEnabled) {
-            if (!McpServerService.instance.isRunning) {
-              final bindAddress = settings.mcpRemoteConnections
-                  ? InternetAddress.anyIPv4
-                  : InternetAddress.loopbackIPv4;
-              await McpServerService.instance
-                  .start(bindAddress: bindAddress)
-                  .catchError((e) {});
-            } else {}
-          } else {}
+          await McpServerService.instance.applySettings();
         } catch (e) {
           // Intentionally empty
         }
@@ -231,11 +220,7 @@ class _DistingPageState extends State<DistingPage> {
   }
 
   Future<void> _handleSettingsDialog(BuildContext context) async {
-    final settings = SettingsService();
     final mcpInstance = McpServerService.instance;
-
-    settings.mcpEnabled;
-    mcpInstance.isRunning;
 
     // Get the midi manager and algorithms for RTT stats if connected
     IDistingMidiManager? midiManager;
@@ -260,35 +245,7 @@ class _DistingPageState extends State<DistingPage> {
     );
 
     if (result == true) {
-      // Settings were saved
-      final bool isMcpEnabledAfterDialog = settings.mcpEnabled;
-      final bool isServerStillRunningBeforeAction = mcpInstance
-          .isRunning; // Check state *before* explicitly starting/stopping
-
-      if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-        final bindAddress = settings.mcpRemoteConnections
-            ? InternetAddress.anyIPv4
-            : InternetAddress.loopbackIPv4;
-        if (isMcpEnabledAfterDialog) {
-          if (!isServerStillRunningBeforeAction) {
-            await mcpInstance
-                .start(bindAddress: bindAddress)
-                .catchError((e) {});
-          } else {
-            // Server already running — restart if bind address changed
-            if (mcpInstance.boundAddress?.address != bindAddress.address) {
-              await mcpInstance
-                  .restart(bindAddress: bindAddress)
-                  .catchError((e) {});
-            }
-          }
-        } else {
-          // MCP Setting is OFF
-          if (isServerStillRunningBeforeAction) {
-            await mcpInstance.stop().catchError((e) {});
-          }
-        }
-      }
+      await mcpInstance.applySettings();
     } else {}
   }
 
