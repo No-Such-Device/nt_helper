@@ -347,7 +347,7 @@ void main() {
         final result = await future;
         expect(result, isNotNull);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('Multiple CC packets during split SysEx buffering', () async {
       final key = RequestKey(
@@ -541,7 +541,7 @@ void main() {
         final result = await future;
         expect(result, isNotNull);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('Complete foreign SysEx during split SysEx buffering', () async {
       final key = RequestKey(
@@ -1257,7 +1257,7 @@ void main() {
         expect(observedMessages, isEmpty);
         scheduler.removeMessageObserver(observer);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('keeps ordinary same-slot reads on active-first behavior', () async {
       final key = RequestKey(
@@ -1443,7 +1443,7 @@ void main() {
         );
         verify(() => midi.sendData(any(), deviceId: device.id)).called(2);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     testWidgets(
       'retains an ordinary same-slot response still owed after a retry',
@@ -1495,7 +1495,7 @@ void main() {
         );
         expect(sentPackets, hasLength(3));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'propagates a send error after exactly one mutation attempt',
@@ -1606,7 +1606,7 @@ void main() {
         final result = await future;
         expect(result, isNotNull);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'Split SysEx with interleaved CC + foreign SysEx — retry recovers',
@@ -1655,6 +1655,6 @@ void main() {
         final result = await future;
         expect(result, isNotNull);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   });
 }
