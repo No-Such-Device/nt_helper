@@ -960,7 +960,7 @@ void main() {
         expect(result['message'], contains('Retry'));
         expectNothingUploaded();
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('content checks still run first while loading', () async {
       await startPartialLibraryLoad();
