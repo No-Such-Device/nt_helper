@@ -111,6 +111,6 @@ void main() {
       // metadata maps output 23 to its mode parameter 24 (22 is Trigger mode).
       expect(secondLfoOutput.parameterNumber, 23);
       expect(secondLfoOutput.modeParameterNumber, 24);
-    });
+    }, tags: ['regression']);
   });
 }
