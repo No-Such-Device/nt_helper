@@ -183,6 +183,6 @@ void main() {
       final sizeAfter = tester.getSize(find.byType(MappingEditButton));
 
       expect(sizeAfter, sizeBefore);
-    });
+    }, tags: ['regression']);
   });
 }
