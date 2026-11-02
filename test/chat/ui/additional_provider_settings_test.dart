@@ -232,7 +232,7 @@ void main() {
       expect(tester.getRect(find.widgetWithText(FilledButton, 'Save')), save);
       expect(settings.chatLlmProvider, LlmProviderType.gemini);
     },
-  );
+  , tags: ['regression']);
   testWidgets(
     'late model discovery cannot contaminate another provider or move Save',
     (tester) async {
@@ -272,7 +272,7 @@ void main() {
       );
       expect(tester.getRect(find.widgetWithText(FilledButton, 'Save')), save);
     },
-  );
+  , tags: ['regression']);
   testWidgets(
     'Claude subscription toggle does not turn Gemini into a Claude provider',
     (tester) async {
@@ -284,7 +284,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(settings.chatLlmProvider, LlmProviderType.gemini);
     },
-  );
+  , tags: ['regression']);
   testWidgets(
     'Cancel never persists edited credentials or provider selection',
     (tester) async {
@@ -302,7 +302,7 @@ void main() {
         'router-key',
       );
     },
-  );
+  , tags: ['regression']);
   
 
   testWidgets(
