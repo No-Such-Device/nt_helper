@@ -98,7 +98,7 @@ void main() {
         () => MemoryUsageResponse(requiredOverflow).parse(),
         throwsFormatException,
       );
-    });
+    }, tags: ['regression']);
   });
 
   group('0x39 SysEx frame parsing', () {
@@ -130,7 +130,7 @@ void main() {
 
       expect(decodeDistingNTSysEx(highDevice), isNull);
       expect(decodeDistingNTSysEx(highCommand), isNull);
-    });
+    }, tags: ['regression']);
   });
 }
 
