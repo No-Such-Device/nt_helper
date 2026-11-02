@@ -115,7 +115,7 @@ void main() {
       verify(() => midiCommand.devices).called(1);
       verifyNever(() => midiCommand.dispose());
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'explicit disconnect releases the synchronized manager and distinct endpoints',
@@ -309,7 +309,7 @@ void main() {
       verify(() => replacementCommand.devices).called(1);
       verifyNever(() => originalCommand.devices);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'saved endpoint names take precedence and retain directional matching',
@@ -366,7 +366,7 @@ void main() {
       );
       expect(snapshots, 2);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('manual MIDI selection survives an explicit device refresh', () async {
     final input = device('input', 'Forever', MidiPortType.IN);
@@ -501,5 +501,5 @@ void main() {
       verifyNever(() => midiCommand.connectToDevice(distingInput));
       verifyNever(() => midiCommand.connectToDevice(distingOutput));
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 }
