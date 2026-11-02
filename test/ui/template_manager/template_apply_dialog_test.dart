@@ -261,5 +261,5 @@ void main() {
 
     expect(find.textContaining('device failed'), findsOneWidget);
     expect(find.textContaining('Applied 1 slot'), findsNothing);
-  });
+  }, tags: ['regression']);
 }
