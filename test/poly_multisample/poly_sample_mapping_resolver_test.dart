@@ -226,7 +226,7 @@ void main() {
       final pairIssue = resolution.issues.last;
       expect(resolution.issuesForPath('/tmp/Invalid.wav'), contains(pairIssue));
       expect(resolution.issuesForPath('/tmp/Variant.wav'), contains(pairIssue));
-    });
+    }, tags: ['regression']);
 
     test('duplicate region paths are rejected', () {
       expect(
