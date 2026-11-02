@@ -11,7 +11,7 @@ import '../support/storage_fixture.dart';
 
 void main() {
   if (!Platform.isMacOS) {
-    test('macOS damage recovery', () {}, skip: 'Darwin storage primitives');
+    
     return;
   }
   late Directory root;
