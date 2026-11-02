@@ -345,7 +345,7 @@ void main() {
             verifyNever(() => mockFlashToolManager.getToolPath());
             verifyNever(() => mockFlashToolBridge.flash(any()));
           },
-        , tags: ['regression']);
+        tags: ['regression']);
       }
 
       blocTest<FirmwareUpdateCubit, FirmwareUpdateState>(
@@ -842,7 +842,7 @@ void main() {
           isA<FirmwareUpdateStateDownloading>(),
           isA<FirmwareUpdateStateWaitingForBootloader>(),
         ],
-      , tags: ['regression']);
+      tags: ['regression']);
     });
 
     group('post-flash MIDI reacquisition', () {
@@ -1084,7 +1084,7 @@ void main() {
             expect(releases, 0);
             await subscription.cancel();
           },
-        , tags: ['regression']);
+        tags: ['regression']);
       }
 
       test(
@@ -1118,7 +1118,7 @@ void main() {
           expect(releases, 1);
           verifyNever(() => mockFlashToolBridge.flash(any()));
         },
-      , tags: ['regression']);
+      tags: ['regression']);
 
       for (final cancel in [false, true]) {
         test(
@@ -1190,7 +1190,7 @@ void main() {
           expect(released, [first, second]);
           verifyNever(() => mockFlashToolBridge.flash(any()));
         },
-      , tags: ['regression']);
+      tags: ['regression']);
 
       test('late acquisition cannot replace a current retry manager', () async {
         final late = MockDistingMidiManager();
@@ -1245,7 +1245,7 @@ void main() {
           expect(releases, 0);
           verifyNever(() => mockFlashToolBridge.flash(any()));
         },
-      , tags: ['regression']);
+      tags: ['regression']);
 
       for (final cancel in [false, true]) {
         test(
@@ -1293,7 +1293,7 @@ void main() {
             if (cancel) await cubit.close();
             await progress.close();
           },
-        , tags: ['regression']);
+        tags: ['regression']);
       }
 
       for (final action in ['close', 'cancel', 'reset']) {
@@ -1365,7 +1365,7 @@ void main() {
           expect(await file.exists(), isFalse);
           expect(cubit.state, isA<FirmwareUpdateStateDownloading>());
         },
-      , tags: ['regression']);
+      tags: ['regression']);
     });
 
     group('MIDI release lifecycle', () {
@@ -1501,7 +1501,7 @@ void main() {
           expect(managerIndex, 2);
           expect(flashCalls, 2);
         },
-      , tags: ['regression']);
+      tags: ['regression']);
 
       test(
         'cancellation and disposal release an unflashed manager once',
@@ -1581,7 +1581,7 @@ void main() {
           expect(flashCalls, 2);
           expect(releases, 1);
         },
-      , tags: ['regression']);
+      tags: ['regression']);
     });
   });
 
