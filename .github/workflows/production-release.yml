@@ -261,11 +261,13 @@ jobs:
             bundle_id: dev.nosuch.ntHelper
             platform: ios
             locale: en-CA
+            automatic_release: true
           - name: macOS
             enabled: ${{ inputs.submit_macos }}
             bundle_id: dev.nosuch.macos.ntHelper
             platform: osx
             locale: en-US
+            automatic_release: false
     steps:
       - name: Stop when this Apple platform is not selected
         if: matrix.enabled != true
@@ -294,6 +296,7 @@ jobs:
           BUNDLE_ID: ${{ matrix.bundle_id }}
           APP_PLATFORM: ${{ matrix.platform }}
           APP_LOCALE: ${{ matrix.locale }}
+          AUTOMATIC_RELEASE: ${{ matrix.automatic_release }}
         run: |
           set -euo pipefail
           umask 077
@@ -328,7 +331,7 @@ jobs:
             --skip_screenshots true \
             --submit_for_review true \
             --precheck_include_in_app_purchases false \
-            --automatic_release false \
+            --automatic_release "$AUTOMATIC_RELEASE" \
             --force
 
       - name: Remove Apple credential file
