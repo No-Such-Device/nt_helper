@@ -1,0 +1,3 @@
+tags:
+  regression:
+    description: Tests that protect distinct regressions, contracts, races, migrations, persistence, or platform-specific failures.
