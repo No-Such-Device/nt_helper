@@ -493,7 +493,7 @@ void main() {
         verifyNever(() => manager.requestRemoveAlgorithm(any()));
         verifyNever(() => manager.requestLoadPreset(any(), any()));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'null required budget returns a validation error without mutation',
