@@ -112,7 +112,7 @@ void main() {
         ),
         isFalse,
       );
-    });
+    }, tags: ['regression']);
 
     testWidgets('hands i2c edits to the cubit before the sheet is dismissed', (
       tester,
