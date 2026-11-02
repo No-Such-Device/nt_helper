@@ -242,6 +242,6 @@ void main() {
           expect(openAIFieldsFor(metadata, endpoint, 'other-model'), isEmpty);
         }
       },
-    );
+    , tags: ['regression']);
   }
 }
