@@ -155,7 +155,7 @@ void main() {
             (limit: 50, offset: 0),
           ]);
         },
-      );
+      , tags: ['regression']);
     }
 
     test('retries categories after a transient 503 response', () async {
@@ -170,7 +170,7 @@ void main() {
 
       expect(gallery.plugins, hasLength(1));
       expect(categoryRequestCount, 2);
-    });
+    }, tags: ['regression']);
 
     test('retries a plugin page after a request timeout', () async {
       final service = GalleryService(
@@ -220,7 +220,7 @@ void main() {
         (limit: 50, offset: 0),
         (limit: 50, offset: 0),
       ]);
-    });
+    }, tags: ['regression']);
 
     test(
       'stops retrying after the configured attempts are exhausted',
