@@ -91,7 +91,7 @@ void main() {
         expect(cubit.state.deviceIdError, isNotNull);
         expect(store.saved.deviceId, 126);
       },
-    );
+    , tags: ['regression']);
 
     test(
       'connects only the selected endpoints after device information validates',
@@ -161,7 +161,7 @@ void main() {
         expect(cubit.session, isNull);
         expect(cubit.state.statusMessage, contains('did not return valid'));
       },
-    );
+    , tags: ['regression']);
 
     test(
       'waits for endpoints to return after reboot before reconnecting',
@@ -205,7 +205,7 @@ void main() {
         expect(cubit.state.status, Ntx8cvConnectionStatus.connected);
         expect(midiConnection.openedPairs, hasLength(2));
       },
-    );
+    , tags: ['regression']);
 
     test(
       'disconnects on endpoint loss, reselects on return, and never reconnects automatically',
