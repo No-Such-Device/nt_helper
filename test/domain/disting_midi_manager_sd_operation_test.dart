@@ -101,7 +101,7 @@ void main() {
       expect(status!.success, isTrue);
       verify(() => midi.sendData(any(), deviceId: device.id)).called(3);
     },
-  );
+  , tags: ['regression']);
 }
 
 void _injectResponse(
