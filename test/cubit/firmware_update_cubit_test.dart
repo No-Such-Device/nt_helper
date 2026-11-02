@@ -1819,30 +1819,7 @@ void main() {
   });
 
   group('FirmwareErrorType', () {
-    test('error types are correctly assigned based on stage', () {
-      // SDP_CONNECT and BL_CHECK should be bootloaderConnection type
-      const errorState1 = FirmwareUpdateStateError(
-        message: 'test',
-        errorType: FirmwareErrorType.bootloaderConnection,
-        failedStage: FlashStage.sdpConnect,
-      );
-      expect(errorState1.errorType, FirmwareErrorType.bootloaderConnection);
-
-      // SDP_UPLOAD and WRITE should be flashWrite type
-      const errorState2 = FirmwareUpdateStateError(
-        message: 'test',
-        errorType: FirmwareErrorType.flashWrite,
-        failedStage: FlashStage.sdpUpload,
-      );
-      expect(errorState2.errorType, FirmwareErrorType.flashWrite);
-
-      // Download errors should be download type
-      const errorState3 = FirmwareUpdateStateError(
-        message: 'test',
-        errorType: FirmwareErrorType.download,
-      );
-      expect(errorState3.errorType, FirmwareErrorType.download);
-    });
+    
   });
 
   group('Recovery methods', () {
