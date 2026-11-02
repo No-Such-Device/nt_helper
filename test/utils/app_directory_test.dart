@@ -88,7 +88,7 @@ void main() {
           expect(integrity.fileExists, isFalse);
         }, _UnavailableMarker(p.join(app.path, '.migrated')));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'marker failure never hides a migrated database in an empty fallback',
@@ -117,7 +117,7 @@ void main() {
           expect(support.existsSync(), isFalse);
         }, _UnavailableMarker(p.join(app.path, '.migrated')));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'marker failure in the fallback is reported and allows retry',
@@ -142,7 +142,7 @@ void main() {
         );
         expect(File(p.join(result.path, '.migrated')).existsSync(), isTrue);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'Windows starts when redirected Documents cannot be created',
@@ -185,7 +185,7 @@ void main() {
           );
         }, _UnavailableDocuments(p.join(docs.path, 'nt_helper')));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('Windows keeps fallback data after Documents recovers', () async {
       final support = Directory(p.join(tempRoot.path, 'LocalAppData'));
@@ -352,7 +352,7 @@ void main() {
           isFalse,
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'Windows propagates failure when fallback cannot be created',
