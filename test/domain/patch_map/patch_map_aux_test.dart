@@ -100,7 +100,7 @@ void main() {
     expect(device.frames.take(2).map((f) => f['request']![21]), [3, 2]);
     await expectLater(client.addAux(1), throwsA(isA<PatchMapSyncException>()));
     expect(device.map.aux, isEmpty);
-  });
+  }, tags: ['regression']);
 
   test(
     'AUX edits merge, follow native selection and cannot be remapped by Lua',
@@ -139,7 +139,7 @@ void main() {
       expect(hostile.state.error, contains('changed the action'));
       expect(device.map.aux.map((row) => row.bus), [44]);
     },
-  );
+  , tags: ['regression']);
 
   test(
     'AUX edit recovers lost acknowledgement and retains the latest desired value',
@@ -169,7 +169,7 @@ void main() {
       expect(cubit.state.pending, isFalse);
       expect(device.revision, 2);
     },
-  );
+  , tags: ['regression']);
 
   test('AUX lifecycle has identical C++ and Dart wire transcript', () async {
     final device = PatchMapDevice();
@@ -194,5 +194,5 @@ void main() {
     } else {
       expect(device.frames, jsonDecode(wire.readAsStringSync()));
     }
-  });
+  }, tags: ['regression']);
 }
