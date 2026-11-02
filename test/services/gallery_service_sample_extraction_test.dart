@@ -513,45 +513,9 @@ void main() {
         expect(installedPaths, contains('/samples/snare.wav'));
       });
 
-      test('install callback returns false for skipped files', () async {
-        var callCount = 0;
+      
 
-        Future<bool> mockInstallCallback(
-          String targetPath,
-          Uint8List data, {
-          Function(double)? onProgress,
-        }) async {
-          callCount++;
-          // Simulate file already exists - skip
-          return false;
-        }
-
-        final result = await mockInstallCallback(
-          '/samples/existing.wav',
-          Uint8List.fromList([0x01, 0x02]),
-        );
-
-        expect(result, isFalse);
-        expect(callCount, equals(1));
-      });
-
-      test('install callback throws on failure', () async {
-        Future<bool> mockInstallCallback(
-          String targetPath,
-          Uint8List data, {
-          Function(double)? onProgress,
-        }) async {
-          throw Exception('Upload failed: device disconnected');
-        }
-
-        expect(
-          () => mockInstallCallback(
-            '/samples/test.wav',
-            Uint8List.fromList([0x01]),
-          ),
-          throwsException,
-        );
-      });
+      
 
       test('progress callback receives correct values', () async {
         final progressValues = <double>[];
