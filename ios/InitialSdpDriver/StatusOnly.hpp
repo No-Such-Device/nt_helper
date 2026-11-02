@@ -21,10 +21,34 @@ int submitControl(Device *device, Client *client, const Control &request,
     return device->DeviceRequest(client, request.requestType, request.request,
         request.value, request.index, request.length, buffer, transferred, timeout);
 }
-template <class Pipe, class Memory>
+struct ReadResult {
+    bool done = false, expired = false;
+    int status = 0;
+    uint32_t bytes = 0;
+    void complete(int result, uint32_t count) {
+        if (expired) return;
+        status = result;
+        bytes = count;
+        done = true;
+    }
+};
+// Interrupt pipes require a zero USB timeout. The caller waits on a separate
+// deadline and aborts pending I/O on expiry; late callbacks cannot publish data.
+template <class Pipe, class Memory, class Action, class Wait>
 int submitRead(Pipe *pipe, Memory *buffer, uint32_t capacity,
-               uint32_t *transferred, uint32_t timeout) {
-    return pipe->IO(buffer, capacity, transferred, timeout);
+               uint32_t *transferred, Action *action, ReadResult &completion,
+               Wait wait, int abortedError) {
+    *transferred = 0;
+    int result = pipe->AsyncIO(buffer, capacity, action, 0);
+    if (result != 0) return result;
+    result = wait();
+    if (result != 0) {
+        completion.expired = true;
+        pipe->Abort(0, abortedError, nullptr);
+        return result;
+    }
+    if (completion.status == 0) *transferred = completion.bytes;
+    return completion.status;
 }
 struct Usb {
     void *context;

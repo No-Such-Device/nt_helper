@@ -135,7 +135,7 @@ class InitialSdpExperimentCubit extends Cubit<InitialSdpExperimentState> {
           availability['driverEnabled'] == false) {
         _fail(
           stage,
-          'Driver unavailable or disabled. Use an M-series iPad on iPadOS 16+ and enable the development driver in Settings > General > Drivers.',
+          'Driver unavailable or disabled. Use an M-series iPad on iPadOS 16+ and enable the development driver in Settings > Apps > Nt Helper > Drivers.',
         );
         return;
       }

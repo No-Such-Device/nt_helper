@@ -7,8 +7,6 @@
 	<key>com.apple.developer.driverkit.transport.usb</key>
 	<array>
 		<dict>
-			<key>idProduct</key>
-			<integer>309</integer>
 			<key>idVendor</key>
 			<integer>8137</integer>
 		</dict>

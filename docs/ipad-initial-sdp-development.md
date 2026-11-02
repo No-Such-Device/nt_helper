@@ -1,7 +1,9 @@
 # iPad initial-SDP development experiment
 
-This is a local, development-signed experiment for Neal's **M1 iPad Pro on
-iPadOS 16+**, not a firmware updater or a distribution build. It requests normal
+This is a local, development-signed experiment targeting Neal's **M1 iPad Pro on
+iPadOS 16+**, not a firmware updater or a distribution build. The owner's actual
+test device is an **M2 11-inch iPad Pro (4th generation)**; this does not establish
+physical M1 verification. It requests normal
 MIDI bootloader entry, observes **1FC9:0135**, connects the bundled DriverKit
 extension, and queries initial SDP error-status only. It cannot upload a loader,
 jump, enter the second stage, erase, program firmware, configure flash or use
@@ -23,8 +25,13 @@ The isolated `RunnerInitialSdp` scheme uses **Debug**, arm64, iPad-only deployme
   `com.apple.developer.driverkit.communicates-with-drivers`.
 - Embedded driver: `dev.nosuch.ntHelper.initialSdp.driver`; DriverKit App
   Development profile must allow `com.apple.developer.driverkit` and
-  `com.apple.developer.driverkit.transport.usb` for vendor **8137 / 0x1FC9**,
-  product **309 / 0x0135**. Matching remains scoped to that initial device.
+  `com.apple.developer.driverkit.transport.usb` for vendor **8137 / 0x1FC9**.
+  The USB entitlement dictionary contains only `idVendor`, matching Apple's
+  provisioning-profile shape. Product **309 / 0x0135** remains enforced by both
+  `IOKitPersonalities` and the driver's runtime identity check; this does not
+  expand device matching or permit second-stage access. Including `idProduct`
+  in the signed entitlement can cause iPad installation to reject the driver
+  with `0xe8008015` despite successful local signing.
 
 Use Apple's self-service development capabilities/profile route, not an
 application for customer-distribution approval. Xcode automatic provisioning is
@@ -53,6 +60,31 @@ the experiment menu nor its native channel. Keep the desktop firmware gate intac
 Use Xcode's `RunnerInitialSdp` scheme with the physical iPad selected and Run to
 install/launch both app and embedded driver. A generic-device build alone does
 not prove installation on the owner's device.
+
+### Standalone physical USB run (no Mac debugger)
+
+The iPad's USB port must be available for the NT. Flutter Debug/JIT is unsuitable
+for this cable handoff: the observed debug session stopped working after the Mac
+was disconnected. Build Flutter **Profile/AOT** while retaining the isolated
+scheme's **Debug native configuration and Apple Development signing**:
+
+```sh
+xcodebuild -workspace ios/Runner.xcworkspace -scheme RunnerInitialSdp \
+  -configuration Debug -destination 'generic/platform=iOS' \
+  -derivedDataPath build/initial-sdp-aot -allowProvisioningUpdates \
+  FLUTTER_BUILD_MODE=profile build
+```
+
+Use Flutter **3.44.9**, matching this checkout's generated configuration. Verify
+the signed products as below, substituting `build/initial-sdp-aot` for
+`build/initial-sdp`. The built `Frameworks/App.framework/App` must contain AOT
+snapshot instructions, with no `flutter_assets/kernel_blob.bin`. Install this
+app and launch from the iPad Home Screen or `devicectl device process launch`,
+without attaching Flutter/LLDB. The UI gate permits Debug/Profile only with the
+explicit experiment define on iOS, while still excluding Release. Recheck the
+driver's Settings toggle after installation. The status-only restrictions are unchanged; Flutter Profile mode
+does not change this into a distribution-signed build. Neither synchronization
+nor installation establishes a bootloader/status response.
 
 If provisioning returns **“PLA Update available”**, the account holder must sign
 into the Apple Developer account and accept the latest Program License Agreement,
@@ -84,9 +116,12 @@ ad-hoc signature, missing profile, failed build or unsigned compile installable.
 
 ## Owner's physical run (record observations, not assumptions)
 
-1. Record actual M1 iPad/OS, app/driver build, installed NT firmware and normal
-   operation **before** the experiment. Enable the bundled driver in **Settings
-   > General > Drivers**. Use a USB **data** cable and power the NT independently.
+1. Record actual iPad model/OS, app/driver build, installed NT firmware and normal
+   operation **before** the experiment. On the owner's iPad, the bundled driver
+   is visible in **Settings > Apps > Nt Helper > Drivers**, identified as
+   `dev.nosuch.ntHelper.initialSdp.driver` (physically observed on the M2 iPad).
+   Enable that toggle. Do not assume a separate General or Privacy & Security
+   Drivers category exists. Use a USB **data** cable and power the NT independently.
 2. Synchronize the selected live NT in the development app. Open **More > Initial
    SDP experiment**. Opening sends nothing and retains MIDI ownership. Demo,
    offline, unknown firmware and firmware below 1.15 cannot request entry.
@@ -102,6 +137,6 @@ ad-hoc signature, missing profile, failed build or unsigned compile installable.
    outcome even after a failed attempt. Reconnect/synchronize and reopen for a
    new attempt; the consumed MIDI manager is never reused.
 
-Automated controlled-transport tests and native builds do not establish any of
-these physical observations. No TestFlight, App Store, release tag or public
-asset is part of this development configuration.
+No TestFlight, App Store, release tag or public asset is part of this development
+configuration. Keep run-specific observations in the acceptance ledger/evidence
+records rather than treating these setup instructions as hardware proof.

@@ -8,9 +8,10 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/cubit/initial_sdp_experiment_cubit.dart';
 import 'package:nt_helper/services/initial_sdp_transport.dart';
 
-// Set only on RunnerInitialSdp, never ordinary release configurations.
+// Set only on RunnerInitialSdp. Profile/AOT allows the iPad's USB port to
+// connect to the NT without a Mac debugger; Release stays excluded.
 bool get initialSdpExperimentEnabled =>
-    kDebugMode &&
+    !kReleaseMode &&
     Platform.isIOS &&
     const bool.fromEnvironment('NT_INITIAL_SDP_EXPERIMENT');
 
@@ -142,7 +143,7 @@ class _ExperimentView extends StatelessWidget {
               Text(selection),
               const SizedBox(height: 12),
               const Text(
-                'Before starting, record NT firmware and normal operation. Use an M-series iPad on iPadOS 16+, enable the driver in Settings > General > Drivers, and connect a USB data cable with independent NT power. This action interrupts MIDI. After the attempt, power-cycle the NT and compare firmware and normal operation; record any hotplug.',
+                'Before starting, record NT firmware and normal operation. Use an M-series iPad on iPadOS 16+, enable the driver in Settings > Apps > Nt Helper > Drivers, and connect a USB data cable with independent NT power. This action interrupts MIDI. After the attempt, power-cycle the NT and compare firmware and normal operation; record any hotplug.',
               ),
               const SizedBox(height: 16),
               for (final row in [

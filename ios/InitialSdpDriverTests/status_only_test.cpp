@@ -20,9 +20,11 @@ struct Probe {
         *transferred = length;
         return failAt == 0 ? -1 : 0;
     }
-    int IO(uint8_t *data, uint32_t capacity, uint32_t *size, uint32_t timeout) {
+    int AsyncIO(uint8_t *data, uint32_t capacity, ReadResult *completion, uint32_t timeout) {
         assert(writes == 1 && reads < 2);
-        assert(capacity == 65 && timeout == 1000);
+        assert(capacity == 65 && timeout == 0);
+        uint32_t count = 0;
+        auto size = &count;
         unsigned index = reads++;
         if (failAt == int(index + 1)) return -1;
         *size = index == 0 ? 5 : 65;
@@ -36,8 +38,10 @@ struct Probe {
             if (malformedKind == 3) data[0] = index == 0 ? 4 : 3;
             if (malformedKind == 4) data[1] ^= 1;
         }
+        completion->complete(0, count);
         return 0;
     }
+    int Abort(unsigned, int, void *) { assert(false); return 0; }
     Usb usb() {
         return {this, 2,
             [](void *context, const Control &request, const uint8_t *data, uint32_t timeout) {
@@ -48,7 +52,13 @@ struct Probe {
             [](void *context, uint8_t *data, size_t capacity, size_t *size, uint32_t timeout) {
                 auto p = static_cast<Probe *>(context);
                 uint32_t transferred = 0;
-                int result = submitRead(p, data, uint32_t(capacity), &transferred, timeout);
+                ReadResult completion;
+                assert(timeout == 1000);
+                int result = submitRead(p, data, uint32_t(capacity), &transferred,
+                    &completion, completion, [&] {
+                        assert(completion.done);
+                        return 0;
+                    }, -2);
                 *size = transferred;
                 return result;
             }};
@@ -135,7 +145,53 @@ static void ac004_incomplete_exchange_requires_new_native_session() {
         assert(probe.writes == writes && probe.reads == reads);
     }
 }
+// The original probe incorrectly accepted a nonzero USB interrupt timeout.
+// Exercise the actual submission/wait/abort seam with controlled completion,
+// rather than sleeping or merely asserting the protocol encoder's output.
+static void interrupt_read_uses_zero_usb_timeout_and_separate_deadline() {
+    struct Pipe {
+        bool submitted = false, aborted = false;
+        int submitError = 0;
+        int AsyncIO(uint8_t *, uint32_t capacity, ReadResult *, uint32_t timeout) {
+            assert(capacity == 65 && timeout == 0);
+            submitted = true;
+            return submitError;
+        }
+        int Abort(unsigned options, int error, void *client) {
+            assert(submitted && options == 0 && error == -2 && client == nullptr);
+            aborted = true;
+            return 0;
+        }
+    };
+    for (int scenario = 0; scenario < 4; ++scenario) {
+        Pipe pipe;
+        ReadResult completion;
+        uint8_t bytes[65] = {};
+        uint32_t transferred = 999;
+        bool waited = false;
+        if (scenario == 3) pipe.submitError = -3;
+        int result = submitRead(&pipe, bytes, 65, &transferred, &completion,
+            completion, [&] {
+                waited = true;
+                assert(pipe.submitted && !completion.done && !pipe.aborted);
+                // Simulate a response before the deadline, an unplug, or expiry.
+                if (scenario == 0) completion.complete(0, 5);
+                if (scenario == 1) completion.complete(-4, 0);
+                return scenario == 2 ? -1 : 0;
+            }, -2);
+        assert(waited == (scenario != 3));
+        assert(pipe.aborted == (scenario == 2));
+        assert(result == (scenario == 0 ? 0 : scenario == 1 ? -4 : scenario == 2 ? -1 : -3));
+        assert(transferred == (scenario == 0 ? 5u : 0u));
+        if (scenario == 2) {
+            completion.complete(0, 65); // A late reply cannot revive a timed-out read.
+            assert(completion.expired && !completion.done && completion.bytes == 0);
+            assert(transferred == 0);
+        }
+    }
+}
 int main() {
+    interrupt_read_uses_zero_usb_timeout_and_separate_deadline();
     ac004_only_fixed_error_status_reaches_usb();
     ac004_rejected_operations_never_reach_usb();
     ac004_malformed_and_failed_io_never_returns_status();

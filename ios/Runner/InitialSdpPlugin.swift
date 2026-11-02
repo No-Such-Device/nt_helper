@@ -59,7 +59,7 @@ final class InitialSdpPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
                     "driverObserved": service != 0,
                     // No public API proves M-series hardware or distinguishes a
                     // disabled driver from absent hardware. Never guess enablement.
-                    "requirements": "M-series iPad, iPadOS 16+, development profiles; enable in Settings > General > Drivers; use USB data cable and independent NT power."
+                    "requirements": "M-series iPad, iPadOS 16+, development profiles; enable in Settings > Apps > Nt Helper > Drivers; use USB data cable and independent NT power."
                 ] as [String: Any]
             case "observe":
                 reply = observe()
@@ -147,7 +147,7 @@ final class InitialSdpPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             let deadline = DispatchWorkItem { [weak self] in
                 guard let self, self.service == 0 else { return }
                 self.teardown()
-                _ = self.error("detection", "No initial bootloader driver observed within 15 seconds. Check Settings > General > Drivers, development profiles, cable and power; retry observation after hotplug if needed.")
+                _ = self.error("detection", "No initial bootloader driver observed within 15 seconds. Check Settings > Apps > Nt Helper > Drivers, development profiles, cable and power; retry observation after hotplug if needed.")
             }
             detectionDeadline = deadline
             queue.asyncAfter(deadline: .now() + 15, execute: deadline)

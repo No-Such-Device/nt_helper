@@ -1,4 +1,5 @@
 #include <DriverKit/IOService.iig>
+#include <USBDriverKit/IOUSBHostPipe.iig>
 class InitialSdpDriver : public IOService {
 public:
     virtual bool init() override;
@@ -9,4 +10,9 @@ public:
     kern_return_t Connect() LOCALONLY;
     void Disconnect() LOCALONLY;
     kern_return_t Query(uint64_t *hab, uint64_t *status) LOCALONLY;
+    kern_return_t ReadInterrupt(IOBufferMemoryDescriptor *buffer, uint32_t capacity,
+        uint32_t *transferred, uint32_t timeout) LOCALONLY;
+    virtual void ReadComplete(OSAction *action, IOReturn status,
+        uint32_t actualByteCount, uint64_t completionTimestamp)
+        TYPE(IOUSBHostPipe::CompleteAsyncIO) QUEUENAME(InitialSdpRead);
 };

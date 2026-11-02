@@ -2,6 +2,10 @@
 #include <DriverKit/OSDictionary.h>
 #include <DriverKit/OSNumber.h>
 #include <DriverKit/IOBufferMemoryDescriptor.h>
+#include <DriverKit/IODispatchQueue.h>
+#include <DriverKit/IOTimerDispatchSource.h>
+#include <DriverKit/OSAction.h>
+#include <time.h>
 #include <USBDriverKit/USBDriverKit.h>
 #include "InitialSdpDriver.h"
 #include "InitialSdpUserClient.h"
@@ -9,6 +13,7 @@
 
 struct InitialSdpDriver_IVars {
     IOLock *lock;
+    IODispatchQueue *readQueue;
     IOUSBHostDevice *device;
     IOUSBHostInterface *interface;
     IOUSBHostPipe *input;
@@ -28,6 +33,7 @@ bool InitialSdpDriver::init() {
 void InitialSdpDriver::free() {
     if (ivars) {
         OSSafeReleaseNULL(ivars->device);
+        OSSafeReleaseNULL(ivars->readQueue);
         IOLockFreeZero(ivars->lock);
         IOSafeDeleteNULL(ivars, InitialSdpDriver_IVars, 1);
     }
@@ -43,6 +49,11 @@ kern_return_t InitialSdpDriver::Start_Impl(IOService *provider) {
     bool allowed = InitialSdp::initialIdentity(descriptor->idVendor, descriptor->idProduct);
     IOUSBHostFreeDescriptor(descriptor);
     if (!allowed) return kIOReturnUnsupported;
+    ret = IODispatchQueue::Create("InitialSdpRead", kIODispatchQueueReentrant,
+        0, &ivars->readQueue);
+    if (ret != kIOReturnSuccess) return ret;
+    ret = SetDispatchQueue("InitialSdpRead", ivars->readQueue);
+    if (ret != kIOReturnSuccess) return ret;
     device->retain();
     ivars->device = device;
     // Properties are published only after checking the actual device descriptor.
@@ -148,6 +159,50 @@ void InitialSdpDriver::Disconnect() {
     closeUsb(ivars, this);
     IOLockUnlock(ivars->lock);
 }
+// The OSAction owns this context through delivery of the completion, including
+// a late callback after timeout. No callback references the caller's stack.
+struct InterruptReadContext {
+    InitialSdp::ReadResult result;
+    IOBufferMemoryDescriptor *buffer;
+};
+void InitialSdpDriver::ReadComplete_Impl(OSAction *action, IOReturn status,
+    uint32_t actualByteCount, uint64_t) {
+    auto context = static_cast<InterruptReadContext *>(action->GetReference());
+    context->result.complete(status, actualByteCount);
+    OSSafeReleaseNULL(context->buffer);
+    if (!context->result.expired) ivars->readQueue->Wakeup(action);
+}
+kern_return_t InitialSdpDriver::ReadInterrupt(IOBufferMemoryDescriptor *buffer,
+    uint32_t capacity, uint32_t *transferred, uint32_t timeout) {
+    OSAction *action = nullptr;
+    auto ret = CreateActionReadComplete(sizeof(InterruptReadContext), &action);
+    if (ret != kIOReturnSuccess) return ret;
+    auto context = static_cast<InterruptReadContext *>(action->GetReference());
+    *context = {};
+    buffer->retain();
+    context->buffer = buffer;
+    ret = ivars->readQueue->RunAction(^kern_return_t {
+        const uint64_t deadline = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) +
+            uint64_t(timeout) * 1000000;
+        const auto result = InitialSdp::submitRead(ivars->input, buffer, capacity,
+            transferred, action, context->result, [&]() -> int {
+                while (!context->result.done) {
+                    auto waited = ivars->readQueue->SleepWithDeadline(action,
+                        kIOTimerClockUptimeRaw, deadline);
+                    if (context->result.done) break;
+                    if (waited != kIOReturnSuccess) return waited;
+                }
+                return kIOReturnSuccess;
+            }, kIOReturnAborted);
+        // A rejected submission has no callback. Accepted transfers retain the
+        // buffer until ReadComplete, even after abort/timeout or unplug.
+        if (!context->result.done && !context->result.expired)
+            OSSafeReleaseNULL(context->buffer);
+        return result;
+    });
+    action->release();
+    return ret;
+}
 kern_return_t InitialSdpDriver::Query(uint64_t *hab, uint64_t *status) {
     *hab = *status = 0;
     IOLockLock(ivars->lock);
@@ -155,7 +210,7 @@ kern_return_t InitialSdpDriver::Query(uint64_t *hab, uint64_t *status) {
         IOLockUnlock(ivars->lock);
         return kIOReturnNotAttached;
     }
-    struct Context { InitialSdpDriver_IVars *v; IOService *owner; IOReturn error; };
+    struct Context { InitialSdpDriver_IVars *v; InitialSdpDriver *owner; IOReturn error; };
     Context ctx = {ivars, this, kIOReturnSuccess};
     InitialSdp::Usb usb = {&ctx, ivars->interfaceNumber,
         [](void *opaque, const InitialSdp::Control &request,
@@ -166,8 +221,8 @@ kern_return_t InitialSdpDriver::Query(uint64_t *hab, uint64_t *status) {
             c->error = IOBufferMemoryDescriptor::Create(kIOMemoryDirectionOut, size, 0, &buffer);
             if (c->error != kIOReturnSuccess) return 1;
             IOAddressSegment range = {};
-            c->error = buffer->GetAddressRange(&range);
-            if (c->error == kIOReturnSuccess) c->error = buffer->SetLength(size);
+            c->error = buffer->SetLength(size);
+            if (c->error == kIOReturnSuccess) c->error = buffer->GetAddressRange(&range);
             if (c->error == kIOReturnSuccess) {
                 memcpy(reinterpret_cast<void *>(range.address), report, size);
                 uint16_t transferred = 0;
@@ -185,11 +240,11 @@ kern_return_t InitialSdpDriver::Query(uint64_t *hab, uint64_t *status) {
             c->error = IOBufferMemoryDescriptor::Create(kIOMemoryDirectionIn, capacity, 0, &buffer);
             if (c->error != kIOReturnSuccess) return 1;
             IOAddressSegment range = {};
-            c->error = buffer->GetAddressRange(&range);
-            if (c->error == kIOReturnSuccess) c->error = buffer->SetLength(capacity);
+            c->error = buffer->SetLength(capacity);
+            if (c->error == kIOReturnSuccess) c->error = buffer->GetAddressRange(&range);
             uint32_t transferred = 0;
             if (c->error == kIOReturnSuccess)
-                c->error = InitialSdp::submitRead(c->v->input, buffer, uint32_t(capacity), &transferred, timeout);
+                c->error = c->owner->ReadInterrupt(buffer, uint32_t(capacity), &transferred, timeout);
             if (c->error == kIOReturnSuccess && transferred <= capacity) {
                 memcpy(report, reinterpret_cast<void *>(range.address), transferred);
                 *size = transferred;
