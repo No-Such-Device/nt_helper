@@ -144,7 +144,7 @@ void main() {
         expect(source.refreshCalls, 2);
         semantics.dispose();
       },
-    );
+    , tags: ['regression']);
 
     testWidgets('keyboard focus and touch can each open the detail', (
       tester,
@@ -205,7 +205,7 @@ void main() {
         expect(find.text('16 KiB'), findsOneWidget);
         expect(source.refreshCalls, 2);
       },
-    );
+    , tags: ['regression']);
   });
 
   group('MemoryMiniature', () {
@@ -424,7 +424,7 @@ void main() {
         expect(find.bySemanticsLabel('ITC free, —'), findsOneWidget);
         semantics.dispose();
       },
-    );
+    , tags: ['regression']);
 
     testWidgets('marks retained failed-refresh data as subtly unfresh', (
       tester,
