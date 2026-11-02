@@ -712,7 +712,7 @@ void main() {
       expect(result.failedVerificationFiles, 1);
       verifyNever(() => manager.requestFileDownloadChunk(any(), any(), any()));
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'uploadSysEx failed chunk upload surfaces PolySampleUploadException',
