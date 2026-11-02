@@ -148,7 +148,7 @@ void main() {
           'The earlier tool already ran.',
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   }
 
   test(
@@ -214,7 +214,7 @@ void main() {
         2,
       );
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'Stop cancels in-flight model and late output cannot contaminate the next turn',
@@ -263,5 +263,5 @@ void main() {
         () => registry.cancelRemoteControl(),
       ).called(greaterThanOrEqualTo(1));
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 }
