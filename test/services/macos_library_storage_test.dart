@@ -157,7 +157,7 @@ void main() {
       );
       await again.close();
     },
-  );
+  , tags: ['regression']);
 
   test(
     'diagnostic inventory errors do not replace the original SQLite failure',
@@ -194,7 +194,7 @@ void main() {
       expect(selected.file.existsSync(), isFalse);
       expect(saved.existsSync(), isTrue);
     },
-  );
+  , tags: ['regression']);
 
   test(
     'recovery successor reopens after an earlier valid file replacement',
@@ -218,7 +218,7 @@ void main() {
       expect(reopened.file.path, repaired.file.path);
       await assertComplete(reopened, expected);
     },
-  );
+  , tags: ['regression']);
 
   for (final row in ['R', 'D', 'D marker', 'R+D', 'A', 'A+R+D']) {
     test(
@@ -272,7 +272,7 @@ void main() {
         await assertComplete(again, expected);
         expect(again.file.path, selected.file.path);
       },
-    );
+    , tags: ['regression']);
   }
 
   test(
@@ -300,7 +300,7 @@ void main() {
       expect(source.raw.select('PRAGMA user_version').first.values.single, 13);
       await db.close();
     },
-  );
+  , tags: ['regression']);
 
   test(
     'held source writer blocks then Retry includes last commit, never uncommitted data',
@@ -331,7 +331,7 @@ void main() {
       );
       await opened.close();
     },
-  );
+  , tags: ['regression']);
 
   test(
     'preselection interruption recaptures changed unique source and retains failed work',
@@ -360,7 +360,7 @@ void main() {
       await assertComplete(await prepare(), await contents(source.app));
       expect(retained.every((path) => File(path).existsSync()), isTrue);
     },
-  );
+  , tags: ['regression']);
 
   test(
     'failed SQLite open reports missing or invalid selected files without creating a replacement',
@@ -409,7 +409,7 @@ void main() {
       );
       await prepare();
     },
-  );
+  , tags: ['regression']);
 
   test(
     'ordinary getAppDirectory, integrity and lazy AppDatabase share the selected identity',
@@ -540,7 +540,7 @@ void main() {
           );
         }
       },
-    );
+    , tags: ['regression']);
   }
 
   test(
@@ -580,7 +580,7 @@ void main() {
         );
       }
     },
-  );
+  , tags: ['regression']);
 
   test(
     'disposable competitor access denial is not mistaken for absence',
@@ -614,7 +614,7 @@ void main() {
       }
       await prepare();
     },
-  );
+  , tags: ['regression']);
 
   test(
     'independent replacement after an owned interruption remains blocked',
@@ -644,7 +644,7 @@ void main() {
         ),
       );
     },
-  );
+  , tags: ['regression']);
 
   for (final point in ['after:reservation', 'before:exclude-0']) {
     test(
@@ -686,7 +686,7 @@ void main() {
           expect(File(entry.key).readAsBytesSync(), entry.value);
         }
       },
-    );
+    , tags: ['regression']);
   }
 
   test(
@@ -729,7 +729,7 @@ void main() {
       );
       await opened.close();
     },
-  );
+  , tags: ['regression']);
 
   test(
     'unexplained work is never replaced or treated as owned initialization',
@@ -751,7 +751,7 @@ void main() {
       );
       expect(bytes.readAsStringSync(), 'retained unknown work');
     },
-  );
+  , tags: ['regression']);
 
   test('copied authority cannot confer migration ownership', () async {
     await fixture(docs);
@@ -772,7 +772,7 @@ void main() {
     record.renameSync('${record.path}.unknown');
     original.renameSync(record.path);
     expect((await prepare()).file.path, selected.file.path);
-  });
+  }, tags: ['regression']);
 
   test(
     'in-process selection contention is busy, settles, and then uses one authority',
@@ -803,7 +803,7 @@ void main() {
       final selected = await first;
       expect((await prepare()).file.path, selected.file.path);
     },
-  );
+  , tags: ['regression']);
 
   test(
     'Darwin inode identity distinguishes replacement and rejects unsupported entities',
