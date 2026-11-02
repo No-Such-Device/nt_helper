@@ -373,7 +373,7 @@ void main() {
               'Slot 5 has an algorithm but sparse map length guard says it is empty',
         );
       },
-    );
+    , tags: ['regression']);
   });
 
   group('editSlot — offline specification limitation', () {
@@ -434,7 +434,7 @@ void main() {
         verifyNever(() => controller.clearSlot(any()));
         verifyNever(() => controller.addAlgorithm(any()));
       },
-    );
+    , tags: ['regression']);
   });
 
   group('getCurrentPreset — required specifications', () {
