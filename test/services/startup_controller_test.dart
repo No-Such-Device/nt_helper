@@ -83,7 +83,7 @@ void main() {
       await controller.close();
       controller.dispose();
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'close wins over an opener returning a ready but stale real database',
@@ -116,7 +116,7 @@ void main() {
       expect(activations, 0);
       controller.dispose();
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 }
 
 class _DelayedCloseDatabase extends AppDatabase {
