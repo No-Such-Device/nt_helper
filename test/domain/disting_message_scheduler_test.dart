@@ -242,7 +242,7 @@ void main() {
           ),
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('repeated split transfer errors do not replay indefinitely', () async {
       final key = RequestKey(
@@ -334,7 +334,7 @@ void main() {
         final diag = scheduler.getDiagnostics();
         expect(diag['unmatchedResponsesDiscarded'], 1);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'directory listing waiter ignores a file upload acknowledgement',
@@ -372,7 +372,7 @@ void main() {
         final diagnostics = scheduler.getDiagnostics();
         expect(diagnostics['unmatchedResponsesDiscarded'], 1);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('file upload waiter ignores a directory listing response', () async {
       final key = RequestKey(
@@ -567,7 +567,7 @@ void main() {
         final diag = scheduler.getDiagnostics();
         expect(diag['staleResponsesAbsorbed'], 2);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'fire-and-forget completes immediately without handler registration',
@@ -638,7 +638,7 @@ void main() {
         expect(diag['staleResponsesAbsorbed'], 0);
         expect(diag['expiredHandlerCount'], 0);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     testWidgets(
       'consecutive timeout recovery — auto-reset after 3 consecutive timeouts',
@@ -696,7 +696,7 @@ void main() {
         final result = await future;
         expect(result, isNotNull);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'expired handler cleanup — handlers older than 30s are removed',
@@ -774,7 +774,7 @@ void main() {
           expect(future, throwsA(isA<StateError>()));
         }
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('message observer receives all messages', () async {
       final observed = <DistingNTRespMessageType>[];
