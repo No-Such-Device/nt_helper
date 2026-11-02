@@ -315,7 +315,7 @@ void main() {
         expect(result, contains('Line 0'));
         expect(result, contains('Line 199'));
       },
-    );
+    , tags: ['regression']);
 
     
   });
