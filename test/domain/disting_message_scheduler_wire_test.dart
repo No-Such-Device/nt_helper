@@ -230,7 +230,7 @@ void main() {
       );
       final result2 = await future2;
       expect(result2, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('CC bytes prepended to SysEx in same packet', () async {
       final key = RequestKey(
@@ -257,7 +257,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('CC bytes appended to SysEx in same packet', () async {
       final key = RequestKey(
@@ -283,7 +283,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('CC bytes between two SysEx messages in same packet', () async {
       final key1 = RequestKey(
@@ -310,7 +310,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test(
       'CC packet during split SysEx buffering — buffer NOT corrupted',
@@ -347,7 +347,7 @@ void main() {
         final result = await future;
         expect(result, isNotNull);
       },
-    );
+    , tags: ['regression']);
 
     test('Multiple CC packets during split SysEx buffering', () async {
       final key = RequestKey(
@@ -383,7 +383,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
   });
 
   group('Wire coexistence — Note messages', () {
@@ -429,7 +429,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('Note On during split SysEx buffering', () async {
       final key = RequestKey(
@@ -461,7 +461,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('Note + SysEx mixed in same packet', () async {
       final key = RequestKey(
@@ -488,7 +488,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
   });
 
   group('Wire coexistence — Foreign SysEx', () {
@@ -541,7 +541,7 @@ void main() {
         final result = await future;
         expect(result, isNotNull);
       },
-    );
+    , tags: ['regression']);
 
     test('Complete foreign SysEx during split SysEx buffering', () async {
       final key = RequestKey(
@@ -585,7 +585,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('Foreign SysEx + our SysEx in same packet', () async {
       final key = RequestKey(
@@ -611,7 +611,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('Two foreign SysEx then our SysEx', () async {
       final key = RequestKey(
@@ -638,7 +638,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
   });
 
   group('Wire coexistence — Same-manufacturer SysEx (different module ID)', () {
@@ -690,7 +690,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('Same-manufacturer SysEx during split SysEx buffering', () async {
       final key = RequestKey(
@@ -735,7 +735,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
   });
 
   group('Wire coexistence — Real-time MIDI', () {
@@ -857,7 +857,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('Multiple complete SysEx in one packet', () async {
       final key = RequestKey(
@@ -883,7 +883,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('Orphaned F7 (no preceding F0) — no crash', () async {
       _injectRawBytes(incoming, device, Uint8List.fromList([0xF7]));
@@ -891,7 +891,7 @@ void main() {
 
       final diag = scheduler.getDiagnostics();
       expect(diag['nonSysexPacketsReceived'], greaterThanOrEqualTo(1));
-    });
+    }, tags: ['regression']);
 
     test('Orphaned F0 (no following F7) — starts buffering', () async {
       _injectRawBytes(incoming, device, Uint8List.fromList([0xF0, 0x43, 0x10]));
@@ -922,7 +922,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('Empty packet — no crash', () async {
       _injectRawBytes(incoming, device, Uint8List(0));
@@ -1057,7 +1057,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test('Split interrupted by new F0 packet — buffer resets', () async {
       final key = RequestKey(
@@ -1099,7 +1099,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
   });
 
   group('Operation-owned scheduler cancellation', () {
@@ -1161,7 +1161,7 @@ void main() {
       expect(diagnostics['queueLength'], 0);
       expect(diagnostics['hasCurrentRequest'], isFalse);
       verify(() => midi.sendData(any(), deviceId: device.id)).called(1);
-    });
+    }, tags: ['regression']);
 
     test('cancels an in-flight read and keeps the scheduler usable', () async {
       final cancellation = DistingRequestCancellation();
@@ -1208,7 +1208,7 @@ void main() {
       expect(diagnostics['queueLength'], 0);
       expect(diagnostics['hasCurrentRequest'], isFalse);
       verify(() => midi.sendData(any(), deviceId: device.id)).called(2);
-    });
+    }, tags: ['regression']);
 
     test(
       'keeps rejected stale same-slot 0x40 data outside the observer boundary',
@@ -1257,7 +1257,7 @@ void main() {
         expect(observedMessages, isEmpty);
         scheduler.removeMessageObserver(observer);
       },
-    );
+    , tags: ['regression']);
 
     test('keeps ordinary same-slot reads on active-first behavior', () async {
       final key = RequestKey(
@@ -1291,7 +1291,7 @@ void main() {
 
       final result = await newerBestEffortRead;
       expect(result?.specifications, [1, 12]);
-    });
+    }, tags: ['regression']);
   });
 
   group('Respecify manager/scheduler wire contract', () {
@@ -1443,7 +1443,7 @@ void main() {
         );
         verify(() => midi.sendData(any(), deviceId: device.id)).called(2);
       },
-    );
+    , tags: ['regression']);
 
     testWidgets(
       'retains an ordinary same-slot response still owed after a retry',
@@ -1495,7 +1495,7 @@ void main() {
         );
         expect(sentPackets, hasLength(3));
       },
-    );
+    , tags: ['regression']);
 
     test(
       'propagates a send error after exactly one mutation attempt',
@@ -1570,7 +1570,7 @@ void main() {
 
       final result = await future;
       expect(result, isNotNull);
-    });
+    }, tags: ['regression']);
 
     test(
       'Active request with heavy CC/Note traffic — response received',
@@ -1606,7 +1606,7 @@ void main() {
         final result = await future;
         expect(result, isNotNull);
       },
-    );
+    , tags: ['regression']);
 
     test(
       'Split SysEx with interleaved CC + foreign SysEx — retry recovers',
@@ -1655,6 +1655,6 @@ void main() {
         final result = await future;
         expect(result, isNotNull);
       },
-    );
+    , tags: ['regression']);
   });
 }
