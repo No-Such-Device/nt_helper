@@ -59,5 +59,5 @@ void main() {
             'objective contrast exception:\n${violations.join('\n')}',
       );
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 }
