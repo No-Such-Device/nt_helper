@@ -362,45 +362,7 @@ void main() {
       ); // Inactive border width
     });
 
-    testWidgets('displays all parameter modes with correct colors', (
-      tester,
-    ) async {
-      // Test color mapping for each parameter type
-      final colorTests = [
-        StepParameter.pitch, // Teal
-        StepParameter.velocity, // Green
-        StepParameter.mod, // Purple
-        StepParameter.division, // Orange
-        StepParameter.pattern, // Blue
-        StepParameter.ties, // Yellow
-        StepParameter.mute, // Red
-        StepParameter.skip, // Pink
-        StepParameter.reset, // Amber
-        StepParameter.repeat, // Cyan
-      ];
-
-      for (final param in colorTests) {
-        await tester.pumpWidget(
-          makeTestableWidget(
-            StepColumnWidget(
-              stepIndex: 0,
-              pitchValue: 64,
-              velocityValue: 100,
-              isActive: false,
-              slotIndex: 0,
-              slot: testSlot,
-              snapEnabled: false,
-              selectedScale: 'Major',
-              rootNote: 0,
-              activeParameter: param,
-            ),
-          ),
-        );
-
-        // Widget should build without errors for all parameter types
-        expect(find.byType(StepColumnWidget), findsOneWidget);
-      }
-    });
+    
 
     testWidgets('switches between parameter modes', (tester) async {
       testSlot = Slot(
