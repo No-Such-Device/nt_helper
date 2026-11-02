@@ -117,7 +117,6 @@ def main() -> None:
     release_tags = tags(args.repo)
     google_build = google_production_version(args.google_json, args.google_package)
     ios_version = apple_live_version(args.apple_json, args.ios_bundle, "IOS")
-    macos_version = apple_live_version(args.apple_json, args.macos_bundle, "MAC_OS")
     google_tags = [tag for tag, (_, build) in release_tags.items() if build == google_build]
     if len(google_tags) != 1:
         raise RuntimeError(
@@ -126,7 +125,6 @@ def main() -> None:
     result = {
         "google_play": {"version_code": google_build, "previous_tag": google_tags[0]},
         "ios": {"version": ios_version, "previous_tag": find_tag(release_tags, ios_version, None)},
-        "macos": {"version": macos_version, "previous_tag": find_tag(release_tags, macos_version, None)},
     }
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))
