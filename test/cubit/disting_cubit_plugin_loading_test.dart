@@ -410,7 +410,7 @@ void main() {
 
         // This updated state should cause the widget to rebuild and show
         // the "Add Algorithm" button without requiring a second button press
-      });
+      }, tags: ['regression']);
     });
   });
 }
