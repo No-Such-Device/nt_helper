@@ -146,7 +146,7 @@ void main() {
         expect(find.byIcon(Icons.close), findsNothing);
 
         await gesture.removePointer();
-      });
+      }, tags: ['regression']);
 
       testWidgets('preserves hover state during widget rebuilds', (
         tester,
