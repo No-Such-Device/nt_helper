@@ -561,7 +561,7 @@ void main() {
         );
         expect(json['current_value_index'], equals(2));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   });
 
   group('setParameterValue — parameter name resolution', () {
@@ -640,7 +640,7 @@ void main() {
         );
         expect(json['error'], contains('0'));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   });
 
   group('getParameterValue — both parameter_number and parameter_name', () {
