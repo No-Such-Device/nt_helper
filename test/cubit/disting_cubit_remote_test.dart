@@ -105,7 +105,7 @@ void main() {
       expect(initial.heldControls, isEmpty);
       expect(() => initial.potValues[0] = 0, throwsUnsupportedError);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'local pot inputs retain across host sessions, clamp and reset only on new connection',
@@ -146,7 +146,7 @@ void main() {
       );
       expect(wire.remotePackets, hasLength(6));
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'main authority rejects invalid indices and pot ranges without changing input or writing',
@@ -239,7 +239,7 @@ void main() {
         throwsStateError,
       );
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'a host replaced before queue execution cannot write, or overwrite the new host',
@@ -260,7 +260,7 @@ void main() {
         remoteFrame([1, 8]),
       ]);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('cleanup captures a push sent just before the host closes', () async {
     final session = cubit.openRemoteSession();
@@ -308,7 +308,7 @@ void main() {
       ]);
       expect(cubit.remoteControlState.error, isNull);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'disconnect cancels before manager disposal and leaves no reattach path',
@@ -333,7 +333,7 @@ void main() {
       expect(cubit.remoteControlState.potValues, [2048, 2048, 2048]);
       expect(cubit.remoteControlState.available, isTrue);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'conservative firmware and live-manager gates expose reasons and never write',
@@ -414,7 +414,7 @@ void main() {
         remoteFrame([4, 0, 64, 16]),
       ]);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'send and cleanup failures clear local holds and publish errors, not device-success claims',
@@ -457,7 +457,7 @@ void main() {
       expect(states.where((state) => state.error != null), isNotEmpty);
       expect(cubit.remoteControlState.pending, isFalse);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'a push that throws after delivery releases both prior and uncertain holds',
@@ -495,7 +495,7 @@ void main() {
       await cubit.closeRemoteSession(session);
       expect(wire.remotePackets, hasLength(4));
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'failure cleanup tries every release and preserves the original send error',
@@ -548,7 +548,7 @@ void main() {
       final recovered = cubit.openRemoteSession();
       await cubit.closeRemoteSession(recovered);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'failed replacement-host cleanup blocks its new host until release recovery',
@@ -578,7 +578,7 @@ void main() {
       expect(cubit.remoteControlState.pendingReleaseControls, isEmpty);
       expect(cubit.remoteControlState.available, isTrue);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('failed push cleanup never follows a replacement transport', () async {
     final session = cubit.openRemoteSession();
@@ -625,7 +625,7 @@ void main() {
       expect(wire.remotePackets.last, remoteFrame([3, 1, 1]));
       expect(wire.remotePackets, hasLength(2));
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'shutdown blocks new hosts while original-transport cleanup is pending',
@@ -649,7 +649,7 @@ void main() {
         remoteFrame([2, 3]),
       ]);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'Cubit shutdown releases sent holds on the original transport and closes remote state',
