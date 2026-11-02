@@ -3,17 +3,25 @@ name: Mobile Production Release
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'prepare resolves live store baselines; promote submits the reviewed release'
+        required: true
+        default: promote
+        type: choice
+        options:
+          - prepare
+          - promote
       tag:
         description: 'Candidate release tag, for example v2.60.4'
         required: true
         type: string
       google_play_notes:
-        description: 'Reviewed Google Play release notes (maximum 500 characters)'
-        required: true
+        description: 'Reviewed Google Play release notes (maximum 500 characters; required for promote)'
+        required: false
         type: string
       app_store_notes:
-        description: 'Reviewed App Store release notes (maximum 4000 characters)'
-        required: true
+        description: 'Reviewed App Store release notes (maximum 4000 characters; required for promote)'
+        required: false
         type: string
       release_android:
         description: 'Promote Android from Google Play internal to production'
@@ -66,6 +74,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REQUESTED_TAG: ${{ inputs.tag }}
+          MODE: ${{ inputs.mode }}
           GOOGLE_PLAY_NOTES: ${{ inputs.google_play_notes }}
           APP_STORE_NOTES: ${{ inputs.app_store_notes }}
         run: |
@@ -75,17 +84,21 @@ jobs:
             *) echo "Tag must look like vX.Y.Z: $REQUESTED_TAG" >&2; exit 1 ;;
           esac
 
+          if [ "$MODE" = promote ] && { [ -z "$GOOGLE_PLAY_NOTES" ] || [ -z "$APP_STORE_NOTES" ]; }; then
+            echo 'Both store note fields are required in promote mode.' >&2
+            exit 1
+          fi
           google_length=$(printf '%s' "$GOOGLE_PLAY_NOTES" | wc -m | tr -d ' ')
           app_store_length=$(printf '%s' "$APP_STORE_NOTES" | wc -m | tr -d ' ')
-          if [ "$google_length" -gt 500 ]; then
+          if [ "$MODE" = promote ] && [ "$google_length" -gt 500 ]; then
             echo "Google Play notes are ${google_length} characters; maximum is 500" >&2
             exit 1
           fi
-          if [ "$app_store_length" -gt 4000 ]; then
+          if [ "$MODE" = promote ] && [ "$app_store_length" -gt 4000 ]; then
             echo "App Store notes are ${app_store_length} characters; maximum is 4000" >&2
             exit 1
           fi
-          if printf '%s\n%s' "$GOOGLE_PLAY_NOTES" "$APP_STORE_NOTES" | grep -Eq '[<>]'; then
+          if [ "$MODE" = promote ] && printf '%s\n%s' "$GOOGLE_PLAY_NOTES" "$APP_STORE_NOTES" | grep -Eq '[<>]'; then
             echo 'Store notes contain markup-like characters; provide plain text.' >&2
             exit 1
           fi
@@ -130,10 +143,52 @@ jobs:
           path: ${{ runner.temp }}/mobile-release-notes
           if-no-files-found: error
 
+  resolve-store-baselines:
+    name: Resolve live store baselines
+    needs: verify-candidate
+    if: inputs.mode == 'prepare'
+    runs-on: ubuntu-latest
+    environment: production-release
+    steps:
+      - name: Check out candidate tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-candidate.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install store API clients
+        run: python -m pip install --disable-pip-version-check google-api-python-client google-auth PyJWT cryptography
+
+      - name: Resolve live versions to git tags
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          APP_STORE_CONNECT_API_KEY_JSON: ${{ secrets.APP_STORE_CONNECT_API_KEY_JSON }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/google-play.json"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_JSON" > "$RUNNER_TEMP/app-store-connect.json"
+          python tool/resolve_store_baselines.py \
+            --repo "$GITHUB_WORKSPACE" \
+            --google-json "$RUNNER_TEMP/google-play.json" \
+            --apple-json "$RUNNER_TEMP/app-store-connect.json" \
+            --output "$RUNNER_TEMP/store-baselines.json"
+
+      - name: Upload store baseline manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-baselines-${{ needs.verify-candidate.outputs.tag }}
+          path: ${{ runner.temp }}/store-baselines.json
+          if-no-files-found: error
+
   android-production:
     name: Promote Android to Google Play production
     needs: verify-candidate
-    if: inputs.release_android
+    if: inputs.mode == 'promote' && inputs.release_android
     runs-on: ubuntu-latest
     environment: production-release
     steps:
@@ -187,7 +242,7 @@ jobs:
   apple-production:
     name: Submit Apple builds for review
     needs: verify-candidate
-    if: inputs.submit_ios || inputs.submit_macos
+    if: inputs.mode == 'promote' && (inputs.submit_ios || inputs.submit_macos)
     runs-on: ubuntu-latest
     environment: production-release
     strategy:
