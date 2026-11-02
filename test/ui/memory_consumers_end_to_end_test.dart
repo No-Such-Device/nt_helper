@@ -255,7 +255,7 @@ void main() {
       expect(state.presetName, 'Unchanged preset');
       expect(state.slots, isEmpty);
     },
-  );
+  , tags: ['regression']);
 }
 
 Future<void> _pumpUntilMemoryRequests(
