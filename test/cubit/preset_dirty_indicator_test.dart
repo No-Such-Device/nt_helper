@@ -462,7 +462,7 @@ void main() {
         expect(algorithm.specifications, isEmpty);
         expect(algorithm.hasAuthoritativeSpecifications, isTrue);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'refresh does not carry specifications to a different preset',
@@ -600,7 +600,7 @@ void main() {
         expect(algorithm.specifications, isEmpty);
         expect(algorithm.hasAuthoritativeSpecifications, isTrue);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('restored cached preset values remain non-authoritative', () {
       final unreadSlot = makeSlot().copyWith(
@@ -747,7 +747,7 @@ void main() {
         final state = cubit.state as DistingStateSynchronized;
         expect(state.slots.single.algorithm.specifications, const [8]);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('late refresh does not restore a replaced manager', () async {
       final replacementManager = MockDistingMidiManager();
@@ -995,7 +995,7 @@ void main() {
           isFalse,
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('append load preserves specifications for existing slots', () async {
       final quantizerSlot = makeSlot().copyWith(
@@ -1100,7 +1100,7 @@ void main() {
         expect(state.disting, same(replacementManager));
         expect(state.slots.single.algorithm.specifications, const [8]);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('onAlgorithmSelected marks state dirty', () async {
       final algorithmInfo = AlgorithmInfo(
@@ -1266,7 +1266,7 @@ void main() {
         expect(algorithm.specifications, isEmpty);
         expect(algorithm.hasAuthoritativeSpecifications, isTrue);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('onAlgorithmSelected can add bypassed immediately', () async {
       final algorithmInfo = AlgorithmInfo(
@@ -1449,7 +1449,7 @@ void main() {
           expect(state.isDirty, isTrue);
         });
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'slow unchanged response only gives the next request the remaining window',
@@ -1494,7 +1494,7 @@ void main() {
           expect(retryBudgets, [9, 3]);
         });
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'failed add rollback preserves other edits made during verification',
@@ -1536,7 +1536,7 @@ void main() {
           expect(state.isDirty, isTrue);
         });
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'failed add rollback does not remove a refreshed replacement slot',
@@ -1580,7 +1580,7 @@ void main() {
           ]);
         });
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'onAlgorithmSelected retries verification without resending the add',
@@ -1636,7 +1636,7 @@ void main() {
           ).called(1);
         });
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'onAlgorithmSelected keeps the confirmed placeholder when hydration fails',
@@ -1691,7 +1691,7 @@ void main() {
           verify(() => mockDisting.requestNumberOfParameters(0)).called(1);
         });
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'completed hydration does not overwrite a refreshed replacement slot',
@@ -1741,7 +1741,7 @@ void main() {
           ]);
         });
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'onAlgorithmSelected removes placeholder when add request throws',
@@ -2015,7 +2015,7 @@ void main() {
         expect(saved.i2cCC, 32);
         expect(saved.perfPageIndex, 5);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('saveMapping retains intent until synchronization returns', () async {
       final desired = PackedMappingData.filler().copyWith(
@@ -2163,7 +2163,7 @@ void main() {
         expect(captured.midiMappingType, equals(MidiMappingType.cc));
         expect(captured.midiCC, equals(74));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('setPerformancePageMapping marks state dirty (optimistic)', () async {
       when(
