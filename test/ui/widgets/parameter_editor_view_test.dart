@@ -152,7 +152,7 @@ void main() {
         expect(parameterViewRow.displayString, isNull);
         expect(parameterViewRow.unit, isNull);
       },
-    );
+    , tags: ['regression']);
 
     testWidgets('ES-5 Expander (unit 16) shows raw integer for value 6', (
       tester,
