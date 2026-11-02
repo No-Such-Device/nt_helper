@@ -144,7 +144,7 @@ void main() {
           3,
         ]);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'does not delete existing files when an addition source is missing',
@@ -177,7 +177,7 @@ void main() {
         expect(removed.existsSync(), isTrue);
         expect(removed.readAsBytesSync(), [3]);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('does not rename files when an addition target exists', () async {
       final renamed = File('${tempRoot.path}/SoftPiano_C3.wav')
@@ -338,7 +338,7 @@ void main() {
         expect(vacatedDirectory.existsSync(), isTrue);
         expect(renamed.existsSync(), isTrue);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'does not treat a removed directory as a vacated addition target',
@@ -373,6 +373,6 @@ void main() {
         );
         expect(vacatedDirectory.existsSync(), isTrue);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   });
 }
