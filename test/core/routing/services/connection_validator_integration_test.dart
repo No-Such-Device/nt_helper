@@ -142,7 +142,7 @@ void main() {
         expect(afterValidated.length, equals(1));
         expect(afterValidated.first.isBackwardEdge, isFalse);
         expect(afterValidated.first.id, equals('test_connection'));
-      });
+      }, tags: ['regression']);
 
       test('should preserve connection data during validation updates', () {
         final algorithms = [
