@@ -198,18 +198,22 @@ class _MemoryDetailOpenerState extends State<MemoryDetailOpener> {
     if (_isOpen || !mounted) return;
 
     final entry = OverlayEntry(
-      builder: (context) => CompositedTransformFollower(
-        link: _layerLink,
-        showWhenUnlinked: false,
-        targetAnchor: widget.targetAnchor,
-        followerAnchor: widget.followerAnchor,
-        offset: widget.offset,
-        child: Align(
-          widthFactor: 1,
-          heightFactor: 1,
-          child: MemoryDetailOpeningHook(
-            onOpened: widget.onOpened,
-            child: MemoryDetailPresenter(state: _displayState),
+      builder: (context) => Positioned(
+        left: 0,
+        top: 0,
+        width: MediaQuery.sizeOf(context).width.clamp(0, 360).toDouble(),
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          targetAnchor: widget.targetAnchor,
+          followerAnchor: widget.followerAnchor,
+          offset: widget.offset,
+          child: TapRegion(
+            groupId: this,
+            child: MemoryDetailOpeningHook(
+              onOpened: widget.onOpened,
+              child: MemoryDetailPresenter(state: _displayState),
+            ),
           ),
         ),
       ),
@@ -241,6 +245,7 @@ class _MemoryDetailOpenerState extends State<MemoryDetailOpener> {
   }
 
   void _handleFocusChange(bool focused) {
+    setState(() {});
     if (focused) {
       _open();
     } else if (!_hovered) {
@@ -259,81 +264,90 @@ class _MemoryDetailOpenerState extends State<MemoryDetailOpener> {
   }
 
   void _handleActivation() {
+    final wasOpen = _isOpen;
     _focusNode.requestFocus();
-    _open();
+    if (wasOpen) {
+      _close();
+    } else {
+      _open();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: _handlePointerEnter,
-        onExit: _handlePointerExit,
-        child: FocusableActionDetector(
-          focusNode: _focusNode,
-          mouseCursor: SystemMouseCursors.click,
-          shortcuts: const <ShortcutActivator, Intent>{
-            SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
-            SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
-            SingleActivator(LogicalKeyboardKey.escape): DismissIntent(),
-          },
-          actions: <Type, Action<Intent>>{
-            ActivateIntent: CallbackAction<ActivateIntent>(
-              onInvoke: (intent) {
-                _open();
-                return null;
-              },
-            ),
-            DismissIntent: CallbackAction<DismissIntent>(
-              onInvoke: (intent) {
-                _close();
-                return null;
-              },
-            ),
-          },
-          onFocusChange: _handleFocusChange,
-          onShowFocusHighlight: (show) {
-            if (_showFocusHighlight == show) return;
-            setState(() => _showFocusHighlight = show);
-          },
-          child: Semantics(
-            container: true,
-            button: true,
-            focusable: true,
-            focused: _focusNode.hasFocus,
-            label: widget.semanticLabel,
-            value: _isOpen ? 'Open' : 'Closed',
-            onTap: _handleActivation,
-            child: ExcludeSemantics(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _handleActivation,
-                child: ConstrainedBox(
-                  key: const ValueKey('memory-detail-interaction-target'),
-                  constraints: const BoxConstraints(
-                    minWidth: kMinInteractiveDimension,
-                    minHeight: kMinInteractiveDimension,
-                  ),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: _showFocusHighlight
-                            ? colorScheme.primary
-                            : Colors.transparent,
-                        width: 2,
-                      ),
+    return TapRegion(
+      groupId: this,
+      onTapOutside: (_) => _close(),
+      child: CompositedTransformTarget(
+        link: _layerLink,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: _handlePointerEnter,
+          onExit: _handlePointerExit,
+          child: FocusableActionDetector(
+            focusNode: _focusNode,
+            mouseCursor: SystemMouseCursors.click,
+            shortcuts: const <ShortcutActivator, Intent>{
+              SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+              SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+              SingleActivator(LogicalKeyboardKey.escape): DismissIntent(),
+            },
+            actions: <Type, Action<Intent>>{
+              ActivateIntent: CallbackAction<ActivateIntent>(
+                onInvoke: (intent) {
+                  _open();
+                  return null;
+                },
+              ),
+              DismissIntent: CallbackAction<DismissIntent>(
+                onInvoke: (intent) {
+                  _close();
+                  return null;
+                },
+              ),
+            },
+            onFocusChange: _handleFocusChange,
+            onShowFocusHighlight: (show) {
+              if (_showFocusHighlight == show) return;
+              setState(() => _showFocusHighlight = show);
+            },
+            child: Semantics(
+              container: true,
+              button: true,
+              focusable: true,
+              focused: _focusNode.hasFocus,
+              label: widget.semanticLabel,
+              value: _isOpen ? 'Open' : 'Closed',
+              onTap: _handleActivation,
+              child: ExcludeSemantics(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _handleActivation,
+                  child: ConstrainedBox(
+                    key: const ValueKey('memory-detail-interaction-target'),
+                    constraints: const BoxConstraints(
+                      minWidth: kMinInteractiveDimension,
+                      minHeight: kMinInteractiveDimension,
                     ),
-                    child: Center(
-                      widthFactor: 1,
-                      heightFactor: 1,
-                      child:
-                          widget.childBuilder?.call(context, _displayState) ??
-                          widget.child!,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _showFocusHighlight
+                              ? colorScheme.primary
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: Center(
+                        widthFactor: 1,
+                        heightFactor: 1,
+                        child:
+                            widget.childBuilder?.call(context, _displayState) ??
+                            widget.child!,
+                      ),
                     ),
                   ),
                 ),

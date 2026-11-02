@@ -79,6 +79,84 @@ void main() {
   }
 
   group('MemoryDetailOpener', () {
+    // Existing opening tests did not check bottom-bar placement or touch
+    // dismissal, allowing a screen-sized, effectively stuck overlay on iPad.
+    testWidgets(
+      'bottom-bar memory popover anchors above and toggles on touch',
+      (tester) async {
+        final source = _ControlledMemorySource();
+        addTearDown(source.close);
+        final semantics = tester.ensureSemantics();
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              bottomNavigationBar: Align(
+                heightFactor: 1,
+                alignment: Alignment.centerRight,
+                child: MemoryDetailOpener(
+                  initialState: source.state,
+                  stateStream: source.states,
+                  onOpened: source.refresh,
+                  targetAnchor: Alignment.topRight,
+                  followerAnchor: Alignment.bottomRight,
+                  child: const Icon(Icons.memory),
+                ),
+              ),
+            ),
+          ),
+        );
+        final trigger = find.bySemanticsLabel('Show memory details');
+        final triggerRect = tester.getRect(trigger);
+        await tester.tap(trigger);
+        await tester.pump();
+        await tester.pump();
+        final details = find.byType(MemoryDetailPresenter);
+        final rect = tester.getRect(details);
+        expect(rect.bottom, closeTo(triggerRect.top - 8, 0.01));
+        expect(rect.right, closeTo(triggerRect.right, 0.01));
+        expect(tester.getRect(trigger), triggerRect);
+        expect(tester.getSemantics(trigger).value, 'Open');
+        // Existing focus assertions covered keyboard use, not the regression
+        // where a touch tap painted a keyboard outline around the whole target.
+        final targetDecoration =
+            tester
+                    .widget<DecoratedBox>(
+                      find
+                          .descendant(
+                            of: find.byKey(
+                              const ValueKey(
+                                'memory-detail-interaction-target',
+                              ),
+                            ),
+                            matching: find.byType(DecoratedBox),
+                          )
+                          .first,
+                    )
+                    .decoration
+                as BoxDecoration;
+        expect(
+          (targetDecoration.border! as Border).top.color,
+          Colors.transparent,
+        );
+        source.completeRefresh(const MemoryDisplayState.available(_sample));
+        await tester.pump();
+        expect(tester.getRect(details), rect);
+        await tester.tap(trigger);
+        await tester.pump();
+        expect(details, findsNothing);
+        expect(tester.getSemantics(trigger).value, 'Closed');
+        await tester.tap(trigger);
+        await tester.pump();
+        expect(details, findsOneWidget);
+        expect(source.refreshCalls, 2);
+        await tester.tapAt(const Offset(20, 20));
+        await tester.pump();
+        expect(details, findsNothing);
+        expect(tester.getRect(trigger), triggerRect);
+        semantics.dispose();
+      },
+    );
+
     testWidgets(
       'mouse, focus, touch and keyboard share one refresh per opening',
       (tester) async {
@@ -104,15 +182,15 @@ void main() {
         expect(source.refreshCalls, 1);
         expect(find.byType(MemoryDetailPresenter), findsOneWidget);
 
-        // A touch activation focuses the already-open control. Enter and Space
-        // are then further open requests, not new opening transitions.
+        // Touch closes the hovered popover; keyboard activation reopens it.
+        // Unlike focus alone, the subsequent Space must not refresh again.
         await tester.tap(trigger);
         await tester.pump();
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
         await tester.pump();
         await tester.sendKeyEvent(LogicalKeyboardKey.space);
         await tester.pump();
-        expect(source.refreshCalls, 1);
+        expect(source.refreshCalls, 2);
 
         final focusedNode = tester.getSemantics(trigger).getSemanticsData();
         expect(focusedNode.flagsCollection.isFocused, Tristate.isTrue);
@@ -134,14 +212,14 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.escape);
         await tester.pump();
         expect(find.byType(MemoryDetailPresenter), findsNothing);
-        expect(source.refreshCalls, 1);
+        expect(source.refreshCalls, 2);
 
         // Focus remains on the opener, so a later keyboard activation is a
         // genuine closed-to-open transition.
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
         await tester.pump();
         expect(find.byType(MemoryDetailPresenter), findsOneWidget);
-        expect(source.refreshCalls, 2);
+        expect(source.refreshCalls, 3);
         semantics.dispose();
       },
     );
