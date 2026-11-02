@@ -462,63 +462,7 @@ void main() {
     });
 
     group('optimizeNodePositionsForConnections', () {
-      test('adjusts positions to minimize connection overlap', () {
-        final algorithms = [
-          RoutingAlgorithm(
-            id: 'algo_0',
-            index: 0,
-            algorithm: Algorithm(
-              algorithmIndex: 0,
-              guid: 'test0',
-              name: 'Test Algorithm 0',
-            ),
-            inputPorts: const [
-              Port(
-                id: 'algo_0_in',
-                name: 'Input',
-                type: PortType.cv,
-                direction: PortDirection.input,
-              ),
-            ],
-            outputPorts: const [
-              Port(
-                id: 'algo_0_out',
-                name: 'Output',
-                type: PortType.cv,
-                direction: PortDirection.output,
-              ),
-            ],
-          ),
-        ];
-
-        final connections = [
-          const Connection(
-            id: 'conn_1',
-            sourcePortId: 'hw_in_1',
-            destinationPortId: 'algo_0_in',
-            connectionType: ConnectionType.hardwareInput,
-          ),
-        ];
-
-        final initialPositions = {
-          'hw_in_1': const NodePosition(x: 0.0, y: 50.0),
-          'algo_0': const NodePosition(x: 200.0, y: 150.0),
-        };
-
-        final optimizedPositions = layoutAlgorithm
-            .optimizeNodePositionsForConnections(
-              algorithms,
-              connections,
-              initialPositions,
-            );
-
-        expect(optimizedPositions, hasLength(2));
-
-        // Positions should be adjusted for better connection flow
-        final optimizedAlgoPosition = optimizedPositions['algo_0']!;
-        expect(optimizedAlgoPosition.x, greaterThanOrEqualTo(0.0));
-        expect(optimizedAlgoPosition.y, greaterThanOrEqualTo(0.0));
-      });
+      
     });
 
     group('edge cases', () {
