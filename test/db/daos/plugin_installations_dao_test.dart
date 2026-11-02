@@ -181,7 +181,7 @@ void main() {
       expect(records.length, equals(1));
       expect(records[0].pluginId, equals('gallery-synth'));
       expect(records[0].pluginVersion, equals('user-installed'));
-    });
+    }, tags: ['regression']);
 
     test('does not preserve local pluginId on local re-upload', () async {
       // First: local install (no pluginId)
