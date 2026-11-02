@@ -178,7 +178,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(PhysicalInputNode), findsOneWidget);
-      });
+      }, tags: ['regression']);
     });
   });
 }
