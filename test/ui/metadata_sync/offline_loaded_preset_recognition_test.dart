@@ -282,5 +282,5 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     },
-  );
+  , tags: ['regression']);
 }
