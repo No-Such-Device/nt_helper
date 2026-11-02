@@ -255,7 +255,7 @@ void main() {
                 .getSingle();
         expect(param.ioFlags, 7);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     // True migration tests: Verify data can be queried after fresh v10 database creation
     test(
