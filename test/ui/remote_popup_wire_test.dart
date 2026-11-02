@@ -272,7 +272,7 @@ void main() {
             await flush(tester);
             expect(cubit.remoteControlState.heldControls, isEmpty);
           },
-        , tags: ['regression']);
+        tags: ['regression']);
 
         if (!windows) {
           testWidgets(
@@ -333,7 +333,7 @@ void main() {
               expect(minimumCalls.length, greaterThan(callsBefore));
               expect((minimumCalls.last.arguments as Map)['width'], 356);
             },
-          , tags: ['regression']);
+          tags: ['regression']);
         }
 
         testWidgets(
@@ -384,7 +384,7 @@ void main() {
             ]);
             expect(cubit.remoteControlState.heldControls, isEmpty);
           },
-        , tags: ['regression']);
+        tags: ['regression']);
 
         testWidgets(
           'real UI actions/results, independent pot retention, host changes and reconnect isolation',
@@ -443,7 +443,7 @@ void main() {
             await wheel(tester, 4, -1);
             expect(payloads().last, [4, 0, 32, 16]);
           },
-        , tags: ['regression']);
+        tags: ['regression']);
 
         testWidgets(
           'nine pushes and pointer/key/capture/focus/fold/hide/close termination produce single releases',
@@ -579,7 +579,7 @@ void main() {
             await held.up();
             semantics.dispose();
           },
-        , tags: ['regression']);
+        tags: ['regression']);
 
         testWidgets(
           'complete firmware/mode matrix updates the open host and invalid payloads never write',
@@ -655,7 +655,7 @@ void main() {
               throwsA(isA<PlatformException>()),
             );
           },
-        , tags: ['regression']);
+        tags: ['regression']);
 
         testWidgets(
           'frame/value/pressed/unavailable/pending/error geometry, reference shape, semantics and hidden-toolbar keyboard access',
@@ -904,7 +904,7 @@ void main() {
             );
             semantics.dispose();
           },
-        , tags: ['regression']);
+        tags: ['regression']);
 
         testWidgets(
           'backend close, unavailable main, pinning/display actions and original video path',
@@ -962,7 +962,7 @@ void main() {
               [2, 3],
             ]);
           },
-        , tags: ['regression']);
+        tags: ['regression']);
 
         testWidgets(
           'pending input geometry and late old-connection results cannot overwrite the replacement host',
@@ -1017,7 +1017,7 @@ void main() {
               [3, 0, 1],
             ]);
           },
-        , tags: ['regression']);
+        tags: ['regression']);
 
         testWidgets(
           'channel failure clears holds, announces unknown state and disposed callbacks cannot send',
@@ -1055,7 +1055,7 @@ void main() {
             expect(payloads().length, before);
             expect(tester.takeException(), isNull);
           },
-        , tags: ['regression']);
+        tags: ['regression']);
       },
     );
   }
