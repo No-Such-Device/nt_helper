@@ -41,7 +41,7 @@ class FileMemoryService {
     try {
       final file = File('$basePath/memory.md');
       if (!await file.exists()) return '';
-      return file.readAsString();
+      return await file.readAsString();
     } catch (_) {
       return '';
     }

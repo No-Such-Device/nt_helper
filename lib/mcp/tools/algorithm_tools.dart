@@ -585,17 +585,17 @@ class MCPAlgorithmTools {
 
       switch (target.toLowerCase()) {
         case 'preset':
-          return showPreset();
+          return await showPreset();
         case 'slot':
-          return showSlot(identifier);
+          return await showSlot(identifier);
         case 'parameter':
-          return showParameter(identifier);
+          return await showParameter(identifier);
         case 'screen':
-          return showScreen(displayMode: displayMode);
+          return await showScreen(displayMode: displayMode);
         case 'routing':
-          return showRouting();
+          return await showRouting();
         case 'cpu':
-          return showCpu();
+          return await showCpu();
         default:
           return jsonEncode(
             convertToSnakeCaseKeys({
