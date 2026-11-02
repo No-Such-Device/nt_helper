@@ -107,7 +107,7 @@ void main() {
 
     expect(() => expansionController.addListener(() {}), throwsFlutterError);
     sectionState.dispose();
-  });
+  }, tags: ['regression']);
 
   for (final brightness in Brightness.values) {
     testWidgets(
@@ -238,7 +238,7 @@ void main() {
         expect(find.text('Nested section'), findsNothing);
         expect(find.text('Second content'), findsOneWidget);
       },
-    );
+    , tags: ['regression']);
   }
 
   testWidgets('re-evaluates Lua when a new immutable Slot arrives', (
@@ -723,7 +723,7 @@ return {
     );
     expect(tester.takeException(), isNull);
     semantics.dispose();
-  });
+  }, tags: ['regression']);
 
   testWidgets('XY pad supports pointer and keyboard parameter writes', (
     tester,
@@ -1023,7 +1023,7 @@ return {
 
     expect(find.byType(ChoiceChip), findsNothing);
     expect(find.byType(Slider), findsOneWidget);
-  });
+  }, tags: ['regression']);
 
   testWidgets('slider shows the NT-formatted current value', (tester) async {
     const source = r'''
