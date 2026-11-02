@@ -1,0 +1,243 @@
+name: Mobile Production Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Candidate release tag, for example v2.60.4'
+        required: true
+        type: string
+      google_play_notes:
+        description: 'Reviewed Google Play release notes (maximum 500 characters)'
+        required: true
+        type: string
+      app_store_notes:
+        description: 'Reviewed App Store release notes (maximum 4000 characters)'
+        required: true
+        type: string
+      release_android:
+        description: 'Promote Android from Google Play internal to production'
+        required: true
+        default: true
+        type: boolean
+      submit_ios:
+        description: 'Submit the uploaded iOS build for App Store review'
+        required: true
+        default: true
+        type: boolean
+      submit_macos:
+        description: 'Submit the uploaded macOS build for App Store review'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  ANDROID_PACKAGE: dev.nosuch.nt_helper
+  IOS_BUNDLE_ID: dev.nosuch.ntHelper
+  MACOS_BUNDLE_ID: dev.nosuch.macos.ntHelper
+
+concurrency:
+  group: mobile-production-release
+  cancel-in-progress: false
+
+jobs:
+  verify-candidate:
+    name: Verify candidate release
+    runs-on: ubuntu-latest
+    environment: production-release
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      sha: ${{ steps.release.outputs.sha }}
+      version: ${{ steps.release.outputs.version }}
+      build_number: ${{ steps.release.outputs.build_number }}
+    steps:
+      - name: Check out candidate tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+
+      - name: Validate inputs and candidate workflow
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.tag }}
+          GOOGLE_PLAY_NOTES: ${{ inputs.google_play_notes }}
+          APP_STORE_NOTES: ${{ inputs.app_store_notes }}
+        run: |
+          set -euo pipefail
+          case "$REQUESTED_TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Tag must look like vX.Y.Z: $REQUESTED_TAG" >&2; exit 1 ;;
+          esac
+
+          google_length=$(printf '%s' "$GOOGLE_PLAY_NOTES" | wc -m | tr -d ' ')
+          app_store_length=$(printf '%s' "$APP_STORE_NOTES" | wc -m | tr -d ' ')
+          if [ "$google_length" -gt 500 ]; then
+            echo "Google Play notes are ${google_length} characters; maximum is 500" >&2
+            exit 1
+          fi
+          if [ "$app_store_length" -gt 4000 ]; then
+            echo "App Store notes are ${app_store_length} characters; maximum is 4000" >&2
+            exit 1
+          fi
+          if printf '%s\n%s' "$GOOGLE_PLAY_NOTES" "$APP_STORE_NOTES" | grep -Eq '[<>]'; then
+            echo 'Store notes contain markup-like characters; provide plain text.' >&2
+            exit 1
+          fi
+
+          sha=$(git rev-parse "${REQUESTED_TAG}^{commit}")
+          run_json=$(gh run list --workflow 'tag-build.yml' --commit "$sha" --limit 20 --json databaseId,status,conclusion,headSha,event)
+          python3 - "$run_json" "$sha" <<'PY'
+          import json, sys
+          runs = json.loads(sys.argv[1])
+          matching = [r for r in runs if r['headSha'] == sys.argv[2]]
+          if not matching:
+              raise SystemExit('No candidate Multi-Platform Build run found for the release tag')
+          successful = [r for r in matching if r['status'] == 'completed' and r['conclusion'] == 'success']
+          if not successful:
+              raise SystemExit('Candidate Multi-Platform Build has not completed successfully')
+          PY
+
+          version=$(awk '/^version:/ { split($2, p, "+"); print p[1]; exit }' pubspec.yaml)
+          build_number=$(awk '/^version:/ { split($2, p, "+"); print p[2]; exit }' pubspec.yaml)
+          test -n "$version" -a -n "$build_number"
+          {
+            echo "tag=$REQUESTED_TAG"
+            echo "sha=$sha"
+            echo "version=$version"
+            echo "build_number=$build_number"
+          } >> "$GITHUB_OUTPUT"
+          echo "Candidate $REQUESTED_TAG ($sha), version $version+$build_number verified."
+
+      - name: Write reviewed notes artifact
+        env:
+          GOOGLE_PLAY_NOTES: ${{ inputs.google_play_notes }}
+          APP_STORE_NOTES: ${{ inputs.app_store_notes }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/mobile-release-notes"
+          printf '%s' "$GOOGLE_PLAY_NOTES" > "$RUNNER_TEMP/mobile-release-notes/google-play.txt"
+          printf '%s' "$APP_STORE_NOTES" > "$RUNNER_TEMP/mobile-release-notes/app-store.txt"
+
+      - name: Upload reviewed notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-release-notes-${{ inputs.tag }}
+          path: ${{ runner.temp }}/mobile-release-notes
+          if-no-files-found: error
+
+  android-production:
+    name: Promote Android to Google Play production
+    needs: verify-candidate
+    if: inputs.release_android
+    runs-on: ubuntu-latest
+    environment: production-release
+    steps:
+      - name: Check out candidate tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-candidate.outputs.tag }}
+
+      - name: Download reviewed notes
+        uses: actions/download-artifact@v4
+        with:
+          name: mobile-release-notes-${{ needs.verify-candidate.outputs.tag }}
+          path: ${{ runner.temp }}/mobile-release-notes
+
+      - name: Validate Google Play service account
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: test -n "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"
+
+      - name: Install Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: false
+
+      - name: Promote internal release
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_PLAY_NOTES: ${{ inputs.google_play_notes }}
+          VERSION_CODE: ${{ needs.verify-candidate.outputs.build_number }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/google-play.json"
+          mkdir -p fastlane/metadata/android/en-US/changelogs
+          printf '%s' "$GOOGLE_PLAY_NOTES" > "fastlane/metadata/android/en-US/changelogs/${VERSION_CODE}.txt"
+          gem install fastlane --no-document
+          fastlane supply \
+            --package_name "$ANDROID_PACKAGE" \
+            --json_key "$RUNNER_TEMP/google-play.json" \
+            --track internal \
+            --track_promote_to production \
+            --skip_upload_aab true \
+            --skip_upload_apk true \
+            --skip_upload_metadata false \
+            --skip_upload_changelogs false \
+            --skip_upload_images true \
+            --skip_upload_screenshots true \
+            --release_status completed \
+            --metadata_path fastlane/metadata
+
+  apple-production:
+    name: Submit Apple builds for review
+    needs: verify-candidate
+    if: inputs.submit_ios || inputs.submit_macos
+    runs-on: ubuntu-latest
+    environment: production-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: iOS
+            enabled: ${{ inputs.submit_ios }}
+            bundle_id: dev.nosuch.ntHelper
+          - name: macOS
+            enabled: ${{ inputs.submit_macos }}
+            bundle_id: dev.nosuch.macos.ntHelper
+    steps:
+      - name: Stop when this Apple platform is not selected
+        if: matrix.enabled != true
+        run: echo "${{ matrix.name }} production submission is disabled."
+
+      - name: Check Apple API key
+        if: matrix.enabled == true
+        env:
+          APP_STORE_CONNECT_API_KEY_JSON: ${{ secrets.APP_STORE_CONNECT_API_KEY_JSON }}
+        run: test -n "$APP_STORE_CONNECT_API_KEY_JSON"
+
+      - name: Install Fastlane
+        if: matrix.enabled == true
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: false
+
+      - name: Submit existing build for review
+        if: matrix.enabled == true
+        env:
+          APP_STORE_CONNECT_API_KEY_JSON: ${{ secrets.APP_STORE_CONNECT_API_KEY_JSON }}
+          APP_STORE_NOTES: ${{ inputs.app_store_notes }}
+          APP_VERSION: ${{ needs.verify-candidate.outputs.version }}
+          BUNDLE_ID: ${{ matrix.bundle_id }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_JSON" > "$RUNNER_TEMP/app-store-connect-api-key.json"
+          mkdir -p fastlane/metadata/en-US
+          printf '%s' "$APP_STORE_NOTES" > fastlane/metadata/en-US/release_notes.txt
+          gem install fastlane --no-document
+          fastlane deliver \
+            --api_key_path "$RUNNER_TEMP/app-store-connect-api-key.json" \
+            --app_identifier "$BUNDLE_ID" \
+            --app_version "$APP_VERSION" \
+            --metadata_path fastlane/metadata \
+            --skip_binary_upload true \
+            --skip_screenshots true \
+            --submit_for_review true \
+            --automatic_release false \
+            --force
