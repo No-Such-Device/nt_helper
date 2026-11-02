@@ -571,7 +571,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 200));
         debugDefaultTargetPlatformOverride = null;
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   }
 
   for (final inputOnly in [true, false]) {
