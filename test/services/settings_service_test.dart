@@ -421,7 +421,7 @@ void main() {
         containsAll({FileRootPermission.read, FileRootPermission.search}),
       );
       expect(roots.single.permissionsFor(FileRootActor.mcp), isEmpty);
-    });
+    }, tags: ['regression']);
 
     test('saves and loads ACL permissions', () async {
       await settings.setAllowedFileRoots([
@@ -477,7 +477,7 @@ void main() {
 
       expect(roots, hasLength(1));
       expect(roots.single.id, 'ok');
-    });
+    }, tags: ['regression']);
   });
 
   group('SettingsDialog routing visibility settings', () {
@@ -614,6 +614,6 @@ void main() {
             '$extraInRegistry. Either remove them from the registry or '
             'restore the missing constants.',
       );
-    });
+    }, tags: ['regression']);
   });
 }
