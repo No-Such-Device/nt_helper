@@ -427,7 +427,7 @@ void main() {
         expect(result?.type, MidiEventType.nrpn);
         expect(result?.channel, 5);
         expect(result?.number, 17);
-      });
+      }, tags: ['regression']);
 
       test('ignores NRPN numbers above firmware mapping range', () {
         engine.processCc(0, 99, 1);
@@ -535,7 +535,7 @@ void main() {
         }
 
         expect(result, isNull);
-      });
+      }, tags: ['regression']);
 
       test('buffer naturally slides out stale entries', () {
         // Send 5 CC 1 then 10 CC 2 - the CC 1 entries slide out
