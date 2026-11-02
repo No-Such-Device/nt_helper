@@ -140,7 +140,7 @@ void main() {
 
         expect(find.byType(ShortcutHelpOverlay), findsOneWidget);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     testWidgets('add FAB stays disabled until verification completes', (
       tester,
