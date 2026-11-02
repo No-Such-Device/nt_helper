@@ -162,7 +162,7 @@ void main() {
           BusMapping.nameToBus('Aux 9', hasExtendedAuxBuses: false),
           isNull,
         );
-      });
+      }, tags: ['regression']);
 
       test('accepts extended aux on 1.15+', () {
         expect(BusMapping.nameToBus('Aux 9', hasExtendedAuxBuses: true), 29);
