@@ -122,8 +122,10 @@ ad-hoc signature, missing profile, failed build or unsigned compile installable.
    `dev.nosuch.ntHelper.initialSdp.driver` (physically observed on the M2 iPad).
    Enable that toggle. Do not assume a separate General or Privacy & Security
    Drivers category exists. Use a USB **data** cable and power the NT independently.
-2. Synchronize the selected live NT in the development app. Open **More > Initial
-   SDP experiment**. Opening sends nothing and retains MIDI ownership. Demo,
+2. Leave only the selected NT attached and synchronize it in the development
+   app. Power-cycle any already-attached initial bootloader back to normal mode;
+   pre-existing or ambiguous bootloaders are rejected rather than attributed to
+   the selected MIDI request. Open **More > Initial SDP experiment**. Opening sends nothing and retains MIDI ownership. Demo,
    offline, unknown firmware and firmware below 1.15 cannot request entry.
 3. Explicitly choose **Request bootloader and read status**. Record separately:
    request sent, observed 1FC9:0135, driver connected, decoded response/HAB/status

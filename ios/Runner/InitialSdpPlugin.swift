@@ -53,6 +53,15 @@ final class InitialSdpPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             var reply: Any?
             switch call.method {
             case "availability":
+                // Snapshot before MIDI entry: an already-present bootloader is
+                // not evidence that the selected NT transitioned.
+                let inventory = initialServiceInventory()
+                guard inventory.code == KERN_SUCCESS, inventory.count == 0 else {
+                    finish(result, error("availability", inventory.code != KERN_SUCCESS
+                        ? "Cannot inspect initial bootloader services: \(inventory.code). No MIDI request sent."
+                        : "An initial bootloader is already attached. Power-cycle it to normal mode before requesting the selected NT. No MIDI request sent."))
+                    return
+                }
                 reply = [
                     "osEligible": ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 16,
                     "isIPad": UIDevice.current.userInterfaceIdiom == .pad,
@@ -68,6 +77,10 @@ final class InitialSdpPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
                     finish(result, error("connection", "Initial bootloader driver has not been observed."))
                     return
                 }
+                guard hasUnambiguousSelection() else {
+                    finish(result, error("connection", "Initial bootloader selection is missing or ambiguous. Leave only the selected NT attached and restart the experiment."))
+                    return
+                }
                 if connection == 0 {
                     let code = IOServiceOpen(service, mach_task_self_, 0, &connection)
                     if code != KERN_SUCCESS {
@@ -81,6 +94,11 @@ final class InitialSdpPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             case "errorStatus":
                 guard connection != 0 else {
                     finish(result, error("query", "Connect to the initial bootloader driver first."))
+                    return
+                }
+                guard hasUnambiguousSelection() else {
+                    closeConnection()
+                    finish(result, error("query", "Initial bootloader selection changed or is ambiguous. No SDP query sent."))
                     return
                 }
                 var output = [UInt64](repeating: 0, count: 2)
@@ -115,6 +133,32 @@ final class InitialSdpPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             "NTInitialVendorID": 0x1fc9, "NTInitialProductID": 0x0135
         ]
         return match
+    }
+    // Inspect matching services without claiming USB ownership. Recheck at the
+    // command boundary so a second device cannot supply an attributed response.
+    private func initialServiceInventory() -> (code: kern_return_t, count: Int, selectedPresent: Bool) {
+        var iterator: io_iterator_t = 0
+        let code = IOServiceGetMatchingServices(kIOMainPortDefault, matching(), &iterator)
+        guard code == KERN_SUCCESS else { return (code, 0, false) }
+        defer { IOObjectRelease(iterator) }
+        var count = 0
+        var selectedPresent = false
+        var selectedID: UInt64 = 0
+        if service != 0 { IORegistryEntryGetRegistryEntryID(service, &selectedID) }
+        while true {
+            let entry = IOIteratorNext(iterator)
+            if entry == 0 { break }
+            count += 1
+            var entryID: UInt64 = 0
+            if service != 0, IORegistryEntryGetRegistryEntryID(entry, &entryID) == KERN_SUCCESS,
+                entryID == selectedID { selectedPresent = true }
+            IOObjectRelease(entry)
+        }
+        return (KERN_SUCCESS, count, selectedPresent)
+    }
+    private func hasUnambiguousSelection() -> Bool {
+        let inventory = initialServiceInventory()
+        return inventory.code == KERN_SUCCESS && inventory.count == 1 && inventory.selectedPresent
     }
     private func observe() -> Any {
         guard port == nil else { return ["stage": service == 0 ? "waiting" : "detected"] }
@@ -176,6 +220,8 @@ final class InitialSdpPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
                 IOObjectRetain(entry)
                 service = entry
                 emit("detected", ["vendorId": 0x1fc9, "productId": 0x0135])
+            } else if !hasUnambiguousSelection() {
+                _ = error("detection", "Multiple initial bootloaders are attached. Leave only the selected NT attached and restart the experiment.")
             }
             IOObjectRelease(entry)
         }

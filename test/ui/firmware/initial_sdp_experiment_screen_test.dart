@@ -360,6 +360,8 @@ void main() {
     'unavailable',
     'disabled',
     'missing channel',
+    'pre-existing bootloader',
+    'ambiguous bootloader',
     'observation failure',
     'missing transition',
     'connection failure',
@@ -382,6 +384,14 @@ void main() {
         if (scenario == 'missing channel') {
           h.transport.availabilityError = MissingPluginException();
         }
+        // A native preflight rejection must precede MIDI, while ambiguity
+        // during observation must never be promoted to a protocol receipt.
+        if (scenario == 'pre-existing bootloader') {
+          h.transport.availabilityError = PlatformException(
+            code: 'availability',
+            message: 'An initial bootloader is already attached',
+          );
+        }
         if (scenario == 'observation failure') {
           h.transport.observeError = PlatformException(
             code: 'availability',
@@ -392,10 +402,23 @@ void main() {
         final geometry = _geometry(tester);
         await h.start(tester);
         String stage;
-        if (['unavailable', 'disabled', 'missing channel'].contains(scenario)) {
+        if ([
+          'unavailable',
+          'disabled',
+          'missing channel',
+          'pre-existing bootloader',
+        ].contains(scenario)) {
           stage = 'Driver availability';
           expect(h.packets, isEmpty);
           expect(h.ownership, isEmpty);
+        } else if (scenario == 'ambiguous bootloader') {
+          h.transport.observations.add({
+            'stage': 'failure',
+            'failedStage': 'Detection',
+            'message': 'Multiple initial bootloaders are attached',
+          });
+          stage = 'Detection';
+          expect(h.transport.calls, isNot(contains('errorStatus')));
         } else if (scenario == 'observation failure') {
           stage = 'Detection';
         } else if (scenario == 'missing transition') {
