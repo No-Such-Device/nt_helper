@@ -47,7 +47,7 @@ void main() {
       expect(algorithm.visualStyle, isNull);
       expect(algorithm.specifications, isEmpty);
       expect(algorithm.hasAuthoritativeSpecifications, isFalse);
-    });
+    }, tags: ['regression']);
 
     test('parses style after a full 24-byte name without a terminator', () {
       const name = '123456789012345678901234';
@@ -74,7 +74,7 @@ void main() {
         ),
       );
       expect(algorithm.hasAuthoritativeSpecifications, isFalse);
-    });
+    }, tags: ['regression']);
 
     test('ignores unsupported or truncated style versions', () {
       for (final suffix in <List<int>>[
@@ -189,6 +189,6 @@ void main() {
         expect(algorithm.specifications, isEmpty);
         expect(algorithm.hasAuthoritativeSpecifications, isFalse);
       }
-    });
+    }, tags: ['regression']);
   });
 }
