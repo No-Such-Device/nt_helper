@@ -210,7 +210,7 @@ void main() {
       expect(find.text('Saved first'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
   testWidgets('Escape cancels without selecting or deleting', (tester) async {
     await open(tester);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
