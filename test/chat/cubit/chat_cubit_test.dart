@@ -100,7 +100,7 @@ void main() {
       verifyNever(() => toolRegistry.dispose());
       await cubit.close();
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('chat closes even if remote cleanup fails', () async {
     when(() => toolRegistry.dispose()).thenThrow(StateError('release unknown'));
@@ -384,7 +384,7 @@ void main() {
               contains('Error'),
             ),
       ],
-    , tags: ['regression']);
+    tags: ['regression']);
 
     blocTest<ChatCubit, ChatState>(
       'resets isProcessing when stream ends after ChatLoopError event',
@@ -414,7 +414,7 @@ void main() {
         expect(s, isA<ChatReady>());
         expect((s as ChatReady).isProcessing, isFalse);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     blocTest<ChatCubit, ChatState>(
       'resets isProcessing when provider returns final response normally',
@@ -514,7 +514,7 @@ void main() {
               contains('filesystem error'),
             ),
       ],
-    , tags: ['regression']);
+    tags: ['regression']);
 
     blocTest<ChatCubit, ChatState>(
       'shows error message to user when exception occurs',
@@ -631,7 +631,7 @@ void main() {
         // Second-turn user message should be present
         expect(secondCallMessages[2].content, 'second message');
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   });
 
   group('Bug 4: cancelProcessing resets state', () {
@@ -1044,6 +1044,6 @@ void main() {
         expect(secondTurnToolPrefix, firstTurnToolPrefix);
         expect(readMemoryCalls, 1);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   });
 }
