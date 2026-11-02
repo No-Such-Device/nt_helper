@@ -94,7 +94,7 @@ void main() {
           ),
           greaterThanOrEqualTo(4.5),
         );
-      });
+      }, tags: ['regression']);
 
       test('fromColorScheme works with dark scheme', () {
         final scheme = ColorScheme.fromSeed(
