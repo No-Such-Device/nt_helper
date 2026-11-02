@@ -212,7 +212,7 @@ void main() {
 
         expect(service.lastOptions!.groupRoundRobins, isEmpty);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('group modes do not forward stale selected tag options', () async {
       final service = _FakeImportService(_taggedAnalysis());
