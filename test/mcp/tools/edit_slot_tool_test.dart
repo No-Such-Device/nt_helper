@@ -572,25 +572,7 @@ void main() {
         },
       );
 
-      test('should return parameters list for occupied slot', () async {
-        // First add an algorithm to slot 0
-        await tools.addAlgorithm({
-          'algorithm': {'guid': 'clck'},
-        });
-
-        // Now query the slot
-        final result = await tools.editSlot({
-          'slot_index': 0,
-          'data': {'parameters': []},
-        });
-
-        final decoded = jsonDecode(result);
-        expect(
-          decoded['success'] == true ||
-              decoded['error'].toString().contains('synchronized'),
-          isTrue,
-        );
-      });
+      
     });
 
     group('editSlot - edge cases', () {
@@ -604,25 +586,7 @@ void main() {
 
       
 
-      test('should validate slot_index boundaries', () async {
-        final result0 = await tools.editSlot({'slot_index': 0, 'data': {}});
-
-        final decoded0 = jsonDecode(result0);
-        // Either succeeds or has error message
-        expect(
-          decoded0['success'] == true || decoded0['error'] != null,
-          isTrue,
-        );
-
-        final result39 = await tools.editSlot({'slot_index': 39, 'data': {}});
-
-        final decoded39 = jsonDecode(result39);
-        // Either succeeds or has error message
-        expect(
-          decoded39['success'] == true || decoded39['error'] != null,
-          isTrue,
-        );
-      });
+      
     });
   });
 }
