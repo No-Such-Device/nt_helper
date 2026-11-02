@@ -159,7 +159,7 @@ void main() {
       verify(
         () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
       ).called(1);
-    });
+    }, tags: ['regression']);
 
     test('basic request/response cycle — happy path', () async {
       final key = RequestKey(
@@ -242,7 +242,7 @@ void main() {
           ),
         );
       },
-    );
+    , tags: ['regression']);
 
     test('repeated split transfer errors do not replay indefinitely', () async {
       final key = RequestKey(
@@ -276,7 +276,7 @@ void main() {
 
       await expectLater(future, throwsA(isA<TimeoutException>()));
       verify(() => midi.sendData(any(), deviceId: device.id)).called(2);
-    });
+    }, tags: ['regression']);
 
     test('stream error outside a split transfer does not replay', () async {
       final key = RequestKey(
@@ -295,7 +295,7 @@ void main() {
 
       await expectLater(future, throwsA(isA<TimeoutException>()));
       verify(() => midi.sendData(any(), deviceId: device.id)).called(1);
-    });
+    }, tags: ['regression']);
 
     test(
       'unexpected message discarded — current request still completes',
@@ -334,7 +334,7 @@ void main() {
         final diag = scheduler.getDiagnostics();
         expect(diag['unmatchedResponsesDiscarded'], 1);
       },
-    );
+    , tags: ['regression']);
 
     test(
       'directory listing waiter ignores a file upload acknowledgement',
@@ -372,7 +372,7 @@ void main() {
         final diagnostics = scheduler.getDiagnostics();
         expect(diagnostics['unmatchedResponsesDiscarded'], 1);
       },
-    );
+    , tags: ['regression']);
 
     test('file upload waiter ignores a directory listing response', () async {
       final key = RequestKey(
@@ -407,7 +407,7 @@ void main() {
 
       final diagnostics = scheduler.getDiagnostics();
       expect(diagnostics['unmatchedResponsesDiscarded'], 1);
-    });
+    }, tags: ['regression']);
 
     test(
       'SD error completes the active operation with a typed exception',
@@ -511,7 +511,7 @@ void main() {
 
       final diag = scheduler.getDiagnostics();
       expect(diag['staleResponsesAbsorbed'], 1);
-    });
+    }, tags: ['regression']);
 
     test(
       'FIFO drain — multiple same-key timeouts drain expired handlers',
@@ -567,7 +567,7 @@ void main() {
         final diag = scheduler.getDiagnostics();
         expect(diag['staleResponsesAbsorbed'], 2);
       },
-    );
+    , tags: ['regression']);
 
     test(
       'fire-and-forget completes immediately without handler registration',
@@ -638,7 +638,7 @@ void main() {
         expect(diag['staleResponsesAbsorbed'], 0);
         expect(diag['expiredHandlerCount'], 0);
       },
-    );
+    , tags: ['regression']);
 
     testWidgets(
       'consecutive timeout recovery — auto-reset after 3 consecutive timeouts',
@@ -696,7 +696,7 @@ void main() {
         final result = await future;
         expect(result, isNotNull);
       },
-    );
+    , tags: ['regression']);
 
     test(
       'expired handler cleanup — handlers older than 30s are removed',
@@ -774,7 +774,7 @@ void main() {
           expect(future, throwsA(isA<StateError>()));
         }
       },
-    );
+    , tags: ['regression']);
 
     test('message observer receives all messages', () async {
       final observed = <DistingNTRespMessageType>[];
