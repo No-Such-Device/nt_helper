@@ -102,7 +102,7 @@ void main() {
         ),
       );
     },
-  , tags: ['regression']);
+  tags: ['regression']);
   test(
     'OpenRouter catalog keeps declared tool-capable models, names and context lengths',
     () async {
@@ -156,7 +156,7 @@ void main() {
       addTearDown(catalog.dispose);
       expect((await catalog.fetchModels()).single.id, 'local-model');
     },
-  , tags: ['regression']);
+  tags: ['regression']);
   test(
     'provider settings round trip independently without altering legacy auth or endpoint',
     () async {
