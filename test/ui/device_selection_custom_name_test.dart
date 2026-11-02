@@ -254,7 +254,7 @@ void main() {
       semanticsHandle.dispose();
     },
     variant: TargetPlatformVariant.only(TargetPlatform.linux),
-  );
+  , tags: ['regression']);
 
   final replacementInput = _input('replacement-input', 'Replacement Input');
   final replacementOutput = _output('replacement-output', 'Replacement Output');
