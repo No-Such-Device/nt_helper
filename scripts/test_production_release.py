@@ -42,7 +42,7 @@ class StorePromotionTests(unittest.TestCase):
                         RUNNER_TEMP=str(self.root), ANDROID_PACKAGE="dev.nosuch.nt_helper",
                         VERSION_CODE="348", GOOGLE_PLAY_SERVICE_ACCOUNT_JSON="{}",
                         GOOGLE_PLAY_NOTES="Improved preset editing.", APP_STORE_NOTES="iPad improvements.",
-                        APP_VERSION="2.60.4", BUILD_NUMBER="348", APP_PLATFORM="ios",
+                        APP_VERSION="2.60.4", BUILD_NUMBER="348", APP_PLATFORM="ios", APP_LOCALE="en-CA",
                         BUNDLE_ID="dev.nosuch.ntHelper")
 
     def run_step(self, job, name):
@@ -81,6 +81,10 @@ class StorePromotionTests(unittest.TestCase):
                 args = (self.root / "arguments").read_text().splitlines()
                 self.assertEqual(args[args.index("--build_number") + 1], "348")
                 self.assertEqual(args[args.index("--platform") + 1], "ios")
+                self.assertEqual((self.root / "fastlane/metadata/en-CA/release_notes.txt").read_text(),
+                                 self.env["APP_STORE_NOTES"])
+                self.assertFalse((self.root / "fastlane/metadata/en-US").exists())
+                self.assertEqual(args[args.index("--precheck_include_in_app_purchases") + 1], "false")
 
     def test_invalid_apple_key_fails_before_fastlane_without_disclosing_secret(self):
         for secret in ("secret-invalid-json", json.dumps(dict(
