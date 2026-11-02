@@ -425,7 +425,7 @@ void main() {
     expect(endFrame, 0);
     expect(loopStartFrame, 0);
     expect(loopEndFrame, 0);
-  });
+  }, tags: ['regression']);
 
   testWidgets('modified drag selects loop handle when handles overlap', (
     tester,
@@ -465,7 +465,7 @@ void main() {
     expect(trimStartFrame, isNull);
     expect(loopStartFrame, 250);
     expect(loopEndFrame, 999);
-  });
+  }, tags: ['regression']);
 
   testWidgets('keyboard nudges waveform boundaries', (tester) async {
     int startFrame = 0;
