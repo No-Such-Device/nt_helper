@@ -74,7 +74,7 @@ void main() {
     );
     expect((await client.load()).connections.first.destination, 'D' * 32);
     expect(() => PatchExpander(type: 0, name: 'E' * 33), throwsFormatException);
-  });
+  }, tags: ['regression']);
   test('client exchanges the same wire fixtures as the C++ factory', () async {
     final transport = FixtureTransport();
     final client = PatchMapClient(transport, 0, lease: 42);
@@ -109,7 +109,7 @@ void main() {
       throwsA(isA<PatchMapSyncException>()),
     );
     expect(transport.index, 22);
-  });
+  }, tags: ['regression']);
   for (final status in [2, 3]) {
     test(
       'expired or conflicting edit invalidates the loaded map ($status)',
