@@ -135,7 +135,7 @@ void main() {
             );
           }
         },
-      , tags: ['regression']);
+      tags: ['regression']);
 
       test(
         'algorithms with only Freq params should not show resonance category',
