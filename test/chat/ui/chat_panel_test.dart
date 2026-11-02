@@ -142,7 +142,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
     await tester.tap(find.byTooltip('New chat'));
     verify(() => mockCubit.newChat()).called(1);
-  });
+  }, tags: ['regression']);
 
   testWidgets('tool use does not move a bottom-pinned transcript', (
     tester,
@@ -217,5 +217,5 @@ void main() {
 
     expect(find.text('Working...'), findsOneWidget);
     expect(tester.getTopLeft(anchor).dy, closeTo(thinkingY, 0.1));
-  });
+  }, tags: ['regression']);
 }
