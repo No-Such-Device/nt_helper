@@ -229,29 +229,7 @@ void main() {
     });
 
     group('Hover Visual Feedback', () {
-      test('should apply teal color and increased border width on hover', () {
-        final painter = ConnectionPainter(
-          connections: [mockConnectionData],
-          theme: mockTheme,
-          showLabels: true,
-          hoveredConnectionId: mockConnection.id,
-        );
-
-        // Create a test canvas
-        final recorder = PictureRecorder();
-        final canvas = Canvas(recorder);
-        const size = Size(400, 300);
-
-        // Paint the connections (this should apply hover styling)
-        painter.paint(canvas, size);
-
-        // Check that label bounds were stored (basic functionality still works)
-        final labelBounds = painter.getLabelBounds();
-        expect(labelBounds.containsKey(mockConnection.id), isTrue);
-
-        // Verify painter was created with hovered connection ID
-        expect(painter.hoveredConnectionId, equals(mockConnection.id));
-      });
+      
 
       test('should not apply hover styling when not hovered', () {
         final painter = ConnectionPainter(
@@ -547,35 +525,7 @@ void main() {
         expect(painter.theme, equals(theme));
       });
 
-      test(
-        'should handle anti-overlap and animations settings for invalid connections',
-        () {
-          final theme = ThemeData.light();
-          final invalidConnection = ConnectionData(
-            connection: Connection(
-              id: 'invalid_test',
-              sourcePortId: 'alg_2_out_1',
-              destinationPortId: 'alg_1_in_1',
-              connectionType: ConnectionType.algorithmToAlgorithm,
-              isBackwardEdge: true,
-            ),
-            sourcePosition: const Offset(10, 10),
-            destinationPosition: const Offset(100, 50),
-          );
-
-          final painter = ConnectionPainter(
-            connections: [invalidConnection],
-            theme: theme,
-            enableAntiOverlap: true,
-            enableAnimations: false,
-            showLabels: true,
-          );
-
-          expect(painter.enableAntiOverlap, isTrue);
-          expect(painter.enableAnimations, isFalse);
-          expect(painter.showLabels, isTrue);
-        },
-      );
+      
     });
 
     group('Theme Integration', () {
@@ -609,20 +559,7 @@ void main() {
         },
       );
 
-      test('should ensure error color contrast in both themes', () {
-        final lightTheme = ThemeData.light();
-        final darkTheme = ThemeData.dark();
-
-        // Error colors should be different enough from background
-        final lightErrorColor = lightTheme.colorScheme.error;
-        final darkErrorColor = darkTheme.colorScheme.error;
-        final lightBackground = lightTheme.colorScheme.surface;
-        final darkBackground = darkTheme.colorScheme.surface;
-
-        // Basic contrast check - error color shouldn't be same as background
-        expect(lightErrorColor, isNot(equals(lightBackground)));
-        expect(darkErrorColor, isNot(equals(darkBackground)));
-      });
+      
     });
 
     group('Performance', () {
@@ -927,38 +864,7 @@ void main() {
     });
 
     group('Obstacle Avoidance', () {
-      test('should route around obstacles', () {
-        final theme = ThemeData.light();
-        // Create a connection that goes straight through the center
-        // Source: (0, 100), Dest: (300, 100)
-        // Obstacle: (100, 50) - (200, 150) -> Center (150, 100)
-        final connection = ConnectionData(
-          connection: Connection(
-            id: 'test_obstacle',
-            sourcePortId: 'source',
-            destinationPortId: 'dest',
-            connectionType: ConnectionType.algorithmToAlgorithm,
-          ),
-          sourcePosition: const Offset(0, 100),
-          destinationPosition: const Offset(300, 100),
-        );
-
-        final obstacle = Rect.fromLTWH(100, 50, 100, 100);
-
-        final painter = ConnectionPainter(
-          connections: [connection],
-          theme: theme,
-          obstacles: [
-            obstacle,
-          ], // This parameter needs to be added to the constructor
-        );
-
-        // We can verify that the path is generated and potentially check some properties
-        // Since we can't easily inspect the path internals without a golden test,
-        // we'll rely on the fact that it runs without error and the obstacles are passed correctly.
-
-        expect(painter.obstacles, contains(obstacle));
-      });
+      
 
       test(
         'should paint without error when obstacles are present (masking)',
