@@ -158,7 +158,7 @@ void main() {
         semantics.dispose();
       }
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   testWidgets('contextual help toggle preserves descendant state', (
     tester,
