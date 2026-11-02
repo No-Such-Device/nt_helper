@@ -74,7 +74,7 @@ void main() {
           );
         }
       }
-    });
+    }, tags: ['regression']);
 
     test('appColors falls back safely for third-party ThemeData', () {
       expect(ThemeData.light().appColors, isA<AppThemeColors>());
