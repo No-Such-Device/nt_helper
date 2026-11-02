@@ -308,7 +308,7 @@ Future<void> main() async {
       expect(tester.takeException(), isNull);
       semantics.dispose();
     },
-  );
+  , tags: ['regression']);
 
   testWidgets(
     '$runtime interaction modes and native modal focus remain accessible',
@@ -415,7 +415,7 @@ Future<void> main() async {
       expect(_semanticsIsFocused(tester, moreOptions), isTrue);
       semantics.dispose();
     },
-  );
+  , tags: ['regression']);
 
   testWidgets('$runtime System preserves unfresh, CPU and action safeguards', (
     tester,
