@@ -238,7 +238,7 @@ void main() {
         expect(find.text('Nested section'), findsNothing);
         expect(find.text('Second content'), findsOneWidget);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   }
 
   testWidgets('re-evaluates Lua when a new immutable Slot arrives', (
