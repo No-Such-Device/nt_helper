@@ -125,7 +125,7 @@ void main() {
           );
         }
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     testWidgets('uses one aggregate sync light that fades after confirmation', (
       tester,
