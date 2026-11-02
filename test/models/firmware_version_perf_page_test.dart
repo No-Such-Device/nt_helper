@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:nt_helper/models/algorithm_respecification.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 
 void main() {
