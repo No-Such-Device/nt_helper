@@ -209,7 +209,7 @@ void main() {
           isTrue,
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'does not read directory import samples outside selected root',
@@ -254,7 +254,7 @@ void main() {
           isEmpty,
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'does not read absolute local sample paths inside selected root',
@@ -296,7 +296,7 @@ void main() {
           isEmpty,
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'does not treat Windows rooted local paths as missing samples',
@@ -338,7 +338,7 @@ void main() {
           isEmpty,
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'does not follow local sample symlinks outside common parent',
@@ -387,7 +387,7 @@ void main() {
           isEmpty,
         );
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('ignores macOS archive metadata entries', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -1635,7 +1635,7 @@ void main() {
         ]);
         expect(result.warnings, isEmpty);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test(
       'selected tag options apply ranges, layers and round robins',
