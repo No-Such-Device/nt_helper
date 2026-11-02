@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:nt_helper/algorithm_controller/sd_card_companion.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nt_helper/services/settings_service.dart';
@@ -15,11 +16,11 @@ import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/patch_map/patch_map_editor.dart';
 import '../../support/patch_map_device.dart';
 
-Future<void> settleCompanion(
-  WidgetTester tester, {
-  bool Function()? until,
-}) async {
-  await tester.pump(const Duration(milliseconds: 400));
+Future<void> settleCompanion(WidgetTester tester) async {
+  // All editors in this file use in-process Lua. Advance the edit debounce and
+  // one watch tick in simulated time; no worker scheduling or real-time polling.
+  await tester.pump(const Duration(seconds: 1));
+  await tester.pumpAndSettle();
   final consumer = tester
       .widget<BlocConsumer<PatchMapEditorCubit, PatchMapEditorState>>(
         find.byType(BlocConsumer<PatchMapEditorCubit, PatchMapEditorState>),
@@ -28,23 +29,13 @@ Future<void> settleCompanion(
   bool settled(PatchMapEditorState state) =>
       !state.busy &&
       !state.pending &&
-      (state.document != null || state.error != null) &&
-      (until?.call() ?? true);
-  final deadline = Stopwatch()..start();
-  var turns = 0;
-  while ((turns < 4 || cubit.isSynchronizing || !settled(cubit.state)) &&
-      deadline.elapsed < const Duration(seconds: 5)) {
-    turns++;
-    // Lua runs in a real isolate; yield to it, then drain virtual UI work.
-    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
-    await tester.pump(const Duration(milliseconds: 100));
-  }
+      (state.document != null || state.error != null);
   expect(
     settled(cubit.state) && !cubit.isSynchronizing,
     isTrue,
     reason: 'Companion did not settle',
   );
-  await tester.pumpAndSettle();
+  expect(cubit.state.error, isNull);
 }
 
 void main() {
@@ -64,6 +55,7 @@ void main() {
       Widget editor(String key) => MaterialApp(
         home: Scaffold(
           body: PatchMapEditor(
+            evaluationRunner: evaluateCompanionDocument,
             key: ValueKey(key),
             transport: device,
             slotIndex: 0,
@@ -188,6 +180,7 @@ void main() {
             body: RepaintBoundary(
               key: boundary,
               child: PatchMapEditor(
+                evaluationRunner: evaluateCompanionDocument,
                 transport: device,
                 slotIndex: 0,
                 watchInterval: null,
@@ -351,6 +344,7 @@ void main() {
       Widget editor(String name) => MaterialApp(
         home: Scaffold(
           body: PatchMapEditor(
+            evaluationRunner: evaluateCompanionDocument,
             transport: device,
             slotIndex: 0,
             download: download,
@@ -398,6 +392,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: PatchMapEditor(
+              evaluationRunner: evaluateCompanionDocument,
               transport: device,
               slotIndex: 0,
               download: (_) async => File(
@@ -470,6 +465,7 @@ void main() {
               ),
           home: Scaffold(
             body: PatchMapEditor(
+              evaluationRunner: evaluateCompanionDocument,
               transport: device,
               slotIndex: 0,
               download: (_) async => File(
@@ -563,6 +559,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: PatchMapEditor(
+              evaluationRunner: evaluateCompanionDocument,
               transport: device,
               slotIndex: 0,
               download: (_) async => File(
@@ -592,14 +589,16 @@ void main() {
       await tester.pump();
       expect(dotColour(), patchCableColours[8]);
       expect(tester.getRect(find.text('Socket')), header);
-      await settleCompanion(tester);
+      // Protect automatic colour-only writes on unnamed sockets, including
+      // the debounce boundary; named destination edits do not cover this path.
+      await tester.pump(const Duration(milliseconds: 299));
+      expect(device.map.connections[0].colour, 0);
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pumpAndSettle();
       expect(device.map.connections[0].colour, 8);
       expect(device.map.connections[0].destination, isEmpty);
       device.changeProperty(1, 4);
-      await settleCompanion(
-        tester,
-        until: () => dotColour() == patchCableColours[4],
-      );
+      await settleCompanion(tester);
       expect(dotColour(), patchCableColours[4]);
       expect(tester.getRect(find.text('Socket')), header);
       await tester.pumpWidget(const SizedBox());
@@ -688,6 +687,7 @@ void main() {
                   brightness: Brightness.dark,
                 ).colorScheme.surface,
                 child: PatchMapEditor(
+                  evaluationRunner: evaluateCompanionDocument,
                   transport: device,
                   watchInterval: const Duration(seconds: 1),
                   slotIndex: 0,
