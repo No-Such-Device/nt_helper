@@ -72,7 +72,7 @@ void main() {
 
         expect(capturedBody!.containsKey('prompt_cache_key'), isFalse);
       },
-    );
+    , tags: ['regression']);
 
     test('parses prompt cache read and write telemetry', () async {
       final provider = OpenAIProvider(
@@ -227,7 +227,7 @@ void main() {
 
       expect(response.hasToolCalls, isTrue);
       expect(response.toolCalls.single.arguments, isEmpty);
-    });
+    }, tags: ['regression']);
 
     test('treats null tool arguments as empty map', () async {
       final provider = OpenAIProvider(
@@ -264,7 +264,7 @@ void main() {
 
       expect(response.hasToolCalls, isTrue);
       expect(response.toolCalls.single.arguments, isEmpty);
-    });
+    }, tags: ['regression']);
 
     test('treats empty string tool arguments as empty map', () async {
       final provider = OpenAIProvider(
@@ -543,7 +543,7 @@ void main() {
       );
 
       expect(response.isComplete, isTrue);
-    });
+    }, tags: ['regression']);
 
     test('handles missing choices key gracefully', () async {
       final provider = OpenAIProvider(
@@ -599,7 +599,7 @@ void main() {
       expect(response.usage, isNotNull);
       expect(response.usage!.inputTokens, 42);
       expect(response.usage!.outputTokens, 7);
-    });
+    }, tags: ['regression']);
 
     test('handles empty choices array', () async {
       final provider = OpenAIProvider(
