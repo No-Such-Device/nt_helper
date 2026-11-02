@@ -79,7 +79,7 @@ void main() {
         RegExp('Saved custom sample draft.').allMatches(payload),
         hasLength(1),
       );
-    });
+    }, tags: ['regression']);
 
     testWidgets('hardware empty state can return to sample sources', (
       tester,
@@ -468,7 +468,7 @@ void main() {
       } finally {
         semantics.dispose();
       }
-    });
+    }, tags: ['regression']);
 
     testWidgets('save as rejects relative folder names', (tester) async {
       final tempRoot = Directory.systemTemp.createTempSync(
