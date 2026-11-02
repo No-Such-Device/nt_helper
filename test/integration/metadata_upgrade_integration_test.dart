@@ -115,7 +115,7 @@ void main() {
         // because bundled metadata asset is not available
         // But we verified the detection logic works
       },
-    );
+    , tags: ['regression']);
 
     test('user presets are preserved during upgrade detection', () async {
       // Create algorithm
@@ -290,7 +290,7 @@ void main() {
       )..where((p) => p.id.equals(templateId))).getSingle();
       expect(template.isTemplate, isTrue);
       expect(template.name, equals('My Template'));
-    });
+    }, tags: ['regression']);
 
     test('multiple algorithms with parameters', () async {
       // Create multiple algorithms
@@ -368,6 +368,6 @@ void main() {
         database.parameters,
       )..where((p) => p.algorithmGuid.equals('test'))).getSingle();
       expect(param.ioFlags, equals(5));
-    });
+    }, tags: ['regression']);
   });
 }
