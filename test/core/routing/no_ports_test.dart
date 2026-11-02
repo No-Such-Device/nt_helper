@@ -118,7 +118,7 @@ void main() {
 
         expect(routing.inputPorts, isNotEmpty);
         expect(routing.outputPorts, isNotEmpty);
-      });
+      }, tags: ['regression']);
 
       test('should allow algorithms with no ports to return empty lists', () {
         // Create a slot with no routing parameters (like the 'note' algorithm)
