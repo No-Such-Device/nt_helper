@@ -63,7 +63,7 @@ void main() {
 
       // Verify ioFlags is null (missing field treated as null)
       expect(param.ioFlags, isNull);
-    });
+    }, tags: ['regression']);
 
     test('Import handles explicit null ioFlags', () async {
       // Create JSON with explicit null ioFlags
@@ -438,7 +438,7 @@ void main() {
 
       // Cleanup
       tempDir.deleteSync(recursive: true);
-    });
+    }, tags: ['regression']);
 
     test('Export→Import round-trip preserves ioFlags values', () async {
       // Insert test data
