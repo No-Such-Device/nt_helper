@@ -236,7 +236,7 @@ void main() {
         final samplePaths = result.sampleFiles.map((e) => e.key).toList();
         expect(samplePaths, contains('Samples/kick.wav'));
         expect(samplePaths, contains('SAMPLES/snare.wav'));
-      });
+      }, tags: ['regression']);
 
       test('sample files are extracted regardless of extractPattern', () async {
         // extractPattern only matches .o files, but samples should still be extracted
@@ -261,7 +261,7 @@ void main() {
         final samplePaths = result.sampleFiles.map((e) => e.key).toList();
         expect(samplePaths, contains('samples/data.bin'));
         expect(samplePaths, contains('samples/audio.raw'));
-      });
+      }, tags: ['regression']);
 
       test('handles deeply nested sample directories', () async {
         final plugin = createTestPlugin(extractPattern: r'\.o$');
