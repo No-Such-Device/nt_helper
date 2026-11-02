@@ -76,7 +76,7 @@ void main() {
 
       expect(callbackCount, isZero);
       expect(find.text('Pitch bend Ch 3'), findsNothing);
-    });
+    }, tags: ['regression']);
 
     testWidgets('does not replay stale detection on connection state update', (
       tester,
@@ -121,7 +121,7 @@ void main() {
       await tester.pump();
 
       expect(callbackCount, isZero);
-    });
+    }, tags: ['regression']);
   });
 
   group('MidiDetectorWidget - Status Message Format', () {
