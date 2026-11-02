@@ -72,7 +72,7 @@ void main() {
 
         expect(capturedBody!.containsKey('prompt_cache_key'), isFalse);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('parses prompt cache read and write telemetry', () async {
       final provider = OpenAIProvider(
