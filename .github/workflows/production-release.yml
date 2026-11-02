@@ -221,23 +221,30 @@ jobs:
           VERSION_CODE: ${{ needs.verify-candidate.outputs.build_number }}
         run: |
           set -euo pipefail
+          umask 077
           printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/google-play.json"
           mkdir -p fastlane/metadata/android/en-US/changelogs
           printf '%s' "$GOOGLE_PLAY_NOTES" > "fastlane/metadata/android/en-US/changelogs/${VERSION_CODE}.txt"
-          gem install fastlane --no-document
+          gem install fastlane --version 2.241.2 --no-document
           fastlane supply \
             --package_name "$ANDROID_PACKAGE" \
             --json_key "$RUNNER_TEMP/google-play.json" \
             --track internal \
+            --version_code "$VERSION_CODE" \
             --track_promote_to production \
             --skip_upload_aab true \
             --skip_upload_apk true \
-            --skip_upload_metadata false \
+            --skip_upload_metadata true \
             --skip_upload_changelogs false \
             --skip_upload_images true \
             --skip_upload_screenshots true \
             --release_status completed \
-            --metadata_path fastlane/metadata
+            --deactivate_on_promote false \
+            --metadata_path fastlane/metadata/android
+
+      - name: Remove Google Play credential file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/google-play.json"
 
   apple-production:
     name: Submit Apple builds for review
@@ -252,9 +259,11 @@ jobs:
           - name: iOS
             enabled: ${{ inputs.submit_ios }}
             bundle_id: dev.nosuch.ntHelper
+            platform: ios
           - name: macOS
             enabled: ${{ inputs.submit_macos }}
             bundle_id: dev.nosuch.macos.ntHelper
+            platform: osx
     steps:
       - name: Stop when this Apple platform is not selected
         if: matrix.enabled != true
@@ -279,20 +288,44 @@ jobs:
           APP_STORE_CONNECT_API_KEY_JSON: ${{ secrets.APP_STORE_CONNECT_API_KEY_JSON }}
           APP_STORE_NOTES: ${{ inputs.app_store_notes }}
           APP_VERSION: ${{ needs.verify-candidate.outputs.version }}
+          BUILD_NUMBER: ${{ needs.verify-candidate.outputs.build_number }}
           BUNDLE_ID: ${{ matrix.bundle_id }}
+          APP_PLATFORM: ${{ matrix.platform }}
         run: |
           set -euo pipefail
-          printf '%s' "$APP_STORE_CONNECT_API_KEY_JSON" > "$RUNNER_TEMP/app-store-connect-api-key.json"
+          umask 077
+          ruby -rjson -ropenssl - "$RUNNER_TEMP/app-store-connect-api-key.json" <<'RUBY'
+          begin
+            data = JSON.parse(ENV.fetch('APP_STORE_CONNECT_API_KEY_JSON'))
+            %w[key_id issuer_id key].each do |field|
+              raise ArgumentError unless data[field].is_a?(String) && !data[field].strip.empty?
+            end
+            # JSON copied from an indented PEM can parse in Python but fail in OpenSSL.
+            pem = data.fetch('key').gsub('\\n', "\n").lines.map(&:strip).join("\n") + "\n"
+            key = OpenSSL::PKey::EC.new(pem)
+            raise ArgumentError unless key.private? && key.group.curve_name == 'prime256v1'
+            data['key'] = key.private_to_pem
+            File.write(ARGV.fetch(0), JSON.generate(data), perm: 0600)
+          rescue StandardError
+            abort 'Invalid App Store Connect key: expected JSON containing a private P-256 PEM key.'
+          end
+          RUBY
           mkdir -p fastlane/metadata/en-US
           printf '%s' "$APP_STORE_NOTES" > fastlane/metadata/en-US/release_notes.txt
-          gem install fastlane --no-document
+          gem install fastlane --version 2.241.2 --no-document
           fastlane deliver \
             --api_key_path "$RUNNER_TEMP/app-store-connect-api-key.json" \
             --app_identifier "$BUNDLE_ID" \
             --app_version "$APP_VERSION" \
+            --build_number "$BUILD_NUMBER" \
+            --platform "$APP_PLATFORM" \
             --metadata_path fastlane/metadata \
             --skip_binary_upload true \
             --skip_screenshots true \
             --submit_for_review true \
             --automatic_release false \
             --force
+
+      - name: Remove Apple credential file
+        if: always() && matrix.enabled == true
+        run: rm -f "$RUNNER_TEMP/app-store-connect-api-key.json"
