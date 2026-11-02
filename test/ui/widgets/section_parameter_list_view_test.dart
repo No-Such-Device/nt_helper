@@ -137,7 +137,7 @@ void main() {
         );
         expect(_headerInkColor(tester, _performanceHeader), expectedShade);
       },
-    );
+    , tags: ['regression']);
   }
 
   testWidgets('preserves individual and expand-all section behavior', (
@@ -250,7 +250,7 @@ void main() {
     expect(find.text('Rate'), findsNWidgets(2));
     expect(find.text('Main level'), findsOneWidget);
     expect(find.text('Shape'), findsNothing);
-  });
+  }, tags: ['regression']);
 }
 
 Widget _host({
