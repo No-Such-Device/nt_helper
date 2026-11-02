@@ -74,7 +74,7 @@ void main() {
 
     await refreshed;
     await cubit.close();
-  });
+  }, tags: ['regression']);
 }
 
 Slot _slotWithOutputAndMode() => Slot(
