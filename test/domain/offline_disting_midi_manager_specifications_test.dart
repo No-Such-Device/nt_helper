@@ -149,7 +149,7 @@ void main() {
         );
         expect(savedDetails!.slots.single.specificationValues, [4]);
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('failed local saves propagate and can be retried', () async {
       await manager.initializeFromDb(null);
