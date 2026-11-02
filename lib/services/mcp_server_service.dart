@@ -106,7 +106,7 @@ class McpServerService extends ChangeNotifier {
       'active_transports': _transports.length,
       'active_registries': _registries.length,
       'server_implementation': 'nt-helper-flutter',
-      'library_version': 'mcp_dart 1.2.2',
+      'library_version': 'mcp_dart 2.4.3',
     };
   }
 
