@@ -540,7 +540,7 @@ void main() {
           expect(edge.isPartial, isFalse);
           expect(edge.outputMode, core.OutputMode.add);
         },
-      , tags: ['regression']);
+      tags: ['regression']);
 
       test(
         'self-write: same-algorithm in/out on same bus is not connected',
@@ -568,7 +568,7 @@ void main() {
             isFalse,
           );
         },
-      , tags: ['regression']);
+      tags: ['regression']);
 
       test('Replace + forward: writer in lower slot produces forward edge', () {
         // Routings list [writer, reader]: writer.algorithmIndex == 0,
