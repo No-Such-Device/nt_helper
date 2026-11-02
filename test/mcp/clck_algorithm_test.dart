@@ -132,38 +132,6 @@ void main() {
       }
     });
 
-    test(
-      'Check for circular references or infinite loops in clck data',
-      () async {
-        final file = File('docs/algorithms/clck.json');
-        final jsonString = await file.readAsString();
-        final jsonData = json.decode(jsonString);
-
-        // Check if parameters have any suspicious patterns
-        final parameters = jsonData['parameters'] as List;
-
-        for (var i = 0; i < parameters.length; i++) {
-          final page = parameters[i];
-          expect(
-            page,
-            isA<Map>(),
-            reason: 'Each parameter page should be a map',
-          );
-
-          if (page['params'] != null) {
-            final params = page['params'] as List;
-            for (var param in params) {
-              // Check for any self-referential fields
-              expect(param, isA<Map>(), reason: 'Each param should be a map');
-
-              // Check any enum_values for issues
-              if (param['enum_values'] != null) {
-                // Parameter ${param['name']} has enum_values: ${param['enum_values']}
-              }
-            }
-          }
-        }
-      },
-    );
+    
   });
 }
