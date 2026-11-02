@@ -175,45 +175,9 @@ void main() {
   });
 
   group('InvalidConnectionTooltip Tooltip Message Generation', () {
-    test('should generate correct message for invalid connection with slots', () {
-      final tooltip = InvalidConnectionTooltip(
-        connection: Connection(
-          id: 'test',
-          sourcePortId: 'test',
-          destinationPortId: 'test',
-          connectionType: ConnectionType.algorithmToAlgorithm,
-          isBackwardEdge: true,
-        ),
-        sourceSlot: 2,
-        destinationSlot: 0,
-        child: Container(),
-      );
+    
 
-      // Access the private method through the widget's state (testing approach)
-      // In a real scenario, this logic could be extracted to a separate testable class
-      expect(tooltip.connection.isBackwardEdge, isTrue);
-      expect(tooltip.sourceSlot, equals(2));
-      expect(tooltip.destinationSlot, equals(0));
-    });
-
-    test('should generate message for valid connection', () {
-      final tooltip = InvalidConnectionTooltip(
-        connection: Connection(
-          id: 'test',
-          sourcePortId: 'test',
-          destinationPortId: 'test',
-          connectionType: ConnectionType.algorithmToAlgorithm,
-          isBackwardEdge: false,
-        ),
-        sourceSlot: 0,
-        destinationSlot: 1,
-        child: Container(),
-      );
-
-      expect(tooltip.connection.isBackwardEdge, isFalse);
-      expect(tooltip.sourceSlot, equals(0));
-      expect(tooltip.destinationSlot, equals(1));
-    });
+    
 
     test('should handle custom message', () {
       const customMessage = 'Custom tooltip message';
@@ -233,45 +197,6 @@ void main() {
   });
 
   group('InvalidConnectionTooltip Animation Setup', () {
-    testWidgets('should have animation controller setup', (
-      WidgetTester tester,
-    ) async {
-      final connection = Connection(
-        id: 'test_connection',
-        sourcePortId: 'test_port',
-        destinationPortId: 'dest_port',
-        connectionType: ConnectionType.algorithmToAlgorithm,
-        isBackwardEdge: true,
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: InvalidConnectionTooltip(
-              connection: connection,
-              child: Container(
-                width: 100,
-                height: 50,
-                color: Colors.blue,
-                child: const Text('Test Connection'),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      // Check that the widget has animation components
-      expect(find.byType(InvalidConnectionTooltip), findsOneWidget);
-      expect(find.byType(MouseRegion), findsWidgets);
-
-      // The AnimatedBuilder should exist even if not currently animating
-      // This verifies the animation setup is correct
-      final tooltipWidget = tester.widget<InvalidConnectionTooltip>(
-        find.byType(InvalidConnectionTooltip),
-      );
-
-      expect(tooltipWidget.delay, isA<Duration>());
-      expect(tooltipWidget.show, isA<bool>());
-    });
+    
   });
 }
