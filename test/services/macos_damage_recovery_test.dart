@@ -135,7 +135,7 @@ void main() {
             await opened.close();
           }
         },
-      , tags: ['regression']);
+      tags: ['regression']);
     }
   }
 
@@ -181,7 +181,7 @@ void main() {
           writer.close();
         }
       },
-    , tags: ['regression']);
+    tags: ['regression']);
   }
 
   test(
@@ -206,7 +206,7 @@ void main() {
       await app.close();
       assertRetained(originals);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'confirmed damage with duplicate unique keys cannot be reported repaired',
@@ -241,7 +241,7 @@ void main() {
       await db.close();
       assertRetained(originals);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   for (final scenario in [
     'competing',
@@ -380,5 +380,5 @@ void main() {
       );
       expect((await prepare()).recovery, isNull);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 }
