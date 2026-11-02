@@ -238,6 +238,6 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.byType(StepColumnWidget), findsNothing);
-    });
+    }, tags: ['regression']);
   });
 }
