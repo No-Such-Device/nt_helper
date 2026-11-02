@@ -69,7 +69,7 @@ void main() {
       expect(device.map.expanders, isEmpty);
       await cubit.close();
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'choice schema rejects unsupported actions, duplicate and invalid model values',
@@ -149,7 +149,7 @@ void main() {
       expect(device.frames.last['request']![7], 9);
       await cubit.close();
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'SD Lua scratch cache reuses files, refreshes, separates devices and recovers',
@@ -205,7 +205,7 @@ void main() {
       expect((await load()).source, 'repaired Lua');
       expect(downloads, 6);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('cache failures do not block the established SD transfer', () async {
     final source = await SdCardCompanion.load(
@@ -242,7 +242,7 @@ void main() {
       expect(device.frames.last['request']![7], 9);
       await cubit.close();
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'NT properties notify Lua, unchanged polls are quiet, and live wire matches native fixture',
@@ -287,7 +287,7 @@ void main() {
       }
       await cubit.close();
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('automatic field edits merge with concurrent NT changes', () async {
     final device = PatchMapDevice();
@@ -355,7 +355,7 @@ void main() {
       expect(cubit.state.error, isNull);
       await cubit.close();
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'expired lease stops watch and cannot silently follow another preset',
@@ -373,7 +373,7 @@ void main() {
       expect(device.frames.length, before);
       await cubit.close();
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('notifications fall back to render for older companions', () async {
     const source =
@@ -505,7 +505,7 @@ void main() {
       expect(device.frames.where((f) => f['request']?[7] == 3), isEmpty);
       await cubit.close();
     },
-  , tags: ['regression']);
+  tags: ['regression']);
   test(
     'missing, incompatible and infinite companions fail without a fallback editor',
     () async {
@@ -571,5 +571,5 @@ void main() {
       expect(map.expanders.last.name, 'Right');
       expect(() => map.expanders.clear(), throwsUnsupportedError);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 }
