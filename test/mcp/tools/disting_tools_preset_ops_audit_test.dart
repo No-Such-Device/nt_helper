@@ -136,7 +136,7 @@ void main() {
       expect(json['text'], equals('Line 1\n\nLine 3'));
       // Line count should include the empty line
       expect(json['line_count'], equals(3));
-    });
+    }, tags: ['regression']);
 
     test('all empty lines returns no notes', () async {
       when(
