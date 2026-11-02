@@ -73,7 +73,7 @@ Future<Directory> getAppDirectory({
         checkpoint: storageCheckpoint,
       );
       completer.complete(app);
-      return completer.future;
+      return await completer.future;
     }
     Directory? fallbackDir;
     if (isWindows ?? Platform.isWindows) {

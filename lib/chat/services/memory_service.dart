@@ -41,7 +41,7 @@ class MemoryService {
     try {
       final file = File('$base/memory.md');
       if (!await file.exists()) return '';
-      return file.readAsString();
+      return await file.readAsString();
     } catch (e) {
       debugPrint('MemoryService: failed to read memory: $e');
       return '';

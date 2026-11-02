@@ -1239,7 +1239,7 @@ class DistingTools {
       }
 
       if (target == 'device') {
-        return _applyTemplateToDeviceTarget(
+        return await _applyTemplateToDeviceTarget(
           db: db,
           template: template,
           slotIndices: slotIndices,

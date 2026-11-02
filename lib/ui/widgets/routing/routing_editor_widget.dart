@@ -834,7 +834,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       // Compute tight content bounds from node positions
       if (_nodePositions.isEmpty) {
         // Fall back to plain copy
-        return _copyCanvasImageToClipboard();
+        return await _copyCanvasImageToClipboard();
       }
       double minX = double.infinity, maxX = double.negativeInfinity;
       double minY = double.infinity, maxY = double.negativeInfinity;
