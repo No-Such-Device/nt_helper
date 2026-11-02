@@ -95,7 +95,7 @@ void main() {
       );
       expect(field.model.choices.map((choice) => choice.value), profile.buses);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   testWidgets('hides algorithm style controls before firmware 1.18', (
     tester,
