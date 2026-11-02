@@ -57,7 +57,7 @@ class OpenAISubscriptionProvider implements StreamingLlmProvider {
     try {
       final clientVersion = await _clientVersionService.resolve();
       final auth = await authService.loadAuth();
-      return OpenAIContextWindowResolver.resolveSubscription(
+      return await OpenAIContextWindowResolver.resolveSubscription(
         model: model,
         headers: {'version': clientVersion, ...auth.authHeaders},
         client: _client,
