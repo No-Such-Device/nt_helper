@@ -148,7 +148,7 @@ void main() {
             expect(nodePositions, isNotEmpty);
             expect(cableStarts, ['port']);
           },
-        );
+        , tags: ['regression']);
       }
     }
   });
