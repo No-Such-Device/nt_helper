@@ -160,7 +160,7 @@ void main() {
       expect(result['error'], contains('fresh response timed out'));
       expect(result, isNot(contains('memory_usage')));
     },
-  );
+  , tags: ['regression']);
 
   test(
     'reports malformed and unavailable fresh responses explicitly',
