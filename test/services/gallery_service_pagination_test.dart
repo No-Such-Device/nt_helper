@@ -155,7 +155,7 @@ void main() {
             (limit: 50, offset: 0),
           ]);
         },
-      , tags: ['regression']);
+      tags: ['regression']);
     }
 
     test('retries categories after a transient 503 response', () async {
