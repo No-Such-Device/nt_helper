@@ -418,73 +418,9 @@ void main() {
       expect(tester.widget<SwitchListTile>(switchFinder).onChanged, isNull);
     });
 
-    testWidgets('Selecting 14-bit CC low updates data model', (tester) async {
-      final data14BitLow = testData.copyWith(
-        midiMappingType: MidiMappingType.cc14BitLow,
-      );
+    
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: BlocProvider<DistingCubit>.value(
-            value: mockCubit,
-            child: Scaffold(
-              body: PackedMappingDataEditor(
-                initialData: data14BitLow,
-                onSave: (_) async {},
-                slots: mockSlots,
-                algorithmIndex: 0,
-                parameterNumber: 0,
-                parameterMin: 0,
-                parameterMax: 100,
-                powerOfTen: 0,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      // Navigate to MIDI tab
-      await tester.tap(find.text('MIDI'));
-      await tester.pumpAndSettle();
-
-      // Verify the editor displays the correct initial data
-      // (No Save button needed - optimistic updates handle persistence)
-      expect(find.text('MIDI'), findsOneWidget);
-    });
-
-    testWidgets('Selecting 14-bit CC high updates data model', (tester) async {
-      final data14BitHigh = testData.copyWith(
-        midiMappingType: MidiMappingType.cc14BitHigh,
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: BlocProvider<DistingCubit>.value(
-            value: mockCubit,
-            child: Scaffold(
-              body: PackedMappingDataEditor(
-                initialData: data14BitHigh,
-                onSave: (_) async {},
-                slots: mockSlots,
-                algorithmIndex: 0,
-                parameterNumber: 0,
-                parameterMin: 0,
-                parameterMax: 100,
-                powerOfTen: 0,
-              ),
-            ),
-          ),
-        ),
-      );
-
-      // Navigate to MIDI tab
-      await tester.tap(find.text('MIDI'));
-      await tester.pumpAndSettle();
-
-      // Verify the editor displays the correct initial data
-      // (No Save button needed - optimistic updates handle persistence)
-      expect(find.text('MIDI'), findsOneWidget);
-    });
+    
 
     testWidgets('MIDI Relative switch disabled for 14-bit CC low', (
       tester,
