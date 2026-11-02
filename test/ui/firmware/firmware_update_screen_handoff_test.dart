@@ -292,7 +292,7 @@ void main() {
       );
       verifyNever(() => midiManager.requestEnterBootloader());
     },
-  );
+  , tags: ['regression']);
 
   testWidgets(
     'known capable selection lazily creates, boots, and releases MIDI before flashing',
@@ -460,5 +460,5 @@ void main() {
       await tester.pump();
       verifyNoMoreInteractions(midiManager);
     },
-  );
+  , tags: ['regression']);
 }
