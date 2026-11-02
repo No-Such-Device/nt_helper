@@ -231,7 +231,7 @@ void main() {
         });
         controller.dispose();
       },
-    );
+    , tags: ['regression']);
   }
 
   for (final externalRetry in [false, true]) {
@@ -389,6 +389,6 @@ void main() {
           await source.close();
         });
       },
-    );
+    , tags: ['regression']);
   }
 }
