@@ -48,7 +48,7 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>This app cannot use Bluetooth midi, as it needs to be connected to the device via a USB cable.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>This app cannot connect to the device over the network, it requires a USB cable.</string>
+	<string>When you enable MCP on iPad, devices on your local network can control nt_helper. The Disting NT still connects via USB MIDI.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>nt_helper requires location access to discover and configure local hardware devices.</string>
     <key>ITSAppUsesNonExemptEncryption</key>

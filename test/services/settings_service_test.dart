@@ -15,6 +15,7 @@ const Map<String, Object> _nonDefaultSeeds = {
   'inter_message_delay_ms': 999,
   'haptics_enabled': false,
   'mcp_enabled': true,
+  'ipad_mcp_enabled': true,
   'start_pages_collapsed': true,
   'gallery_url': 'https://example.invalid/gallery.json',
   'graphql_endpoint': 'https://example.invalid/graphql',
@@ -130,6 +131,7 @@ void main() {
             reason: 'seed missing for $key',
           );
         }
+        expect(settings.ipadMcpEnabled, isTrue);
         expect(
           settings.requestTimeout,
           isNot(SettingsService.defaultRequestTimeout),
@@ -164,6 +166,7 @@ void main() {
           settings.interMessageDelay,
           SettingsService.defaultInterMessageDelay,
         );
+        expect(settings.ipadMcpEnabled, isFalse);
         expect(settings.hapticsEnabled, SettingsService.defaultHapticsEnabled);
         expect(settings.mcpEnabled, SettingsService.defaultMcpEnabled);
         expect(

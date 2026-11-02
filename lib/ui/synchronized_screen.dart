@@ -1971,9 +1971,12 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
             ),
           ),
 
-          // MCP server status indicator (desktop only)
+          // iPad is status-only: enabling MCP requires the Settings opt-in.
           if (isWideScreen &&
-              (Platform.isMacOS || Platform.isWindows || Platform.isLinux))
+              (Platform.isMacOS ||
+                  Platform.isWindows ||
+                  Platform.isLinux ||
+                  Platform.isIOS))
             ChangeNotifierProvider.value(
               value: McpServerService.instance,
               child: Consumer<McpServerService>(
@@ -2619,38 +2622,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                     // Logic copied and adapted from _DistingPageState._handleSettingsDialog
                     if (result == true && popupCtx.mounted) {
                       // Ensure context is still valid
-                      final settings = SettingsService();
-                      final mcpInstance = McpServerService.instance;
-                      final bool isMcpEnabledAfterDialog = settings.mcpEnabled;
-                      final bool isServerStillRunningBeforeAction =
-                          mcpInstance.isRunning;
-
-                      if (Platform.isMacOS ||
-                          Platform.isWindows ||
-                          Platform.isLinux) {
-                        final bindAddress = settings.mcpRemoteConnections
-                            ? InternetAddress.anyIPv4
-                            : InternetAddress.loopbackIPv4;
-                        if (isMcpEnabledAfterDialog) {
-                          if (!isServerStillRunningBeforeAction) {
-                            await mcpInstance
-                                .start(bindAddress: bindAddress)
-                                .catchError((e) {});
-                          } else {
-                            if (mcpInstance.boundAddress?.address !=
-                                bindAddress.address) {
-                              await mcpInstance
-                                  .restart(bindAddress: bindAddress)
-                                  .catchError((e) {});
-                            }
-                          }
-                        } else {
-                          // MCP Setting is OFF
-                          if (isServerStillRunningBeforeAction) {
-                            await mcpInstance.stop().catchError((e) {});
-                          }
-                        }
-                      }
+                      await McpServerService.instance.applySettings();
                     } else {}
                   },
             child: const Row(
