@@ -550,7 +550,7 @@ void main() {
         expect(paths, contains('samples/MD16_Kit/kick.wav'));
         expect(paths, contains('samples/MD16_Kit/snare.wav'));
       },
-    , tags: ['regression']);
+    tags: ['regression']);
 
     test('wavetable folder with many slices collects all of them', () async {
       // Regression guard: wavetables are folders of WAV slices. Earlier
