@@ -115,7 +115,7 @@ void main() {
         -12900,
       );
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'rejects invalid inputs before sending, including raw wire range and ID',
@@ -199,7 +199,7 @@ void main() {
         remoteFrame([3, 1, 127]),
       ]);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('an already-cancelled action produces no packet', () async {
     final wire = RemoteWireHarness();
