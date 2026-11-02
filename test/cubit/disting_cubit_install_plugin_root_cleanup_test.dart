@@ -342,7 +342,7 @@ void main() {
         throwsException,
       );
       verifyNoCleanupCalls();
-    });
+    }, tags: ['regression']);
 
     for (final status in <SdCardStatus?>[
       SdCardStatus(success: false, message: 'locked'),
