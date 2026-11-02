@@ -462,7 +462,7 @@ void main() {
         expect(algorithm.specifications, isEmpty);
         expect(algorithm.hasAuthoritativeSpecifications, isTrue);
       },
-    );
+    , tags: ['regression']);
 
     test(
       'refresh does not carry specifications to a different preset',
@@ -527,7 +527,7 @@ void main() {
 
       final state = cubit.state as DistingStateSynchronized;
       expect(state.slots.single.algorithm.specifications, isEmpty);
-    });
+    }, tags: ['regression']);
 
     test(
       'refresh keeps nonempty specifications returned by the manager',
@@ -600,7 +600,7 @@ void main() {
         expect(algorithm.specifications, isEmpty);
         expect(algorithm.hasAuthoritativeSpecifications, isTrue);
       },
-    );
+    , tags: ['regression']);
 
     test('restored cached preset values remain non-authoritative', () {
       final unreadSlot = makeSlot().copyWith(
@@ -679,7 +679,7 @@ void main() {
 
       final state = cubit.state as DistingStateSynchronized;
       expect(state.slots.single.algorithm.specifications, const [8]);
-    });
+    }, tags: ['regression']);
 
     test(
       'newer overlapping refresh wins even when the older finishes first',
@@ -747,7 +747,7 @@ void main() {
         final state = cubit.state as DistingStateSynchronized;
         expect(state.slots.single.algorithm.specifications, const [8]);
       },
-    );
+    , tags: ['regression']);
 
     test('late refresh does not restore a replaced manager', () async {
       final replacementManager = MockDistingMidiManager();
@@ -800,7 +800,7 @@ void main() {
       final state = cubit.state as DistingStateSynchronized;
       expect(state.disting, same(replacementManager));
       expect(state.slots.single.algorithm.specifications, const [4]);
-    });
+    }, tags: ['regression']);
 
     test(
       'full refresh preserves known specifications for the same slot',
@@ -904,7 +904,7 @@ void main() {
 
       final state = cubit.state as DistingStateSynchronized;
       expect(state.slots.single.algorithm.specifications, const [8]);
-    });
+    }, tags: ['regression']);
 
     test('timed-out full refresh cannot emit a late result', () {
       fakeAsync((async) {
@@ -952,7 +952,7 @@ void main() {
         final state = cubit.state as DistingStateSynchronized;
         expect(state.slots.single.algorithm.specifications, const [4]);
       });
-    });
+    }, tags: ['regression']);
 
     test(
       'replacement load forgets specifications even when name and GUID match',
@@ -995,7 +995,7 @@ void main() {
           isFalse,
         );
       },
-    );
+    , tags: ['regression']);
 
     test('append load preserves specifications for existing slots', () async {
       final quantizerSlot = makeSlot().copyWith(
@@ -1100,7 +1100,7 @@ void main() {
         expect(state.disting, same(replacementManager));
         expect(state.slots.single.algorithm.specifications, const [8]);
       },
-    );
+    , tags: ['regression']);
 
     test('onAlgorithmSelected marks state dirty', () async {
       final algorithmInfo = AlgorithmInfo(
@@ -1266,7 +1266,7 @@ void main() {
         expect(algorithm.specifications, isEmpty);
         expect(algorithm.hasAuthoritativeSpecifications, isTrue);
       },
-    );
+    , tags: ['regression']);
 
     test('onAlgorithmSelected can add bypassed immediately', () async {
       final algorithmInfo = AlgorithmInfo(
@@ -1449,7 +1449,7 @@ void main() {
           expect(state.isDirty, isTrue);
         });
       },
-    );
+    , tags: ['regression']);
 
     test(
       'slow unchanged response only gives the next request the remaining window',
@@ -1494,7 +1494,7 @@ void main() {
           expect(retryBudgets, [9, 3]);
         });
       },
-    );
+    , tags: ['regression']);
 
     test(
       'failed add rollback preserves other edits made during verification',
@@ -1536,7 +1536,7 @@ void main() {
           expect(state.isDirty, isTrue);
         });
       },
-    );
+    , tags: ['regression']);
 
     test(
       'failed add rollback does not remove a refreshed replacement slot',
@@ -1580,7 +1580,7 @@ void main() {
           ]);
         });
       },
-    );
+    , tags: ['regression']);
 
     test(
       'onAlgorithmSelected retries verification without resending the add',
@@ -1636,7 +1636,7 @@ void main() {
           ).called(1);
         });
       },
-    );
+    , tags: ['regression']);
 
     test(
       'onAlgorithmSelected keeps the confirmed placeholder when hydration fails',
@@ -1691,7 +1691,7 @@ void main() {
           verify(() => mockDisting.requestNumberOfParameters(0)).called(1);
         });
       },
-    );
+    , tags: ['regression']);
 
     test(
       'completed hydration does not overwrite a refreshed replacement slot',
@@ -1741,7 +1741,7 @@ void main() {
           ]);
         });
       },
-    );
+    , tags: ['regression']);
 
     test(
       'onAlgorithmSelected removes placeholder when add request throws',
@@ -1887,7 +1887,7 @@ void main() {
         42,
       );
       verify(() => mockDisting.requestRoutingInformation(0)).called(1);
-    });
+    }, tags: ['regression']);
   });
 
   group('cubit mapping ops', () {
@@ -1928,7 +1928,7 @@ void main() {
       final state = cubit.state as DistingStateSynchronized;
       expect(state.slots[0].mappings[0].packedMappingData, latest);
       expect(state.isDirty, isTrue);
-    });
+    }, tags: ['regression']);
 
     test('saveMapping rewrites until exact readback is verified', () async {
       final desired = PackedMappingData.filler().copyWith(
@@ -2015,7 +2015,7 @@ void main() {
         expect(saved.i2cCC, 32);
         expect(saved.perfPageIndex, 5);
       },
-    );
+    , tags: ['regression']);
 
     test('saveMapping retains intent until synchronization returns', () async {
       final desired = PackedMappingData.filler().copyWith(
@@ -2090,7 +2090,7 @@ void main() {
       expect(writeCount, 4);
       await recovered.timeout(const Duration(seconds: 3));
       expect(writeCount, 5);
-    });
+    }, tags: ['regression']);
 
     test('saveMapping marks state dirty after verified write', () async {
       PackedMappingData? deviceMapping;
@@ -2163,7 +2163,7 @@ void main() {
         expect(captured.midiMappingType, equals(MidiMappingType.cc));
         expect(captured.midiCC, equals(74));
       },
-    );
+    , tags: ['regression']);
 
     test('setPerformancePageMapping marks state dirty (optimistic)', () async {
       when(
@@ -2240,7 +2240,7 @@ void main() {
       verifyNever(
         () => mockDisting.requestSetAlgorithmVisualStyle(any(), any()),
       );
-    });
+    }, tags: ['regression']);
 
     test('simulates style writes in offline mode on older firmware', () async {
       const style = AlgorithmVisualStyle(
