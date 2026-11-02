@@ -574,7 +574,7 @@ void main() {
           async.elapse(const Duration(seconds: 1));
         });
       },
-    );
+    , tags: ['regression']);
 
     test(
       'syncAllAlgorithmMetadata: retry fails then deferred rescan+reboot succeeds',
@@ -691,7 +691,7 @@ void main() {
         database.close();
         async.elapse(const Duration(seconds: 1));
       });
-    });
+    }, tags: ['regression']);
   });
 }
 
