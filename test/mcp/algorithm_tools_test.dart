@@ -358,12 +358,7 @@ void main() {
     });
 
     group('Error Handling', () {
-      test('should handle service not initialized gracefully', () async {
-        // This test would require mocking the AlgorithmMetadataService
-        // to simulate an uninitialized state, which is complex given
-        // the singleton pattern. The actual fix will handle this.
-        expect(true, isTrue); // Placeholder for now
-      });
+      
     });
   });
 }
