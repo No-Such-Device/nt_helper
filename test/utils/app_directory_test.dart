@@ -88,7 +88,7 @@ void main() {
           expect(integrity.fileExists, isFalse);
         }, _UnavailableMarker(p.join(app.path, '.migrated')));
       },
-    );
+    , tags: ['regression']);
 
     test(
       'marker failure never hides a migrated database in an empty fallback',
@@ -117,7 +117,7 @@ void main() {
           expect(support.existsSync(), isFalse);
         }, _UnavailableMarker(p.join(app.path, '.migrated')));
       },
-    );
+    , tags: ['regression']);
 
     test(
       'marker failure in the fallback is reported and allows retry',
@@ -142,7 +142,7 @@ void main() {
         );
         expect(File(p.join(result.path, '.migrated')).existsSync(), isTrue);
       },
-    );
+    , tags: ['regression']);
 
     test(
       'Windows starts when redirected Documents cannot be created',
@@ -185,7 +185,7 @@ void main() {
           );
         }, _UnavailableDocuments(p.join(docs.path, 'nt_helper')));
       },
-    );
+    , tags: ['regression']);
 
     test('Windows keeps fallback data after Documents recovers', () async {
       final support = Directory(p.join(tempRoot.path, 'LocalAppData'));
@@ -217,7 +217,7 @@ void main() {
         ).readAsStringSync(),
         'documents-db',
       );
-    });
+    }, tags: ['regression']);
 
     test('Windows preserves a working Documents database', () async {
       final support = Directory(p.join(tempRoot.path, 'LocalAppData'));
@@ -242,7 +242,7 @@ void main() {
         Directory(p.join(support.path, 'nt_helper')).existsSync(),
         isFalse,
       );
-    });
+    }, tags: ['regression']);
 
     test('Windows creates ordinary missing Documents parents', () async {
       final docs = Directory(p.join(tempRoot.path, 'OneDrive', 'Dokumente'));
@@ -267,7 +267,7 @@ void main() {
       );
       expect(result.path, p.join(tempRoot.path, 'nt_helper'));
       expect(result.existsSync(), isTrue);
-    });
+    }, tags: ['regression']);
 
     test(
       'Windows can use Documents when support lookup is unavailable',
@@ -325,7 +325,7 @@ void main() {
         isWindows: false,
       );
       expect(result.existsSync(), isTrue);
-    });
+    }, tags: ['regression']);
 
     test(
       'Windows does not hide migration failures by opening an empty fallback',
@@ -352,7 +352,7 @@ void main() {
           isFalse,
         );
       },
-    );
+    , tags: ['regression']);
 
     test(
       'Windows propagates failure when fallback cannot be created',
@@ -419,7 +419,7 @@ void main() {
       for (final dir in results) {
         expect(dir.path, results.first.path);
       }
-    });
+    }, tags: ['regression']);
   });
 
   group('migration', () {
@@ -541,7 +541,7 @@ void main() {
         File(p.join(result.path, 'nt_helper_db.sqlite')).existsSync(),
         isFalse,
       );
-    });
+    }, tags: ['regression']);
 
     test(
       'runs migration when directory exists but marker is missing',
