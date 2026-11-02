@@ -139,7 +139,7 @@ void main() {
       expect(hostile.state.error, contains('changed the action'));
       expect(device.map.aux.map((row) => row.bus), [44]);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test(
     'AUX edit recovers lost acknowledgement and retains the latest desired value',
@@ -169,7 +169,7 @@ void main() {
       expect(cubit.state.pending, isFalse);
       expect(device.revision, 2);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('AUX lifecycle has identical C++ and Dart wire transcript', () async {
     final device = PatchMapDevice();
