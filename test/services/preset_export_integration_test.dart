@@ -213,7 +213,7 @@ void main() {
       // it's no longer treated as a filename.
       expect(result.warnings.any((w) => w.contains('<MULTISAMPLE>')), isFalse);
     },
-  , tags: ['regression']);
+  tags: ['regression']);
 
   test('midp slot bundles the whole MIDI tree', () async {
     final preset = {
