@@ -3,15 +3,15 @@ import Flutter
 import Darwin
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
-  override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
-    GeneratedPluginRegistrant.register(with: self)
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  // Scene-based launch creates the engine after didFinishLaunchingWithOptions.
+  // Register every plugin and channel against that engine, not the app delegate.
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    let registry = engineBridge.pluginRegistry
+    GeneratedPluginRegistrant.register(with: registry)
     let networkChannel = FlutterMethodChannel(
       name: "dev.nosuch.nt_helper/local_network",
-      binaryMessenger: self.registrar(forPlugin: "LocalNetwork")!.messenger()
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
     )
     networkChannel.setMethodCallHandler { call, result in
       guard call.method == "addresses" else {
@@ -24,12 +24,11 @@ import Darwin
       ])
     }
     // Register custom plugins
-    IosFileAccessPlugin.register(with: self.registrar(forPlugin: "com.example.nt_helper/ios_file_access")!)
-    UsbVideoCapturePlugin.register(with: self.registrar(forPlugin: "com.example.nt_helper/usb_video")!)
+    IosFileAccessPlugin.register(with: registry.registrar(forPlugin: "com.example.nt_helper/ios_file_access")!)
+    UsbVideoCapturePlugin.register(with: registry.registrar(forPlugin: "com.example.nt_helper/usb_video")!)
     #if INITIAL_SDP_EXPERIMENT
-    InitialSdpPlugin.register(with: self.registrar(forPlugin: "com.example.nt_helper/initial_sdp")!)
+    InitialSdpPlugin.register(with: registry.registrar(forPlugin: "com.example.nt_helper/initial_sdp")!)
     #endif
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   // Wi-Fi and wired LAN interfaces are en*. Exclude cellular, VPNs and loopback.
