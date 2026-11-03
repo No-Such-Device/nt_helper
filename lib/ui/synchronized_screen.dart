@@ -75,6 +75,7 @@ import 'package:nt_helper/ui/widgets/debug_panel.dart';
 import 'package:nt_helper/ui/widgets/section_parameter_controller.dart';
 import 'package:nt_helper/services/debug_service.dart';
 import 'package:nt_helper/ui/firmware/firmware_update_screen.dart';
+import 'package:nt_helper/ui/firmware/initial_sdp_experiment_screen.dart';
 import 'package:nt_helper/ui/widgets/app_update_banner.dart';
 import 'package:nt_helper/ui/widgets/app_update_dialog.dart';
 import 'package:nt_helper/ui/widgets/contextual_help_bar.dart';
@@ -2660,6 +2661,25 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
               children: [Text('System'), Icon(Icons.settings_applications)],
             ),
           ),
+          if (initialSdpExperimentEnabled)
+            PopupMenuItem(
+              value: 'initial_sdp_experiment',
+              enabled: !widget.loading,
+              onTap: widget.loading
+                  ? null
+                  : () {
+                      final distingCubit = popupCtx.read<DistingCubit>();
+                      Navigator.push(
+                        popupCtx,
+                        MaterialPageRoute(
+                          builder: (_) => InitialSdpExperimentScreen(
+                            distingCubit: distingCubit,
+                          ),
+                        ),
+                      );
+                    },
+              child: const Text('Initial SDP experiment'),
+            ),
           // Firmware: Desktop only, disabled when loading (excluded from Play Store build)
           if (!kPlayStoreBuild &&
               (Platform.isMacOS || Platform.isWindows || Platform.isLinux))

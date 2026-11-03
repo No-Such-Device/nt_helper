@@ -7,16 +7,35 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1051B60B0D65AD504E01867A /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AC57F833089C9E90391A0004 /* IOKit.framework */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		1DD1613B829815DF1397FC41 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
+		2DF0B42115D8DFAFF755B29D /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		30D10FEA50A554270153CEE3 /* dev.nosuch.ntHelper.initialSdp.driver.dext in Embed Initial SDP Driver (development only) */ = {isa = PBXBuildFile; fileRef = 9EB4956A251F1E83DA6D6226 /* dev.nosuch.ntHelper.initialSdp.driver.dext */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		46F6FED21B5C7C8FA87A23F4 /* UsbVideoCapturePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD57D16D2DE51C06003776D9 /* UsbVideoCapturePlugin.swift */; };
+		4C9E9C51662A71839579F8DA /* DriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4229BE3CEFAF836998EB0A85 /* DriverKit.framework */; };
 		4C9FB305229DFB102C68A52A /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 65849FD5E8867C9FC1C8A183 /* Pods_Runner.framework */; };
+		5DBDB506C16596C4ACD64592 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
+		73B4BE0CB9F1A0FF527DDAC4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+		8434EB080B8182CE9BD9BD03 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+		93D425DDDE9C5E0DA094AFAC /* USBDriverKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 73F719EBCA58E42E54E93FE7 /* USBDriverKit.framework */; };
+		9494557D965DC3DB1B2EFBAC /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		A5A7AC69B6F97025977D5F51 /* InitialSdpDriver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2A3ED3A2BB35E212F672696F /* InitialSdpDriver.cpp */; };
+		ADC1AF769CE4250A31F5CBB6 /* InitialSdpUserClient.iig in Sources */ = {isa = PBXBuildFile; fileRef = EC4B9BF24903BB4F44E740DE /* InitialSdpUserClient.iig */; };
+		AF6EB01889F9EA0488E093F7 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		CA7A50F2512C2ED166717ECD /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6FFCE51CB95FC911C3C0B608 /* Pods_RunnerTests.framework */; };
+		CBB6E090E5A10444421A4463 /* Pods_RunnerInitialSdp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 56AFB1BD58C069C5A152CCFE /* Pods_RunnerInitialSdp.framework */; };
+		D42635E4538B3C78658CAB03 /* InitialSdpDriver.iig in Sources */ = {isa = PBXBuildFile; fileRef = 7BDCBFAB38AA370DE3502558 /* InitialSdpDriver.iig */; };
+		D71AD1BB7A1762D71E368BF8 /* InitialSdpPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACC8C1CF0FD924446E63E95D /* InitialSdpPlugin.swift */; };
+		E5702D736B2C59DDCE53BD57 /* InitialSdpUserClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CE84D57F7432AA9C6AB33391 /* InitialSdpUserClient.cpp */; };
+		F50FAC7F8032159741D67046 /* IosFileAccessPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD56D15C2DE51B05003776D8 /* IosFileAccessPlugin.swift */; };
 		FD223FAF2DE6C7FE009E00C1 /* IosFileAccessPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD56D15C2DE51B05003776D8 /* IosFileAccessPlugin.swift */; };
 		FD224FB02DE6C8FF009E00C2 /* UsbVideoCapturePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD57D16D2DE51C06003776D9 /* UsbVideoCapturePlugin.swift */; };
 /* End PBXBuildFile section */
@@ -29,9 +48,26 @@
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
 		};
+		EFD33ACFCE395F10E9425776 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 72A027687F88AADC98AD6AA3;
+			remoteInfo = InitialSdpDriver;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		29642ECDC90C7814FA5FD302 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9705A1C41CF9048500538489 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -42,24 +78,46 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		987D04992ADC22DDB7F4C5C9 /* Embed Initial SDP Driver (development only) */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(SYSTEM_EXTENSIONS_FOLDER_PATH)";
+			dstSubfolderSpec = 16;
+			files = (
+				30D10FEA50A554270153CEE3 /* dev.nosuch.ntHelper.initialSdp.driver.dext in Embed Initial SDP Driver (development only) */,
+			);
+			name = "Embed Initial SDP Driver (development only)";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		017C8D29E7C60FD01995E1ED /* RunnerInitialSdp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RunnerInitialSdp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		060BCE0F5F1FD92F3F043F4F /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		17BD9182870A97EF6E554B1C /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		1FE798F2D18966A51EAB9236 /* StatusOnly.hpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.h; path = StatusOnly.hpp; sourceTree = "<group>"; };
 		2283D5FC874D3C6B38123395 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
+		229DB1B130CB2D17693F288A /* InitialSdp-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "InitialSdp-Bridging-Header.h"; sourceTree = "<group>"; };
 		28A09E376F1E1EEBF2EC2686 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
+		2A3ED3A2BB35E212F672696F /* InitialSdpDriver.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = InitialSdpDriver.cpp; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3616BF4F8F585F4F506028F5 /* InitialSdpDriver.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = InitialSdpDriver.entitlements; sourceTree = "<group>"; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		4229BE3CEFAF836998EB0A85 /* DriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DriverKit.framework; path = System/DriverKit/System/Library/Frameworks/DriverKit.framework; sourceTree = SDKROOT; };
+		56AFB1BD58C069C5A152CCFE /* Pods_RunnerInitialSdp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerInitialSdp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		576C66A9106CED8B113C9BC1 /* InitialSdp.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = InitialSdp.entitlements; sourceTree = "<group>"; };
 		6532CFBF01B16D9777791609 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		65849FD5E8867C9FC1C8A183 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		6FFCE51CB95FC911C3C0B608 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		73F719EBCA58E42E54E93FE7 /* USBDriverKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = USBDriverKit.framework; path = System/DriverKit/System/Library/Frameworks/USBDriverKit.framework; sourceTree = SDKROOT; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		7BDCBFAB38AA370DE3502558 /* InitialSdpDriver.iig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.iig; path = InitialSdpDriver.iig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -68,13 +126,40 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9DCF9BB508C6E8B99B8AA492 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
+		9EB4956A251F1E83DA6D6226 /* dev.nosuch.ntHelper.initialSdp.driver.dext */ = {isa = PBXFileReference; explicitFileType = "wrapper.driver-extension"; includeInIndex = 0; path = dev.nosuch.ntHelper.initialSdp.driver.dext; sourceTree = BUILT_PRODUCTS_DIR; };
+		A01234567890123456789012 /* InitialSdp.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Flutter/InitialSdp.xcconfig; sourceTree = "<group>"; };
+		AC57F833089C9E90391A0004 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		ACC8C1CF0FD924446E63E95D /* InitialSdpPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InitialSdpPlugin.swift; sourceTree = "<group>"; };
 		C4B7622B43B70AC6E9AE38F4 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
+		CE84D57F7432AA9C6AB33391 /* InitialSdpUserClient.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = InitialSdpUserClient.cpp; sourceTree = "<group>"; };
+		D67209621704AABFB1450EB7 /* Pods-RunnerInitialSdp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerInitialSdp.debug.xcconfig"; path = "Target Support Files/Pods-RunnerInitialSdp/Pods-RunnerInitialSdp.debug.xcconfig"; sourceTree = "<group>"; };
+		E88F20FB4D463310566B0DC9 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		EC4B9BF24903BB4F44E740DE /* InitialSdpUserClient.iig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.iig; path = InitialSdpUserClient.iig; sourceTree = "<group>"; };
 		FD56D15C2DE51B05003776D8 /* IosFileAccessPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IosFileAccessPlugin.swift; path = Runner/IosFileAccessPlugin.swift; sourceTree = "<group>"; };
 		FD57D16D2DE51C06003776D9 /* UsbVideoCapturePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UsbVideoCapturePlugin.swift; path = Runner/UsbVideoCapturePlugin.swift; sourceTree = "<group>"; };
 		FDC556BE2DE79EC4008C0C94 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		44EC39C275066592F12DD2F9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8434EB080B8182CE9BD9BD03 /* FlutterGeneratedPluginSwiftPackage in Frameworks */,
+				1051B60B0D65AD504E01867A /* IOKit.framework in Frameworks */,
+				CBB6E090E5A10444421A4463 /* Pods_RunnerInitialSdp.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5EA04F8E9617D5B1B85158E2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4C9E9C51662A71839579F8DA /* DriverKit.framework in Frameworks */,
+				93D425DDDE9C5E0DA094AFAC /* USBDriverKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		97C146EB1CF9000F007C117D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -95,6 +180,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0E1858C721D78F17E90EB496 /* InitialSdpDriver */ = {
+			isa = PBXGroup;
+			children = (
+				17BD9182870A97EF6E554B1C /* Info.plist */,
+				2A3ED3A2BB35E212F672696F /* InitialSdpDriver.cpp */,
+				3616BF4F8F585F4F506028F5 /* InitialSdpDriver.entitlements */,
+				7BDCBFAB38AA370DE3502558 /* InitialSdpDriver.iig */,
+				CE84D57F7432AA9C6AB33391 /* InitialSdpUserClient.cpp */,
+				EC4B9BF24903BB4F44E740DE /* InitialSdpUserClient.iig */,
+				1FE798F2D18966A51EAB9236 /* StatusOnly.hpp */,
+			);
+			name = InitialSdpDriver;
+			path = InitialSdpDriver;
+			sourceTree = "<group>";
+		};
 		331C8082294A63A400263BE5 /* RunnerTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -103,12 +203,21 @@
 			path = RunnerTests;
 			sourceTree = "<group>";
 		};
+		5EEC5878C97B48CF3FDEDADD /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				E88F20FB4D463310566B0DC9 /* Cocoa.framework */,
+			);
+			name = "OS X";
+			sourceTree = "<group>";
+		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
 			isa = PBXGroup;
 			children = (
 				78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */,
 				3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */,
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
+				A01234567890123456789012 /* InitialSdp.xcconfig */,
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
 			);
@@ -126,6 +235,7 @@
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				B5D5E04CDC32E2E8985D51DB /* Pods */,
 				B13FB1FB2E4526FBA52A5C5F /* Frameworks */,
+				0E1858C721D78F17E90EB496 /* InitialSdpDriver */,
 			);
 			sourceTree = "<group>";
 		};
@@ -134,6 +244,8 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				017C8D29E7C60FD01995E1ED /* RunnerInitialSdp.app */,
+				9EB4956A251F1E83DA6D6226 /* dev.nosuch.ntHelper.initialSdp.driver.dext */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -150,6 +262,9 @@
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+				ACC8C1CF0FD924446E63E95D /* InitialSdpPlugin.swift */,
+				576C66A9106CED8B113C9BC1 /* InitialSdp.entitlements */,
+				229DB1B130CB2D17693F288A /* InitialSdp-Bridging-Header.h */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -159,6 +274,12 @@
 			children = (
 				65849FD5E8867C9FC1C8A183 /* Pods_Runner.framework */,
 				6FFCE51CB95FC911C3C0B608 /* Pods_RunnerTests.framework */,
+				D6E7921382E0671433B8262E /* iOS */,
+				5EEC5878C97B48CF3FDEDADD /* OS X */,
+				4229BE3CEFAF836998EB0A85 /* DriverKit.framework */,
+				73F719EBCA58E42E54E93FE7 /* USBDriverKit.framework */,
+				AC57F833089C9E90391A0004 /* IOKit.framework */,
+				56AFB1BD58C069C5A152CCFE /* Pods_RunnerInitialSdp.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -172,8 +293,16 @@
 				C4B7622B43B70AC6E9AE38F4 /* Pods-RunnerTests.debug.xcconfig */,
 				2283D5FC874D3C6B38123395 /* Pods-RunnerTests.release.xcconfig */,
 				28A09E376F1E1EEBF2EC2686 /* Pods-RunnerTests.profile.xcconfig */,
+				D67209621704AABFB1450EB7 /* Pods-RunnerInitialSdp.debug.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		D6E7921382E0671433B8262E /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -197,6 +326,23 @@
 			productName = RunnerTests;
 			productReference = 331C8081294A63A400263BE5 /* RunnerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		72A027687F88AADC98AD6AA3 /* InitialSdpDriver */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A87EF111A31837771451889F /* Build configuration list for PBXNativeTarget "InitialSdpDriver" */;
+			buildPhases = (
+				76998B4B1CBD2217493CB4F6 /* Sources */,
+				5EA04F8E9617D5B1B85158E2 /* Frameworks */,
+				6FA58B12E2F789CF5BBE54BC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = InitialSdpDriver;
+			productName = InitialSdpDriver;
+			productReference = 9EB4956A251F1E83DA6D6226 /* dev.nosuch.ntHelper.initialSdp.driver.dext */;
+			productType = "com.apple.product-type.driver-extension";
 		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;
@@ -223,6 +369,33 @@
 			productReference = 97C146EE1CF9000F007C117D /* Runner.app */;
 			productType = "com.apple.product-type.application";
 		};
+		AC8CFB8E6E77FC582B064D9E /* RunnerInitialSdp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 12A1B2A087AFD5565BAA8B9A /* Build configuration list for PBXNativeTarget "RunnerInitialSdp" */;
+			buildPhases = (
+				E2A13A9F3BB48D2253A53AE2 /* [CP] Check Pods Manifest.lock */,
+				BA8035B912009192AEA27534 /* Run Script */,
+				D957056BF4F90CBE8FACC120 /* Sources */,
+				44EC39C275066592F12DD2F9 /* Frameworks */,
+				1D492F65060CF96EF3F9B467 /* Resources */,
+				29642ECDC90C7814FA5FD302 /* Embed Frameworks */,
+				987D04992ADC22DDB7F4C5C9 /* Embed Initial SDP Driver (development only) */,
+				6F0634FC8C0627DE4972FA7C /* Thin Binary */,
+				2EDBFE372CDD2ADBF88640B2 /* [CP] Embed Pods Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9704CBCFFB9966D414CDCE19 /* PBXTargetDependency */,
+			);
+			name = RunnerInitialSdp;
+			packageProductDependencies = (
+				78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */,
+			);
+			productName = RunnerInitialSdp;
+			productReference = 017C8D29E7C60FD01995E1ED /* RunnerInitialSdp.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -237,9 +410,30 @@
 						CreatedOnToolsVersion = 14.0;
 						TestTargetID = 97C146ED1CF9000F007C117D;
 					};
+					72A027687F88AADC98AD6AA3 = {
+						DevelopmentTeam = KN424RZG26;
+						ProvisioningStyle = Automatic;
+						SystemCapabilities = {
+							com.apple.DriverKit = {
+								enabled = 1;
+							};
+							"com.apple.DriverKit-Transport-USB" = {
+								enabled = 1;
+							};
+						};
+					};
 					97C146ED1CF9000F007C117D = {
 						CreatedOnToolsVersion = 7.3.1;
 						LastSwiftMigration = 1100;
+					};
+					AC8CFB8E6E77FC582B064D9E = {
+						DevelopmentTeam = KN424RZG26;
+						ProvisioningStyle = Automatic;
+						SystemCapabilities = {
+							"com.apple.DriverKit-CommunicatesWithDrivers" = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -261,12 +455,32 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				AC8CFB8E6E77FC582B064D9E /* RunnerInitialSdp */,
+				72A027687F88AADC98AD6AA3 /* InitialSdpDriver */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		1D492F65060CF96EF3F9B467 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9494557D965DC3DB1B2EFBAC /* LaunchScreen.storyboard in Resources */,
+				2DF0B42115D8DFAFF755B29D /* AppFrameworkInfo.plist in Resources */,
+				73B4BE0CB9F1A0FF527DDAC4 /* Assets.xcassets in Resources */,
+				5DBDB506C16596C4ACD64592 /* Main.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		331C807F294A63A400263BE5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6FA58B12E2F789CF5BBE54BC /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -287,6 +501,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		2EDBFE372CDD2ADBF88640B2 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-RunnerInitialSdp/Pods-RunnerInitialSdp-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-RunnerInitialSdp/Pods-RunnerInitialSdp-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-RunnerInitialSdp/Pods-RunnerInitialSdp-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		3B06AD1E1E4923F5004D2608 /* Thin Binary */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -319,6 +550,22 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		6F0634FC8C0627DE4972FA7C /* Thin Binary */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}",
+			);
+			name = "Thin Binary";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin";
 		};
 		9740EEB61CF901F6004384FC /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -357,6 +604,21 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		BA8035B912009192AEA27534 /* Run Script */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Run Script";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
+		};
 		C1A6708736F1B9C3B2001C5F /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -379,6 +641,28 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		E2A13A9F3BB48D2253A53AE2 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-RunnerInitialSdp-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -387,6 +671,17 @@
 			buildActionMask = 2147483647;
 			files = (
 				331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		76998B4B1CBD2217493CB4F6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A5A7AC69B6F97025977D5F51 /* InitialSdpDriver.cpp in Sources */,
+				D42635E4538B3C78658CAB03 /* InitialSdpDriver.iig in Sources */,
+				E5702D736B2C59DDCE53BD57 /* InitialSdpUserClient.cpp in Sources */,
+				ADC1AF769CE4250A31F5CBB6 /* InitialSdpUserClient.iig in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -401,6 +696,18 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D957056BF4F90CBE8FACC120 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F50FAC7F8032159741D67046 /* IosFileAccessPlugin.swift in Sources */,
+				46F6FED21B5C7C8FA87A23F4 /* UsbVideoCapturePlugin.swift in Sources */,
+				1DD1613B829815DF1397FC41 /* AppDelegate.swift in Sources */,
+				AF6EB01889F9EA0488E093F7 /* GeneratedPluginRegistrant.m in Sources */,
+				D71AD1BB7A1762D71E368BF8 /* InitialSdpPlugin.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -408,6 +715,12 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		9704CBCFFB9966D414CDCE19 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = InitialSdpDriver;
+			target = 72A027687F88AADC98AD6AA3 /* InitialSdpDriver */;
+			targetProxy = EFD33ACFCE395F10E9425776 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -431,6 +744,34 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		19B5F45C35C23EF85FD7878A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CODE_SIGN_ENTITLEMENTS = InitialSdpDriver/InitialSdpDriver.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = KN424RZG26;
+				DRIVERKIT_DEPLOYMENT_TARGET = 22.0;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DRIVERKIT=1",
+				);
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(DERIVED_SOURCES_DIR)",
+				);
+				INFOPLIST_FILE = InitialSdpDriver/Info.plist;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.nosuch.ntHelper.initialSdp.driver;
+				PRODUCT_NAME = "$(PRODUCT_BUNDLE_IDENTIFIER)";
+				SDKROOT = driverkit;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = driverkit;
+			};
+			name = Debug;
+		};
 		249021D3217E4FDB00AE95B9 /* Profile */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -478,6 +819,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 			};
@@ -619,6 +961,7 @@
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -672,6 +1015,7 @@
 				SUPPORTED_PLATFORMS = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 			};
@@ -741,9 +1085,52 @@
 			};
 			name = Release;
 		};
+		D9C478EEA21C4A0B6B9C7002 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A01234567890123456789012 /* InitialSdp.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Runner/InitialSdp.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 0;
+				DART_DEFINES = TlRfSU5JVElBTF9TRFBfRVhQRVJJTUVOVD10cnVl;
+				DEVELOPMENT_TEAM = KN424RZG26;
+				ENABLE_BITCODE = NO;
+				FLUTTER_BUILD_MODE = debug;
+				INFOPLIST_FILE = Runner/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "NT SDP Experiment";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.nosuch.ntHelper.initialSdp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) INITIAL_SDP_EXPERIMENT";
+				SWIFT_OBJC_BRIDGING_HEADER = "Runner/InitialSdp-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		12A1B2A087AFD5565BAA8B9A /* Build configuration list for PBXNativeTarget "RunnerInitialSdp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D9C478EEA21C4A0B6B9C7002 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		331C8087294A63A400263BE5 /* Build configuration list for PBXNativeTarget "RunnerTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -770,6 +1157,14 @@
 				97C147061CF9000F007C117D /* Debug */,
 				97C147071CF9000F007C117D /* Release */,
 				249021D4217E4FDB00AE95B9 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A87EF111A31837771451889F /* Build configuration list for PBXNativeTarget "InitialSdpDriver" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				19B5F45C35C23EF85FD7878A /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
