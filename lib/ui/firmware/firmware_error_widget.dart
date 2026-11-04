@@ -175,6 +175,7 @@ String getActionButtonText(FlashStage? stage) {
       return 'Retry Update';
     case FlashStage.configure:
     case FlashStage.reset:
+    case FlashStage.programmingComplete:
     case FlashStage.complete:
       return 'Try Again';
   }

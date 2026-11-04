@@ -75,6 +75,7 @@ import 'package:nt_helper/ui/widgets/debug_panel.dart';
 import 'package:nt_helper/ui/widgets/section_parameter_controller.dart';
 import 'package:nt_helper/services/debug_service.dart';
 import 'package:nt_helper/ui/firmware/firmware_update_screen.dart';
+import 'package:nt_helper/services/ipad_firmware_session.dart';
 import 'package:nt_helper/ui/firmware/initial_sdp_experiment_screen.dart';
 import 'package:nt_helper/ui/widgets/app_update_banner.dart';
 import 'package:nt_helper/ui/widgets/app_update_dialog.dart';
@@ -2680,9 +2681,12 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                     },
               child: const Text('Initial SDP experiment'),
             ),
-          // Firmware: Desktop only, disabled when loading (excluded from Play Store build)
+          // Firmware: desktop or standalone V2 iPad; excluded from Play Store.
           if (!kPlayStoreBuild &&
-              (Platform.isMacOS || Platform.isWindows || Platform.isLinux))
+              (Platform.isMacOS ||
+                  Platform.isWindows ||
+                  Platform.isLinux ||
+                  ipadFirmwareV2Enabled))
             PopupMenuItem(
               value: 'firmware',
               enabled: !widget.loading,

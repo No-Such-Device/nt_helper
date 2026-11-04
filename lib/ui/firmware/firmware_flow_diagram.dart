@@ -57,6 +57,8 @@ class _FirmwareFlowDiagramState extends State<FirmwareFlowDiagram>
         return 'Resetting device';
       case FlashStage.complete:
         return 'Firmware update complete';
+      case FlashStage.programmingComplete:
+        return 'Programming complete; version not verified';
     }
   }
 
@@ -319,6 +321,7 @@ class _FlowDiagramPainter extends CustomPainter {
       case FlashStage.configure:
       case FlashStage.reset:
       case FlashStage.complete:
+      case FlashStage.programmingComplete:
         return theme.colorScheme.primary;
     }
   }

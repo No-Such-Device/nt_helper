@@ -38,6 +38,13 @@ class _ConnectionDelegate {
 
   final DistingCubit _cubit;
   int _syncGeneration = 0;
+  bool _firmwareProbeBusy = false;
+  int get firmwareSysExId {
+    final manager = _cubit.disting();
+    if (manager is DistingMidiManager) return manager.sysExId;
+    final state = _cubit.state;
+    return state is DistingStateSelectDevice ? state.selectedSysExId : 0;
+  }
 
   MidiDevice? _resolveSelection(
     List<MidiDevice> devices,
@@ -259,12 +266,36 @@ class _ConnectionDelegate {
   ) async {
     _cubit._midiSetupSubscription?.pause();
     final connected = <MidiDevice>[];
+    final command = _cubit._midiCommand;
+    Future<void> connect(MidiDevice device) async {
+      var expired = false;
+      void release() {
+        try {
+          command.disconnectDevice(device);
+        } catch (_) {}
+      }
+
+      final connection = command.connectToDevice(device);
+      unawaited(
+        connection.then((_) {
+          if (expired) release();
+        }, onError: (Object _) {}),
+      );
+      await connection.timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          expired = true;
+          release();
+          throw TimeoutException('Firmware MIDI connection timed out');
+        },
+      );
+      connected.add(device);
+    }
+
     try {
-      await _cubit._midiCommand.connectToDevice(inputDevice);
-      connected.add(inputDevice);
+      await connect(inputDevice);
       if (inputDevice.id != outputDevice.id) {
-        await _cubit._midiCommand.connectToDevice(outputDevice);
-        connected.add(outputDevice);
+        await connect(outputDevice);
       }
       return DistingMidiManager(
         midiCommand: _cubit._midiCommand,
@@ -800,6 +831,94 @@ class _ConnectionDelegate {
       );
     }
     return {'input': inputDevices, 'output': outputDevices};
+  }
+
+  Future<String?> probeFirmwareVersion(
+    MidiDevice inputDevice,
+    MidiDevice outputDevice,
+    int sysExId, {
+    bool reportTimeout = false,
+  }) async {
+    if (_firmwareProbeBusy) return null;
+    _firmwareProbeBusy = true;
+    var abandoned = false;
+    try {
+      final connection = _cubit.createFirmwareMidiManager(
+        inputDevice,
+        outputDevice,
+        sysExId,
+      );
+      unawaited(
+        connection.then(
+          (manager) {
+            if (abandoned) {
+              _cubit.disposeFirmwareMidiManager(
+                manager,
+                inputDevice,
+                outputDevice,
+              );
+              _firmwareProbeBusy = false;
+            }
+          },
+          onError: (Object _) {
+            if (abandoned) _firmwareProbeBusy = false;
+          },
+        ),
+      );
+      final manager = await connection.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {
+          abandoned = true;
+          throw TimeoutException('Firmware MIDI connection timed out');
+        },
+      );
+      try {
+        return await manager.requestVersionString().timeout(
+          const Duration(seconds: 3),
+        );
+      } finally {
+        _cubit.disposeFirmwareMidiManager(manager, inputDevice, outputDevice);
+      }
+    } on TimeoutException {
+      if (reportTimeout) rethrow;
+      return null;
+    } catch (_) {
+      return null;
+    } finally {
+      if (!abandoned) _firmwareProbeBusy = false;
+    }
+  }
+
+  Future<String?> probeFreshFirmwareVersion(
+    String? inputName,
+    String? outputName,
+    int sysExId,
+  ) async {
+    if (inputName == null || outputName == null) return null;
+    final devices =
+        await _cubit._midiCommand.devices.timeout(const Duration(seconds: 2)) ??
+        [];
+    final inputs = devices
+        .where(
+          (d) =>
+              d.inputPorts.isNotEmpty &&
+              d.name.trim().toLowerCase() == inputName.trim().toLowerCase(),
+        )
+        .toList();
+    final outputs = devices
+        .where(
+          (d) =>
+              d.outputPorts.isNotEmpty &&
+              d.name.trim().toLowerCase() == outputName.trim().toLowerCase(),
+        )
+        .toList();
+    if (inputs.length != 1 || outputs.length != 1) return null;
+    return _cubit.probeFirmwareVersion(
+      inputs.single,
+      outputs.single,
+      sysExId,
+      reportTimeout: true,
+    );
   }
 
   /// Takes a fresh platform MIDI snapshot and checks the expected directions.

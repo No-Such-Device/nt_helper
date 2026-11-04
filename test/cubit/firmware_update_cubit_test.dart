@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:fake_async/fake_async.dart';
+import 'package:nt_helper/services/ipad_firmware_session.dart';
+import '../test_helpers/ipad_firmware.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
@@ -54,6 +57,277 @@ final class _UnavailableUsbAccess extends IOOverrides {
 
 void main() {
   setUpFirmwareUsbAccess();
+  group('native prepared workflow', () {
+    late ControlledIpadSession native;
+    late IpadPackageAcquisition acquisition;
+    late MockDistingMidiManager midi;
+    late MockFlashToolBridge desktop;
+    FirmwareUpdateCubit? workflow;
+    Future<String?> Function() probe = () async => '1.19.0';
+    setUp(() {
+      native = ControlledIpadSession();
+      acquisition = IpadPackageAcquisition();
+      midi = MockDistingMidiManager();
+      desktop = MockFlashToolBridge();
+      when(() => midi.requestEnterBootloader()).thenAnswer((_) async {});
+      probe = () async => '1.19.0';
+    });
+    tearDown(() async {
+      await workflow?.close();
+      await native.dispose();
+      acquisition.dispose();
+    });
+    FirmwareUpdateCubit create({
+      bool demo = false,
+      bool offline = false,
+      String version = '1.18.0',
+    }) {
+      return workflow = FirmwareUpdateCubit(
+        firmwareVersionService: acquisition,
+        flashToolManager: MockFlashToolManager(),
+        flashToolBridge: desktop,
+        currentVersion: version,
+        firmwareVersion: FirmwareVersion(version),
+        isDemo: demo,
+        isOffline: offline,
+        midiManager: midi,
+        ipadSession: native,
+        probeFreshVersion: () => probe(),
+        midiPollInterval: const Duration(seconds: 1),
+        midiPollAttempts: 2,
+      );
+    }
+
+    for (final fixture in invalidIpadPackages().entries) {
+      test(
+        '${fixture.key} cannot enter bootloader release MIDI or start native writes',
+        () async {
+          acquisition.bytes = fixture.value;
+          final cubit = create();
+          await cubit.loadAvailableVersions();
+          await cubit.startUpdate(ipadRelease);
+          expect(cubit.state, isA<FirmwareUpdateStateError>());
+          verifyNever(() => midi.requestEnterBootloader());
+          verifyNever(() => midi.dispose());
+          expect(native.prepares, 0);
+          expect(native.starts, 0);
+        },
+      );
+    }
+    for (final guard in ['demo', 'offline', 'unsupported', 'unknown']) {
+      test('$guard capability cannot acquire or start iPad update', () async {
+        if (guard == 'unsupported') native.supported = false;
+        final cubit = create(
+          demo: guard == 'demo',
+          offline: guard == 'offline',
+          version: guard == 'unknown' ? 'unknown 1.18.0' : '1.18.0',
+        );
+        await cubit.loadAvailableVersions();
+        await cubit.startUpdate(ipadRelease);
+        expect(cubit.isUpdateAvailable, isFalse);
+        expect(acquisition.downloads, 0);
+        expect(native.prepares, 0);
+        verifyNever(() => midi.requestEnterBootloader());
+      });
+    }
+    test(
+      'consent pairs retained target and bytes and only fresh matching version completes once',
+      () {
+        final cubit = create();
+        late Completer<String?> versions;
+        probe = () => versions.future;
+        final states = <FirmwareUpdateState>[];
+        final subscription = cubit.stream.listen(states.add);
+        addTearDown(subscription.cancel);
+        fakeAsync((time) {
+          versions = Completer<String?>();
+          unawaited(cubit.loadAvailableVersions());
+          time.flushMicrotasks();
+          unawaited(cubit.startUpdate(ipadRelease));
+          time.flushMicrotasks();
+          expect(native.prepares, 0);
+          expect(native.starts, 0);
+          final prepared = cubit.preparedPackage!;
+          acquisition.bytes = [
+            0,
+          ]; // The acquired source is no longer the target.
+          unawaited(cubit.confirmAndFlash());
+          time.flushMicrotasks();
+          unawaited(cubit.confirmAndFlash());
+          unawaited(cubit.startUpdate(ipadRelease));
+          time.flushMicrotasks();
+          expect(native.starts, 1);
+          expect(native.loader, prepared.loader);
+          expect(native.application, prepared.application);
+          verify(() => midi.requestEnterBootloader()).called(1);
+          verify(() => midi.dispose()).called(1);
+          native.phase(IpadProgrammingPhase.writingApplication);
+          native.phase(IpadProgrammingPhase.failed, sessionId: 'stale');
+          expect(cubit.state, isA<FirmwareUpdateStateFlashing>());
+          native.finish();
+          time.flushMicrotasks();
+          expect(
+            cubit.state,
+            isA<FirmwareUpdateStateVerifyingMidi>(),
+            reason:
+                'closes ${native.closes}, complete ${native.result.isCompleted}, microtasks ${time.microtaskCount}',
+          );
+          expect(states.whereType<FirmwareUpdateStateSuccess>(), isEmpty);
+          time.elapse(const Duration(seconds: 1));
+          expect(cubit.state, isA<FirmwareUpdateStateVerifyingMidi>());
+          versions.complete('v1.19.0\nOct 21 2026');
+          time.flushMicrotasks();
+          native.phase(IpadProgrammingPhase.programmed);
+          unawaited(cubit.checkMidiAgain());
+          time.flushMicrotasks();
+          expect(states.whereType<FirmwareUpdateStateSuccess>(), hasLength(1));
+          expect(
+            states.whereType<FirmwareUpdateStateFlashing>().any(
+              (s) => s.progress.stage == FlashStage.programmingComplete,
+            ),
+            isTrue,
+          );
+          expect(cubit.preparedPackage, same(prepared));
+          expect(native.starts, 1);
+          verifyNever(() => desktop.flash(any()));
+        });
+      },
+    );
+    for (final reply in <String?>[
+      null,
+      '',
+      '1.18.0',
+      'loader 1.19.0',
+      '1.19.0beta',
+    ]) {
+      test(
+        'ports with ${reply ?? 'no version'} remain unverified and recheck never reflashes',
+        () {
+          final cubit = create();
+          probe = () async => reply;
+          fakeAsync((time) {
+            unawaited(cubit.loadAvailableVersions());
+            time.flushMicrotasks();
+            unawaited(cubit.startUpdate(ipadRelease));
+            time.flushMicrotasks();
+            unawaited(cubit.confirmAndFlash());
+            time.flushMicrotasks();
+            native.finish();
+            time.flushMicrotasks();
+            time.elapse(const Duration(seconds: 2));
+            expect(cubit.state, isA<FirmwareUpdateStateMidiRecoveryRequired>());
+            expect(
+              (cubit.state as FirmwareUpdateStateMidiRecoveryRequired)
+                  .verificationMessage,
+              contains(
+                reply == null || reply.isEmpty ? 'unavailable' : 'mismatch',
+              ),
+            );
+            probe = () async => '1.19.0';
+            unawaited(cubit.checkMidiAgain());
+            time.flushMicrotasks();
+            time.elapse(const Duration(seconds: 1));
+            expect(cubit.state, isA<FirmwareUpdateStateSuccess>());
+            expect(native.starts, 1);
+            verify(() => midi.requestEnterBootloader()).called(1);
+          });
+        },
+      );
+    }
+    for (final interruption in [
+      'lifecycle',
+      'cancel',
+      'native failure',
+      'native event error',
+      'native event closed',
+      'bootloader timeout',
+      'programming timeout',
+      'ambiguous prepare',
+    ]) {
+      test(
+        '$interruption terminates without late success or destructive retry',
+        () {
+          final cubit = create();
+          if (interruption == 'ambiguous prepare') {
+            native.prepareError = StateError('Ambiguous devices');
+          }
+          fakeAsync((time) {
+            unawaited(cubit.loadAvailableVersions());
+            time.flushMicrotasks();
+            unawaited(cubit.startUpdate(ipadRelease));
+            time.flushMicrotasks();
+            if (interruption == 'bootloader timeout') {
+              when(
+                () => midi.requestEnterBootloader(),
+              ).thenAnswer((_) => Completer<void>().future);
+            }
+            unawaited(cubit.confirmAndFlash());
+            time.flushMicrotasks();
+            if (interruption == 'native event error') {
+              native.controller.addError(StateError('Lost native events'));
+            }
+            if (interruption == 'native event closed') {
+              unawaited(native.controller.close());
+            }
+            if (interruption == 'bootloader timeout') {
+              time.elapse(const Duration(seconds: 5));
+            }
+            if (interruption == 'lifecycle') unawaited(cubit.interrupt());
+            if (interruption == 'cancel') unawaited(cubit.cancel());
+            if (interruption == 'native failure') {
+              native.finish(IpadProgrammingOutcome.failed);
+            }
+            if (interruption == 'programming timeout') {
+              time.elapse(const Duration(minutes: 3));
+            }
+            time.flushMicrotasks();
+            if (!native.result.isCompleted) native.finish();
+            if (!native.controller.isClosed) {
+              native.phase(IpadProgrammingPhase.programmed);
+            }
+            time.flushMicrotasks();
+            time.elapse(const Duration(seconds: 10));
+            expect(cubit.state, isNot(isA<FirmwareUpdateStateSuccess>()));
+            unawaited(cubit.retryFlash());
+            unawaited(cubit.confirmAndFlash());
+            time.flushMicrotasks();
+            expect(
+              native.starts,
+              ['ambiguous prepare', 'bootloader timeout'].contains(interruption)
+                  ? 0
+                  : 1,
+            );
+            if (interruption == 'ambiguous prepare') {
+              verifyNever(() => midi.requestEnterBootloader());
+              verifyNever(() => midi.dispose());
+            }
+          });
+        },
+      );
+    }
+    test(
+      'late preparation after interruption cannot send bootloader or native start',
+      () {
+        final cubit = create();
+        native.preparation = Completer<String>();
+        fakeAsync((time) {
+          unawaited(cubit.loadAvailableVersions());
+          time.flushMicrotasks();
+          unawaited(cubit.startUpdate(ipadRelease));
+          time.flushMicrotasks();
+          unawaited(cubit.confirmAndFlash());
+          time.flushMicrotasks();
+          unawaited(cubit.interrupt());
+          time.flushMicrotasks();
+          native.preparation!.complete('late');
+          time.flushMicrotasks();
+          expect(native.starts, 0);
+          verifyNever(() => midi.requestEnterBootloader());
+          expect(native.closes, greaterThan(0));
+        });
+      },
+    );
+  });
   late MockFirmwareVersionService mockFirmwareVersionService;
   late MockFlashToolManager mockFlashToolManager;
   late MockFlashToolBridge mockFlashToolBridge;
@@ -345,7 +619,8 @@ void main() {
             verifyNever(() => mockFlashToolManager.getToolPath());
             verifyNever(() => mockFlashToolBridge.flash(any()));
           },
-        tags: ['regression']);
+          tags: ['regression'],
+        );
       }
 
       blocTest<FirmwareUpdateCubit, FirmwareUpdateState>(
@@ -842,7 +1117,8 @@ void main() {
           isA<FirmwareUpdateStateDownloading>(),
           isA<FirmwareUpdateStateWaitingForBootloader>(),
         ],
-      tags: ['regression']);
+        tags: ['regression'],
+      );
     });
 
     group('post-flash MIDI reacquisition', () {
@@ -1084,7 +1360,8 @@ void main() {
             expect(releases, 0);
             await subscription.cancel();
           },
-        tags: ['regression']);
+          tags: ['regression'],
+        );
       }
 
       test(
@@ -1118,7 +1395,8 @@ void main() {
           expect(releases, 1);
           verifyNever(() => mockFlashToolBridge.flash(any()));
         },
-      tags: ['regression']);
+        tags: ['regression'],
+      );
 
       for (final cancel in [false, true]) {
         test(
@@ -1190,7 +1468,8 @@ void main() {
           expect(released, [first, second]);
           verifyNever(() => mockFlashToolBridge.flash(any()));
         },
-      tags: ['regression']);
+        tags: ['regression'],
+      );
 
       test('late acquisition cannot replace a current retry manager', () async {
         final late = MockDistingMidiManager();
@@ -1245,7 +1524,8 @@ void main() {
           expect(releases, 0);
           verifyNever(() => mockFlashToolBridge.flash(any()));
         },
-      tags: ['regression']);
+        tags: ['regression'],
+      );
 
       for (final cancel in [false, true]) {
         test(
@@ -1293,7 +1573,8 @@ void main() {
             if (cancel) await cubit.close();
             await progress.close();
           },
-        tags: ['regression']);
+          tags: ['regression'],
+        );
       }
 
       for (final action in ['close', 'cancel', 'reset']) {
@@ -1365,7 +1646,8 @@ void main() {
           expect(await file.exists(), isFalse);
           expect(cubit.state, isA<FirmwareUpdateStateDownloading>());
         },
-      tags: ['regression']);
+        tags: ['regression'],
+      );
     });
 
     group('MIDI release lifecycle', () {
@@ -1501,7 +1783,8 @@ void main() {
           expect(managerIndex, 2);
           expect(flashCalls, 2);
         },
-      tags: ['regression']);
+        tags: ['regression'],
+      );
 
       test(
         'cancellation and disposal release an unflashed manager once',
@@ -1581,7 +1864,8 @@ void main() {
           expect(flashCalls, 2);
           expect(releases, 1);
         },
-      tags: ['regression']);
+        tags: ['regression'],
+      );
     });
   });
 
@@ -1714,8 +1998,8 @@ void main() {
           waitingForBootloader: (_, _, _) => 'waiting',
           enteringBootloader: (_, _, _) => 'entering',
           flashing: (_, _) => 'flashing',
-          verifyingMidi: (_, _, _) => 'verifying',
-          midiRecoveryRequired: (_, _) => 'recovery',
+          verifyingMidi: (_, _, _, _) => 'verifying',
+          midiRecoveryRequired: (_, _, _) => 'recovery',
           success: (_) => 'success',
           error: (_, _, _, _, _) => 'error',
         ),
@@ -1729,8 +2013,8 @@ void main() {
           waitingForBootloader: (_, _, _) => 'waiting',
           enteringBootloader: (_, _, _) => 'entering',
           flashing: (_, _) => 'flashing',
-          verifyingMidi: (_, _, _) => 'verifying',
-          midiRecoveryRequired: (_, _) => 'recovery',
+          verifyingMidi: (_, _, _, _) => 'verifying',
+          midiRecoveryRequired: (_, _, _) => 'recovery',
           success: (_) => 'success',
           error: (_, _, _, _, _) => 'error',
         ),
@@ -1744,8 +2028,8 @@ void main() {
           waitingForBootloader: (_, _, _) => 'waiting',
           enteringBootloader: (_, _, _) => 'entering',
           flashing: (_, _) => 'flashing',
-          verifyingMidi: (_, _, _) => 'verifying',
-          midiRecoveryRequired: (_, _) => 'recovery',
+          verifyingMidi: (_, _, _, _) => 'verifying',
+          midiRecoveryRequired: (_, _, _) => 'recovery',
           success: (_) => 'success',
           error: (_, _, _, _, _) => 'error',
         ),
@@ -1759,8 +2043,8 @@ void main() {
           waitingForBootloader: (_, _, _) => 'waiting',
           enteringBootloader: (_, _, _) => 'entering',
           flashing: (_, _) => 'flashing',
-          verifyingMidi: (_, _, _) => 'verifying',
-          midiRecoveryRequired: (_, _) => 'recovery',
+          verifyingMidi: (_, _, _, _) => 'verifying',
+          midiRecoveryRequired: (_, _, _) => 'recovery',
           success: (_) => 'success',
           error: (_, _, _, _, _) => 'error',
         ),
@@ -1774,8 +2058,8 @@ void main() {
           waitingForBootloader: (_, _, _) => 'waiting',
           enteringBootloader: (_, _, _) => 'entering',
           flashing: (_, _) => 'flashing',
-          verifyingMidi: (_, _, _) => 'verifying',
-          midiRecoveryRequired: (_, _) => 'recovery',
+          verifyingMidi: (_, _, _, _) => 'verifying',
+          midiRecoveryRequired: (_, _, _) => 'recovery',
           success: (_) => 'success',
           error: (_, _, _, _, _) => 'error',
         ),
@@ -1789,8 +2073,8 @@ void main() {
           waitingForBootloader: (_, _, _) => 'waiting',
           enteringBootloader: (_, _, _) => 'entering',
           flashing: (_, _) => 'flashing',
-          verifyingMidi: (_, _, _) => 'verifying',
-          midiRecoveryRequired: (_, _) => 'recovery',
+          verifyingMidi: (_, _, _, _) => 'verifying',
+          midiRecoveryRequired: (_, _, _) => 'recovery',
           success: (_) => 'success',
           error: (_, _, _, _, _) => 'error',
         ),
@@ -1818,9 +2102,7 @@ void main() {
     });
   });
 
-  group('FirmwareErrorType', () {
-    
-  });
+  group('FirmwareErrorType', () {});
 
   group('Recovery methods', () {
     blocTest<FirmwareUpdateCubit, FirmwareUpdateState>(

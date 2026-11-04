@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:async';
+import 'package:nt_helper/services/ipad_firmware_session.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +36,7 @@ class FirmwareUpdateScreenDependencies {
   final FlashToolBridge flashToolBridge;
   final LocalFirmwareFilePicker? pickLocalFirmwareFile;
   final LocalFirmwareFileReader? readLocalFirmwareFile;
+  final IpadFirmwareSession? ipadSession;
 
   const FirmwareUpdateScreenDependencies({
     required this.firmwareVersionService,
@@ -41,6 +44,7 @@ class FirmwareUpdateScreenDependencies {
     required this.flashToolBridge,
     this.pickLocalFirmwareFile,
     this.readLocalFirmwareFile,
+    this.ipadSession,
   });
 }
 
@@ -68,7 +72,11 @@ class FirmwareUpdateScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Check platform - only available on desktop
-    if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux) {
+    final native = ipadFirmwareV2Enabled || dependencies?.ipadSession != null;
+    if (!native &&
+        !Platform.isMacOS &&
+        !Platform.isWindows &&
+        !Platform.isLinux) {
       return Scaffold(
         appBar: AppBar(title: const Text('Firmware Update')),
         body: const Center(
@@ -108,6 +116,8 @@ class FirmwareUpdateScreen extends StatelessWidget {
         ? FirmwareVersion(currentVersionOverride!)
         : syncState?.firmwareVersion;
 
+    final selectedSysExId =
+        sysExId ?? (native ? distingCubit.firmwareSysExId : 0);
     final hasDeviceInfo =
         inputDevice != null && outputDevice != null && sysExId != null;
     final selectedInputDevice = inputDevice ?? syncState?.inputDevice;
@@ -124,8 +134,30 @@ class FirmwareUpdateScreen extends StatelessWidget {
           flashToolBridge: flashToolBridge,
           currentVersion: currentVersion,
           isDemo: isDemo,
-          isOffline: isOffline,
+          isOffline: isOffline || (native && syncState == null),
+          ipadSession: native
+              ? (dependencies?.ipadSession ??
+                    MethodChannelIpadFirmwareSession())
+              : null,
+          probeFreshVersion: native
+              ? () => distingCubit.probeFreshFirmwareVersion(
+                  selectedInputDevice?.name,
+                  selectedOutputDevice?.name,
+                  selectedSysExId,
+                )
+              : null,
           firmwareVersion: firmwareVersion,
+          selectedStillLive: native
+              ? () {
+                  final current = distingCubit.state;
+                  return current is DistingStateSynchronized &&
+                      !current.demo &&
+                      !current.offline &&
+                      identical(current.disting, syncState?.disting) &&
+                      current.inputDevice?.id == selectedInputDevice?.id &&
+                      current.outputDevice?.id == selectedOutputDevice?.id;
+                }
+              : null,
           midiManager: syncState != null ? distingCubit.disting() : null,
           createMidiManager: hasDeviceInfo
               ? () => distingCubit.createFirmwareMidiManager(
@@ -156,17 +188,42 @@ class FirmwareUpdateScreen extends StatelessWidget {
   }
 }
 
-class _FirmwareUpdateView extends StatelessWidget {
+class _FirmwareUpdateView extends StatefulWidget {
   final LocalFirmwareFilePicker? pickLocalFirmwareFile;
 
   const _FirmwareUpdateView({this.pickLocalFirmwareFile});
+
+  @override
+  State<_FirmwareUpdateView> createState() => _FirmwareUpdateViewState();
+}
+
+class _FirmwareUpdateViewState extends State<_FirmwareUpdateView>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      unawaited(context.read<FirmwareUpdateCubit>().interrupt());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return FirmwareUpdateCompletionListener(
       child: FirmwareUpdateAnnouncementListener(
         child: _FirmwareUpdateScaffold(
-          pickLocalFirmwareFile: pickLocalFirmwareFile,
+          pickLocalFirmwareFile: widget.pickLocalFirmwareFile,
         ),
       ),
     );
@@ -227,7 +284,7 @@ class FirmwareUpdateAnnouncementListener extends StatelessWidget {
         } else if (state is FirmwareUpdateStateFlashing) {
           SemanticsService.sendAnnouncement(
             View.of(context),
-            'Flashing firmware: ${state.progress.percent}%',
+            'Flashing firmware: ${state.progress.percent}%. ${state.progress.message}',
             TextDirection.ltr,
           );
         } else if (state is FirmwareUpdateStateSuccess) {
@@ -257,13 +314,16 @@ class FirmwareUpdateAnnouncementListener extends StatelessWidget {
         } else if (state is FirmwareUpdateStateVerifyingMidi) {
           SemanticsService.sendAnnouncement(
             View.of(context),
-            'Waiting for Disting NT to return to MIDI',
+            state.requiresVersion
+                ? 'Programming complete. Verifying fresh application version'
+                : 'Waiting for Disting NT to return to MIDI',
             TextDirection.ltr,
           );
         } else if (state is FirmwareUpdateStateMidiRecoveryRequired) {
           SemanticsService.sendAnnouncement(
             View.of(context),
-            'Firmware installation completed, but the Disting NT did not return to MIDI',
+            state.verificationMessage ??
+                'Firmware installation completed, but the Disting NT did not return to MIDI',
             TextDirection.ltr,
           );
         }
@@ -282,19 +342,27 @@ class _FirmwareUpdateScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<FirmwareUpdateCubit, FirmwareUpdateState>(
       builder: (context, state) {
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Firmware Update'),
-            leading: _buildBackButton(context, state),
-            actions: _buildAppBarActions(context, state),
-          ),
-          body: SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: FirmwareUpdateStateContent(state: state),
+        final nativeActive =
+            context.read<FirmwareUpdateCubit>().isNative &&
+            (state is FirmwareUpdateStateEnteringBootloader ||
+                state is FirmwareUpdateStateFlashing ||
+                state is FirmwareUpdateStateVerifyingMidi);
+        return PopScope(
+          canPop: !nativeActive,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Firmware Update'),
+              leading: _buildBackButton(context, state),
+              actions: _buildAppBarActions(context, state),
+            ),
+            body: SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: FirmwareUpdateStateContent(state: state),
+                  ),
                 ),
               ),
             ),
@@ -309,7 +377,8 @@ class _FirmwareUpdateScaffold extends StatelessWidget {
     FirmwareUpdateState state,
   ) {
     // Only show local file action on initial state
-    if (state is FirmwareUpdateStateInitial) {
+    if (state is FirmwareUpdateStateInitial &&
+        !context.read<FirmwareUpdateCubit>().isNative) {
       return [
         TextButton.icon(
           onPressed: () => _selectLocalFile(context),
@@ -382,6 +451,14 @@ class FirmwareUpdateStateContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cubit = context.read<FirmwareUpdateCubit>();
+    if (cubit.isNative &&
+        (state is FirmwareUpdateStateFlashing ||
+            state is FirmwareUpdateStateVerifyingMidi ||
+            state is FirmwareUpdateStateMidiRecoveryRequired ||
+            state is FirmwareUpdateStateError)) {
+      return _IpadProgressView(state: state);
+    }
     return state.map(
       initial: (s) => _InitialStateView(state: s),
       downloading: (s) => _DownloadingStateView(state: s),
@@ -442,7 +519,10 @@ class _InitialStateView extends StatelessWidget {
         const SizedBox(height: 24),
 
         // Available versions section header
-        Text('Available Firmware', style: theme.textTheme.titleMedium),
+        Semantics(
+          header: true,
+          child: Text('Available Firmware', style: theme.textTheme.titleMedium),
+        ),
         const SizedBox(height: 8),
 
         // Scrollable content
@@ -494,7 +574,9 @@ class _InitialStateView extends StatelessWidget {
         children: [
           const SizedBox(height: 16),
           Text(
-            'Could not load available firmware versions.',
+            cubit.isNative
+                ? state.fetchError!
+                : 'Could not load available firmware versions.',
             style: theme.textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),
@@ -746,7 +828,40 @@ class _BootloaderInstructionsView extends StatelessWidget {
           ],
 
           FilledButton.icon(
-            onPressed: () => cubit.confirmAndFlash(),
+            onPressed: () async {
+              if (cubit.isNative) {
+                final prepared = cubit.preparedPackage;
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: Semantics(
+                      header: true,
+                      child: Text('Install ${state.targetVersion}?'),
+                    ),
+                    content: const Text(
+                      'This erases and replaces the selected NT firmware. Keep USB and power connected. Interrupting programming may leave the device unusable.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(dialogContext, true),
+                        child: Text('Erase and install ${state.targetVersion}'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true ||
+                    !context.mounted ||
+                    !identical(prepared, cubit.preparedPackage) ||
+                    !identical(cubit.state, state)) {
+                  return;
+                }
+              }
+              await cubit.confirmAndFlash();
+            },
             icon: const Icon(Icons.flash_on),
             label: Text(
               state.canAutoEnter
@@ -1097,6 +1212,123 @@ class _MidiRecoveryView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// All native progress and failure feedback occupies the same reserved slots.
+class _IpadProgressView extends StatelessWidget {
+  final FirmwareUpdateState state;
+  const _IpadProgressView({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<FirmwareUpdateCubit>();
+    final flashing = state is FirmwareUpdateStateFlashing
+        ? state as FirmwareUpdateStateFlashing
+        : null;
+    final pending = state is FirmwareUpdateStateVerifyingMidi;
+    final unverified = state is FirmwareUpdateStateMidiRecoveryRequired
+        ? state as FirmwareUpdateStateMidiRecoveryRequired
+        : null;
+    final error = state is FirmwareUpdateStateError
+        ? state as FirmwareUpdateStateError
+        : null;
+    final written = flashing?.progress.stage == FlashStage.programmingComplete;
+    final title = error != null
+        ? 'Update not verified'
+        : unverified != null
+        ? 'Version not verified'
+        : pending
+        ? 'Verifying application version'
+        : written
+        ? 'Programming complete'
+        : 'Programming firmware';
+    final message =
+        error?.message ??
+        unverified?.verificationMessage ??
+        (pending
+            ? 'Programming complete. Requesting a fresh application version for ${cubit.preparedPackage?.version}.'
+            : flashing?.progress.message ?? '');
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          header: true,
+          child: SizedBox(
+            height: 64,
+            child: Center(
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 140,
+          child: Semantics(
+            liveRegion: true,
+            child: SingleChildScrollView(
+              child: Text(message, textAlign: TextAlign.center),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 24,
+          child: Center(
+            child: LinearProgressIndicator(
+              semanticsLabel: title,
+              value: pending ? null : (flashing?.progress.percent ?? 0) / 100,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          height: 48,
+          child: unverified != null
+              ? FilledButton(
+                  onPressed: cubit.checkMidiAgain,
+                  child: const Text('Recheck version only'),
+                )
+              : error != null
+              ? OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                )
+              : OutlinedButton(
+                  onPressed: pending || written
+                      ? null
+                      : () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (dialogContext) => AlertDialog(
+                              title: const Text('Cancel programming?'),
+                              content: const Text(
+                                'Interrupting programming may leave the device unusable. The update will not be verified.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(dialogContext, false),
+                                  child: const Text('Continue update'),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(dialogContext, true),
+                                  child: const Text('Cancel update'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed == true) await cubit.interrupt();
+                        },
+                  child: const Text('Cancel update'),
+                ),
+        ),
+      ],
     );
   }
 }

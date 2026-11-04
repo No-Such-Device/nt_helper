@@ -1,6 +1,14 @@
 import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/services.dart';
+
+bool get ipadFirmwareV2Enabled =>
+    !kReleaseMode &&
+    Platform.isIOS &&
+    const bool.fromEnvironment('NT_IPAD_FIRMWARE_V2');
 
 /// Programming completion is not post-reboot application-version verification.
 enum IpadProgrammingOutcome { programmed, canceled, failed }
@@ -18,6 +26,25 @@ enum IpadProgrammingPhase {
   programmed,
   canceled,
   failed,
+}
+
+extension IpadProgrammingPhaseLabel on IpadProgrammingPhase {
+  String get label => switch (this) {
+    IpadProgrammingPhase.waitingRom => 'Waiting for ROM bootloader',
+    IpadProgrammingPhase.uploadingLoader => 'Uploading RAM loader',
+    IpadProgrammingPhase.jumping => 'Starting RAM loader',
+    IpadProgrammingPhase.waitingLoader =>
+      'Waiting for flashloader USB connection',
+    IpadProgrammingPhase.configuringNor => 'Configuring NOR flash',
+    IpadProgrammingPhase.erasing => 'Erasing application region',
+    IpadProgrammingPhase.creatingFcb => 'Creating flash configuration block',
+    IpadProgrammingPhase.writingApplication => 'Writing application firmware',
+    IpadProgrammingPhase.resetting => 'Resetting device',
+    IpadProgrammingPhase.programmed =>
+      'Programming complete; version not verified',
+    IpadProgrammingPhase.canceled => 'Programming canceled',
+    IpadProgrammingPhase.failed => 'Programming failed',
+  };
 }
 
 class IpadFirmwareAvailability {

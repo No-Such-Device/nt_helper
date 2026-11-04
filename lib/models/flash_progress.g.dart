@@ -32,4 +32,5 @@ const _$FlashStageEnumMap = {
   FlashStage.configure: 'configure',
   FlashStage.reset: 'reset',
   FlashStage.complete: 'complete',
+  FlashStage.programmingComplete: 'programmingComplete',
 };

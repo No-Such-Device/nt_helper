@@ -12,6 +12,7 @@ import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/services/flash_tool_bridge.dart';
 import 'package:nt_helper/services/flash_tool_manager.dart';
+import 'package:nt_helper/services/ipad_firmware_session.dart';
 
 typedef LocalFirmwareFileReader = Future<List<int>?> Function(String path);
 
@@ -39,6 +40,16 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   final int _midiPollAttempts;
   final bool _isWindows;
   final bool _ownsServices;
+  final IpadFirmwareSession? _ipadSession;
+  final Future<String?> Function()? _probeFreshVersion;
+  final bool Function()? _selectedStillLive;
+  bool _ipadAvailable = false;
+  PreparedFirmwarePackage? _preparedPackage;
+  String? _nativeSessionId;
+  StreamSubscription<IpadFirmwareEvent>? _nativeEvents;
+  bool _nativeConsumed = false;
+  bool get isNative => _ipadSession != null;
+  PreparedFirmwarePackage? get preparedPackage => _preparedPackage;
   // A supplied manager is borrowed until a deliberate firmware handoff.
   bool _ownsMidiManager = false;
   bool _closing = false;
@@ -66,6 +77,9 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     int midiPollAttempts = 12,
     bool? isWindowsOverride,
     bool ownsServices = false,
+    IpadFirmwareSession? ipadSession,
+    Future<String?> Function()? probeFreshVersion,
+    bool Function()? selectedStillLive,
   }) : _firmwareVersionService = firmwareVersionService,
        _flashToolManager = flashToolManager,
        _flashToolBridge = flashToolBridge,
@@ -83,6 +97,9 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
        _midiPollAttempts = midiPollAttempts,
        _isWindows = isWindowsOverride ?? Platform.isWindows,
        _ownsServices = ownsServices,
+       _ipadSession = ipadSession,
+       _probeFreshVersion = probeFreshVersion,
+       _selectedStillLive = selectedStillLive,
        super(FirmwareUpdateState.initial(currentVersion: currentVersion));
 
   bool _isCurrent(int generation) =>
@@ -95,6 +112,17 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   /// Whether firmware update is available (desktop only, not demo/offline)
   bool get isUpdateAvailable {
     if (_isDemo || _isOffline) return false;
+    if (isNative) {
+      return _ipadAvailable &&
+          !_nativeConsumed &&
+          _midiManager != null &&
+          _canAutoEnterBootloader &&
+          RegExp(
+            r'^v?\d+\.\d+(?:\.\d+)?(?:-?beta(?:\.?\d+)?)?$',
+            caseSensitive: false,
+          ).hasMatch(_initialCurrentVersion.trim()) &&
+          (_selectedStillLive?.call() ?? true);
+    }
     if (!Platform.isMacOS && !Platform.isWindows && !Platform.isLinux) {
       return false;
     }
@@ -103,8 +131,32 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
   /// Load available firmware versions from the server
   Future<void> loadAvailableVersions() async {
-    if (_closing || isClosed || !isUpdateAvailable) return;
+    if (_closing || isClosed || _isDemo || _isOffline) return;
     final generation = _operationGeneration;
+    if (isNative && !_ipadAvailable) {
+      try {
+        final availability = await _ipadSession!.availability().timeout(
+          const Duration(seconds: 3),
+        );
+        if (!_isCurrent(generation)) return;
+        _ipadAvailable = availability.isIPad && availability.osEligible;
+      } catch (_) {
+        _ipadAvailable = false;
+      }
+    }
+    if (!isUpdateAvailable) {
+      if (isNative &&
+          _isCurrent(generation) &&
+          state is FirmwareUpdateStateInitial) {
+        emit(
+          (state as FirmwareUpdateStateInitial).copyWith(
+            fetchError:
+                'Firmware updates require a supported development iPad and a live NT with known bootloader capability.',
+          ),
+        );
+      }
+      return;
+    }
 
     final currentState = state;
     if (currentState is! FirmwareUpdateStateInitial) return;
@@ -137,7 +189,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
   /// Start the firmware update process for a specific version
   Future<void> startUpdate(FirmwareRelease version) async {
-    if (_closing || isClosed) return;
+    if (_closing || isClosed || state is! FirmwareUpdateStateInitial) return;
     final generation = ++_operationGeneration;
     if (!isUpdateAvailable) {
       emit(
@@ -152,6 +204,11 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
       return;
     }
 
+    if (isNative &&
+        !((state as FirmwareUpdateStateInitial).availableVersions ?? [])
+            .contains(version)) {
+      return;
+    }
     emit(FirmwareUpdateState.downloading(version: version, progress: 0));
 
     try {
@@ -176,6 +233,17 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
       }
       _currentFirmwarePath = firmwarePath;
       _currentTargetVersion = version.version;
+      if (isNative) {
+        final prepared = await _firmwareVersionService.prepareIpadPackage(
+          version,
+          firmwarePath,
+        );
+        if (!_isCurrent(generation)) {
+          await File(prepared.packagePath).parent.delete(recursive: true);
+          return;
+        }
+        _preparedPackage = prepared;
+      }
 
       emit(
         FirmwareUpdateState.waitingForBootloader(
@@ -210,6 +278,15 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     if (!isUpdateAvailable) {
       emit(
         FirmwareUpdateState.error(message: 'Firmware updates not available'),
+      );
+      return;
+    }
+
+    if (isNative) {
+      emit(
+        const FirmwareUpdateState.error(
+          message: 'iPad updates require an official stable release',
+        ),
       );
       return;
     }
@@ -282,6 +359,10 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     if (_closing || isClosed) return;
     final currentState = state;
     if (currentState is! FirmwareUpdateStateWaitingForBootloader) return;
+    if (isNative) {
+      await _startIpadUpdate();
+      return;
+    }
 
     if (currentState.canAutoEnter) {
       await _autoEnterBootloaderAndFlash(
@@ -295,7 +376,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
 
   /// Start the flash process after user confirms bootloader mode
   Future<void> startFlashing() async {
-    if (_closing || isClosed) return;
+    if (_closing || isClosed || isNative) return;
     final currentState = state;
     final String firmwarePath;
     final String targetVersion;
@@ -444,6 +525,217 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
           errorType: FirmwareErrorType.general,
           firmwarePath: firmwarePath,
           targetVersion: targetVersion,
+        ),
+      );
+    }
+  }
+
+  Future<void> _startIpadUpdate() async {
+    final package = _preparedPackage;
+    if (!isUpdateAvailable || package == null || _nativeConsumed) return;
+    _nativeConsumed = true; // Consent consumes this immutable prepared session.
+    final generation = ++_operationGeneration;
+    emit(
+      FirmwareUpdateState.enteringBootloader(
+        firmwarePath: package.packagePath,
+        targetVersion: package.version,
+      ),
+    );
+    try {
+      final preparation = _ipadSession!.prepare();
+      unawaited(
+        preparation.then((_) {
+          if (!_isCurrent(generation)) unawaited(_stopNative());
+        }, onError: (Object _) {}),
+      );
+      final id = await preparation.timeout(const Duration(seconds: 5));
+      if (!_isCurrent(generation)) return;
+      _nativeSessionId = id;
+      _nativeEvents = _ipadSession.events.listen(
+        (event) {
+          if (!_isCurrent(generation) ||
+              event.sessionId != _nativeSessionId ||
+              state is! FirmwareUpdateStateFlashing) {
+            return;
+          }
+          if (event.phase == IpadProgrammingPhase.failed ||
+              event.phase == IpadProgrammingPhase.canceled) {
+            unawaited(_terminateNative(event.message ?? event.phase.label));
+            return;
+          }
+          final stage = switch (event.phase) {
+            IpadProgrammingPhase.waitingRom => FlashStage.sdpConnect,
+            IpadProgrammingPhase.uploadingLoader ||
+            IpadProgrammingPhase.jumping => FlashStage.sdpUpload,
+            IpadProgrammingPhase.waitingLoader => FlashStage.blCheck,
+            IpadProgrammingPhase.configuringNor ||
+            IpadProgrammingPhase.erasing ||
+            IpadProgrammingPhase.creatingFcb => FlashStage.configure,
+            IpadProgrammingPhase.writingApplication => FlashStage.write,
+            IpadProgrammingPhase.resetting => FlashStage.reset,
+            _ => null,
+          };
+          if (stage == null) return; // Terminal events are not verification.
+          emit(
+            FirmwareUpdateState.flashing(
+              targetVersion: package.version,
+              progress: FlashProgress(
+                stage: stage,
+                percent: event.total == null
+                    ? 0
+                    : (100 * (event.transferred ?? 0) ~/ event.total!),
+                message: event.phase.label,
+              ),
+            ),
+          );
+        },
+        onError: (Object error) {
+          if (_isCurrent(generation)) {
+            unawaited(
+              _terminateNative('Native programming event stream failed'),
+            );
+          }
+        },
+        onDone: () {
+          if (_isCurrent(generation) && state is FirmwareUpdateStateFlashing) {
+            unawaited(
+              _terminateNative('Native programming event stream closed'),
+            );
+          }
+        },
+      );
+      if (_selectedStillLive?.call() == false) {
+        throw StateError('Selected NT connection changed before handoff');
+      }
+      final manager = _midiManager!;
+      _ownsMidiManager = true;
+      try {
+        await manager.requestEnterBootloader().timeout(
+          const Duration(seconds: 5),
+        );
+      } finally {
+        if (identical(_midiManager, manager)) _releaseOwnedMidiConnection();
+      }
+      if (!_isCurrent(generation)) return;
+      emit(
+        FirmwareUpdateState.flashing(
+          targetVersion: package.version,
+          progress: const FlashProgress(
+            stage: FlashStage.sdpConnect,
+            percent: 0,
+            message: 'Waiting for ROM bootloader',
+          ),
+        ),
+      );
+      final result = await _ipadSession
+          .start(
+            sessionId: id,
+            loader: package.loader,
+            application: package.application,
+          )
+          .timeout(const Duration(minutes: 3));
+      if (!_isCurrent(generation)) return;
+      if (result.sessionId != id ||
+          result.outcome != IpadProgrammingOutcome.programmed) {
+        throw StateError(result.message ?? 'Programming did not complete');
+      }
+      await _stopNative();
+      if (!_isCurrent(generation)) return;
+      emit(
+        FirmwareUpdateState.flashing(
+          targetVersion: package.version,
+          progress: const FlashProgress(
+            stage: FlashStage.programmingComplete,
+            percent: 100,
+            message:
+                'Programming complete; application version not yet verified',
+          ),
+        ),
+      );
+      await _verifyIpadVersion(package.version, generation);
+    } catch (error) {
+      if (!_isCurrent(generation)) return;
+      final failureGeneration = ++_operationGeneration;
+      _releaseOwnedMidiConnection();
+      await _stopNative();
+      if (!_isCurrent(failureGeneration)) return;
+      emit(FirmwareUpdateState.error(message: 'Update not verified: $error'));
+    }
+  }
+
+  Future<void> _stopNative() async {
+    _nativeSessionId = null;
+    await _nativeEvents?.cancel();
+    _nativeEvents = null;
+    try {
+      await _ipadSession?.close().timeout(const Duration(seconds: 3));
+    } catch (_) {}
+  }
+
+  /// Lifecycle interruption invalidates all continuations, including MIDI reads.
+  Future<void> interrupt() async {
+    if (!isNative ||
+        _closing ||
+        isClosed ||
+        (state is! FirmwareUpdateStateEnteringBootloader &&
+            state is! FirmwareUpdateStateFlashing &&
+            state is! FirmwareUpdateStateVerifyingMidi)) {
+      return;
+    }
+    await _terminateNative(
+      'Update interrupted; application version not verified',
+    );
+  }
+
+  Future<void> _terminateNative(String message) async {
+    final generation = ++_operationGeneration;
+    _releaseOwnedMidiConnection();
+    await _stopNative();
+    if (_isCurrent(generation)) {
+      emit(FirmwareUpdateState.error(message: message));
+    }
+  }
+
+  Future<void> _verifyIpadVersion(String target, int generation) async {
+    var reason = 'Application version unavailable';
+    for (var attempt = 0; attempt < _midiPollAttempts; attempt++) {
+      if (!_isCurrent(generation)) return;
+      emit(
+        FirmwareUpdateState.verifyingMidi(
+          newVersion: target,
+          completedAttempts: attempt,
+          totalAttempts: _midiPollAttempts,
+          requiresVersion: true,
+        ),
+      );
+      await Future<void>.delayed(_midiPollInterval);
+      if (!_isCurrent(generation)) return;
+      try {
+        final reply =
+            await (_probeFreshVersion?.call() ?? Future<String?>.value())
+                .timeout(const Duration(seconds: 5));
+        if (!_isCurrent(generation)) return;
+        if (FirmwareVersionService.matchesApplicationVersion(reply, target)) {
+          emit(FirmwareUpdateState.success(newVersion: target));
+          return;
+        }
+        if (reply != null && reply.isNotEmpty) {
+          reason =
+              'Application version mismatch: expected $target; received $reply';
+          break;
+        }
+      } on TimeoutException {
+        reason = 'Application version request timed out';
+      } catch (_) {
+        reason = 'Application version unavailable';
+      }
+    }
+    if (_isCurrent(generation)) {
+      emit(
+        FirmwareUpdateState.midiRecoveryRequired(
+          newVersion: target,
+          isWindows: false,
+          verificationMessage: reason,
         ),
       );
     }
@@ -622,6 +914,13 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   /// Retry the complete five-second/one-minute MIDI detection cycle.
   Future<void> checkMidiAgain() async {
     if (_closing || isClosed) return;
+    if (isNative) {
+      final current = state;
+      if (current is FirmwareUpdateStateMidiRecoveryRequired) {
+        await _verifyIpadVersion(current.newVersion, ++_operationGeneration);
+      }
+      return;
+    }
     final currentState = state;
     final checkMidiDevices = _checkMidiDevices;
     if (currentState is! FirmwareUpdateStateMidiRecoveryRequired ||
@@ -656,6 +955,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
       case FlashStage.configure:
       case FlashStage.reset:
       case FlashStage.complete:
+      case FlashStage.programmingComplete:
         return FirmwareErrorType.general;
     }
   }
@@ -667,9 +967,13 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     _midiReacquisitionGeneration++;
     final subscription = _flashSubscription;
     _flashSubscription = null;
-    _releaseMidiConnection();
+    if (isNative) {
+      _releaseOwnedMidiConnection();
+    } else {
+      _releaseMidiConnection();
+    }
     final cleanup = _cleanupTempFiles();
-    final cancellation = _flashToolBridge.cancel();
+    final cancellation = isNative ? _stopNative() : _flashToolBridge.cancel();
     await subscription?.cancel();
     await cancellation;
     await cleanup;
@@ -706,7 +1010,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   /// Return to bootloader instructions (from error state)
   /// Used when user needs to re-enter bootloader mode
   void returnToBootloaderInstructions() {
-    if (_closing || isClosed) return;
+    if (_closing || isClosed || isNative) return;
     _operationGeneration++;
     _midiReacquisitionGeneration++;
     final currentState = state;
@@ -739,7 +1043,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
   /// Retry the flash process (from error state)
   /// Used when the flash failed during upload/write
   Future<void> retryFlash() async {
-    if (_closing || isClosed) return;
+    if (_closing || isClosed || isNative) return;
     _operationGeneration++;
     _midiReacquisitionGeneration++;
     final currentState = state;
@@ -887,6 +1191,13 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="15a2", ATTR{idProduct}=="0073", MODE="0666"
     final path = _currentFirmwarePath;
     _currentFirmwarePath = null;
     _currentTargetVersion = null;
+    final prepared = _preparedPackage;
+    _preparedPackage = null;
+    if (prepared != null) {
+      try {
+        await File(prepared.packagePath).parent.delete(recursive: true);
+      } catch (_) {}
+    }
     if (path != null) await _deleteTempFile(path);
   }
 
@@ -915,6 +1226,7 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="15a2", ATTR{idProduct}=="0073", MODE="0666"
       _firmwareVersionService.dispose();
       _flashToolManager.dispose();
     }
+    await _stopNative();
     await _flashSubscription?.cancel();
     _flashSubscription = null;
     await _cleanupTempFiles();

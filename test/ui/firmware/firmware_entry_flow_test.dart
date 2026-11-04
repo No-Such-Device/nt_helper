@@ -11,6 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/cubit/firmware_update_cubit.dart';
+import 'package:nt_helper/cubit/firmware_update_state.dart';
+import '../../test_helpers/ipad_firmware.dart';
 import 'package:nt_helper/db/daos/metadata_dao.dart';
 import 'package:nt_helper/db/daos/presets_dao.dart';
 import 'package:nt_helper/db/database.dart';
@@ -243,12 +245,15 @@ class _FirmwareEntryHarness {
 
   FirmwareUpdateScreenDependencies dependencies({
     _FirmwareSource source = _FirmwareSource.downloaded,
+    ControlledIpadSession? native,
+    FirmwareVersionService? acquisition,
   }) {
     final archive = Archive()
       ..addFile(ArchiveFile('bootable_images/disting_NT.bin', 4, [0, 1, 2, 3]));
     final localFirmwareBytes = ZipEncoder().encode(archive);
     return FirmwareUpdateScreenDependencies(
-      firmwareVersionService: firmwareVersionService,
+      firmwareVersionService: acquisition ?? firmwareVersionService,
+      ipadSession: native,
       flashToolManager: flashToolManager,
       flashToolBridge: flashToolBridge,
       pickLocalFirmwareFile: source == _FirmwareSource.local
@@ -285,6 +290,8 @@ Future<void> _pumpConnectionScreen(
   WidgetTester tester,
   _FirmwareEntryHarness harness, {
   required _FirmwareSource source,
+  ControlledIpadSession? native,
+  FirmwareVersionService? acquisition,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(1200, 900);
@@ -298,7 +305,11 @@ Future<void> _pumpConnectionScreen(
       home: BlocProvider<DistingCubit>.value(
         value: harness.distingCubit,
         child: DistingPage(
-          firmwareUpdateDependencies: harness.dependencies(source: source),
+          firmwareUpdateDependencies: harness.dependencies(
+            source: source,
+            native: native,
+            acquisition: acquisition,
+          ),
         ),
       ),
     ),
@@ -391,6 +402,142 @@ void main() {
       ),
     );
   });
+
+  testWidgets(
+    'Firmware entry uses native prepared consent and completes once only on fresh application MIDI reply',
+    (tester) async {
+      final harness = await _FirmwareEntryHarness.create(
+        selectCompletePair: true,
+      );
+      McpServerService.initialize(distingCubit: harness.distingCubit);
+      final presets = _MockPresetsDao();
+      when(() => harness.database.presetsDao).thenReturn(presets);
+      when(() => presets.getTemplates()).thenAnswer((_) async => []);
+      final native = ControlledIpadSession();
+      final acquisition = IpadPackageAcquisition();
+      addTearDown(native.dispose);
+      addTearDown(acquisition.dispose);
+      final incoming = StreamController<MidiPacket>.broadcast();
+      addTearDown(incoming.close);
+      when(
+        () => harness.midiCommand.onMidiPacketReceived,
+      ).thenAnswer((_) => incoming.stream);
+      when(
+        () => harness.midiCommand.connectToDevice(any()),
+      ).thenAnswer((_) async {});
+      var versionRequests = 0, bootloaderRequests = 0;
+      when(
+        () => harness.midiCommand.sendData(
+          any(),
+          deviceId: any(named: 'deviceId'),
+        ),
+      ).thenAnswer((call) {
+        final packet = call.positionalArguments[0] as Uint8List;
+        if (packet[6] == 0x22) versionRequests++;
+        if (packet[6] == 0x7F && packet[7] == 0x7F) bootloaderRequests++;
+      });
+      final manager = _TrackingMidiManager(
+        midiCommand: harness.midiCommand,
+        inputDevice: harness.initialInput,
+        outputDevice: harness.initialOutput,
+        sysExId: 17,
+      );
+      harness.distingCubit.emit(
+        DistingState.synchronized(
+          disting: manager,
+          distingVersion: '1.18.0',
+          firmwareVersion: FirmwareVersion('1.18.0'),
+          presetName: 'Patch',
+          algorithms: const [],
+          slots: const [],
+          unitStrings: const [],
+          inputDevice: harness.initialInput,
+          outputDevice: harness.initialOutput,
+        ),
+      );
+      await _pumpConnectionScreen(
+        tester,
+        harness,
+        source: _FirmwareSource.downloaded,
+        native: native,
+        acquisition: acquisition,
+      );
+      await tester.tap(find.byTooltip('Show menu').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Firmware'));
+      await tester.pumpAndSettle();
+      expect(find.text('Local Zip File'), findsNothing);
+      await tester.tap(find.widgetWithText(FilledButton, 'Install'));
+      await tester.pumpAndSettle();
+      expect(native.starts, 0);
+      await tester.tap(find.widgetWithText(FilledButton, 'Update Firmware'));
+      await tester.pumpAndSettle();
+      expect(find.text('Install 1.19.0?'), findsOneWidget);
+      expect(native.prepares, 0);
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      expect(bootloaderRequests, 0);
+      await tester.tap(find.widgetWithText(FilledButton, 'Update Firmware'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Erase and install 1.19.0'));
+      await tester.pump();
+      expect(native.starts, 1);
+      expect(native.loader, acquisition.prepared!.loader);
+      expect(native.application, acquisition.prepared!.application);
+      expect(bootloaderRequests, 1);
+      expect(manager.disposals, 1);
+      final updater = tester
+          .element(find.byType(FirmwareUpdateStateContent))
+          .read<FirmwareUpdateCubit>();
+      final states = <FirmwareUpdateState>[];
+      final subscription = updater.stream.listen(states.add);
+      addTearDown(subscription.cancel);
+      // Ports and an unsolicited old reply cannot satisfy a future fresh request.
+      void reply() => incoming.add(
+        MidiPacket(
+          Uint8List.fromList([
+            0xF0,
+            0,
+            0x21,
+            0x27,
+            0x6D,
+            17,
+            0x32,
+            ...'1.19.0'.codeUnits,
+            0,
+            0xF7,
+          ]),
+          0,
+          harness.returnedInput,
+        ),
+      );
+      reply();
+      native.finish();
+      await tester.pump();
+      expect(find.text('Verifying application version'), findsOneWidget);
+      expect(harness.distingCubit.firmwareCompletionCalls, 0);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(versionRequests, 1);
+      expect(harness.distingCubit.firmwareCompletionCalls, 0);
+      expect(harness.distingCubit.firmwareManagerCreations, 1);
+      reply();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
+      expect(harness.distingCubit.firmwareCompletionCalls, 1);
+      expect(states.whereType<FirmwareUpdateStateSuccess>(), hasLength(1));
+      expect(find.byType(FirmwareUpdateScreen), findsNothing);
+      expect(native.starts, 1);
+      verify(
+        () => harness.midiCommand.connectToDevice(harness.returnedInput),
+      ).called(1);
+      verify(
+        () => harness.midiCommand.connectToDevice(harness.returnedOutput),
+      ).called(1);
+      verifyNever(() => harness.flashToolBridge.flash(any()));
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   for (final entry in ['bottom details', 'Firmware menu']) {
     testWidgets(
@@ -571,7 +718,8 @@ void main() {
         await tester.pump(const Duration(milliseconds: 200));
         debugDefaultTargetPlatformOverride = null;
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
   }
 
   for (final inputOnly in [true, false]) {

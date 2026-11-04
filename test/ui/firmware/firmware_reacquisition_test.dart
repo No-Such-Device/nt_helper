@@ -11,6 +11,9 @@ import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/cubit/firmware_update_cubit.dart';
 import 'package:nt_helper/cubit/firmware_update_state.dart';
+import 'package:nt_helper/domain/i_disting_midi_manager.dart';
+import 'package:nt_helper/models/firmware_version.dart';
+import '../../test_helpers/ipad_firmware.dart';
 import 'package:nt_helper/db/daos/metadata_dao.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/models/firmware_release.dart';
@@ -25,6 +28,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../test_helpers/mock_midi_command.dart';
 
 import '../../test_helpers/firmware_usb_access.dart';
+
+class _MockFirmwareMidi extends Mock implements IDistingMidiManager {}
 
 class _MockFirmwareUpdateCubit extends MockCubit<FirmwareUpdateState>
     implements FirmwareUpdateCubit {}
@@ -188,6 +193,7 @@ void main() {
 
   setUp(() {
     firmwareCubit = _MockFirmwareUpdateCubit();
+    when(() => firmwareCubit.isNative).thenReturn(false);
   });
 
   tearDown(() {
@@ -206,6 +212,81 @@ void main() {
       ),
     );
   }
+
+  testWidgets(
+    'native version timeout and late reply stay unverified until a nonflashing fresh recheck',
+    (tester) async {
+      final acquisition = IpadPackageAcquisition();
+      final native = ControlledIpadSession();
+      final midi = _MockFirmwareMidi();
+      when(() => midi.requestEnterBootloader()).thenAnswer((_) async {});
+      var version = Completer<String?>();
+      var probes = 0;
+      final cubit = FirmwareUpdateCubit(
+        firmwareVersionService: acquisition,
+        flashToolManager: _MockFlashToolManager(),
+        flashToolBridge: _MockFlashToolBridge(),
+        currentVersion: '1.18.0',
+        firmwareVersion: FirmwareVersion('1.18.0'),
+        isDemo: false,
+        isOffline: false,
+        midiManager: midi,
+        ipadSession: native,
+        midiPollInterval: const Duration(seconds: 1),
+        midiPollAttempts: 1,
+        probeFreshVersion: () {
+          probes++;
+          return version.future;
+        },
+      );
+      addTearDown(cubit.close);
+      addTearDown(native.dispose);
+      addTearDown(acquisition.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider.value(
+            value: cubit,
+            child: Scaffold(
+              body: BlocBuilder<FirmwareUpdateCubit, FirmwareUpdateState>(
+                builder: (context, state) =>
+                    FirmwareUpdateStateContent(state: state),
+              ),
+            ),
+          ),
+        ),
+      );
+      await cubit.loadAvailableVersions();
+      await cubit.startUpdate(ipadRelease);
+      unawaited(cubit.confirmAndFlash());
+      await tester.pump();
+      native.finish();
+      await tester.pump();
+      await tester.pump();
+      expect(cubit.state, isA<FirmwareUpdateStateVerifyingMidi>());
+      await tester.pump(const Duration(seconds: 1));
+      expect(probes, 1);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
+      expect(
+        find.textContaining('Application version request timed out'),
+        findsOneWidget,
+      );
+      version.complete('1.19.0');
+      await tester.pump();
+      expect(cubit.state, isA<FirmwareUpdateStateMidiRecoveryRequired>());
+      version = Completer<String?>();
+      await tester.tap(find.text('Recheck version only'));
+      await tester.pump(const Duration(seconds: 1));
+      expect(probes, 2);
+      version.complete('1.19.0');
+      await tester.pump();
+      await tester.pump();
+      expect(cubit.state, isA<FirmwareUpdateStateSuccess>());
+      expect(native.starts, 1);
+      verify(() => midi.requestEnterBootloader()).called(1);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets('shows the shared waiting state after firmware completes', (
     tester,
@@ -429,7 +510,8 @@ void main() {
       expect(find.text('Open Firmware'), findsOneWidget);
       expect(find.text('Firmware Installed'), findsNothing);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets('successful reacquisition refreshes and closes the route', (
     tester,
