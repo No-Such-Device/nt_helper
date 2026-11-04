@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+python3 ios/InitialSdpDriverTests/scene_configuration_test.py
 build_dir="$(mktemp -d)"
 trap 'rm -rf "$build_dir"' EXIT
 xcrun clang++ -std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined \

@@ -1249,25 +1249,31 @@ void main() {
         );
       }
 
-      test('continues after enumeration exceptions and times out', () async {
-        var checks = 0;
-        final cubit = await launchSuccessfulFlash(
-          checkMidiDevices: () async {
-            checks++;
-            throw StateError('enumeration failed');
-          },
-          attempts: 4,
-          isWindows: true,
-        );
-        addTearDown(cubit.close);
+      test(
+        'continues after enumeration exceptions and times out',
+        () async {
+          var checks = 0;
+          final cubit = await launchSuccessfulFlash(
+            checkMidiDevices: () async {
+              checks++;
+              throw StateError('enumeration failed');
+            },
+            attempts: 4,
+            isWindows: true,
+          );
+          addTearDown(cubit.close);
 
-        final recovery =
-            await waitForState<FirmwareUpdateStateMidiRecoveryRequired>(cubit);
+          final recovery =
+              await waitForState<FirmwareUpdateStateMidiRecoveryRequired>(
+                cubit,
+              );
 
-        expect(checks, 4);
-        expect(recovery.isWindows, isTrue);
-        expect(recovery.newVersion, '1.16.0');
-      }, tags: ['regression']);
+          expect(checks, 4);
+          expect(recovery.isWindows, isTrue);
+          expect(recovery.newVersion, '1.16.0');
+        },
+        tags: ['regression'],
+      );
 
       test('Check Again repeats the full cycle and exits on success', () async {
         var checks = 0;
@@ -1471,37 +1477,41 @@ void main() {
         tags: ['regression'],
       );
 
-      test('late acquisition cannot replace a current retry manager', () async {
-        final late = MockDistingMidiManager();
-        final current = MockDistingMidiManager();
-        final acquisition = Completer<IDistingMidiManager>();
-        final command = Completer<void>();
-        when(
-          () => current.requestEnterBootloader(),
-        ).thenAnswer((_) => command.future);
-        final released = <IDistingMidiManager>[];
-        var attempts = 0;
-        final cubit = createCubit(
-          firmwareVersion: FirmwareVersion('1.15.0'),
-          createMidiManager: () =>
-              ++attempts == 1 ? acquisition.future : Future.value(current),
-          disposeMidiManager: released.add,
-        );
-        await cubit.startUpdate(release);
-        final oldOperation = cubit.confirmAndFlash();
-        await cubit.cancel();
-        await cubit.startUpdate(release);
-        final retry = cubit.confirmAndFlash();
-        await Future<void>.delayed(Duration.zero);
-        acquisition.complete(late);
-        await oldOperation;
-        expect(released, [late]);
-        verifyNever(() => late.requestEnterBootloader());
-        await cubit.close();
-        command.complete();
-        await retry;
-        expect(released, [late, current]);
-      }, tags: ['regression']);
+      test(
+        'late acquisition cannot replace a current retry manager',
+        () async {
+          final late = MockDistingMidiManager();
+          final current = MockDistingMidiManager();
+          final acquisition = Completer<IDistingMidiManager>();
+          final command = Completer<void>();
+          when(
+            () => current.requestEnterBootloader(),
+          ).thenAnswer((_) => command.future);
+          final released = <IDistingMidiManager>[];
+          var attempts = 0;
+          final cubit = createCubit(
+            firmwareVersion: FirmwareVersion('1.15.0'),
+            createMidiManager: () =>
+                ++attempts == 1 ? acquisition.future : Future.value(current),
+            disposeMidiManager: released.add,
+          );
+          await cubit.startUpdate(release);
+          final oldOperation = cubit.confirmAndFlash();
+          await cubit.cancel();
+          await cubit.startUpdate(release);
+          final retry = cubit.confirmAndFlash();
+          await Future<void>.delayed(Duration.zero);
+          acquisition.complete(late);
+          await oldOperation;
+          expect(released, [late]);
+          verifyNever(() => late.requestEnterBootloader());
+          await cubit.close();
+          command.complete();
+          await retry;
+          expect(released, [late, current]);
+        },
+        tags: ['regression'],
+      );
 
       test(
         'close during tool preparation neither launches nor consumes borrowed transport',

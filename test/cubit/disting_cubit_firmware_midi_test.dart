@@ -202,23 +202,27 @@ void main() {
     },
   );
 
-  test('releases input and output independently and retains MidiCommand', () {
-    final input = device('input', 'Disting NT', MidiPortType.IN);
-    final output = device('output', 'Disting NT', MidiPortType.OUT);
-    final manager = _MockDistingMidiManager();
-    when(
-      () => midiCommand.disconnectDevice(input),
-    ).thenThrow(StateError('input already gone'));
-    when(() => midiCommand.disconnectDevice(output)).thenAnswer((_) {});
-    when(() => manager.dispose()).thenAnswer((_) {});
+  test(
+    'releases input and output independently and retains MidiCommand',
+    () {
+      final input = device('input', 'Disting NT', MidiPortType.IN);
+      final output = device('output', 'Disting NT', MidiPortType.OUT);
+      final manager = _MockDistingMidiManager();
+      when(
+        () => midiCommand.disconnectDevice(input),
+      ).thenThrow(StateError('input already gone'));
+      when(() => midiCommand.disconnectDevice(output)).thenAnswer((_) {});
+      when(() => manager.dispose()).thenAnswer((_) {});
 
-    cubit.disposeFirmwareMidiManager(manager, input, output);
+      cubit.disposeFirmwareMidiManager(manager, input, output);
 
-    verify(() => midiCommand.disconnectDevice(input)).called(1);
-    verify(() => midiCommand.disconnectDevice(output)).called(1);
-    verify(() => manager.dispose()).called(1);
-    verifyNever(() => midiCommand.dispose());
-  }, tags: ['regression']);
+      verify(() => midiCommand.disconnectDevice(input)).called(1);
+      verify(() => midiCommand.disconnectDevice(output)).called(1);
+      verify(() => manager.dispose()).called(1);
+      verifyNever(() => midiCommand.dispose());
+    },
+    tags: ['regression'],
+  );
 
   test(
     'duplex endpoint is disconnected only once during deliberate handoff',
@@ -321,47 +325,51 @@ void main() {
     },
   );
 
-  test('firmware handoff stops polling the disposed pre-flash manager', () {
-    final input = device('input', 'Disting NT', MidiPortType.IN);
-    final output = device('output', 'Disting NT', MidiPortType.OUT);
-    final manager = _MockDistingMidiManager();
-    when(() => manager.requestWake()).thenAnswer((_) async {});
-    when(
-      () => manager.requestCpuUsage(),
-    ).thenAnswer((_) async => CpuUsage(cpu1: 1, cpu2: 2, slotUsages: const []));
-    when(() => manager.dispose()).thenAnswer((_) {});
-    when(() => midiCommand.disconnectDevice(input)).thenAnswer((_) {});
-    when(() => midiCommand.disconnectDevice(output)).thenAnswer((_) {});
-    cubit.emit(
-      DistingState.synchronized(
-        disting: manager,
-        distingVersion: '1.16.0',
-        firmwareVersion: FirmwareVersion('1.16.0'),
-        presetName: 'Test',
-        algorithms: const [],
-        slots: const [],
-        unitStrings: const [],
-        inputDevice: input,
-        outputDevice: output,
-      ),
-    );
+  test(
+    'firmware handoff stops polling the disposed pre-flash manager',
+    () {
+      final input = device('input', 'Disting NT', MidiPortType.IN);
+      final output = device('output', 'Disting NT', MidiPortType.OUT);
+      final manager = _MockDistingMidiManager();
+      when(() => manager.requestWake()).thenAnswer((_) async {});
+      when(() => manager.requestCpuUsage()).thenAnswer(
+        (_) async => CpuUsage(cpu1: 1, cpu2: 2, slotUsages: const []),
+      );
+      when(() => manager.dispose()).thenAnswer((_) {});
+      when(() => midiCommand.disconnectDevice(input)).thenAnswer((_) {});
+      when(() => midiCommand.disconnectDevice(output)).thenAnswer((_) {});
+      cubit.emit(
+        DistingState.synchronized(
+          disting: manager,
+          distingVersion: '1.16.0',
+          firmwareVersion: FirmwareVersion('1.16.0'),
+          presetName: 'Test',
+          algorithms: const [],
+          slots: const [],
+          unitStrings: const [],
+          inputDevice: input,
+          outputDevice: output,
+        ),
+      );
 
-    fakeAsync((async) {
-      final subscription = cubit.cpuUsageStream.listen((_) {});
-      async.flushMicrotasks();
-      verify(() => manager.requestCpuUsage()).called(1);
-      clearInteractions(manager);
+      fakeAsync((async) {
+        final subscription = cubit.cpuUsageStream.listen((_) {});
+        async.flushMicrotasks();
+        verify(() => manager.requestCpuUsage()).called(1);
+        clearInteractions(manager);
 
-      cubit.disposeFirmwareMidiManager(manager, input, output);
-      clearInteractions(manager);
-      async.elapse(const Duration(seconds: 10));
-      async.flushMicrotasks();
+        cubit.disposeFirmwareMidiManager(manager, input, output);
+        clearInteractions(manager);
+        async.elapse(const Duration(seconds: 10));
+        async.flushMicrotasks();
 
-      verifyNever(() => manager.requestWake());
-      verifyNever(() => manager.requestCpuUsage());
-      subscription.cancel();
-    });
-  }, tags: ['regression']);
+        verifyNever(() => manager.requestWake());
+        verifyNever(() => manager.requestCpuUsage());
+        subscription.cancel();
+      });
+    },
+    tags: ['regression'],
+  );
 
   test(
     'uses a fresh snapshot and refreshes device selection on completion',
@@ -518,38 +526,42 @@ void main() {
     tags: ['regression'],
   );
 
-  test('manual MIDI selection survives an explicit device refresh', () async {
-    final input = device('input', 'Forever', MidiPortType.IN);
-    final output = device('output', 'Forever', MidiPortType.OUT);
-    final refreshedInput = device('input', 'Forever', MidiPortType.IN);
-    final refreshedOutput = device('output', 'Forever', MidiPortType.OUT);
-    var snapshot = 0;
-    when(() => midiCommand.devices).thenAnswer((_) async {
-      snapshot++;
-      return snapshot == 1
-          ? [input, output]
-          : [refreshedInput, refreshedOutput];
-    });
-    when(() => midiCommand.onMidiSetupChanged).thenReturn(null);
+  test(
+    'manual MIDI selection survives an explicit device refresh',
+    () async {
+      final input = device('input', 'Forever', MidiPortType.IN);
+      final output = device('output', 'Forever', MidiPortType.OUT);
+      final refreshedInput = device('input', 'Forever', MidiPortType.IN);
+      final refreshedOutput = device('output', 'Forever', MidiPortType.OUT);
+      var snapshot = 0;
+      when(() => midiCommand.devices).thenAnswer((_) async {
+        snapshot++;
+        return snapshot == 1
+            ? [input, output]
+            : [refreshedInput, refreshedOutput];
+      });
+      when(() => midiCommand.onMidiSetupChanged).thenReturn(null);
 
-    await cubit.initialize();
-    cubit.updateDeviceSelection(
-      inputDevice: input,
-      outputDevice: output,
-      sysExId: 7,
-    );
+      await cubit.initialize();
+      cubit.updateDeviceSelection(
+        inputDevice: input,
+        outputDevice: output,
+        sysExId: 7,
+      );
 
-    await cubit.loadDevices();
+      await cubit.loadDevices();
 
-    final state = cubit.state as DistingStateSelectDevice;
-    expect(state.selectedInputDevice, same(refreshedInput));
-    expect(state.selectedOutputDevice, same(refreshedOutput));
-    expect(state.selectedSysExId, 7);
-    verifyNever(() => midiCommand.connectToDevice(input));
-    verifyNever(() => midiCommand.connectToDevice(output));
-    verifyNever(() => midiCommand.connectToDevice(refreshedInput));
-    verifyNever(() => midiCommand.connectToDevice(refreshedOutput));
-  }, tags: ['regression']);
+      final state = cubit.state as DistingStateSelectDevice;
+      expect(state.selectedInputDevice, same(refreshedInput));
+      expect(state.selectedOutputDevice, same(refreshedOutput));
+      expect(state.selectedSysExId, 7);
+      verifyNever(() => midiCommand.connectToDevice(input));
+      verifyNever(() => midiCommand.connectToDevice(output));
+      verifyNever(() => midiCommand.connectToDevice(refreshedInput));
+      verifyNever(() => midiCommand.connectToDevice(refreshedOutput));
+    },
+    tags: ['regression'],
+  );
 
   test('selection made during refresh survives its completion', () async {
     final input = device('input', 'Forever', MidiPortType.IN);
