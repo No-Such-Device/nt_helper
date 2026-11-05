@@ -18,7 +18,9 @@ struct FirmwareSessionDriver_IVars {
     IOUSBHostDevice *device;
     IOUSBHostInterface *interface;
     IOUSBHostPipe *input;
+    IOUSBHostPipe *output;
     uint8_t interfaceNumber;
+    uint32_t inputPacketSize;
     bool stopped;
     bool connected;
     FirmwareSession::Programmer programmer{true};
@@ -63,7 +65,7 @@ kern_return_t FirmwareSessionDriver::Start_Impl(IOService *provider) {
     device->retain();
     ivars->device = device;
     // Properties are published only after checking the actual device descriptor.
-    auto properties = OSDictionary::withCapacity(2);
+    auto properties = OSDictionary::withCapacity(3);
     auto vid = OSNumber::withNumber(ivars->vid, 32);
     auto pid = OSNumber::withNumber(ivars->pid, 32);
     if (!properties || !vid || !pid) {
@@ -72,6 +74,13 @@ kern_return_t FirmwareSessionDriver::Start_Impl(IOService *provider) {
     }
     properties->setObject("NTFirmwareVendorID", vid);
     properties->setObject("NTFirmwareProductID", pid);
+    auto revision = OSNumber::withNumber(FirmwareSession::driverRevision, 32);
+    if (!revision) {
+        properties->release(); vid->release(); pid->release();
+        return kIOReturnNoMemory;
+    }
+    properties->setObject("NTFirmwareDriverRevision", revision);
+    revision->release();
     ret = SetProperties(properties);
     properties->release(); vid->release(); pid->release();
     if (ret != kIOReturnSuccess) return ret;
@@ -97,12 +106,30 @@ kern_return_t FirmwareSessionDriver::NewUserClient_Impl(uint32_t type, IOUserCli
 // Called under the lock, including all partial-setup error paths.
 static void closeUsb(FirmwareSessionDriver_IVars *v, IOService *owner) {
     OSSafeReleaseNULL(v->input);
+    OSSafeReleaseNULL(v->output);
     if (v->interface) {
         v->interface->Close(owner, 0);
         OSSafeReleaseNULL(v->interface);
     }
     if (v->connected) v->device->Close(owner, 0);
     v->connected = false;
+}
+kern_return_t FirmwareSessionDriver::Identity(uint64_t *vendor, uint64_t *product, uint64_t *location) {
+    IOLockLock(ivars->lock);
+    if (ivars->stopped || !ivars->device) {
+        IOLockUnlock(ivars->lock);
+        return kIOReturnNotAttached;
+    }
+    *vendor = ivars->vid; *product = ivars->pid; *location = 0;
+    OSDictionary *properties = nullptr;
+    auto result = ivars->device->CopyProperties(&properties);
+    if (result == kIOReturnSuccess && properties) {
+        auto number = OSDynamicCast(OSNumber, properties->getObject("locationID"));
+        if (number) *location = number->unsigned64BitValue();
+    }
+    OSSafeReleaseNULL(properties);
+    IOLockUnlock(ivars->lock);
+    return result;
 }
 kern_return_t FirmwareSessionDriver::Connect() {
     IOLockLock(ivars->lock);
@@ -139,7 +166,19 @@ kern_return_t FirmwareSessionDriver::Connect() {
                             ivars->interface = candidate;
                             candidate = nullptr;
                             ivars->interfaceNumber = descriptor->bInterfaceNumber;
+                            ivars->inputPacketSize = endpoint->wMaxPacketSize & 0x7ff;
                             ret = ivars->interface->CopyPipe(endpoint->bEndpointAddress, &ivars->input);
+                            if (ret == kIOReturnSuccess && ivars->vid == 0x15a2) {
+                                const IOUSBEndpointDescriptor *out = nullptr;
+                                while ((out = IOUSBGetNextEndpointDescriptor(config, descriptor,
+                                           reinterpret_cast<const IOUSBDescriptorHeader *>(out)))) {
+                                    if (!(out->bEndpointAddress & 0x80) && (out->bmAttributes & 3) == 3) {
+                                        ret = ivars->interface->CopyPipe(out->bEndpointAddress, &ivars->output);
+                                        break;
+                                    }
+                                }
+                                if (!ivars->output && ret == kIOReturnSuccess) ret = kIOReturnNotFound;
+                            }
                         }
                         break;
                     }
@@ -150,7 +189,10 @@ kern_return_t FirmwareSessionDriver::Connect() {
             if (ivars->interface) break;
         }
         ivars->device->DestroyInterfaceIterator(iterator);
-        if (!ivars->input) { if (ret == kIOReturnSuccess) ret = kIOReturnNotFound; goto failed; }
+        if (ret != kIOReturnSuccess || !ivars->input || (ivars->vid == 0x15a2 && !ivars->output)) {
+            if (ret == kIOReturnSuccess) ret = kIOReturnNotFound;
+            goto failed;
+        }
     }
     ret = kIOReturnSuccess;
     goto done;
@@ -178,8 +220,10 @@ void FirmwareSessionDriver::ReadComplete_Impl(OSAction *action, IOReturn status,
     context->result.complete(status, actualByteCount);
     OSSafeReleaseNULL(context->buffer);
     if (!context->result.expired) ivars->readQueue->Wakeup(action);
+    // Balance the submission retain, even for a completion after timeout.
+    action->release();
 }
-kern_return_t FirmwareSessionDriver::ReadInterrupt(IOBufferMemoryDescriptor *buffer,
+kern_return_t FirmwareSessionDriver::TransferInterrupt(IOUSBHostPipe *pipe, IOBufferMemoryDescriptor *buffer,
     uint32_t capacity, uint32_t *transferred, uint32_t timeout) {
     OSAction *action = nullptr;
     auto ret = CreateActionReadComplete(sizeof(InterruptReadContext), &action);
@@ -188,10 +232,14 @@ kern_return_t FirmwareSessionDriver::ReadInterrupt(IOBufferMemoryDescriptor *buf
     *context = {};
     buffer->retain();
     context->buffer = buffer;
+    // The caller may return on timeout before USB delivers its abort callback.
+    // Keep the local action/reference alive until that callback, not just until
+    // the synchronous waiter returns.
+    action->retain();
     ret = ivars->readQueue->RunAction(^kern_return_t {
         const uint64_t deadline = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) +
             uint64_t(timeout) * 1000000;
-        const auto result = InitialSdp::submitRead(ivars->input, buffer, capacity,
+        const auto result = InitialSdp::submitRead(pipe, buffer, capacity,
             transferred, action, context->result, [&]() -> int {
                 while (!context->result.done) {
                     auto waited = ivars->readQueue->SleepWithDeadline(action,
@@ -203,8 +251,10 @@ kern_return_t FirmwareSessionDriver::ReadInterrupt(IOBufferMemoryDescriptor *buf
             }, kIOReturnAborted);
         // A rejected submission has no callback. Accepted transfers retain the
         // buffer until ReadComplete, even after abort/timeout or unplug.
-        if (!context->result.done && !context->result.expired)
+        if (!context->result.done && !context->result.expired) {
             OSSafeReleaseNULL(context->buffer);
+            action->release(); // Rejected AsyncIO: no callback will balance it.
+        }
         return result;
     });
     action->release();
@@ -231,14 +281,27 @@ kern_return_t FirmwareSessionDriver::Execute(uint64_t selector, uint64_t length,
             if (c->error == kIOReturnSuccess) c->error = buffer->GetAddressRange(&range);
             if (c->error == kIOReturnSuccess) {
                 memcpy(reinterpret_cast<void *>(range.address), report, size);
-                c->error = FirmwareSession::submitOutput(c->v->device, c->owner,
-                    c->v->interfaceNumber, report[0], uint16_t(size), buffer, timeout);
+                c->error = FirmwareSession::submitReport(c->v->vid, c->v->pid,
+                    [&]() -> int {
+                        return FirmwareSession::submitOutput(c->v->device, c->owner,
+                            c->v->interfaceNumber, report[0], uint16_t(size), buffer, timeout);
+                    },
+                    [&]() -> int {
+                        uint32_t transferred = 0;
+                        auto status = c->owner->TransferInterrupt(c->v->output, buffer,
+                            uint32_t(size), &transferred, timeout);
+                        return status != kIOReturnSuccess ? status :
+                            transferred == size ? kIOReturnSuccess : kIOReturnUnderrun;
+                    });
             }
             buffer->release();
             return c->error != kIOReturnSuccess;
         },
         [](void *opaque, uint8_t *report, size_t capacity, size_t *size, uint32_t timeout) -> int {
             auto c = static_cast<Context *>(opaque);
+            const auto requestSize = FirmwareSession::inputRequestSize(c->v->vid == 0x1fc9,
+                uint32_t(capacity), c->v->inputPacketSize);
+            if (!requestSize) { c->error = kIOReturnBadArgument; return 1; }
             IOBufferMemoryDescriptor *buffer = nullptr;
             c->error = IOBufferMemoryDescriptor::Create(kIOMemoryDirectionIn, capacity, 0, &buffer);
             if (c->error != kIOReturnSuccess) return 1;
@@ -247,7 +310,7 @@ kern_return_t FirmwareSessionDriver::Execute(uint64_t selector, uint64_t length,
             if (c->error == kIOReturnSuccess) c->error = buffer->GetAddressRange(&range);
             uint32_t transferred = 0;
             if (c->error == kIOReturnSuccess)
-                c->error = c->owner->ReadInterrupt(buffer, uint32_t(capacity), &transferred, timeout);
+                c->error = c->owner->TransferInterrupt(c->v->input, buffer, requestSize, &transferred, timeout);
             if (c->error == kIOReturnSuccess && transferred <= capacity) {
                 memcpy(report, reinterpret_cast<void *>(range.address), transferred);
                 *size = transferred;

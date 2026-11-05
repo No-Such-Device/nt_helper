@@ -50,13 +50,19 @@ class _ConnectionDelegate {
     List<MidiDevice> devices,
     MidiDevice? previousSelection,
   ) {
-    if (previousSelection == null) return null;
-    return devices
-            .where((device) => device.id == previousSelection.id)
-            .firstOrNull ??
-        devices
-            .where((device) => device.name == previousSelection.name)
-            .firstOrNull;
+    if (previousSelection != null) {
+      final retained =
+          devices
+              .where((device) => device.id == previousSelection.id)
+              .firstOrNull ??
+          devices
+              .where((device) => device.name == previousSelection.name)
+              .firstOrNull;
+      if (retained != null) return retained;
+    }
+    // Suggest only an unambiguous endpoint, irrespective of module name.
+    // Selection does not open MIDI or initiate synchronization.
+    return devices.length == 1 ? devices.single : null;
   }
 
   void updateDeviceSelection({
@@ -123,8 +129,14 @@ class _ConnectionDelegate {
         inputDevices: devices['input'] ?? [],
         outputDevices: devices['output'] ?? [],
         canWorkOffline: canWorkOffline,
-        selectedInputDevice: savedPairAvailable ? savedInputDevice : null,
-        selectedOutputDevice: savedPairAvailable ? savedOutputDevice : null,
+        selectedInputDevice: _resolveSelection(
+          devices['input'] ?? [],
+          savedInputDevice,
+        ),
+        selectedOutputDevice: _resolveSelection(
+          devices['output'] ?? [],
+          savedOutputDevice,
+        ),
         selectedSysExId: savedPairAvailable ? savedSysExId : 0,
       ),
     );
@@ -169,15 +181,14 @@ class _ConnectionDelegate {
           : previousState is DistingStateSelectDevice
           ? previousState
           : null;
-      final selectedInputDevice = selectionState == null
-          ? null
-          : _resolveSelection(inputDevices, selectionState.selectedInputDevice);
-      final selectedOutputDevice = selectionState == null
-          ? null
-          : _resolveSelection(
-              outputDevices,
-              selectionState.selectedOutputDevice,
-            );
+      final selectedInputDevice = _resolveSelection(
+        inputDevices,
+        selectionState?.selectedInputDevice,
+      );
+      final selectedOutputDevice = _resolveSelection(
+        outputDevices,
+        selectionState?.selectedOutputDevice,
+      );
 
       // Transition to the select device state, retaining each still-valid
       // manual choice across explicit and MIDI-triggered refreshes.

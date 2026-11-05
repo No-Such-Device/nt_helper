@@ -18,6 +18,7 @@ import 'package:nt_helper/models/flash_stage.dart';
 import 'package:nt_helper/services/firmware_version_service.dart';
 import 'package:nt_helper/services/flash_tool_bridge.dart';
 import 'package:nt_helper/services/flash_tool_manager.dart';
+import 'package:nt_helper/services/firmware_update_provider.dart';
 import 'package:nt_helper/ui/firmware/firmware_error_widget.dart';
 import 'package:nt_helper/ui/firmware/firmware_flow_diagram.dart';
 import 'package:path/path.dart' as path;
@@ -112,6 +113,16 @@ class FirmwareUpdateScreen extends StatelessWidget {
         dependencies?.flashToolBridge ??
         FlashToolBridge(toolManager: flashToolManager);
 
+    final provider = native
+        ? IpadFirmwareUpdateProvider(
+            session:
+                dependencies?.ipadSession ?? MethodChannelIpadFirmwareSession(),
+          )
+        : DesktopFirmwareUpdateProvider(
+            toolManager: flashToolManager,
+            bridge: flashToolBridge,
+          );
+
     final firmwareVersion = currentVersionOverride != null
         ? FirmwareVersion(currentVersionOverride!)
         : syncState?.firmwareVersion;
@@ -132,17 +143,18 @@ class FirmwareUpdateScreen extends StatelessWidget {
           firmwareVersionService: firmwareVersionService,
           flashToolManager: flashToolManager,
           flashToolBridge: flashToolBridge,
+          provider: provider,
           currentVersion: currentVersion,
           isDemo: isDemo,
-          isOffline: isOffline || (native && syncState == null),
-          ipadSession: native
-              ? (dependencies?.ipadSession ??
-                    MethodChannelIpadFirmwareSession())
-              : null,
-          probeFreshVersion: native
+          isOffline: isOffline,
+          recoverAttachedBootloader: native && syncState == null,
+          probeFreshVersion:
+              native &&
+                  selectedInputDevice != null &&
+                  selectedOutputDevice != null
               ? () => distingCubit.probeFreshFirmwareVersion(
-                  selectedInputDevice?.name,
-                  selectedOutputDevice?.name,
+                  selectedInputDevice.name,
+                  selectedOutputDevice.name,
                   selectedSysExId,
                 )
               : null,
@@ -377,8 +389,7 @@ class _FirmwareUpdateScaffold extends StatelessWidget {
     FirmwareUpdateState state,
   ) {
     // Only show local file action on initial state
-    if (state is FirmwareUpdateStateInitial &&
-        !context.read<FirmwareUpdateCubit>().isNative) {
+    if (state is FirmwareUpdateStateInitial) {
       return [
         TextButton.icon(
           onPressed: () => _selectLocalFile(context),
@@ -451,14 +462,6 @@ class FirmwareUpdateStateContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<FirmwareUpdateCubit>();
-    if (cubit.isNative &&
-        (state is FirmwareUpdateStateFlashing ||
-            state is FirmwareUpdateStateVerifyingMidi ||
-            state is FirmwareUpdateStateMidiRecoveryRequired ||
-            state is FirmwareUpdateStateError)) {
-      return _IpadProgressView(state: state);
-    }
     return state.map(
       initial: (s) => _InitialStateView(state: s),
       downloading: (s) => _DownloadingStateView(state: s),
@@ -954,71 +957,29 @@ class _FlashingStateView extends StatelessWidget {
 
   const _FlashingStateView({required this.state});
 
-  /// Maps per-stage percent (0-100) into an overall percent (0-100)
-  /// so the progress bar always moves forward.
-  int _overallPercent(FlashProgress progress) {
-    // Stage weight ranges (start%, end%) within overall progress.
-    // Actual tool order: sdpConnect → blCheck → sdpUpload → configure → write → reset → complete
-    const stageRanges = {
-      FlashStage.sdpConnect: (0, 5),
-      FlashStage.blCheck: (5, 10),
-      FlashStage.sdpUpload: (10, 40),
-      FlashStage.configure: (40, 50),
-      FlashStage.write: (50, 95),
-      FlashStage.reset: (95, 100),
-      FlashStage.complete: (100, 100),
-    };
-    final (start, end) = stageRanges[progress.stage] ?? (0, 100);
-    return (start + (end - start) * progress.percent / 100).round();
-  }
-
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<FirmwareUpdateCubit>();
     final theme = Theme.of(context);
-    final overall = _overallPercent(state.progress);
+    final overall = cubit.overallPercent(state.progress);
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Animated flow diagram
-        SizedBox(
-          height: 150,
-          child: FirmwareFlowDiagram(progress: state.progress),
-        ),
-        const SizedBox(height: 32),
-
-        // Stage label
-        Text(
-          _getStageLabel(state.progress.stage.name),
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 16,
-          child: state.progress.message.isNotEmpty
-              ? Text(
-                  state.progress.message,
-                  style: theme.textTheme.bodySmall,
-                  textAlign: TextAlign.center,
-                )
-              : null,
-        ),
-        const SizedBox(height: 24),
-
-        // Progress bar
-        LinearProgressIndicator(value: overall / 100),
-        const SizedBox(height: 8),
-        Text('$overall%'),
-
-        const SizedBox(height: 32),
-
-        // Cancel button with confirmation
-        OutlinedButton(
-          onPressed: () => _confirmCancel(context, cubit),
-          child: const Text('Cancel'),
-        ),
-      ],
+    return _FirmwareProgressLayout(
+      progress: state.progress,
+      title: state.progress.stage == FlashStage.programmingComplete
+          ? 'Programming complete'
+          : _getStageLabel(state.progress.stage.name),
+      message: Text(
+        state.progress.message,
+        textAlign: TextAlign.center,
+        style: theme.textTheme.bodySmall,
+      ),
+      value: overall / 100,
+      action: OutlinedButton(
+        onPressed: state.progress.stage == FlashStage.programmingComplete
+            ? null
+            : () => _confirmCancel(context, cubit),
+        child: const Text('Cancel'),
+      ),
     );
   }
 
@@ -1081,30 +1042,31 @@ class _VerifyingMidiView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const SizedBox(
-          width: 64,
-          height: 64,
-          child: CircularProgressIndicator(),
-        ),
-        const SizedBox(height: 24),
-        Text('Waiting for Disting NT', style: theme.textTheme.headlineSmall),
-        const SizedBox(height: 8),
-        const Text(
-          'Firmware installation completed successfully. Waiting for the NT '
-          'MIDI input and output to return.',
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Check ${state.completedAttempts + 1} of ${state.totalAttempts}',
-          style: theme.textTheme.bodySmall,
-        ),
-      ],
+    return _FirmwareProgressLayout(
+      progress: const FlashProgress(
+        stage: FlashStage.programmingComplete,
+        percent: 100,
+        message: '',
+      ),
+      title: state.requiresVersion
+          ? 'Verifying application version'
+          : 'Waiting for Disting NT',
+      message: Column(
+        children: [
+          Text(
+            state.requiresVersion
+                ? 'Programming complete. Requesting a fresh application version for ${state.newVersion}.'
+                : 'Firmware installation completed successfully. Waiting for the NT MIDI input and output to return.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Check ${state.completedAttempts + 1} of ${state.totalAttempts}',
+          ),
+        ],
+      ),
+      value: null,
+      action: const OutlinedButton(onPressed: null, child: Text('Cancel')),
     );
   }
 }
@@ -1121,6 +1083,44 @@ class _MidiRecoveryView extends StatelessWidget {
     final cubit = context.read<FirmwareUpdateCubit>();
     final theme = Theme.of(context);
 
+    if (!state.isWindows) {
+      final needsPorts =
+          cubit.needsMidiPortSelection || state.newVersion == 'local';
+      return _FirmwareProgressLayout(
+        progress: const FlashProgress(
+          stage: FlashStage.programmingComplete,
+          percent: 100,
+          message: '',
+        ),
+        title: state.verificationMessage == null
+            ? 'Firmware Installed'
+            : 'Version not verified',
+        message: Text(
+          state.verificationMessage ??
+              'The firmware update completed successfully, but the Disting NT did not return to MIDI within one minute. Check the NT\'s USB connection and power, then power-cycle the NT. If it still does not appear, restart the computer.',
+          textAlign: TextAlign.center,
+        ),
+        value: 1,
+        action: FilledButton.icon(
+          onPressed: needsPorts
+              ? () async {
+                  await context.read<DistingCubit>().loadDevices();
+                  if (context.mounted) Navigator.of(context).pop();
+                }
+              : cubit.checkMidiAgain,
+          icon: Icon(
+            needsPorts ? Icons.settings_input_component : Icons.refresh,
+          ),
+          label: Text(
+            needsPorts
+                ? 'Select MIDI ports'
+                : cubit.requiresApplicationVersion
+                ? 'Recheck version only'
+                : 'Check Again',
+          ),
+        ),
+      );
+    }
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1216,121 +1216,81 @@ class _MidiRecoveryView extends StatelessWidget {
   }
 }
 
-/// All native progress and failure feedback occupies the same reserved slots.
-class _IpadProgressView extends StatelessWidget {
-  final FirmwareUpdateState state;
-  const _IpadProgressView({required this.state});
+/// Shared layout keeps the diagram, status, progress and actions stable across
+/// programming and MIDI verification, regardless of execution provider.
+class _FirmwareProgressLayout extends StatelessWidget {
+  final FlashProgress progress;
+  final String title;
+  final Widget message;
+  final double? value;
+  final Widget action;
+
+  const _FirmwareProgressLayout({
+    required this.progress,
+    required this.title,
+    required this.message,
+    required this.value,
+    required this.action,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    final cubit = context.read<FirmwareUpdateCubit>();
-    final flashing = state is FirmwareUpdateStateFlashing
-        ? state as FirmwareUpdateStateFlashing
-        : null;
-    final pending = state is FirmwareUpdateStateVerifyingMidi;
-    final unverified = state is FirmwareUpdateStateMidiRecoveryRequired
-        ? state as FirmwareUpdateStateMidiRecoveryRequired
-        : null;
-    final error = state is FirmwareUpdateStateError
-        ? state as FirmwareUpdateStateError
-        : null;
-    final written = flashing?.progress.stage == FlashStage.programmingComplete;
-    final title = error != null
-        ? 'Update not verified'
-        : unverified != null
-        ? 'Version not verified'
-        : pending
-        ? 'Verifying application version'
-        : written
-        ? 'Programming complete'
-        : 'Programming firmware';
-    final message =
-        error?.message ??
-        unverified?.verificationMessage ??
-        (pending
-            ? 'Programming complete. Requesting a fresh application version for ${cubit.preparedPackage?.version}.'
-            : flashing?.progress.message ?? '');
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Semantics(
-          header: true,
-          child: SizedBox(
-            height: 64,
-            child: Center(
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-            ),
-          ),
+  Widget build(BuildContext context) => Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      SizedBox(
+        height: 150,
+        child: TickerMode(
+          enabled:
+              !progress.isError &&
+              progress.stage != FlashStage.programmingComplete &&
+              progress.stage != FlashStage.complete,
+          child: FirmwareFlowDiagram(progress: progress),
         ),
-        SizedBox(
-          height: 140,
+      ),
+      const SizedBox(height: 32),
+      SizedBox(
+        height: 64,
+        child: Center(
           child: Semantics(
-            liveRegion: true,
-            child: SingleChildScrollView(
-              child: Text(message, textAlign: TextAlign.center),
+            header: true,
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
         ),
-        SizedBox(
-          height: 24,
-          child: Center(
-            child: LinearProgressIndicator(
-              semanticsLabel: title,
-              value: pending ? null : (flashing?.progress.percent ?? 0) / 100,
-            ),
-          ),
+      ),
+      SizedBox(
+        height: 100,
+        child: Semantics(
+          liveRegion: true,
+          child: SingleChildScrollView(child: message),
         ),
-        const SizedBox(height: 24),
-        SizedBox(
-          height: 48,
-          child: unverified != null
-              ? FilledButton(
-                  onPressed: cubit.checkMidiAgain,
-                  child: const Text('Recheck version only'),
-                )
-              : error != null
-              ? OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Close'),
-                )
-              : OutlinedButton(
-                  onPressed: pending || written
-                      ? null
-                      : () async {
-                          final confirmed = await showDialog<bool>(
-                            context: context,
-                            builder: (dialogContext) => AlertDialog(
-                              title: const Text('Cancel programming?'),
-                              content: const Text(
-                                'Interrupting programming may leave the device unusable. The update will not be verified.',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(dialogContext, false),
-                                  child: const Text('Continue update'),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(dialogContext, true),
-                                  child: const Text('Cancel update'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirmed == true) await cubit.interrupt();
-                        },
-                  child: const Text('Cancel update'),
-                ),
+      ),
+      const SizedBox(height: 24),
+      SizedBox(
+        height: 24,
+        child: Center(
+          child: LinearProgressIndicator(value: value, semanticsLabel: title),
         ),
-      ],
-    );
-  }
+      ),
+      SizedBox(
+        height: 24,
+        child: Center(
+          child: Text(value == null ? '' : '${(value! * 100).round()}%'),
+        ),
+      ),
+      const SizedBox(height: 32),
+      SizedBox(
+        height: 48,
+        child: Center(
+          child: SizedBox(width: double.infinity, child: action),
+        ),
+      ),
+    ],
+  );
 }
 
 /// Error state - shows error message with contextual actions
@@ -1349,7 +1309,6 @@ class _ErrorView extends StatelessWidget {
       onRetryFlash: () => cubit.retryFlash(),
       onTryAgain: () => cubit.cleanupAndReset(),
       onInstallUdevRules: () => cubit.installUdevRules(),
-      onGetDiagnostics: () => cubit.getDiagnostics(),
     );
   }
 }

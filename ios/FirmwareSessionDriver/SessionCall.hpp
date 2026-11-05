@@ -3,6 +3,8 @@
 namespace FirmwareSession {
 inline bool accepts(const InitialSdp::Call &c) {
     if (c.hasDescriptors || c.hasCompletion || c.structureOutputs) return false;
+    if (c.selector == identify)
+        return !c.scalarInputs && !c.structureInputs && c.scalarOutputs == 4;
     if (c.selector == handshake)
         return !c.scalarInputs && !c.structureInputs && c.scalarOutputs == 3;
     if (c.scalarOutputs != 2) return false;

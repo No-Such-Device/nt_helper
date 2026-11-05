@@ -196,11 +196,45 @@ static void cancellation_and_incomplete_data_cannot_jump_or_reset() {
     assert(!canceled.call(cancel,0x1fc9,0x135,p.usb()));
     uint8_t b=0; assert(!canceled.call(append,0x1fc9,0x135,p.usb(),0,&b,1)); assert(p.cursor==1);
 }
+static void loader_reads_end_at_one_endpoint_packet_not_an_extra_four_bytes() {
+    assert(inputRequestSize(false, 1028, 1024) == 1024);
+    assert(inputRequestSize(false, 1028, 512) == 512);
+    assert(inputRequestSize(false, 1028, 64) == 64);
+    assert(inputRequestSize(false, 16, 1024) == 16);
+    assert(inputRequestSize(false, 1028, 0) == 0);
+    assert(inputRequestSize(false, 1028, 8) == 0);
+    assert(inputRequestSize(true, 65, 512) == 65);
+}
+static void rom_uses_control_and_flashloader_uses_interrupt_without_fallback() {
+    int controls = 0, interrupts = 0;
+    auto control = [&]() { ++controls; return 7; };
+    auto interrupt = [&]() { ++interrupts; return 9; };
+    assert(submitReport(0x1fc9, 0x135, control, interrupt) == 7);
+    assert(controls == 1 && interrupts == 0);
+    assert(submitReport(0x15a2, 0x73, control, interrupt) == 9);
+    assert(controls == 1 && interrupts == 1);
+    assert(submitReport(0x15a2, 0x135, control, interrupt) == -1);
+    assert(controls == 1 && interrupts == 1);
+}
+static void readonly_identity_accepts_only_empty_input_and_four_scalar_outputs() {
+    assert(accepts({0x205,0,0,4,0,false,false}));
+    assert(!accepts({0x205,1,0,4,0,false,false}));
+    assert(!accepts({0x205,0,1,4,0,false,false}));
+    assert(!accepts({0x205,0,0,3,0,false,false}));
+    assert(!accepts({0x205,0,0,4,1,false,false}));
+    assert(!accepts({0x205,0,0,4,0,true,false}));
+    assert(!accepts({0x205,0,0,4,0,false,true}));
+    assert(!InitialSdp::accepts({0x205,0,0,4,0,false,false}));
+    assert(!accepts({0x206,0,0,8,0,false,false}));
+}
 #ifdef FIRMWARE_TRANSCRIPT_BRIDGE
 int programmingTestMain() {
 #else
 int main() {
 #endif
+    loader_reads_end_at_one_endpoint_packet_not_an_extra_four_bytes();
+    rom_uses_control_and_flashloader_uses_interrupt_without_fallback();
+    readonly_identity_accepts_only_empty_input_and_four_scalar_outputs();
     complete_two_stage_transcript_validates_all_submissions();
     every_missing_receipt_or_short_submission_poison_session_without_retry();
     malformed_status_framing_length_and_command_echo_fail_closed();

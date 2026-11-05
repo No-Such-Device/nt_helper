@@ -154,6 +154,27 @@ private func concurrent_start_and_invalid_lengths_do_not_program() throws {
     try f.state.start(id: id, loader: Data([1]), application: Data([1]))
     do { try f.state.start(id: id, loader: Data([1]), application: Data([1])); preconditionFailure("concurrent start") } catch {}
 }
+private func recovery_accepts_one_identified_bootloader_and_rechecks_before_open() throws {
+    let f = Fixture()
+    f.io.devices = [rom]
+    let id = try f.state.prepare(allowAttachedBootloader: true)
+    try f.state.start(id: id, loader: Data([1]), application: Data([1]))
+    precondition(f.last == "uploadingLoader" && f.io.calls == ["open:1"])
+    for devices in [[], [rom, rom], [FirmwareDevice(id: 1, location: 0, vendor: 0x1fc9, product: 0x135)]] {
+        let rejected = Fixture(); rejected.io.devices = devices
+        do { _ = try rejected.state.prepare(allowAttachedBootloader: true); preconditionFailure("unsafe recovery accepted") } catch {}
+        precondition(rejected.io.calls.isEmpty)
+    }
+    let runningLoader = Fixture(); runningLoader.io.devices = [loader]
+    let loaderID = try runningLoader.state.prepare(allowAttachedBootloader: true)
+    try runningLoader.state.start(id: loaderID, loader: Data([1]), application: Data([1]))
+    precondition(runningLoader.last == "configuringNor" && runningLoader.io.calls == ["open:2"])
+    let changed = Fixture(); changed.io.devices = [rom]
+    let changedID = try changed.state.prepare(allowAttachedBootloader: true)
+    changed.io.devices = [FirmwareDevice(id: 9, location: 42, vendor: 0x1fc9, product: 0x135)]
+    try changed.state.start(id: changedID, loader: Data([1]), application: Data([1]))
+    precondition(changed.last == "failed" && changed.io.calls.isEmpty)
+}
 @main struct SessionStateTests {
     static func main() throws {
         try complete_session_runs_production_two_stage_usb_transcript()
@@ -162,6 +183,7 @@ private func concurrent_start_and_invalid_lengths_do_not_program() throws {
         try preexisting_ambiguous_wrong_location_and_unexpected_loss_fail_closed()
         try bounded_transition_io_and_malformed_receipts_cannot_advance()
         try concurrent_start_and_invalid_lengths_do_not_program()
+        try recovery_accepts_one_identified_bootloader_and_rechecks_before_open()
         print("V2 session ownership, transitions, cancellation, deadlines and stale callbacks passed")
     }
 }

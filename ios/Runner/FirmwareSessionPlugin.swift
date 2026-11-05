@@ -8,6 +8,8 @@ private final class FirmwareDriverIO: FirmwareDeviceIO {
     private let queue = DispatchQueue(label: "dev.nosuch.ntHelper.firmwareUSB")
     private var connection: io_connect_t = 0
     private var selectedID: UInt64 = 0
+    private let identityLock = NSLock()
+    private var identities: [UInt64: FirmwareDevice] = [:]
 
     private func services() throws -> [io_service_t] {
         var found: [io_service_t] = []
@@ -30,9 +32,12 @@ private final class FirmwareDriverIO: FirmwareDeviceIO {
         }
         return found
     }
-    private func number(_ entry: io_registry_entry_t, _ key: String) -> UInt64 {
-        (IORegistryEntryCreateCFProperty(entry, key as CFString, kCFAllocatorDefault, 0)?
-            .takeRetainedValue() as? NSNumber)?.uint64Value ?? 0
+    private func matches(_ entry: io_service_t, _ values: [String: Any]) throws -> Bool {
+        var matched: boolean_t = 0
+        let status = IOServiceMatchPropertyTable(entry,
+            ["IOPropertyMatch": values] as CFDictionary, &matched)
+        guard status == KERN_SUCCESS else { throw error("Kernel USB identity match failed: \(status)") }
+        return matched != 0
     }
     func inventory() throws -> [FirmwareDevice] {
         let entries = try services()
@@ -42,14 +47,54 @@ private final class FirmwareDriverIO: FirmwareDeviceIO {
             guard IORegistryEntryGetRegistryEntryID(entry, &id) == KERN_SUCCESS else {
                 throw error("Cannot attribute driver registry identity.")
             }
-            let location = (IORegistryEntrySearchCFProperty(entry, kIOServicePlane,
-                "locationID" as CFString, kCFAllocatorDefault,
-                IOOptionBits(kIORegistryIterateRecursively | kIORegistryIterateParents)) as? NSNumber)?.uint64Value ?? 0
-            let vendor = number(entry, "NTFirmwareVendorID")
-            let product = number(entry, "NTFirmwareProductID")
-            return FirmwareDevice(id: id, location: location,
-                vendor: Int(vendor == 0 ? number(entry, "NTInitialVendorID") : vendor),
-                product: Int(product == 0 ? number(entry, "NTInitialProductID") : product))
+            // iPadOS filters direct registry reads, but matching evaluates the
+            // real published properties in the kernel (as in InitialSdpPlugin).
+            let v2 = try matches(entry, ["IOUserClass": "FirmwareSessionDriver"])
+            let rom = try matches(entry, ["NTFirmwareVendorID": 0x1fc9, "NTFirmwareProductID": 0x0135])
+            let loader = try matches(entry, ["NTFirmwareVendorID": 0x15a2, "NTFirmwareProductID": 0x0073])
+            guard v2, rom != loader else {
+                return FirmwareDevice(id: id, location: 0, vendor: 0, product: 0)
+            }
+            guard try matches(entry, ["NTFirmwareDriverRevision": 8]) else {
+                throw error("An older firmware driver is still running. Toggle the driver off and on in Settings, then reconnect USB.")
+            }
+            // Descriptor and port identity are immutable for a registry entry.
+            // Do not block the main-queue poll on the driver's programming lock
+            // while a flash erase or transfer is in progress.
+            identityLock.lock()
+            let cached = identities[id]
+            identityLock.unlock()
+            if let cached {
+                guard cached.rom == rom, cached.loader == loader else {
+                    throw error("Firmware device identity changed without re-enumeration.")
+                }
+                return cached
+            }
+            // A separate, read-only client asks the driver for descriptor and
+            // port identity. It must never claim USB or close a programming client.
+            var observer: io_connect_t = 0
+            let openStatus = IOServiceOpen(entry, mach_task_self_, 0, &observer)
+            guard openStatus == KERN_SUCCESS else {
+                throw error("Cannot inspect the firmware driver: \(openStatus)")
+            }
+            defer { IOServiceClose(observer) }
+            var output = [UInt64](repeating: 0, count: 4), count: UInt32 = 4
+            let status = IOConnectCallScalarMethod(observer, 0x205, nil, 0, &output, &count)
+            guard status == KERN_SUCCESS, count == 4, output[0] == FirmwareSessionState.api else {
+                throw error("Cannot identify the firmware device. Check the updated driver is enabled.")
+            }
+            let expectedVendor: UInt64 = rom ? 0x1fc9 : 0x15a2
+            let expectedProduct: UInt64 = rom ? 0x0135 : 0x0073
+            guard output[1] == expectedVendor, output[2] == expectedProduct else {
+                throw error("Descriptor disagrees with kernel USB identity.")
+            }
+            let device = FirmwareDevice(id: id, location: output[3],
+                vendor: Int(output[1]), product: Int(output[2]))
+            identityLock.lock()
+            if identities.count >= 2 { identities.removeAll() }
+            identities[id] = device
+            identityLock.unlock()
+            return device
         }
     }
     private func error(_ message: String) -> NSError {
@@ -147,8 +192,13 @@ final class FirmwareSessionPlugin: NSObject, FlutterPlugin, FlutterStreamHandler
                         "maxLoader": FirmwareSessionState.maxLoader,
                         "maxApplication": FirmwareSessionState.maxApplication]); return
             }
-            if call.method == "prepare", call.arguments == nil {
-                result(["sessionId": try state.prepare()]); return
+            if call.method == "prepare" {
+                let arguments = call.arguments as? [String: Any]
+                guard call.arguments == nil || (arguments?.count == 1 && arguments?["allowAttachedBootloader"] is Bool) else {
+                    throw NSError(domain: "FirmwareSession", code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "Only a typed recovery flag is accepted for preparation."])
+                }
+                result(["sessionId": try state.prepare(allowAttachedBootloader: arguments?["allowAttachedBootloader"] as? Bool ?? false)]); return
             }
             guard let args = call.arguments as? [String: Any], let id = args["sessionId"] as? String else {
                 throw NSError(domain: "FirmwareSession", code: 1,

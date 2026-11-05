@@ -466,7 +466,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Firmware'));
       await tester.pumpAndSettle();
-      expect(find.text('Local Zip File'), findsNothing);
+      expect(find.text('Local Zip File'), findsOneWidget);
       await tester.tap(find.widgetWithText(FilledButton, 'Install'));
       await tester.pumpAndSettle();
       expect(native.starts, 0);
@@ -795,10 +795,17 @@ void main() {
   }
 
   testWidgets(
-    'connection Firmware downloads and returns after a complete flash without a MIDI selection',
+    'connection Firmware works without MIDI selection and preselects returned NT ports',
     (tester) async {
       final harness = await _FirmwareEntryHarness.create(
         selectCompletePair: false,
+      );
+      // Detection now suggests the NT even without saved preferences. Clear it
+      // explicitly so this still covers flashing without any selected ports.
+      harness.distingCubit.updateDeviceSelection(
+        inputDevice: null,
+        outputDevice: null,
+        sysExId: 0,
       );
       await _pumpConnectionScreen(
         tester,
@@ -827,8 +834,14 @@ void main() {
           harness.distingCubit.state as DistingStateSelectDevice;
       expect(returnedState.inputDevices, [harness.returnedInput]);
       expect(returnedState.outputDevices, [harness.returnedOutput]);
-      expect(returnedState.selectedInputDevice, isNull);
-      expect(returnedState.selectedOutputDevice, isNull);
+      expect(returnedState.selectedInputDevice, same(harness.returnedInput));
+      expect(returnedState.selectedOutputDevice, same(harness.returnedOutput));
+      verifyNever(
+        () => harness.midiCommand.connectToDevice(harness.returnedInput),
+      );
+      verifyNever(
+        () => harness.midiCommand.connectToDevice(harness.returnedOutput),
+      );
       expect(harness.distingCubit.firmwareManagerCreations, 0);
     },
   );

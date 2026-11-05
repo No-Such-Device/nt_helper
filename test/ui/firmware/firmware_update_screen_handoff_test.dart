@@ -23,6 +23,7 @@ import 'package:nt_helper/services/firmware_version_service.dart';
 import 'package:nt_helper/services/flash_tool_bridge.dart';
 import 'package:nt_helper/services/flash_tool_manager.dart';
 import 'package:nt_helper/ui/firmware/firmware_update_screen.dart';
+import 'package:nt_helper/ui/firmware/firmware_flow_diagram.dart';
 
 import '../../test_helpers/firmware_usb_access.dart';
 
@@ -160,6 +161,93 @@ void main() {
   );
 
   testWidgets(
+    'recovery without selected ports offers accessible MIDI selection instead of an impossible version retry',
+    (tester) async {
+      final native = ControlledIpadSession();
+      final acquisition = IpadPackageAcquisition();
+      addTearDown(native.dispose);
+      addTearDown(acquisition.dispose);
+      _stubDistingState(distingCubit, _selectionState());
+      when(() => distingCubit.firmwareSysExId).thenReturn(17);
+      when(() => distingCubit.loadDevices()).thenAnswer((_) async {});
+      final semantics = tester.ensureSemantics();
+      try {
+        await _pumpScreen(
+          tester,
+          distingCubit: distingCubit,
+          dependencies: FirmwareUpdateScreenDependencies(
+            firmwareVersionService: acquisition,
+            flashToolManager: flashToolManager,
+            flashToolBridge: flashToolBridge,
+            ipadSession: native,
+          ),
+        );
+        final updater = tester
+            .element(find.byType(FirmwareUpdateStateContent))
+            .read<FirmwareUpdateCubit>();
+        await updater.startUpdate(ipadRelease);
+        final operation = updater.confirmAndFlash();
+        await native.started.future;
+        native.finish();
+        await operation;
+        await tester.pumpAndSettle();
+        expect(find.text('Version not verified'), findsOneWidget);
+        expect(
+          find.textContaining('No MIDI ports were selected'),
+          findsOneWidget,
+        );
+        expect(find.text('Recheck version only'), findsNothing);
+        expect(find.bySemanticsLabel('Select MIDI ports'), findsOneWidget);
+        await tester.tap(find.text('Select MIDI ports'));
+        await tester.pumpAndSettle();
+        verify(() => distingCubit.loadDevices()).called(1);
+        expect(native.starts, 1);
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
+
+  testWidgets(
+    'iPad local beta uses the shared file action and firmware animation',
+    (tester) async {
+      final native = ControlledIpadSession();
+      final acquisition = IpadPackageAcquisition();
+      addTearDown(native.dispose);
+      addTearDown(acquisition.dispose);
+      _stubDistingState(distingCubit, _selectionState());
+      when(() => distingCubit.firmwareSysExId).thenReturn(17);
+      await _pumpScreen(
+        tester,
+        distingCubit: distingCubit,
+        dependencies: FirmwareUpdateScreenDependencies(
+          firmwareVersionService: acquisition,
+          flashToolManager: flashToolManager,
+          flashToolBridge: flashToolBridge,
+          ipadSession: native,
+          pickLocalFirmwareFile: () async => '/files/distingNT_1.20.0beta2.zip',
+          readLocalFirmwareFile: (_) async => ipadPackageBytes(),
+        ),
+      );
+      await tester.tap(find.text('Local Zip File'));
+      await tester.pumpAndSettle();
+      final updater = tester
+          .element(find.byType(FirmwareUpdateStateContent))
+          .read<FirmwareUpdateCubit>();
+      expect(updater.preparedPackage!.version, '1.20.0beta2');
+      final operation = updater.confirmAndFlash();
+      await native.started.future;
+      await tester.pump();
+      expect(find.byType(FirmwareFlowDiagram), findsOneWidget);
+      expect(find.text('Driver diagnostics'), findsNothing);
+      await updater.interrupt();
+      native.finish(IpadProgrammingOutcome.failed);
+      await operation;
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
     'native progress preserves control geometry and focus while announcing phases and verification failure',
     (tester) async {
       final native = ControlledIpadSession();
@@ -242,7 +330,7 @@ void main() {
       final updater = tester
           .element(find.byType(FirmwareUpdateStateContent))
           .read<FirmwareUpdateCubit>();
-      final button = find.widgetWithText(OutlinedButton, 'Cancel update');
+      final button = find.widgetWithText(OutlinedButton, 'Cancel');
       final rect = tester.getRect(button);
       for (final phase in [
         IpadProgrammingPhase.uploadingLoader,

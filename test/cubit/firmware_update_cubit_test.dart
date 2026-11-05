@@ -81,6 +81,9 @@ void main() {
       bool demo = false,
       bool offline = false,
       String version = '1.18.0',
+      bool recovery = false,
+      bool portsSelected = true,
+      LocalFirmwareFileReader? localReader,
     }) {
       return workflow = FirmwareUpdateCubit(
         firmwareVersionService: acquisition,
@@ -90,13 +93,109 @@ void main() {
         firmwareVersion: FirmwareVersion(version),
         isDemo: demo,
         isOffline: offline,
+        recoverAttachedBootloader: recovery,
+        readLocalFirmwareFile: localReader,
         midiManager: midi,
         ipadSession: native,
-        probeFreshVersion: () => probe(),
+        probeFreshVersion: portsSelected ? () => probe() : null,
         midiPollInterval: const Duration(seconds: 1),
         midiPollAttempts: 2,
       );
     }
+
+    test(
+      'attached ROM recovery requests explicit preparation and skips MIDI bootloader command',
+      () async {
+        final cubit = create(version: 'Unknown', recovery: true);
+        await cubit.loadAvailableVersions();
+        expect(cubit.isUpdateAvailable, isTrue);
+        await cubit.startUpdate(ipadRelease);
+        final operation = cubit.confirmAndFlash();
+        await native.started.future;
+        expect(native.recoveryRequested, isTrue);
+        verifyNever(() => midi.requestEnterBootloader());
+        verifyNever(() => midi.dispose());
+        native.finish(IpadProgrammingOutcome.failed);
+        await operation;
+        expect(cubit.state, isA<FirmwareUpdateStateError>());
+      },
+    );
+
+    test(
+      'completed recovery without MIDI ports reports unverified immediately without polling',
+      () async {
+        final cubit = create(
+          version: 'Unknown',
+          recovery: true,
+          portsSelected: false,
+        );
+        final states = <FirmwareUpdateState>[];
+        final subscription = cubit.stream.listen(states.add);
+        addTearDown(subscription.cancel);
+        await cubit.loadAvailableVersions();
+        await cubit.startUpdate(ipadRelease);
+        final operation = cubit.confirmAndFlash();
+        await native.started.future;
+        native.finish();
+        await operation;
+        expect(cubit.canVerifyVersion, isFalse);
+        expect(cubit.state, isA<FirmwareUpdateStateMidiRecoveryRequired>());
+        expect(
+          (cubit.state as FirmwareUpdateStateMidiRecoveryRequired)
+              .verificationMessage,
+          contains('No MIDI ports were selected'),
+        );
+        expect(states.whereType<FirmwareUpdateStateVerifyingMidi>(), isEmpty);
+        expect(states.whereType<FirmwareUpdateStateSuccess>(), isEmpty);
+      },
+    );
+
+    test(
+      'iPad local beta selection retains validated bytes and starts the same native provider',
+      () async {
+        final cubit = create(
+          recovery: true,
+          version: 'Unknown',
+          localReader: (_) async => ipadPackageBytes(),
+        );
+        await cubit.loadAvailableVersions();
+        await cubit.useLocalFile('/files/distingNT_1.20.0beta2.zip');
+        expect(cubit.state, isA<FirmwareUpdateStateWaitingForBootloader>());
+        expect(cubit.preparedPackage!.version, '1.20.0beta2');
+        expect(acquisition.downloads, 0);
+        final operation = cubit.confirmAndFlash();
+        await native.started.future;
+        expect(native.loader, ipadImage());
+        expect(native.application, ipadImage(application: true));
+        native.finish(IpadProgrammingOutcome.failed);
+        await operation;
+        verifyNever(() => desktop.flash(any()));
+        verifyNever(() => midi.requestEnterBootloader());
+      },
+    );
+
+    test(
+      'unversioned local programming never waits for or claims a matching version',
+      () async {
+        final cubit = create(
+          recovery: true,
+          version: 'Unknown',
+          localReader: (_) async => ipadPackageBytes(),
+        );
+        await cubit.loadAvailableVersions();
+        await cubit.useLocalFile('/files/firmware.zip');
+        final operation = cubit.confirmAndFlash();
+        await native.started.future;
+        native.finish();
+        await operation;
+        expect(cubit.state, isA<FirmwareUpdateStateMidiRecoveryRequired>());
+        expect(
+          (cubit.state as FirmwareUpdateStateMidiRecoveryRequired)
+              .verificationMessage,
+          contains('local file has no version'),
+        );
+      },
+    );
 
     for (final fixture in invalidIpadPackages().entries) {
       test(

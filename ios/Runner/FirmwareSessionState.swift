@@ -42,14 +42,22 @@ final class FirmwareSessionState {
     private var deadline: TimeInterval = 0
     private var prepared = false
     private var resetAcknowledged = false
+    private var recoveryDevice: FirmwareDevice?
 
     init(io: FirmwareDeviceIO, now: @escaping () -> TimeInterval,
          event: @escaping ([String: Any]) -> Void) {
         self.io = io; self.now = now; self.event = event
     }
-    func prepare() throws -> String {
+    func prepare(allowAttachedBootloader: Bool = false) throws -> String {
         guard session == nil else { throw failure("A firmware session already owns USB.") }
-        guard try io.inventory().isEmpty else {
+        let devices = try io.inventory()
+        recoveryDevice = nil
+        if allowAttachedBootloader {
+            guard devices.count == 1, let device = devices.first, (device.rom || device.loader), device.location != 0 else {
+                throw failure("Recovery requires exactly one identified ROM bootloader or RAM flashloader.")
+            }
+            recoveryDevice = device
+        } else if !devices.isEmpty {
             throw failure("A bootloader is already attached; it cannot be attributed to this update.")
         }
         let id = UUID().uuidString
@@ -63,8 +71,14 @@ final class FirmwareSessionState {
             throw failure("Invalid, expired or concurrent firmware session, or out-of-range bytes.")
         }
         prepared = false; self.loader = loader; self.application = application
-        setPhase("waitingRom", timeout: 15)
-        poll()
+        if let recoveryDevice, recoveryDevice.loader {
+            origin = recoveryDevice; selected = recoveryDevice
+            setPhase("configuringNor", timeout: 15)
+            openThenBegin(recoveryDevice, bytes: application, rom: false)
+        } else {
+            setPhase("waitingRom", timeout: 15)
+            poll()
+        }
     }
     func cancel(id: String) throws {
         guard id == session else { throw failure("Stale firmware session.") }
@@ -106,6 +120,7 @@ final class FirmwareSessionState {
             case "waitingRom":
                 guard let device = devices.first else { return }
                 guard device.rom, device.location != 0 else { throw failure("Expected attributed ROM device.") }
+                if let recoveryDevice, recoveryDevice != device { throw failure("Recovery ROM identity changed after confirmation.") }
                 origin = device; selected = device
                 setPhase("uploadingLoader", timeout: 120)
                 openThenBegin(device, bytes: loader, rom: true)

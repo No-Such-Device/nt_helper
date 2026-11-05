@@ -526,6 +526,70 @@ void main() {
     tags: ['regression'],
   );
 
+  for (final moduleName in ['disting NT', 'Forever']) {
+    test(
+      'startup preselects unique $moduleName ports without connecting',
+      () async {
+        final input = device('module-in', moduleName, MidiPortType.IN);
+        final output = device('module-out', moduleName, MidiPortType.OUT);
+        when(
+          () => midiCommand.devices,
+        ).thenAnswer((_) async => [input, output]);
+        when(() => midiCommand.onMidiSetupChanged).thenReturn(null);
+        await cubit.initialize();
+        final state = cubit.state as DistingStateSelectDevice;
+        expect(state.selectedInputDevice, same(input));
+        expect(state.selectedOutputDevice, same(output));
+        verifyNever(() => midiCommand.connectToDevice(input));
+        verifyNever(() => midiCommand.connectToDevice(output));
+      },
+    );
+  }
+
+  test(
+    'refresh preselects returned NT ports without connecting after bootloader recovery',
+    () async {
+      final input = device('nt-in', 'disting NT', MidiPortType.IN);
+      final output = device('nt-out', 'disting NT', MidiPortType.OUT);
+      var devices = <MidiDevice>[];
+      when(() => midiCommand.devices).thenAnswer((_) async => devices);
+      when(() => midiCommand.onMidiSetupChanged).thenReturn(null);
+      await cubit.initialize();
+      devices = [input, output];
+      await cubit.loadDevices();
+      final state = cubit.state as DistingStateSelectDevice;
+      expect(state.selectedInputDevice, same(input));
+      expect(state.selectedOutputDevice, same(output));
+      verifyNever(() => midiCommand.connectToDevice(input));
+      verifyNever(() => midiCommand.connectToDevice(output));
+    },
+  );
+
+  test(
+    'Disting and Forever together remain unselected without preferring either module',
+    () async {
+      final inputs = [
+        device('in-1', 'disting NT', MidiPortType.IN),
+        device('in-2', 'Forever', MidiPortType.IN),
+      ];
+      final outputs = [
+        device('out-1', 'disting NT', MidiPortType.OUT),
+        device('out-2', 'Forever', MidiPortType.OUT),
+      ];
+      when(
+        () => midiCommand.devices,
+      ).thenAnswer((_) async => [...inputs, ...outputs]);
+      when(() => midiCommand.onMidiSetupChanged).thenReturn(null);
+      await cubit.initialize();
+      final state = cubit.state as DistingStateSelectDevice;
+      expect(state.selectedInputDevice, isNull);
+      expect(state.selectedOutputDevice, isNull);
+      for (final endpoint in [...inputs, ...outputs]) {
+        verifyNever(() => midiCommand.connectToDevice(endpoint));
+      }
+    },
+  );
+
   test(
     'manual MIDI selection survives an explicit device refresh',
     () async {

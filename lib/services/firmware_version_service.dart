@@ -340,8 +340,9 @@ class FirmwareVersionService {
   static PreparedFirmwarePackage validateIpadPackage(
     FirmwareRelease release,
     String packagePath,
-    List<int> bytes,
-  ) {
+    List<int> bytes, {
+    bool allowLocalFile = false,
+  }) {
     const loaderName = 'bootable_images/unsigned_MIMXRT1060_flashloader.bin';
     const appName = 'bootable_images/disting_NT.bin';
     const limits = {
@@ -352,9 +353,14 @@ class FirmwareVersionService {
     void reject() => throw const FirmwareDownloadException(
       'Unsupported or invalid unsigned MIMXRT1060 firmware package',
     );
-    if (!RegExp(r'^\d+\.\d+\.\d+$').hasMatch(release.version) ||
-        bytes.isEmpty ||
-        bytes.length > 32 * 1024 * 1024) {
+    final validVersion =
+        RegExp(r'^\d+\.\d+\.\d+$').hasMatch(release.version) ||
+        (allowLocalFile &&
+            (release.version == 'local' ||
+                RegExp(
+                  r'^\d+\.\d+\.\d+(?:[-.]?beta\d*)$',
+                ).hasMatch(release.version)));
+    if (!validVersion || bytes.isEmpty || bytes.length > 32 * 1024 * 1024) {
       reject();
     }
     try {
@@ -485,13 +491,27 @@ class FirmwareVersionService {
     String downloadedPath,
   ) async {
     final bytes = await File(downloadedPath).readAsBytes();
-    validateIpadPackage(release, downloadedPath, bytes);
+    return prepareIpadPackageBytes(release, bytes);
+  }
+
+  /// Validate and snapshot local or downloaded bytes before USB ownership changes.
+  Future<PreparedFirmwarePackage> prepareIpadPackageBytes(
+    FirmwareRelease release,
+    List<int> bytes, {
+    bool allowLocalFile = false,
+  }) async {
+    validateIpadPackage(release, '', bytes, allowLocalFile: allowLocalFile);
     final root = await TempDirectoryUtils.getWritableTempDirectory();
     final directory = await root.createTemp('nt-firmware-session-');
     final snapshot = File(path.join(directory.path, 'package.zip'));
     try {
       await snapshot.writeAsBytes(bytes, flush: true);
-      return validateIpadPackage(release, snapshot.path, bytes);
+      return validateIpadPackage(
+        release,
+        snapshot.path,
+        bytes,
+        allowLocalFile: allowLocalFile,
+      );
     } catch (_) {
       await directory.delete(recursive: true);
       rethrow;
@@ -501,7 +521,7 @@ class FirmwareVersionService {
   /// Match only normal application reply formatting, never numeric substrings.
   static bool matchesApplicationVersion(String? reply, String expected) {
     if (reply == null) return false;
-    final match = RegExp(r'^v?(\d+\.\d+\.\d+)$');
+    final match = RegExp(r'^v?(\d+\.\d+\.\d+(?:[-.]?beta\d*)?)$');
     // Normal NT responses append a newline-separated build date.
     final version = reply.trim().split('\n');
     if (version.length > 2) return false;
@@ -511,8 +531,7 @@ class FirmwareVersionService {
         ).hasMatch(version[1].trim())) {
       return false;
     }
-    return match.firstMatch(version.first.trim())?.group(1) == expected &&
-        RegExp(r'^v?\d+\.\d+\.\d+$').hasMatch(version.first.trim());
+    return match.firstMatch(version.first.trim())?.group(1) == expected;
   }
 
   /// Delete a downloaded firmware package

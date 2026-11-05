@@ -81,8 +81,9 @@ class IpadProgrammingResult {
 abstract interface class IpadFirmwareSession {
   Future<IpadFirmwareAvailability> availability();
 
-  /// Snapshot absence of bootloaders before the workflow releases MIDI.
-  Future<String> prepare();
+  /// Snapshot USB ownership before handoff. Explicit recovery may instead
+  /// attribute one already-attached ROM bootloader or RAM flashloader.
+  Future<String> prepare({bool allowAttachedBootloader = false});
   Stream<IpadFirmwareEvent> get events;
   Future<IpadProgrammingResult> start({
     required String sessionId,
@@ -135,7 +136,7 @@ class MethodChannelIpadFirmwareSession implements IpadFirmwareSession {
   }
 
   @override
-  Future<String> prepare() async {
+  Future<String> prepare({bool allowAttachedBootloader = false}) async {
     if (_session != null || _preparing) {
       throw StateError('A firmware session already owns USB');
     }
@@ -158,7 +159,9 @@ class MethodChannelIpadFirmwareSession implements IpadFirmwareSession {
           'Native firmware event stream closed',
         ),
       );
-      final value = await _methods.invokeMapMethod<String, dynamic>('prepare');
+      final value = await _methods.invokeMapMethod<String, dynamic>('prepare', {
+        'allowAttachedBootloader': allowAttachedBootloader,
+      });
       final id = value?['sessionId'];
       if (id is! String || id.isEmpty) {
         throw const FormatException('Missing firmware session identity');

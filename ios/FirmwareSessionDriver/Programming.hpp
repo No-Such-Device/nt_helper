@@ -7,6 +7,8 @@
 
 namespace FirmwareSession {
 constexpr uint64_t api = 0x4e540002;
+constexpr uint32_t driverRevision = 8;
+constexpr uint64_t identify = 0x205;
 constexpr uint64_t handshake = 0x200, begin = 0x201, append = 0x202,
                    advance = 0x203, cancel = 0x204;
 constexpr uint32_t ram = 0x20001c00, flash = 0x60000000, application = flash + 0x1000;
@@ -37,6 +39,20 @@ int submitOutput(Device *device, Client *client, uint8_t interfaceNumber,
     InitialSdp::Control request = {0x21, 9, uint16_t(0x0200 | reportID), interfaceNumber, length};
     int error = InitialSdp::submitControl(device, client, request, buffer, &transferred, timeout);
     return error ? error : transferred == length ? 0 : -1;
+}
+// ROM exposes control SET_REPORT output; the running flashloader exposes an
+// interrupt OUT endpoint. Never silently fall back after a failed submission.
+template<class Control, class Interrupt>
+int submitReport(uint16_t vendor, uint16_t product, Control control, Interrupt interrupt) {
+    if (!identity(vendor, product)) return -1;
+    return vendor == 0x1fc9 ? control() : interrupt();
+}
+// A raw interrupt transfer is not a HID report read. Requesting more than
+// one full loader endpoint packet can wait for a nonexistent following packet.
+inline uint32_t inputRequestSize(bool rom, uint32_t capacity, uint32_t endpointPacketSize) {
+    if (rom) return capacity;
+    if (endpointPacketSize < 16) return 0;
+    return capacity < endpointPacketSize ? capacity : endpointPacketSize;
 }
 struct Usb {
     void *context;

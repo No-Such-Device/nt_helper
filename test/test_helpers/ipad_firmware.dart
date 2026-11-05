@@ -102,6 +102,18 @@ class IpadPackageAcquisition extends FirmwareVersionService {
       bytes,
     );
   }
+
+  @override
+  Future<PreparedFirmwarePackage> prepareIpadPackageBytes(
+    FirmwareRelease release,
+    List<int> bytes, {
+    bool allowLocalFile = false,
+  }) async => prepared = FirmwareVersionService.validateIpadPackage(
+    release,
+    '/not-on-disk/session/package.zip',
+    bytes,
+    allowLocalFile: allowLocalFile,
+  );
 }
 
 class ControlledIpadSession implements IpadFirmwareSession {
@@ -113,6 +125,7 @@ class ControlledIpadSession implements IpadFirmwareSession {
   final started = Completer<void>();
   Completer<String>? preparation;
   bool supported = true;
+  bool recoveryRequested = false;
   Object? prepareError;
   int prepares = 0, starts = 0, closes = 0;
   Uint8List? loader, application;
@@ -132,8 +145,9 @@ class ControlledIpadSession implements IpadFirmwareSession {
   Future<IpadFirmwareAvailability> availability() async =>
       IpadFirmwareAvailability(isIPad: supported, osEligible: supported);
   @override
-  Future<String> prepare() async {
+  Future<String> prepare({bool allowAttachedBootloader = false}) async {
     prepares++;
+    recoveryRequested = allowAttachedBootloader;
     if (prepareError != null) throw prepareError!;
     return preparation?.future ?? Future.value('session-1');
   }

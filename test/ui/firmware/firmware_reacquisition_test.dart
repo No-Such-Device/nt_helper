@@ -194,6 +194,8 @@ void main() {
   setUp(() {
     firmwareCubit = _MockFirmwareUpdateCubit();
     when(() => firmwareCubit.isNative).thenReturn(false);
+    when(() => firmwareCubit.needsMidiPortSelection).thenReturn(false);
+    when(() => firmwareCubit.requiresApplicationVersion).thenReturn(false);
   });
 
   tearDown(() {
@@ -439,8 +441,8 @@ void main() {
           harness.distingCubit.state as DistingStateSelectDevice;
       expect(refreshedState.inputDevices, [input]);
       expect(refreshedState.outputDevices, [output]);
-      expect(refreshedState.selectedInputDevice, isNull);
-      expect(refreshedState.selectedOutputDevice, isNull);
+      expect(refreshedState.selectedInputDevice, same(input));
+      expect(refreshedState.selectedOutputDevice, same(output));
     },
   );
 
