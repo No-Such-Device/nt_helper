@@ -165,6 +165,98 @@ void main() {
     },
   );
 
+  for (final module in ['disting NT', 'Forever']) {
+    test(
+      'fresh same-version readback uses selected $module IDs despite mutated packet display names',
+      () {
+        final input = device('same-input-id', module, MidiPortType.IN);
+        final output = device('same-output-id', module, MidiPortType.OUT);
+        final incoming = StreamController<MidiPacket>.broadcast(sync: true);
+        addTearDown(incoming.close);
+        when(
+          () => midiCommand.devices,
+        ).thenAnswer((_) async => [input, output]);
+        when(
+          () => midiCommand.onMidiPacketReceived,
+        ).thenAnswer((_) => incoming.stream);
+        when(() => midiCommand.connectToDevice(input)).thenAnswer((_) async {});
+        when(
+          () => midiCommand.connectToDevice(output),
+        ).thenAnswer((_) async {});
+        registerFallbackValue(Uint8List(0));
+        var requests = 0;
+        when(
+          () => midiCommand.sendData(any(), deviceId: any(named: 'deviceId')),
+        ).thenAnswer((_) {
+          requests++;
+        });
+        fakeAsync((time) {
+          String? version;
+          unawaited(
+            cubit
+                .probeFreshFirmwareVersion(
+                  '$module $module',
+                  '$module $module',
+                  17,
+                  inputDeviceId: input.id,
+                  outputDeviceId: output.id,
+                )
+                .then((value) => version = value),
+          );
+          time.flushMicrotasks();
+          expect(requests, 1);
+          expect(version, isNull);
+          const reply = 'v1.20.0beta\nOct 30 2026 14:04:12';
+          incoming.add(
+            MidiPacket(
+              Uint8List.fromList([
+                0xF0,
+                0,
+                0x21,
+                0x27,
+                0x6D,
+                17,
+                0x32,
+                ...reply.codeUnits,
+                0,
+                0xF7,
+              ]),
+              0,
+              input,
+            ),
+          );
+          time.flushMicrotasks();
+          expect(version, reply);
+          verify(() => midiCommand.connectToDevice(input)).called(1);
+          verify(() => midiCommand.connectToDevice(output)).called(1);
+        });
+      },
+    );
+  }
+
+  test(
+    'selected IDs with missing directions cannot fall back to another named device',
+    () async {
+      final wrongInput = device('selected-in', 'Selected', MidiPortType.OUT);
+      final otherInput = device('other-in', 'Selected', MidiPortType.IN);
+      final output = device('selected-out', 'Selected', MidiPortType.OUT);
+      when(
+        () => midiCommand.devices,
+      ).thenAnswer((_) async => [wrongInput, otherInput, output]);
+      expect(
+        await cubit.probeFreshFirmwareVersion(
+          'Selected',
+          'Selected',
+          17,
+          inputDeviceId: wrongInput.id,
+          outputDeviceId: output.id,
+        ),
+        isNull,
+      );
+      verifyNever(() => midiCommand.connectToDevice(otherInput));
+    },
+  );
+
   test(
     'timed-out firmware connection cannot issue a late version request or connect the second endpoint',
     () {

@@ -156,6 +156,8 @@ class FirmwareUpdateScreen extends StatelessWidget {
                   selectedInputDevice.name,
                   selectedOutputDevice.name,
                   selectedSysExId,
+                  inputDeviceId: selectedInputDevice.id,
+                  outputDeviceId: selectedOutputDevice.id,
                 )
               : null,
           firmwareVersion: firmwareVersion,

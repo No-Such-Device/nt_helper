@@ -903,26 +903,55 @@ class _ConnectionDelegate {
   Future<String?> probeFreshFirmwareVersion(
     String? inputName,
     String? outputName,
-    int sysExId,
-  ) async {
+    int sysExId, {
+    String? inputDeviceId,
+    String? outputDeviceId,
+  }) async {
     if (inputName == null || outputName == null) return null;
+    // Packet metadata can rename cached MidiDevice objects after connection.
+    // Saved discovery names are applicable only to that same selected pair,
+    // never to a manually selected different module.
+    var canonicalInput = inputName;
+    var canonicalOutput = outputName;
+    final knownInput =
+        inputDeviceId != null &&
+        inputDeviceId == _cubit._lastOnlineInputDevice?.id;
+    final knownOutput =
+        outputDeviceId != null &&
+        outputDeviceId == _cubit._lastOnlineOutputDevice?.id;
+    if (knownInput || knownOutput) {
+      final prefs = await _cubit._prefs;
+      if (knownInput) {
+        canonicalInput =
+            prefs.getString('selectedInputMidiDevice') ?? inputName;
+      }
+      if (knownOutput) {
+        canonicalOutput =
+            prefs.getString('selectedOutputMidiDevice') ?? outputName;
+      }
+    }
     final devices =
         await _cubit._midiCommand.devices.timeout(const Duration(seconds: 2)) ??
         [];
-    final inputs = devices
-        .where(
-          (d) =>
-              d.inputPorts.isNotEmpty &&
-              d.name.trim().toLowerCase() == inputName.trim().toLowerCase(),
-        )
-        .toList();
-    final outputs = devices
-        .where(
-          (d) =>
-              d.outputPorts.isNotEmpty &&
-              d.name.trim().toLowerCase() == outputName.trim().toLowerCase(),
-        )
-        .toList();
+    List<MidiDevice> resolve(String name, String? id, {required bool input}) {
+      final directional = devices.where(
+        (device) => input
+            ? device.inputPorts.isNotEmpty
+            : device.outputPorts.isNotEmpty,
+      );
+      if (id != null && devices.any((device) => device.id == id)) {
+        return directional.where((device) => device.id == id).toList();
+      }
+      return directional
+          .where(
+            (device) =>
+                device.name.trim().toLowerCase() == name.trim().toLowerCase(),
+          )
+          .toList();
+    }
+
+    final inputs = resolve(canonicalInput, inputDeviceId, input: true);
+    final outputs = resolve(canonicalOutput, outputDeviceId, input: false);
     if (inputs.length != 1 || outputs.length != 1) return null;
     return _cubit.probeFirmwareVersion(
       inputs.single,

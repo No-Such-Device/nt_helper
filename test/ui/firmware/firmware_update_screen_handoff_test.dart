@@ -274,8 +274,13 @@ void main() {
       when(() => distingCubit.disting()).thenReturn(midi);
       when(() => distingCubit.firmwareSysExId).thenReturn(17);
       when(
-        () =>
-            distingCubit.probeFreshFirmwareVersion(input.name, output.name, 17),
+        () => distingCubit.probeFreshFirmwareVersion(
+          input.name,
+          output.name,
+          17,
+          inputDeviceId: input.id,
+          outputDeviceId: output.id,
+        ),
       ).thenAnswer((_) async => '1.18.0');
       final announcements = <Object?>[];
       tester.binding.defaultBinaryMessenger

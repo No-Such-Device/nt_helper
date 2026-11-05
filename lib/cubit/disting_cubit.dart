@@ -1265,11 +1265,15 @@ class DistingCubit extends _DistingCubitBase
   Future<String?> probeFreshFirmwareVersion(
     String? inputName,
     String? outputName,
-    int sysExId,
-  ) => _connectionDelegate.probeFreshFirmwareVersion(
+    int sysExId, {
+    String? inputDeviceId,
+    String? outputDeviceId,
+  }) => _connectionDelegate.probeFreshFirmwareVersion(
     inputName,
     outputName,
     sysExId,
+    inputDeviceId: inputDeviceId,
+    outputDeviceId: outputDeviceId,
   );
 
   /// Creates a connected [IDistingMidiManager] for firmware operations.
