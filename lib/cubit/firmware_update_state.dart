@@ -79,12 +79,14 @@ sealed class FirmwareUpdateState with _$FirmwareUpdateState {
     required String newVersion,
     @Default(0) int completedAttempts,
     @Default(12) int totalAttempts,
+    @Default(false) bool requiresVersion,
   }) = FirmwareUpdateStateVerifyingMidi;
 
   /// Firmware was installed, but the NT MIDI ports did not return in time.
   const factory FirmwareUpdateState.midiRecoveryRequired({
     required String newVersion,
     required bool isWindows,
+    String? verificationMessage,
   }) = FirmwareUpdateStateMidiRecoveryRequired;
 
   /// Firmware update completed successfully

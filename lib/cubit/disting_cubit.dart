@@ -1248,38 +1248,33 @@ class DistingCubit extends _DistingCubitBase
   Future<String?> probeFirmwareVersion(
     MidiDevice inputDevice,
     MidiDevice outputDevice,
-    int sysExId,
-  ) async {
-    _midiSetupSubscription?.pause();
-    try {
-      await _midiCommand.connectToDevice(inputDevice);
-      if (inputDevice.id != outputDevice.id) {
-        await _midiCommand.connectToDevice(outputDevice);
-      }
-      final manager = DistingMidiManager(
-        midiCommand: _midiCommand,
-        inputDevice: inputDevice,
-        outputDevice: outputDevice,
-        sysExId: sysExId,
-      );
-      try {
-        final version = await manager.requestVersionString().timeout(
-          const Duration(seconds: 3),
-        );
-        return version;
-      } finally {
-        manager.dispose();
-      }
-    } catch (_) {
-      return null;
-    } finally {
-      _midiCommand.disconnectDevice(inputDevice);
-      if (inputDevice.id != outputDevice.id) {
-        _midiCommand.disconnectDevice(outputDevice);
-      }
-      _midiSetupSubscription?.resume();
-    }
+    int sysExId, {
+    bool reportTimeout = false,
+  }) async {
+    return _connectionDelegate.probeFirmwareVersion(
+      inputDevice,
+      outputDevice,
+      sysExId,
+      reportTimeout: reportTimeout,
+    );
   }
+
+  int get firmwareSysExId => _connectionDelegate.firmwareSysExId;
+
+  /// Re-enumerates intended endpoints and requests a fresh application version.
+  Future<String?> probeFreshFirmwareVersion(
+    String? inputName,
+    String? outputName,
+    int sysExId, {
+    String? inputDeviceId,
+    String? outputDeviceId,
+  }) => _connectionDelegate.probeFreshFirmwareVersion(
+    inputName,
+    outputName,
+    sysExId,
+    inputDeviceId: inputDeviceId,
+    outputDeviceId: outputDeviceId,
+  );
 
   /// Creates a connected [IDistingMidiManager] for firmware operations.
   ///
@@ -1328,6 +1323,7 @@ class DistingCubit extends _DistingCubitBase
       manager.dispose();
     } catch (_) {}
 
+    if (isClosed) return;
     if (_isWindows) {
       // WinMM owns a process-wide NativeCallable. Recreating MidiCommand can
       // leave the native callback pointing at a closed Dart address.

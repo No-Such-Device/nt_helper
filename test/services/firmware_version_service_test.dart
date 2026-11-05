@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import '../test_helpers/ipad_firmware.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/models/firmware_release.dart';
@@ -9,6 +11,127 @@ class MockHttpClient extends Mock implements http.Client {}
 class FakeUri extends Fake implements Uri {}
 
 void main() {
+  group('iPad package preflight', () {
+    for (final fixture in invalidIpadPackages().entries) {
+      test('rejects ${fixture.key} before handoff', () {
+        expect(
+          () => FirmwareVersionService.validateIpadPackage(
+            ipadRelease,
+            '/package.zip',
+            fixture.value,
+          ),
+          throwsA(isA<FirmwareDownloadException>()),
+        );
+      });
+    }
+    test(
+      'retains app-local immutable target bytes and hash independently of download',
+      () async {
+        final directory = await Directory.systemTemp.createTemp(
+          'nt-package-test',
+        );
+        addTearDown(() => directory.delete(recursive: true));
+        final file = File('${directory.path}/download.zip');
+        await file.writeAsBytes(ipadPackageBytes());
+        final service = FirmwareVersionService();
+        addTearDown(service.dispose);
+        final prepared = await service.prepareIpadPackage(
+          ipadRelease,
+          file.path,
+        );
+        addTearDown(
+          () => File(prepared.packagePath).parent.delete(recursive: true),
+        );
+        await file.writeAsBytes([0]);
+        expect(
+          File(prepared.packagePath).readAsBytesSync(),
+          ipadPackageBytes(),
+        );
+        expect(prepared.version, '1.19.0');
+        expect(prepared.sha256Hash, hasLength(64));
+        expect(prepared.loader, ipadImage());
+        expect(prepared.application, ipadImage(application: true));
+        expect(() => prepared.application[0] = 0, throwsUnsupportedError);
+      },
+    );
+    for (final reply in [
+      '1.19.0',
+      'v1.19.0',
+      '1.19.0\n2026-10-21',
+      'v1.19.0\nOct 21 2026',
+    ]) {
+      test(
+        'accepts normal fresh application format ${reply.replaceAll('\n', ' ')}',
+        () {
+          expect(
+            FirmwareVersionService.matchesApplicationVersion(reply, '1.19.0'),
+            isTrue,
+          );
+        },
+      );
+    }
+    test('fresh v-prefixed beta reply accepts the NT build date and time', () {
+      const reply = 'v1.20.0beta\nOct 30 2026 14:04:12';
+      expect(
+        FirmwareVersionService.matchesApplicationVersion(reply, '1.20.0beta'),
+        isTrue,
+      );
+      expect(
+        FirmwareVersionService.matchesApplicationVersion(reply, 'v1.20.0beta'),
+        isTrue,
+      );
+      expect(
+        FirmwareVersionService.matchesApplicationVersion(reply, '1.20.0'),
+        isFalse,
+      );
+      expect(
+        FirmwareVersionService.matchesApplicationVersion(reply, '1.20.0beta2'),
+        isFalse,
+      );
+      expect(
+        FirmwareVersionService.matchesApplicationVersion(reply, 'local'),
+        isFalse,
+      );
+    });
+    test(
+      'build timestamp allowance still rejects malformed time and trailing text',
+      () {
+        for (final suffix in [
+          'Oct 30 2026 24:04:12',
+          'Oct 30 2026 14:64:12',
+          'Oct 30 2026 14:04:12 loader',
+          'Oct 30 2026\n14:04:12',
+        ]) {
+          expect(
+            FirmwareVersionService.matchesApplicationVersion(
+              'v1.20.0beta\n$suffix',
+              '1.20.0beta',
+            ),
+            isFalse,
+          );
+        }
+      },
+    );
+    for (final reply in <String?>[
+      null,
+      '',
+      '1.18.0',
+      'loader 1.19.0',
+      '1.19.0beta',
+      '11.19.0',
+      '1.19.0.1',
+      '1.19.0\nloader',
+      'Disting NT 1.19.0',
+    ]) {
+      test('does not infer target from ${reply ?? 'missing reply'}', () {
+        expect(
+          FirmwareVersionService.matchesApplicationVersion(reply, '1.19.0'),
+          isFalse,
+        );
+      });
+    }
+  });
+
   setUpAll(() {
     registerFallbackValue(FakeUri());
   });

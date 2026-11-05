@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:nt_helper/cubit/firmware_update_state.dart';
 import 'package:nt_helper/models/flash_stage.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,7 +10,6 @@ class FirmwareErrorWidget extends StatelessWidget {
   final VoidCallback onRetryFlash;
   final VoidCallback onTryAgain;
   final VoidCallback? onInstallUdevRules;
-  final Future<String> Function() onGetDiagnostics;
 
   const FirmwareErrorWidget({
     super.key,
@@ -20,7 +18,6 @@ class FirmwareErrorWidget extends StatelessWidget {
     required this.onRetryFlash,
     required this.onTryAgain,
     this.onInstallUdevRules,
-    required this.onGetDiagnostics,
   });
 
   @override
@@ -71,14 +68,6 @@ class FirmwareErrorWidget extends StatelessWidget {
             const _SandboxInstructionsSection(),
             const SizedBox(height: 16),
           ],
-
-          // Copy diagnostics button
-          OutlinedButton.icon(
-            onPressed: () => _copyDiagnostics(context),
-            icon: const Icon(Icons.copy),
-            label: const Text('Copy Diagnostics'),
-          ),
-          const SizedBox(height: 24),
 
           // Stuck in bootloader help section
           _BootloaderHelpSection(),
@@ -149,11 +138,6 @@ class FirmwareErrorWidget extends StatelessWidget {
     }
   }
 
-  Future<void> _copyDiagnostics(BuildContext context) async {
-    final diagnostics = await onGetDiagnostics();
-    await Clipboard.setData(ClipboardData(text: diagnostics));
-  }
-
   Future<void> _openForum() async {
     final uri = Uri.parse('https://forum.expert-sleepers.co.uk/');
     if (await canLaunchUrl(uri)) {
@@ -175,6 +159,7 @@ String getActionButtonText(FlashStage? stage) {
       return 'Retry Update';
     case FlashStage.configure:
     case FlashStage.reset:
+    case FlashStage.programmingComplete:
     case FlashStage.complete:
       return 'Try Again';
   }

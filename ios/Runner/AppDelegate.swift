@@ -29,6 +29,9 @@ import Darwin
     #if INITIAL_SDP_EXPERIMENT
     InitialSdpPlugin.register(with: registry.registrar(forPlugin: "com.example.nt_helper/initial_sdp")!)
     #endif
+    #if FIRMWARE_SESSION_V2
+    FirmwareSessionPlugin.register(with: registry.registrar(forPlugin: "dev.nosuch.nt_helper/firmware_session_v2")!)
+    #endif
   }
 
   // Wi-Fi and wired LAN interfaces are en*. Exclude cellular, VPNs and loopback.

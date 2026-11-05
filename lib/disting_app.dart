@@ -21,6 +21,7 @@ import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/contextual_help_tooltip_scope.dart';
 import 'package:nt_helper/ui/template_manager/template_manager_screen.dart';
 import 'package:nt_helper/utils/build_config.dart';
+import 'package:nt_helper/services/ipad_firmware_session.dart';
 import 'package:nt_helper/ui/midi_listener/midi_listener_cubit.dart';
 
 @visibleForTesting
@@ -308,12 +309,13 @@ class _DistingPageState extends State<DistingPage> {
                   context.read<DistingCubit>().goOffline();
                 },
                 onFirmwarePressed:
-                    isFirmwareUpdateAvailable(
-                      isPlayStoreBuild: kPlayStoreBuild,
-                      isMacOS: Platform.isMacOS,
-                      isWindows: Platform.isWindows,
-                      isLinux: Platform.isLinux,
-                    )
+                    (ipadFirmwareV2Enabled ||
+                        isFirmwareUpdateAvailable(
+                          isPlayStoreBuild: kPlayStoreBuild,
+                          isMacOS: Platform.isMacOS,
+                          isWindows: Platform.isWindows,
+                          isLinux: Platform.isLinux,
+                        ))
                     ? (
                         String? probedVersion,
                         MidiDevice? inputDevice,

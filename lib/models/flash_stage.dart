@@ -6,7 +6,8 @@ enum FlashStage {
   write('WRITE'),
   configure('CONFIGURE'),
   reset('RESET'),
-  complete('COMPLETE');
+  complete('COMPLETE'),
+  programmingComplete('PROGRAMMING_COMPLETE');
 
   final String machineValue;
 

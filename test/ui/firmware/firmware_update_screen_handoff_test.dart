@@ -3,6 +3,11 @@ import 'dart:async';
 import 'package:archive/archive.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nt_helper/cubit/firmware_update_state.dart';
+import 'package:nt_helper/services/ipad_firmware_session.dart';
+import '../../test_helpers/ipad_firmware.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:flutter_midi_command_platform_interface/midi_port.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +23,7 @@ import 'package:nt_helper/services/firmware_version_service.dart';
 import 'package:nt_helper/services/flash_tool_bridge.dart';
 import 'package:nt_helper/services/flash_tool_manager.dart';
 import 'package:nt_helper/ui/firmware/firmware_update_screen.dart';
+import 'package:nt_helper/ui/firmware/firmware_flow_diagram.dart';
 
 import '../../test_helpers/firmware_usb_access.dart';
 
@@ -152,6 +158,247 @@ void main() {
     flashToolBridge: flashToolBridge,
     pickLocalFirmwareFile: pickLocalFirmwareFile,
     readLocalFirmwareFile: readLocalFirmwareFile,
+  );
+
+  testWidgets(
+    'recovery without selected ports offers accessible MIDI selection instead of an impossible version retry',
+    (tester) async {
+      final native = ControlledIpadSession();
+      final acquisition = IpadPackageAcquisition();
+      addTearDown(native.dispose);
+      addTearDown(acquisition.dispose);
+      _stubDistingState(distingCubit, _selectionState());
+      when(() => distingCubit.firmwareSysExId).thenReturn(17);
+      when(() => distingCubit.loadDevices()).thenAnswer((_) async {});
+      final semantics = tester.ensureSemantics();
+      try {
+        await _pumpScreen(
+          tester,
+          distingCubit: distingCubit,
+          dependencies: FirmwareUpdateScreenDependencies(
+            firmwareVersionService: acquisition,
+            flashToolManager: flashToolManager,
+            flashToolBridge: flashToolBridge,
+            ipadSession: native,
+          ),
+        );
+        final updater = tester
+            .element(find.byType(FirmwareUpdateStateContent))
+            .read<FirmwareUpdateCubit>();
+        await updater.startUpdate(ipadRelease);
+        final operation = updater.confirmAndFlash();
+        await native.started.future;
+        native.finish();
+        await operation;
+        await tester.pumpAndSettle();
+        expect(find.text('Version not verified'), findsOneWidget);
+        expect(
+          find.textContaining('No MIDI ports were selected'),
+          findsOneWidget,
+        );
+        expect(find.text('Recheck version only'), findsNothing);
+        expect(find.bySemanticsLabel('Select MIDI ports'), findsOneWidget);
+        await tester.tap(find.text('Select MIDI ports'));
+        await tester.pumpAndSettle();
+        verify(() => distingCubit.loadDevices()).called(1);
+        expect(native.starts, 1);
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
+
+  testWidgets(
+    'iPad local beta uses the shared file action and firmware animation',
+    (tester) async {
+      final native = ControlledIpadSession();
+      final acquisition = IpadPackageAcquisition();
+      addTearDown(native.dispose);
+      addTearDown(acquisition.dispose);
+      _stubDistingState(distingCubit, _selectionState());
+      when(() => distingCubit.firmwareSysExId).thenReturn(17);
+      await _pumpScreen(
+        tester,
+        distingCubit: distingCubit,
+        dependencies: FirmwareUpdateScreenDependencies(
+          firmwareVersionService: acquisition,
+          flashToolManager: flashToolManager,
+          flashToolBridge: flashToolBridge,
+          ipadSession: native,
+          pickLocalFirmwareFile: () async => '/files/distingNT_1.20.0beta2.zip',
+          readLocalFirmwareFile: (_) async => ipadPackageBytes(),
+        ),
+      );
+      await tester.tap(find.text('Local Zip File'));
+      await tester.pumpAndSettle();
+      final updater = tester
+          .element(find.byType(FirmwareUpdateStateContent))
+          .read<FirmwareUpdateCubit>();
+      expect(updater.preparedPackage!.version, '1.20.0beta2');
+      final operation = updater.confirmAndFlash();
+      await native.started.future;
+      await tester.pump();
+      expect(find.byType(FirmwareFlowDiagram), findsOneWidget);
+      expect(find.text('Driver diagnostics'), findsNothing);
+      await updater.interrupt();
+      native.finish(IpadProgrammingOutcome.failed);
+      await operation;
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'native progress preserves control geometry and focus while announcing phases and verification failure',
+    (tester) async {
+      final native = ControlledIpadSession();
+      final acquisition = IpadPackageAcquisition();
+      addTearDown(native.dispose);
+      addTearDown(acquisition.dispose);
+      final midi = _MockDistingMidiManager();
+      when(() => midi.requestEnterBootloader()).thenAnswer((_) async {});
+      final input = _inputDevice(), output = _outputDevice();
+      _stubDistingState(
+        distingCubit,
+        DistingState.synchronized(
+          disting: midi,
+          distingVersion: '1.18.0',
+          firmwareVersion: FirmwareVersion('1.18.0'),
+          presetName: 'Patch',
+          algorithms: const [],
+          slots: const [],
+          unitStrings: const [],
+          inputDevice: input,
+          outputDevice: output,
+        ),
+      );
+      when(() => distingCubit.disting()).thenReturn(midi);
+      when(() => distingCubit.firmwareSysExId).thenReturn(17);
+      when(
+        () => distingCubit.probeFreshFirmwareVersion(
+          input.name,
+          output.name,
+          17,
+          inputDeviceId: input.id,
+          outputDeviceId: output.id,
+        ),
+      ).thenAnswer((_) async => '1.18.0');
+      final announcements = <Object?>[];
+      tester.binding.defaultBinaryMessenger
+          .setMockDecodedMessageHandler<Object?>(SystemChannels.accessibility, (
+            message,
+          ) async {
+            announcements.add(message);
+            return null;
+          });
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger
+            .setMockDecodedMessageHandler<Object?>(
+              SystemChannels.accessibility,
+              null,
+            ),
+      );
+      final semantics = tester.ensureSemantics();
+
+      await _pumpScreen(
+        tester,
+        distingCubit: distingCubit,
+        dependencies: FirmwareUpdateScreenDependencies(
+          firmwareVersionService: acquisition,
+          flashToolManager: flashToolManager,
+          flashToolBridge: flashToolBridge,
+          ipadSession: native,
+        ),
+      );
+      final initialUpdater = tester
+          .element(find.byType(FirmwareUpdateStateContent))
+          .read<FirmwareUpdateCubit>();
+      expect(
+        initialUpdater.isUpdateAvailable,
+        isTrue,
+        reason: '${initialUpdater.state}',
+      );
+      expect(
+        (initialUpdater.state as FirmwareUpdateStateInitial).availableVersions,
+        isNotEmpty,
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Install'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Update Firmware'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('Erase and install 1.19.0'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus?.context, isNotNull);
+      await tester.tap(find.text('Erase and install 1.19.0'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final updater = tester
+          .element(find.byType(FirmwareUpdateStateContent))
+          .read<FirmwareUpdateCubit>();
+      final button = find.widgetWithText(OutlinedButton, 'Cancel');
+      final rect = tester.getRect(button);
+      for (final phase in [
+        IpadProgrammingPhase.uploadingLoader,
+        IpadProgrammingPhase.waitingLoader,
+        IpadProgrammingPhase.erasing,
+        IpadProgrammingPhase.creatingFcb,
+        IpadProgrammingPhase.writingApplication,
+      ]) {
+        native.phase(phase);
+        await tester.pump();
+        await tester.pump();
+        expect(tester.getRect(button), rect);
+        expect(find.text(phase.label), findsOneWidget);
+      }
+      native.finish();
+      await tester.pump();
+      await tester.pump();
+      expect(updater.state, isA<FirmwareUpdateStateVerifyingMidi>());
+      expect(
+        find.bySemanticsLabel(RegExp('Verifying application version')),
+        findsWidgets,
+      );
+      expect(tester.getRect(button), rect);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
+      expect(updater.state, isA<FirmwareUpdateStateMidiRecoveryRequired>());
+      final recheck = find.widgetWithText(FilledButton, 'Recheck version only');
+      expect(tester.getRect(recheck), rect);
+      expect(
+        find.textContaining('Application version mismatch:'),
+        findsOneWidget,
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus?.context?.widget, isNotNull);
+      final spoken = announcements.join('\n');
+      expect(spoken, contains('Erasing application region'));
+      expect(spoken, contains('Creating flash configuration block'));
+      expect(
+        spoken,
+        contains('Programming complete. Verifying fresh application version'),
+      );
+      expect(spoken, contains('Application version mismatch'));
+      Focus.of(
+        tester.element(find.text('Recheck version only')),
+      ).requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(updater.state, isA<FirmwareUpdateStateVerifyingMidi>());
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
+      await tester.pump();
+      expect(updater.state, isA<FirmwareUpdateStateError>());
+      expect(find.textContaining('Update interrupted'), findsOneWidget);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump(const Duration(seconds: 5));
+      expect(updater.state, isA<FirmwareUpdateStateError>());
+      expect(native.starts, 1);
+      semantics.dispose();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
   );
 
   testWidgets(
@@ -292,7 +539,8 @@ void main() {
       );
       verifyNever(() => midiManager.requestEnterBootloader());
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'known capable selection lazily creates, boots, and releases MIDI before flashing',
@@ -460,5 +708,6 @@ void main() {
       await tester.pump();
       verifyNoMoreInteractions(midiManager);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 }
