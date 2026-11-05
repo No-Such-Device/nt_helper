@@ -197,6 +197,37 @@ void main() {
       },
     );
 
+    test(
+      'local beta completes only after fresh v-prefixed version with build timestamp matches',
+      () {
+        final cubit = create(
+          recovery: true,
+          version: 'Unknown',
+          localReader: (_) async => ipadPackageBytes(),
+        );
+        probe = () async => 'v1.20.0beta\nOct 30 2026 14:04:12';
+        fakeAsync((time) {
+          unawaited(cubit.loadAvailableVersions());
+          time.flushMicrotasks();
+          unawaited(cubit.useLocalFile('/files/distingNT_v1.20.0beta.zip'));
+          time.flushMicrotasks();
+          unawaited(cubit.confirmAndFlash());
+          time.flushMicrotasks();
+          expect(native.starts, 1);
+          native.finish();
+          time.flushMicrotasks();
+          expect(cubit.state, isA<FirmwareUpdateStateVerifyingMidi>());
+          time.elapse(const Duration(seconds: 1));
+          time.flushMicrotasks();
+          expect(cubit.state, isA<FirmwareUpdateStateSuccess>());
+          expect(
+            (cubit.state as FirmwareUpdateStateSuccess).newVersion,
+            '1.20.0beta',
+          );
+        });
+      },
+    );
+
     for (final fixture in invalidIpadPackages().entries) {
       test(
         '${fixture.key} cannot enter bootloader release MIDI or start native writes',

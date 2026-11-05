@@ -527,11 +527,13 @@ class FirmwareVersionService {
     if (version.length > 2) return false;
     if (version.length == 2 &&
         !RegExp(
-          r'^(?:\d{4}-\d{2}-\d{2}|[A-Z][a-z]{2} +\d{1,2} +\d{4})$',
+          r'^(?:\d{4}-\d{2}-\d{2}|[A-Z][a-z]{2} +\d{1,2} +\d{4})(?: (?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d)?$',
         ).hasMatch(version[1].trim())) {
       return false;
     }
-    return match.firstMatch(version.first.trim())?.group(1) == expected;
+    final target = match.firstMatch(expected.trim())?.group(1);
+    return target != null &&
+        match.firstMatch(version.first.trim())?.group(1) == target;
   }
 
   /// Delete a downloaded firmware package

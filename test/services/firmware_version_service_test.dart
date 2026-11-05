@@ -70,6 +70,48 @@ void main() {
         },
       );
     }
+    test('fresh v-prefixed beta reply accepts the NT build date and time', () {
+      const reply = 'v1.20.0beta\nOct 30 2026 14:04:12';
+      expect(
+        FirmwareVersionService.matchesApplicationVersion(reply, '1.20.0beta'),
+        isTrue,
+      );
+      expect(
+        FirmwareVersionService.matchesApplicationVersion(reply, 'v1.20.0beta'),
+        isTrue,
+      );
+      expect(
+        FirmwareVersionService.matchesApplicationVersion(reply, '1.20.0'),
+        isFalse,
+      );
+      expect(
+        FirmwareVersionService.matchesApplicationVersion(reply, '1.20.0beta2'),
+        isFalse,
+      );
+      expect(
+        FirmwareVersionService.matchesApplicationVersion(reply, 'local'),
+        isFalse,
+      );
+    });
+    test(
+      'build timestamp allowance still rejects malformed time and trailing text',
+      () {
+        for (final suffix in [
+          'Oct 30 2026 24:04:12',
+          'Oct 30 2026 14:64:12',
+          'Oct 30 2026 14:04:12 loader',
+          'Oct 30 2026\n14:04:12',
+        ]) {
+          expect(
+            FirmwareVersionService.matchesApplicationVersion(
+              'v1.20.0beta\n$suffix',
+              '1.20.0beta',
+            ),
+            isFalse,
+          );
+        }
+      },
+    );
     for (final reply in <String?>[
       null,
       '',
