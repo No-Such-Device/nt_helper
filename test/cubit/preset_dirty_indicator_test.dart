@@ -641,32 +641,36 @@ void main() {
       },
     );
 
-    test('refresh does not carry specifications to a different GUID', () async {
-      final quantizerSlot = makeSlot().copyWith(
-        algorithm: Algorithm(
-          algorithmIndex: 0,
-          guid: 'quan',
-          name: 'Quantizer',
-          specifications: const [4],
-        ),
-      );
-      when(
-        () => mockDisting.requestNumAlgorithmsInPreset(),
-      ).thenAnswer((_) async => 1);
-      when(
-        () => mockDisting.requestPresetName(),
-      ).thenAnswer((_) async => 'Test Preset');
-      when(
-        () => mockDisting.requestNumberOfAlgorithms(),
-      ).thenAnswer((_) async => 0);
-      cubit.fetchSlotsOverride = (_, _) async => [makeSlot()];
+    test(
+      'refresh does not carry specifications to a different GUID',
+      () async {
+        final quantizerSlot = makeSlot().copyWith(
+          algorithm: Algorithm(
+            algorithmIndex: 0,
+            guid: 'quan',
+            name: 'Quantizer',
+            specifications: const [4],
+          ),
+        );
+        when(
+          () => mockDisting.requestNumAlgorithmsInPreset(),
+        ).thenAnswer((_) async => 1);
+        when(
+          () => mockDisting.requestPresetName(),
+        ).thenAnswer((_) async => 'Test Preset');
+        when(
+          () => mockDisting.requestNumberOfAlgorithms(),
+        ).thenAnswer((_) async => 0);
+        cubit.fetchSlotsOverride = (_, _) async => [makeSlot()];
 
-      cubit.emit(makeSyncState(slots: [quantizerSlot]));
-      await cubit.refresh();
+        cubit.emit(makeSyncState(slots: [quantizerSlot]));
+        await cubit.refresh();
 
-      final state = cubit.state as DistingStateSynchronized;
-      expect(state.slots.single.algorithm.specifications, isEmpty);
-    }, tags: ['regression']);
+        final state = cubit.state as DistingStateSynchronized;
+        expect(state.slots.single.algorithm.specifications, isEmpty);
+      },
+      tags: ['regression'],
+    );
 
     test(
       'refresh keeps nonempty specifications returned by the manager',
@@ -767,59 +771,63 @@ void main() {
       expect(algorithm.hasAuthoritativeSpecifications, isFalse);
     });
 
-    test('late refresh does not overwrite newer specification state', () async {
-      final fetchedSlots = Completer<List<Slot>>();
-      final fetchStarted = Completer<void>();
-      final quantizerSlot = makeSlot().copyWith(
-        algorithm: Algorithm(
-          algorithmIndex: 0,
-          guid: 'quan',
-          name: 'Quantizer',
-          specifications: const [4],
-        ),
-      );
-      when(
-        () => mockDisting.requestNumAlgorithmsInPreset(),
-      ).thenAnswer((_) async => 1);
-      when(
-        () => mockDisting.requestPresetName(),
-      ).thenAnswer((_) async => 'Test Preset');
-      when(
-        () => mockDisting.requestNumberOfAlgorithms(),
-      ).thenAnswer((_) async => 0);
-      cubit.fetchSlotsOverride = (_, _) {
-        fetchStarted.complete();
-        return fetchedSlots.future;
-      };
-
-      cubit.emit(makeSyncState(slots: [quantizerSlot]));
-      final refresh = cubit.refresh();
-      await fetchStarted.future;
-      cubit.emit(
-        makeSyncState(
-          slots: [
-            quantizerSlot.copyWith(
-              algorithm: quantizerSlot.algorithm.copyWith(
-                specifications: const [8],
-              ),
-            ),
-          ],
-        ),
-      );
-      fetchedSlots.complete([
-        quantizerSlot.copyWith(
+    test(
+      'late refresh does not overwrite newer specification state',
+      () async {
+        final fetchedSlots = Completer<List<Slot>>();
+        final fetchStarted = Completer<void>();
+        final quantizerSlot = makeSlot().copyWith(
           algorithm: Algorithm(
             algorithmIndex: 0,
             guid: 'quan',
             name: 'Quantizer',
+            specifications: const [4],
           ),
-        ),
-      ]);
-      await refresh;
+        );
+        when(
+          () => mockDisting.requestNumAlgorithmsInPreset(),
+        ).thenAnswer((_) async => 1);
+        when(
+          () => mockDisting.requestPresetName(),
+        ).thenAnswer((_) async => 'Test Preset');
+        when(
+          () => mockDisting.requestNumberOfAlgorithms(),
+        ).thenAnswer((_) async => 0);
+        cubit.fetchSlotsOverride = (_, _) {
+          fetchStarted.complete();
+          return fetchedSlots.future;
+        };
 
-      final state = cubit.state as DistingStateSynchronized;
-      expect(state.slots.single.algorithm.specifications, const [8]);
-    }, tags: ['regression']);
+        cubit.emit(makeSyncState(slots: [quantizerSlot]));
+        final refresh = cubit.refresh();
+        await fetchStarted.future;
+        cubit.emit(
+          makeSyncState(
+            slots: [
+              quantizerSlot.copyWith(
+                algorithm: quantizerSlot.algorithm.copyWith(
+                  specifications: const [8],
+                ),
+              ),
+            ],
+          ),
+        );
+        fetchedSlots.complete([
+          quantizerSlot.copyWith(
+            algorithm: Algorithm(
+              algorithmIndex: 0,
+              guid: 'quan',
+              name: 'Quantizer',
+            ),
+          ),
+        ]);
+        await refresh;
+
+        final state = cubit.state as DistingStateSynchronized;
+        expect(state.slots.single.algorithm.specifications, const [8]);
+      },
+      tags: ['regression'],
+    );
 
     test(
       'newer overlapping refresh wins even when the older finishes first',
@@ -987,65 +995,69 @@ void main() {
       },
     );
 
-    test('late full refresh does not overwrite newer specifications', () async {
-      final fetchedSlots = Completer<List<Slot>>();
-      final fetchStarted = Completer<void>();
-      final quantizerSlot = makeSlot().copyWith(
-        algorithm: Algorithm(
-          algorithmIndex: 0,
-          guid: 'quan',
-          name: 'Quantizer',
-          specifications: const [4],
-        ),
-      );
-      when(
-        () => mockDisting.requestNumberOfAlgorithms(),
-      ).thenAnswer((_) async => 0);
-      when(
-        () => mockDisting.requestNumAlgorithmsInPreset(),
-      ).thenAnswer((_) async => 1);
-      when(
-        () => mockDisting.requestVersionString(),
-      ).thenAnswer((_) async => '1.14.0');
-      when(
-        () => mockDisting.requestPresetName(),
-      ).thenAnswer((_) async => 'Test Preset');
-      when(
-        () => mockDisting.requestUnitStrings(),
-      ).thenAnswer((_) async => const []);
-      cubit.fetchSlotsOverride = (_, _) {
-        fetchStarted.complete();
-        return fetchedSlots.future;
-      };
-
-      cubit.emit(makeSyncState(slots: [quantizerSlot]));
-      final refresh = cubit.refresh(fullRefresh: true);
-      await fetchStarted.future;
-      cubit.emit(
-        makeSyncState(
-          slots: [
-            quantizerSlot.copyWith(
-              algorithm: quantizerSlot.algorithm.copyWith(
-                specifications: const [8],
-              ),
-            ),
-          ],
-        ),
-      );
-      fetchedSlots.complete([
-        quantizerSlot.copyWith(
+    test(
+      'late full refresh does not overwrite newer specifications',
+      () async {
+        final fetchedSlots = Completer<List<Slot>>();
+        final fetchStarted = Completer<void>();
+        final quantizerSlot = makeSlot().copyWith(
           algorithm: Algorithm(
             algorithmIndex: 0,
             guid: 'quan',
             name: 'Quantizer',
+            specifications: const [4],
           ),
-        ),
-      ]);
-      await refresh;
+        );
+        when(
+          () => mockDisting.requestNumberOfAlgorithms(),
+        ).thenAnswer((_) async => 0);
+        when(
+          () => mockDisting.requestNumAlgorithmsInPreset(),
+        ).thenAnswer((_) async => 1);
+        when(
+          () => mockDisting.requestVersionString(),
+        ).thenAnswer((_) async => '1.14.0');
+        when(
+          () => mockDisting.requestPresetName(),
+        ).thenAnswer((_) async => 'Test Preset');
+        when(
+          () => mockDisting.requestUnitStrings(),
+        ).thenAnswer((_) async => const []);
+        cubit.fetchSlotsOverride = (_, _) {
+          fetchStarted.complete();
+          return fetchedSlots.future;
+        };
 
-      final state = cubit.state as DistingStateSynchronized;
-      expect(state.slots.single.algorithm.specifications, const [8]);
-    }, tags: ['regression']);
+        cubit.emit(makeSyncState(slots: [quantizerSlot]));
+        final refresh = cubit.refresh(fullRefresh: true);
+        await fetchStarted.future;
+        cubit.emit(
+          makeSyncState(
+            slots: [
+              quantizerSlot.copyWith(
+                algorithm: quantizerSlot.algorithm.copyWith(
+                  specifications: const [8],
+                ),
+              ),
+            ],
+          ),
+        );
+        fetchedSlots.complete([
+          quantizerSlot.copyWith(
+            algorithm: Algorithm(
+              algorithmIndex: 0,
+              guid: 'quan',
+              name: 'Quantizer',
+            ),
+          ),
+        ]);
+        await refresh;
+
+        final state = cubit.state as DistingStateSynchronized;
+        expect(state.slots.single.algorithm.specifications, const [8]);
+      },
+      tags: ['regression'],
+    );
 
     test('timed-out full refresh cannot emit a late result', () {
       fakeAsync((async) {
@@ -1077,11 +1089,9 @@ void main() {
 
         cubit.emit(makeSyncState(slots: [quantizerSlot]));
         var refreshFinished = false;
-        unawaited(
-          cubit.refresh(fullRefresh: true).then((_) {
-            refreshFinished = true;
-          }),
-        );
+        unawaited(cubit.refresh(fullRefresh: true).then((_) {
+          refreshFinished = true;
+        }));
         async.flushMicrotasks();
         async.elapse(const Duration(minutes: 1));
         async.flushMicrotasks();
@@ -1998,86 +2008,94 @@ void main() {
       expect((cubit.state as DistingStateSynchronized).isDirty, isFalse);
     });
 
-    test('late routing does not overwrite a replacement manager', () async {
-      final routing = Completer<RoutingInfo?>();
-      when(
-        () => mockDisting.requestRoutingInformation(0),
-      ).thenAnswer((_) => routing.future);
-      final initialState = makeSyncState(slots: [makeSlot()]);
-      cubit.emit(initialState);
+    test(
+      'late routing does not overwrite a replacement manager',
+      () async {
+        final routing = Completer<RoutingInfo?>();
+        when(
+          () => mockDisting.requestRoutingInformation(0),
+        ).thenAnswer((_) => routing.future);
+        final initialState = makeSyncState(slots: [makeSlot()]);
+        cubit.emit(initialState);
 
-      final refresh = cubit.refreshRouting();
-      await Future<void>.delayed(Duration.zero);
+        final refresh = cubit.refreshRouting();
+        await Future<void>.delayed(Duration.zero);
 
-      final replacementManager = MockDistingMidiManager();
-      final replacementSlot = makeSlot().copyWith(
-        values: [
-          ParameterValue(algorithmIndex: 0, parameterNumber: 0, value: 42),
-        ],
-      );
-      final replacementState = initialState.copyWith(
-        disting: replacementManager,
-        slots: [replacementSlot],
-      );
-      cubit.emit(replacementState);
-      routing.complete(
-        RoutingInfo(algorithmIndex: 0, routingInfo: List<int>.filled(6, 99)),
-      );
-      await refresh;
+        final replacementManager = MockDistingMidiManager();
+        final replacementSlot = makeSlot().copyWith(
+          values: [
+            ParameterValue(algorithmIndex: 0, parameterNumber: 0, value: 42),
+          ],
+        );
+        final replacementState = initialState.copyWith(
+          disting: replacementManager,
+          slots: [replacementSlot],
+        );
+        cubit.emit(replacementState);
+        routing.complete(
+          RoutingInfo(algorithmIndex: 0, routingInfo: List<int>.filled(6, 99)),
+        );
+        await refresh;
 
-      expect(cubit.state, same(replacementState));
-      expect(
-        (cubit.state as DistingStateSynchronized)
-            .slots
-            .single
-            .values
-            .single
-            .value,
-        42,
-      );
-      verify(() => mockDisting.requestRoutingInformation(0)).called(1);
-    }, tags: ['regression']);
+        expect(cubit.state, same(replacementState));
+        expect(
+          (cubit.state as DistingStateSynchronized)
+              .slots
+              .single
+              .values
+              .single
+              .value,
+          42,
+        );
+        verify(() => mockDisting.requestRoutingInformation(0)).called(1);
+      },
+      tags: ['regression'],
+    );
   });
 
   group('cubit mapping ops', () {
-    test('saveMapping coalesces rapid edits to the latest mapping', () async {
-      final first = PackedMappingData.filler().copyWith(
-        version: 6,
-        i2cCC: 12,
-        isI2cEnabled: true,
-        i2cMin: 0,
-        i2cMax: 100,
-      );
-      final latest = first.copyWith(i2cCC: 32);
-      final writes = <PackedMappingData>[];
-      var hardwareMapping = PackedMappingData.filler();
+    test(
+      'saveMapping coalesces rapid edits to the latest mapping',
+      () async {
+        final first = PackedMappingData.filler().copyWith(
+          version: 6,
+          i2cCC: 12,
+          isI2cEnabled: true,
+          i2cMin: 0,
+          i2cMax: 100,
+        );
+        final latest = first.copyWith(i2cCC: 32);
+        final writes = <PackedMappingData>[];
+        var hardwareMapping = PackedMappingData.filler();
 
-      when(() => mockDisting.requestSetMapping(any(), any(), any())).thenAnswer(
-        (invocation) async {
+        when(
+          () => mockDisting.requestSetMapping(any(), any(), any()),
+        ).thenAnswer((invocation) async {
           hardwareMapping =
               invocation.positionalArguments[2] as PackedMappingData;
           writes.add(hardwareMapping);
-        },
-      );
-      when(() => mockDisting.requestMappings(0, 0)).thenAnswer(
-        (_) async => Mapping(
-          algorithmIndex: 0,
-          parameterNumber: 0,
-          packedMappingData: hardwareMapping,
-        ),
-      );
-      cubit.emit(makeSyncState(slots: [makeSlot()]));
+        });
+        when(() => mockDisting.requestMappings(0, 0)).thenAnswer(
+          (_) async => Mapping(
+            algorithmIndex: 0,
+            parameterNumber: 0,
+            packedMappingData: hardwareMapping,
+          ),
+        );
+        cubit.emit(makeSyncState(slots: [makeSlot()]));
 
-      await Future.wait([
-        cubit.saveMapping(0, 0, first),
-        cubit.saveMapping(0, 0, latest),
-      ]);
+        await Future.wait([
+          cubit.saveMapping(0, 0, first),
+          cubit.saveMapping(0, 0, latest),
+        ]);
 
-      expect(writes, [latest]);
-      final state = cubit.state as DistingStateSynchronized;
-      expect(state.slots[0].mappings[0].packedMappingData, latest);
-      expect(state.isDirty, isTrue);
-    }, tags: ['regression']);
+        expect(writes, [latest]);
+        final state = cubit.state as DistingStateSynchronized;
+        expect(state.slots[0].mappings[0].packedMappingData, latest);
+        expect(state.isDirty, isTrue);
+      },
+      tags: ['regression'],
+    );
 
     test('saveMapping rewrites until exact readback is verified', () async {
       final desired = PackedMappingData.filler().copyWith(
@@ -2201,46 +2219,50 @@ void main() {
       verify(() => mockDisting.requestSetMapping(0, 0, desired)).called(1);
     });
 
-    test('saveMapping keeps failed intent queued until it succeeds', () async {
-      final desired = PackedMappingData.filler().copyWith(
-        version: 6,
-        i2cCC: 32,
-        isI2cEnabled: true,
-        i2cMin: 0,
-        i2cMax: 100,
-      );
-      var writeCount = 0;
+    test(
+      'saveMapping keeps failed intent queued until it succeeds',
+      () async {
+        final desired = PackedMappingData.filler().copyWith(
+          version: 6,
+          i2cCC: 32,
+          isI2cEnabled: true,
+          i2cMin: 0,
+          i2cMax: 100,
+        );
+        var writeCount = 0;
 
-      when(() => mockDisting.requestSetMapping(any(), any(), any())).thenAnswer(
-        (_) async {
+        when(
+          () => mockDisting.requestSetMapping(any(), any(), any()),
+        ).thenAnswer((_) async {
           writeCount++;
-        },
-      );
-      when(() => mockDisting.requestMappings(0, 0)).thenAnswer(
-        (_) async => Mapping(
-          algorithmIndex: 0,
-          parameterNumber: 0,
-          packedMappingData: writeCount >= 5
-              ? desired
-              : desired.copyWith(i2cCC: 31),
-        ),
-      );
-      cubit.emit(makeSyncState(slots: [makeSlot()]));
+        });
+        when(() => mockDisting.requestMappings(0, 0)).thenAnswer(
+          (_) async => Mapping(
+            algorithmIndex: 0,
+            parameterNumber: 0,
+            packedMappingData: writeCount >= 5
+                ? desired
+                : desired.copyWith(i2cCC: 31),
+          ),
+        );
+        cubit.emit(makeSyncState(slots: [makeSlot()]));
 
-      final recovered = cubit.stream.firstWhere(
-        (state) =>
-            state is DistingStateSynchronized &&
-            state.slots[0].mappings[0].packedMappingData == desired,
-      );
-      await expectLater(
-        cubit.saveMappingImmediately(0, 0, desired),
-        throwsA(isA<StateError>()),
-      );
+        final recovered = cubit.stream.firstWhere(
+          (state) =>
+              state is DistingStateSynchronized &&
+              state.slots[0].mappings[0].packedMappingData == desired,
+        );
+        await expectLater(
+          cubit.saveMappingImmediately(0, 0, desired),
+          throwsA(isA<StateError>()),
+        );
 
-      expect(writeCount, 4);
-      await recovered.timeout(const Duration(seconds: 3));
-      expect(writeCount, 5);
-    }, tags: ['regression']);
+        expect(writeCount, 4);
+        await recovered.timeout(const Duration(seconds: 3));
+        expect(writeCount, 5);
+      },
+      tags: ['regression'],
+    );
 
     test('saveMapping marks state dirty after verified write', () async {
       PackedMappingData? deviceMapping;
