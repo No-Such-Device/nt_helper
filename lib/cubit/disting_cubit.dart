@@ -99,6 +99,9 @@ abstract class _DistingCubitBase extends Cubit<DistingState> {
     void Function(int completed, int total)? onSlotProgress,
   });
   Future<void> _refreshStateFromManager({Duration delay});
+  Future<void> _performSyncAndEmit({
+    DistingStateSynchronized? preserveSlotSpecificationsFrom,
+  });
   Future<_SlotRefreshStatus> _refreshSlotWithResult(
     int algorithmIndex, {
     _SlotHydrationExpectation? expectation,
@@ -395,8 +398,13 @@ class DistingCubit extends _DistingCubitBase
   }
 
   // Private helper to perform the full synchronization and emit the state
-  Future<void> _performSyncAndEmit() async {
-    await _connectionDelegate.performSyncAndEmit();
+  @override
+  Future<void> _performSyncAndEmit({
+    DistingStateSynchronized? preserveSlotSpecificationsFrom,
+  }) async {
+    await _connectionDelegate.performSyncAndEmit(
+      preserveSlotSpecificationsFrom: preserveSlotSpecificationsFrom,
+    );
   }
 
   Future<void> connectToDevices(

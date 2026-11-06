@@ -15,23 +15,43 @@ mixin _DistingCubitPresetOps on _DistingCubitBase {
 
   Future<void> loadPresetImpl(String name, bool append) async {
     final currentState = state;
-    if (currentState is DistingStateSynchronized) {
-      // Prevent online load preset when offline
-      if (currentState.offline) {
-        return;
-      }
-      final disting = requireDisting();
-
-      emit(currentState.copyWith(loading: true));
-
-      await disting.requestLoadPreset(name, append);
-
-      if (!append) {
-        _forgetSlotSpecificationsAfterPresetReplacement(disting);
-      }
-
-      await _refreshStateFromManager();
+    if (currentState is! DistingStateSynchronized || currentState.offline) {
+      return;
     }
+    final disting = requireDisting();
+
+    // Loading a file changes the whole preset. Leave the old synchronized view
+    // before sending it, then use the same full sync as a device connection.
+    final loadingState = DistingState.connected(
+      disting: disting,
+      inputDevice: currentState.inputDevice,
+      outputDevice: currentState.outputDevice,
+      loading: true,
+      syncStatus: 'Loading preset...',
+      syncProgress: 0,
+    );
+    emit(loadingState);
+    try {
+      await disting.requestLoadPreset(name, append);
+    } catch (_) {
+      if (!isClosed && identical(state, loadingState)) {
+        emit(currentState.copyWith(loading: false));
+      }
+      rethrow;
+    }
+
+    // Cancel/disconnect while the load was being sent must not sync a different
+    // connection or bring the old connection back into the UI.
+    final afterLoad = state;
+    if (isClosed ||
+        afterLoad is! DistingStateConnected ||
+        !identical(afterLoad.disting, disting)) {
+      return;
+    }
+    await _performSyncAndEmit(
+      preserveSlotSpecificationsFrom: append ? currentState : null,
+    );
+    _refreshMemoryAfterDeviceMutation();
   }
 
   void _forgetSlotSpecificationsAfterPresetReplacement(
