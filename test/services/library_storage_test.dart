@@ -93,6 +93,11 @@ void main() {
       );
       final control = Directory(p.join(app.path, '.storage-v1'))..createSync();
       File(p.join(control.path, 'selected.json')).writeAsStringSync('broken');
+      final oldLock = File(p.join(app.path, '.library-import.lock'));
+      oldLock.deleteSync();
+      Directory(
+        oldLock.path,
+      ).createSync(); // Normal opening needs no migration lock.
       final result = await storage(
         documents: () async => throw StateError('no Documents read'),
       ).prepare();
@@ -283,6 +288,84 @@ void main() {
       final result = await storage().prepare();
       expect(await contents(await open(result)), await contents(valid.app));
       expect(work.existsSync(), isFalse);
+    },
+  );
+
+  test(
+    'another process importing cannot overwrite a completed canonical library',
+    () async {
+      final source = await fixture(docs);
+      final lockPath = p.join(app.path, '.library-import.lock');
+      final worker = File(p.join(root.path, 'hold_import.dart'))
+        ..writeAsStringSync('''
+import 'dart:io';
+Future<void> main(List<String> args) async {
+  final lock = await File(args.single).open(mode: FileMode.append);
+  await lock.lock(FileLock.exclusive);
+  stdout.writeln('locked');
+  await stdin.first;
+  await lock.close();
+}
+''');
+      final process = await Process.start('dart', [worker.path, lockPath]);
+      try {
+        expect(
+          await process.stdout
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())
+              .first
+              .timeout(const Duration(seconds: 10)),
+          'locked',
+        );
+        await expectLater(
+          storage().prepare(),
+          throwsA(isA<FileSystemException>()),
+        );
+        expect(storage().file.existsSync(), isFalse);
+        expect(source.file.existsSync(), isTrue);
+        process.stdin.writeln('release');
+        await process.stdin.close();
+        expect(await process.exitCode.timeout(const Duration(seconds: 10)), 0);
+        final file = await storage().prepare();
+        final db = await open(file);
+        await db.customStatement(
+          "INSERT INTO metadata_cache VALUES ('after-import', 'keep')",
+        );
+        final again = await storage().prepare(importSource: source.file);
+        expect(again.path, file.path);
+        expect(
+          (await db.select(db.metadataCache).get()).map((row) => row.cacheKey),
+          contains('after-import'),
+        );
+      } finally {
+        process.kill();
+        await process.exitCode.timeout(const Duration(seconds: 10));
+      }
+    },
+  );
+
+  test(
+    'newer imported schema is rejected without publishing or modifying the source',
+    () async {
+      final source = await fixture(docs);
+      source.raw.execute('PRAGMA user_version=999');
+      final expected = await contents(source.app);
+      await expectLater(
+        storage().prepare(),
+        throwsA(
+          isA<LibraryImportException>().having(
+            (e) => e.cause,
+            'unsupported schema',
+            isA<UnsupportedError>(),
+          ),
+        ),
+      );
+      expect(storage().file.existsSync(), isFalse);
+      expect(
+        source.raw.select('PRAGMA user_version').single.values.single,
+        999,
+      );
+      expect(await contents(source.app), expected);
     },
   );
 

@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:nt_helper/models/gallery_models.dart';
-import 'package:nt_helper/services/macos_library_storage.dart';
 import 'package:nt_helper/services/macos_storage_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
@@ -28,7 +27,7 @@ class GalleryCacheStorage extends ChangeNotifier {
   });
   final Directory directory;
   final Future<Directory> Function() documentsProvider;
-  final StorageCheckpoint? checkpoint;
+  final Future<void> Function(String)? checkpoint;
   File get file => File(p.join(directory.path, 'gallery_cache.json'));
   Future<void>? _pending;
   bool ready = false;

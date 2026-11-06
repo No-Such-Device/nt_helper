@@ -36,6 +36,7 @@ class LibraryStorage {
         ArgumentError('Choose a library or start fresh, not both'),
       );
     }
+    if (file.existsSync()) return Future.value(file);
     final key = p.normalize(p.absolute(file.path));
     return _pending[key] ??= _prepare(importSource, startFresh).whenComplete(
       () {

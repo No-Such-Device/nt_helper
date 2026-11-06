@@ -90,27 +90,32 @@ void main() {
         final entered = Completer<void>();
         final release = Completer<void>();
         final controller = StartupController(
-          open: ({bool selectLegacyDirectory = false}) {
-            databasePreparations++;
-            return StartupStorageOpener(
-              isMacOS: true,
-              docsProvider: () async => docs,
-              supportProvider: () async => support,
-              checkpoint: (point) async {
-                if (point == 'gallery:inventory' && hold) {
-                  entered.complete();
-                  await release.future;
-                }
-                if (point == boundary && fail) {
-                  throw const FileSystemException(
-                    'simulated gallery transfer denial/interruption',
-                    '',
-                    OSError('denied', 13),
-                  );
-                }
+          open:
+              ({
+                bool selectLegacyDirectory = false,
+                File? importSource,
+                bool startFresh = false,
+              }) {
+                databasePreparations++;
+                return StartupStorageOpener(
+                  isMacOS: true,
+                  docsProvider: () async => docs,
+                  supportProvider: () async => support,
+                  galleryCheckpoint: (point) async {
+                    if (point == 'gallery:inventory' && hold) {
+                      entered.complete();
+                      await release.future;
+                    }
+                    if (point == boundary && fail) {
+                      throw const FileSystemException(
+                        'simulated gallery transfer denial/interruption',
+                        '',
+                        OSError('denied', 13),
+                      );
+                    }
+                  },
+                ).open();
               },
-            ).open();
-          },
           activationSteps: [
             (_) async {
               activations++;
@@ -231,7 +236,8 @@ void main() {
         });
         controller.dispose();
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
   }
 
   for (final externalRetry in [false, true]) {
@@ -254,11 +260,15 @@ void main() {
           ),
         );
         final database = (await tester.runAsync(
-          () => selectedLibrary!.open(),
+          () async => (await StartupStorageOpener(
+            isMacOS: true,
+            docsProvider: () async => docs,
+            supportProvider: () async => support,
+          ).open()).database,
         ))!;
         var fail = true;
-        final entered = Completer<void>();
-        final release = Completer<void>();
+        late Completer<void> entered;
+        late Completer<void> release;
         final storage = GalleryCacheStorage(
           directory: galleryCacheStorage!.directory,
           documentsProvider: () async => docs,
@@ -335,22 +345,25 @@ void main() {
         );
         final retryRect = tester.getRect(find.text('Retry gallery transfer'));
         final installRect = tester.getRect(find.byTooltip('Install from File'));
+        final cubit = tester
+            .element(find.text('Gallery temporarily unavailable'))
+            .read<GalleryCubit>();
         fail = false;
         Focus.of(
           tester.element(find.text('Retry gallery transfer')),
         ).requestFocus();
         await tester.pump();
-        if (externalRetry) {
-          await tester.runAsync(() async {
-            unawaited(storage.prepare());
-          });
-        } else {
-          await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-        }
-        await tester.pump(const Duration(milliseconds: 200));
         await tester.runAsync(() async {
-          await pumpEventQueue();
+          entered = Completer<void>();
+          release = Completer<void>();
+          if (externalRetry) {
+            unawaited(storage.prepare());
+          } else {
+            await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+          }
+          await entered.future.timeout(const Duration(seconds: 10));
         });
+        await tester.pump(const Duration(milliseconds: 200));
         expect(entered.isCompleted, isTrue);
         await tester.pump();
         expect(find.text('Retrying gallery transfer…'), findsOneWidget);
@@ -363,13 +376,20 @@ void main() {
           tester.getRect(find.byTooltip('Install from File')),
           installRect,
         );
-        release.complete();
-        for (var i = 0; i < 10; i++) {
-          await tester.runAsync(() async {
-            await pumpEventQueue();
-          });
-          await tester.pump();
-        }
+        await tester.runAsync(() async {
+          // Background Drift connections add real isolate work. Await the
+          // observable loaded state instead of guessing with repaint loops.
+          final current = cubit.state;
+          final loaded = current is GalleryLoaded && !current.isRefreshing
+              ? Future<void>.value()
+              : cubit.stream
+                    .firstWhere(
+                      (state) => state is GalleryLoaded && !state.isRefreshing,
+                    )
+                    .then((_) {});
+          release.complete();
+          await loaded.timeout(const Duration(seconds: 10));
+        });
         await tester.pumpAndSettle();
         expect(find.text('Gallery temporarily unavailable'), findsNothing);
         expect(find.text('Retained plugin'), findsOneWidget);
@@ -389,6 +409,7 @@ void main() {
           await source.close();
         });
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
   }
 }

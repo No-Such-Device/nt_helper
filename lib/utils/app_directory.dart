@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:nt_helper/services/macos_library_storage.dart';
 import 'package:nt_helper/services/gallery_cache_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -17,12 +16,8 @@ const _markerFile = '.migrated';
 const filesToMigrate = ['nt_helper_db.sqlite', 'gallery_cache.json'];
 
 Completer<Directory>? _initCompleter;
-SelectedLibrary? _selectedLibrary;
 GalleryCacheStorage? _galleryCacheStorage;
 GalleryCacheStorage? get galleryCacheStorage => _galleryCacheStorage;
-
-/// Null on platforms retaining their existing storage policy.
-SelectedLibrary? get selectedLibrary => _selectedLibrary;
 
 /// Returns the dedicated nt_helper directory within the application documents
 /// directory, creating it if needed. On first run, copies any existing files
@@ -43,7 +38,7 @@ Future<Directory> getAppDirectory({
   Future<Directory> Function()? galleryDocsProvider,
   bool? isWindows,
   bool? isMacOS,
-  StorageCheckpoint? storageCheckpoint,
+  Future<void> Function(String)? galleryCheckpoint,
 }) async {
   if (_initCompleter != null) {
     return _initCompleter!.future;
@@ -59,18 +54,14 @@ Future<Directory> getAppDirectory({
       final support =
           await (supportProvider ?? getApplicationSupportDirectory)();
       final app = Directory(p.join(support.path, _subDir));
-      _selectedLibrary = await MacosLibraryStorage(
-        directory: app,
-        documentsProvider: docsProvider ?? getApplicationDocumentsDirectory,
-        checkpoint: storageCheckpoint,
-      ).prepare();
+      await app.create(recursive: true);
       _galleryCacheStorage ??= GalleryCacheStorage(
         directory: app,
         documentsProvider:
             galleryDocsProvider ??
             docsProvider ??
             getApplicationDocumentsDirectory,
-        checkpoint: storageCheckpoint,
+        checkpoint: galleryCheckpoint,
       );
       completer.complete(app);
       return await completer.future;
@@ -150,7 +141,6 @@ Future<Directory> getAppDirectory({
 /// Only intended for use in tests.
 void resetAppDirectoryForTest() {
   _initCompleter = null;
-  _selectedLibrary = null;
   _galleryCacheStorage?.dispose();
   _galleryCacheStorage = null;
 }
