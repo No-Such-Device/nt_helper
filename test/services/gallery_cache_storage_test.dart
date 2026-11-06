@@ -3,13 +3,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/services/gallery_cache_storage.dart';
-import 'package:nt_helper/services/macos_storage_io.dart';
 import 'package:path/path.dart' as p;
 
 import '../support/gallery_cache_fixture.dart';
 
 void main() {
-  if (!Platform.isMacOS) return;
   late Directory root;
   late Directory docs;
   late Directory app;
@@ -91,7 +89,8 @@ void main() {
       );
       storage.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   test(
     'another writer at publication is retained; Retry adopts it without overwrite',
@@ -118,7 +117,8 @@ void main() {
       expect(storage.file.readAsStringSync(), newer);
       storage.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   test(
     'new service after interrupted transfer progresses without deleting partial work',
@@ -140,7 +140,9 @@ void main() {
         interrupted.prepare(),
         throwsA(isA<GalleryStorageUnavailable>()),
       );
-      final work = app.listSync().whereType<File>().single;
+      final work = app.listSync().whereType<File>().singleWhere(
+        (file) => p.basename(file.path).startsWith('.gallery-transfer-'),
+      );
       final bytes = work.readAsBytesSync();
       interrupted.dispose();
       final restarted = GalleryCacheStorage(
@@ -152,7 +154,8 @@ void main() {
       expect(work.readAsBytesSync(), bytes);
       restarted.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   test(
     'no legacy cache is ordinary empty cache availability, not failed transfer',
@@ -176,6 +179,7 @@ void main() {
     () async {
       final original = File(p.join(docs.path, 'gallery_cache.json'))
         ..writeAsStringSync(cache('R'));
+      final originalBytes = original.readAsBytesSync();
       final nested = Directory(p.join(docs.path, 'nt_helper'))..createSync();
       final different = File(p.join(nested.path, 'gallery_cache.json'))
         ..writeAsStringSync(cache('D'));
@@ -195,10 +199,12 @@ void main() {
         throwsA(isA<GalleryStorageUnavailable>()),
       );
       expect(
-        () => MacosStorageIo.identity(storage.file.path),
-        throwsA(isA<FileSystemException>()),
+        FileSystemEntity.typeSync(storage.file.path, followLinks: false),
+        FileSystemEntityType.link,
       );
+      expect(original.readAsBytesSync(), originalBytes);
       storage.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 }

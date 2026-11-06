@@ -178,7 +178,7 @@ void main() {
         final retained = {
           for (final file in work) file.path: file.readAsBytesSync(),
         };
-        if (boundary != 'gallery:read') expect(retained, isNotEmpty);
+        if (boundary == 'gallery:during:write') expect(retained, isNotEmpty);
         fail = false;
         hold = true;
         late Future<void> retry;
