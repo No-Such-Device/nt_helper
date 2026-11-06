@@ -1088,9 +1088,15 @@ void main() {
         cubit.fetchSlotsOverride = (_, _) => fetchedSlots.future;
 
         cubit.emit(makeSyncState(slots: [quantizerSlot]));
-        unawaited(cubit.refresh(fullRefresh: true));
+        var refreshFinished = false;
+        unawaited(cubit.refresh(fullRefresh: true).then((_) {
+          refreshFinished = true;
+        }));
         async.flushMicrotasks();
-        async.elapse(const Duration(seconds: 60));
+        async.elapse(const Duration(minutes: 1));
+        async.flushMicrotasks();
+        expect(refreshFinished, isFalse);
+        async.elapse(const Duration(minutes: 2));
         async.flushMicrotasks();
 
         fetchedSlots.complete([

@@ -373,7 +373,7 @@ class _ConnectionDelegate {
     }
   }
 
-  static const _syncTimeout = Duration(seconds: 60);
+  static const _syncTimeout = Duration(minutes: 3);
 
   void _emitSyncProgress(
     String status, {
