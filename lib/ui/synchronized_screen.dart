@@ -974,6 +974,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
   Future<void> _handleBrowsePresets(DistingCubit cubit) async {
     if (_isBrowsePresetsOpen) return;
     _isBrowsePresetsOpen = true;
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final currentState = cubit.state;
       if (currentState is DistingStateSynchronized && context.mounted) {
@@ -998,9 +999,10 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
             if (sdCardPath != null && sdCardPath.isNotEmpty && action != null) {
               switch (action) {
                 case PresetAction.load:
-                  cubit.loadPreset(sdCardPath, false);
+                  await cubit.loadPreset(sdCardPath, false);
                   break;
                 case PresetAction.append:
+                  await cubit.loadPreset(sdCardPath, true);
                   break;
                 case PresetAction.export:
                   break;
@@ -1008,6 +1010,12 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
             }
           }
         }
+      }
+    } catch (error) {
+      if (messenger.mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Could not load preset: $error')),
+        );
       }
     } finally {
       _isBrowsePresetsOpen = false;
@@ -2380,50 +2388,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
             enabled: !widget.loading && !isOffline,
             onTap: widget.loading || isOffline
                 ? null
-                : () async {
-                    final currentState = cubit.state;
-                    final isMounted = context.mounted;
-                    if (currentState is DistingStateSynchronized && isMounted) {
-                      final midiManager = cubit.disting();
-                      if (midiManager != null) {
-                        final prefs = await SharedPreferences.getInstance();
-                        // ignore: use_build_context_synchronously
-                        var presetInfo = await showDialog(
-                          // ignore: use_build_context_synchronously
-                          context: popupCtx,
-                          builder: (context) => BlocProvider(
-                            create: (context) => PresetBrowserCubit(
-                              midiManager: midiManager,
-                              prefs: prefs,
-                            ),
-                            child: PresetBrowserDialog(
-                              distingCubit: cubit,
-                              firmwareVersion: currentState.firmwareVersion,
-                            ),
-                          ),
-                        );
-                        if (presetInfo != null && presetInfo is Map) {
-                          final sdCardPath = presetInfo['sdCardPath'];
-                          final action = presetInfo['action'] as PresetAction?;
-                          if (sdCardPath != null &&
-                              sdCardPath.isNotEmpty &&
-                              action != null) {
-                            switch (action) {
-                              case PresetAction.load:
-                                cubit.loadPreset(sdCardPath, false);
-                                break;
-                              case PresetAction.append:
-                                // Append is not directly supported, could be handled differently
-                                break;
-                              case PresetAction.export:
-                                // Export is not applicable for browse
-                                break;
-                            }
-                          }
-                        }
-                      }
-                    }
-                  },
+                : () => _handleBrowsePresets(cubit),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [Text('File Browser'), Icon(Icons.folder_open)],

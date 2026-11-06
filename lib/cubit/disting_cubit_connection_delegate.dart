@@ -389,7 +389,9 @@ class _ConnectionDelegate {
     }
   }
 
-  Future<bool> performSyncAndEmit() async {
+  Future<bool> performSyncAndEmit({
+    DistingStateSynchronized? preserveSlotSpecificationsFrom,
+  }) async {
     StartupLogService.log(
       'DistingCubit.performSyncAndEmit: starting Disting NT sync',
     );
@@ -412,6 +414,12 @@ class _ConnectionDelegate {
       );
       return false;
     }
+
+    // Append retains construction metadata for unchanged existing slots, while
+    // the sync itself runs in Connected state so old slot updates cannot race it.
+    final specificationSource =
+        preserveSlotSpecificationsFrom ??
+        (currentState is DistingStateSynchronized ? currentState : null);
 
     // Now state is confirmed, get manager
     final IDistingMidiManager distingManager = _cubit.requireDisting();
@@ -528,9 +536,9 @@ class _ConnectionDelegate {
         if (!_isCurrentSync(generation, currentState, distingManager)) {
           return;
         }
-        if (currentState is DistingStateSynchronized) {
+        if (specificationSource != null) {
           slots = _cubit._preserveKnownSlotSpecificationsForRefresh(
-            previousState: currentState,
+            previousState: specificationSource,
             refreshedDisting: distingManager,
             refreshedPresetName: presetName,
             refreshedSlots: slots,

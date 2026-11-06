@@ -13,6 +13,9 @@ import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
+import 'package:nt_helper/models/preset_action.dart';
+import 'package:nt_helper/ui/widgets/preset_browser_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/services/mcp_server_service.dart';
 import 'package:nt_helper/ui/add_algorithm_screen.dart';
@@ -43,6 +46,7 @@ void main() {
   });
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     mockCubit = MockDistingCubit();
     mockMidiManager = MockDistingMidiManager();
     mockPlatformService = MockPlatformInteractionService();
@@ -82,6 +86,50 @@ void main() {
           platformService: mockPlatformService,
         ),
       ),
+    );
+  }
+
+  for (final entryPoint in ['toolbar', 'menu', 'shortcut']) {
+    testWidgets(
+      'file-browser $entryPoint load failures are awaited and reported',
+      (tester) async {
+        when(() => mockCubit.disting()).thenReturn(mockMidiManager);
+        when(
+          () => mockMidiManager.requestDirectoryListing('/'),
+        ).thenAnswer((_) async => null);
+        when(
+          () => mockCubit.loadPreset('/presets/load.json', false),
+        ).thenAnswer((_) async {
+          throw StateError('load failed');
+        });
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+        switch (entryPoint) {
+          case 'toolbar':
+            await tester.tap(find.byTooltip('File Browser'));
+          case 'menu':
+            await tester.tap(find.byIcon(Icons.more_vert));
+            await tester.pumpAndSettle();
+            await tester.tap(find.text('File Browser'));
+          case 'shortcut':
+            await tester.sendKeyDownEvent(LogicalKeyboardKey.control);
+            await tester.sendKeyEvent(LogicalKeyboardKey.keyO);
+            await tester.sendKeyUpEvent(LogicalKeyboardKey.control);
+        }
+        await tester.pumpAndSettle();
+        expect(find.byType(PresetBrowserDialog), findsOneWidget);
+        Navigator.of(tester.element(find.byType(PresetBrowserDialog))).pop({
+          'sdCardPath': '/presets/load.json',
+          'action': PresetAction.load,
+        });
+        await tester.pumpAndSettle();
+        verify(
+          () => mockCubit.loadPreset('/presets/load.json', false),
+        ).called(1);
+        expect(find.textContaining('Could not load preset:'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+      tags: ['regression'],
     );
   }
 
@@ -140,7 +188,8 @@ void main() {
 
         expect(find.byType(ShortcutHelpOverlay), findsOneWidget);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets('add FAB stays disabled until verification completes', (
       tester,
