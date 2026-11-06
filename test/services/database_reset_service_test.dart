@@ -66,6 +66,7 @@ void main() {
         await reopened.close();
       }
     },
+    tags: ['regression'],
   );
 
   test(
@@ -91,5 +92,6 @@ void main() {
         await source.close();
       }
     },
+    tags: ['regression'],
   );
 }

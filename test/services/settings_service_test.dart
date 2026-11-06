@@ -105,6 +105,7 @@ void main() {
       );
       expect(find.byType(SettingsDialog), findsOneWidget);
     },
+    tags: ['regression'],
   );
 
   test(
@@ -451,24 +452,28 @@ void main() {
       await settings.init();
     });
 
-    test('migrates legacy chat local directory as chat read/search', () async {
-      SharedPreferences.setMockInitialValues({
-        'chat_local_directory': '/Volumes/DistingSD',
-      });
-      await settings.init();
+    test(
+      'migrates legacy chat local directory as chat read/search',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'chat_local_directory': '/Volumes/DistingSD',
+        });
+        await settings.init();
 
-      final roots = settings.allowedFileRoots;
+        final roots = settings.allowedFileRoots;
 
-      expect(roots, hasLength(1));
-      expect(roots.single.id, 'local_context');
-      expect(roots.single.label, 'Local Context');
-      expect(roots.single.path, '/Volumes/DistingSD');
-      expect(
-        roots.single.permissionsFor(FileRootActor.chat),
-        containsAll({FileRootPermission.read, FileRootPermission.search}),
-      );
-      expect(roots.single.permissionsFor(FileRootActor.mcp), isEmpty);
-    }, tags: ['regression']);
+        expect(roots, hasLength(1));
+        expect(roots.single.id, 'local_context');
+        expect(roots.single.label, 'Local Context');
+        expect(roots.single.path, '/Volumes/DistingSD');
+        expect(
+          roots.single.permissionsFor(FileRootActor.chat),
+          containsAll({FileRootPermission.read, FileRootPermission.search}),
+        );
+        expect(roots.single.permissionsFor(FileRootActor.mcp), isEmpty);
+      },
+      tags: ['regression'],
+    );
 
     test('saves and loads ACL permissions', () async {
       await settings.setAllowedFileRoots([

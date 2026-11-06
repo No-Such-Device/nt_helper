@@ -53,6 +53,7 @@ void main() {
       expect(file.readAsStringSync(), 'corrupt database');
       expect(legacy.readAsStringSync(), 'stale legacy');
     },
+    tags: ['regression'],
   );
 
   test(
@@ -90,45 +91,50 @@ void main() {
         raw.close();
       }
     },
+    tags: ['regression'],
   );
 
-  test('busy canonical database is retryable without resetting data', () async {
-    final ready = await opener().open();
-    await ready.database.customStatement(
-      "INSERT INTO metadata_cache VALUES ('busy', 'keep')",
-    );
-    final file = ready.location!;
-    await ready.database.close();
-    final raw = sqlite3.open(file);
-    raw.execute('BEGIN EXCLUSIVE');
-    try {
-      await expectLater(
-        opener().open(),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'SQLite busy cause',
-            contains('SqliteException(5)'),
+  test(
+    'busy canonical database is retryable without resetting data',
+    () async {
+      final ready = await opener().open();
+      await ready.database.customStatement(
+        "INSERT INTO metadata_cache VALUES ('busy', 'keep')",
+      );
+      final file = ready.location!;
+      await ready.database.close();
+      final raw = sqlite3.open(file);
+      raw.execute('BEGIN EXCLUSIVE');
+      try {
+        await expectLater(
+          opener().open(),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'SQLite busy cause',
+              contains('SqliteException(5)'),
+            ),
           ),
-        ),
-      );
-    } finally {
-      raw.execute('ROLLBACK');
-      raw.close();
-    }
-    final retried = await opener().open();
-    try {
-      expect(
-        (await retried.database
-                .select(retried.database.metadataCache)
-                .getSingle())
-            .cacheValue,
-        'keep',
-      );
-    } finally {
-      await retried.database.close();
-    }
-  });
+        );
+      } finally {
+        raw.execute('ROLLBACK');
+        raw.close();
+      }
+      final retried = await opener().open();
+      try {
+        expect(
+          (await retried.database
+                  .select(retried.database.metadataCache)
+                  .getSingle())
+              .cacheValue,
+          'keep',
+        );
+      } finally {
+        await retried.database.close();
+      }
+    },
+    tags: ['regression'],
+  );
 
   test(
     'legacy folder access cancellation retains files and granted access is released before admission',
@@ -193,5 +199,6 @@ void main() {
       }
     },
     skip: !Platform.isMacOS,
+    tags: ['regression'],
   );
 }

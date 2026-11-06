@@ -81,6 +81,7 @@ void main() {
       final db = await open(file);
       expect(await db.select(db.presets).get(), isEmpty);
     },
+    tags: ['regression'],
   );
 
   test(
@@ -107,6 +108,7 @@ void main() {
         'canonical',
       );
     },
+    tags: ['regression'],
   );
 
   for (final location in [
@@ -131,6 +133,7 @@ void main() {
         expect(source.file.existsSync(), isTrue);
         source.addLateCommit(); // Import does not retain a source write lock.
       },
+      tags: ['regression'],
     );
   }
 
@@ -152,18 +155,26 @@ void main() {
       expect(await contents(await open(file)), await contents(latest.app));
       expect(older.file.existsSync(), isTrue);
     },
+    tags: ['regression'],
   );
 
-  test('supported old schema is upgraded only on the imported copy', () async {
-    final source = await fixture(docs, oldSchema: true);
-    final result = await open(await storage().prepare());
-    expect(await result.select(result.algorithmRepeatGrammars).get(), isEmpty);
-    expect(
-      (await result.select(result.presets).getSingle()).name,
-      'Library preset',
-    );
-    expect(source.raw.select('PRAGMA user_version').single.values.single, 13);
-  });
+  test(
+    'supported old schema is upgraded only on the imported copy',
+    () async {
+      final source = await fixture(docs, oldSchema: true);
+      final result = await open(await storage().prepare());
+      expect(
+        await result.select(result.algorithmRepeatGrammars).get(),
+        isEmpty,
+      );
+      expect(
+        (await result.select(result.presets).getSingle()).name,
+        'Library preset',
+      );
+      expect(source.raw.select('PRAGMA user_version').single.values.single, 13);
+    },
+    tags: ['regression'],
+  );
 
   test(
     'missing selected main with surviving journal never resurrects stale Documents data',
@@ -195,6 +206,7 @@ void main() {
         isTrue,
       );
     },
+    tags: ['regression'],
   );
 
   test(
@@ -221,6 +233,7 @@ void main() {
         'Other',
       );
     },
+    tags: ['regression'],
   );
 
   for (final relative in [
@@ -237,6 +250,7 @@ void main() {
         );
         expect(storage().file.existsSync(), isFalse);
       },
+      tags: ['regression'],
     );
   }
 
@@ -260,6 +274,7 @@ void main() {
       );
       expect(storage().file.existsSync(), isFalse);
     },
+    tags: ['regression'],
   );
 
   test(
@@ -289,6 +304,7 @@ void main() {
       expect(await contents(await open(result)), await contents(valid.app));
       expect(work.existsSync(), isFalse);
     },
+    tags: ['regression'],
   );
 
   test(
@@ -342,6 +358,7 @@ Future<void> main(List<String> args) async {
         await process.exitCode.timeout(const Duration(seconds: 10));
       }
     },
+    tags: ['regression'],
   );
 
   test(
@@ -367,6 +384,7 @@ Future<void> main(List<String> args) async {
       );
       expect(await contents(source.app), expected);
     },
+    tags: ['regression'],
   );
 
   test(
@@ -389,5 +407,6 @@ Future<void> main(List<String> args) async {
       );
       expect(storage().file.existsSync(), isFalse);
     },
+    tags: ['regression'],
   );
 }
