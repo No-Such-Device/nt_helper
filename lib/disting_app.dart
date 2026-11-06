@@ -11,6 +11,8 @@ import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/core/routing/routing_service_locator.dart';
 import 'package:nt_helper/services/key_binding_service.dart';
+import 'package:nt_helper/services/app_update_service.dart';
+import 'package:nt_helper/ui/widgets/app_update_action.dart';
 import 'package:nt_helper/services/mcp_server_service.dart';
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:nt_helper/services/video_popup_window_service.dart';
@@ -197,13 +199,21 @@ class DistingPage extends StatefulWidget {
   @visibleForTesting
   final FirmwareUpdateScreenDependencies? firmwareUpdateDependencies;
 
-  const DistingPage({super.key, this.firmwareUpdateDependencies});
+  final AppUpdateService? appUpdateService;
+
+  const DistingPage({
+    super.key,
+    this.firmwareUpdateDependencies,
+    this.appUpdateService,
+  });
 
   @override
   State<DistingPage> createState() => _DistingPageState();
 }
 
 class _DistingPageState extends State<DistingPage> {
+  late final AppUpdateService _appUpdateService =
+      widget.appUpdateService ?? AppUpdateService();
   @override
   void initState() {
     super.initState();
@@ -252,6 +262,7 @@ class _DistingPageState extends State<DistingPage> {
 
   @override
   void dispose() {
+    if (widget.appUpdateService == null) _appUpdateService.dispose();
     super.dispose();
   }
 
@@ -277,6 +288,7 @@ class _DistingPageState extends State<DistingPage> {
               );
             } else if (state is DistingStateSelectDevice) {
               return _DeviceSelectionView(
+                appUpdateService: _appUpdateService,
                 inputDevices: state.inputDevices,
                 outputDevices: state.outputDevices,
                 selectedInputDevice: state.selectedInputDevice,
@@ -392,6 +404,7 @@ class _DistingPageState extends State<DistingPage> {
               );
             } else if (state is DistingStateSynchronized) {
               return SynchronizedScreen(
+                appUpdateService: _appUpdateService,
                 slots: state.slots,
                 algorithms: state.algorithms,
                 units: state.unitStrings,
@@ -420,6 +433,7 @@ class _DistingPageState extends State<DistingPage> {
 }
 
 class _DeviceSelectionView extends StatelessWidget {
+  final AppUpdateService appUpdateService;
   final List<MidiDevice> inputDevices;
   final List<MidiDevice> outputDevices;
   final MidiDevice? selectedInputDevice;
@@ -441,6 +455,7 @@ class _DeviceSelectionView extends StatelessWidget {
   final bool canWorkOffline;
 
   const _DeviceSelectionView({
+    required this.appUpdateService,
     required this.inputDevices,
     required this.outputDevices,
     required this.selectedInputDevice,
@@ -498,6 +513,7 @@ class _DeviceSelectionView extends StatelessWidget {
                         ),
                       ),
                     ),
+                    AppUpdateAction(updateService: appUpdateService),
                     IconButton(
                       icon: const Icon(
                         Icons.settings,

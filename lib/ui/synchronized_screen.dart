@@ -142,6 +142,7 @@ class SynchronizedScreen extends StatefulWidget {
   final bool loading;
   final PlatformInteractionService? platformService;
   final FirmwareUpdateScreenDependencies? firmwareUpdateDependencies;
+  final AppUpdateService? appUpdateService;
 
   const SynchronizedScreen({
     super.key,
@@ -156,6 +157,7 @@ class SynchronizedScreen extends StatefulWidget {
     required this.loading,
     this.platformService,
     this.firmwareUpdateDependencies,
+    this.appUpdateService,
   });
 
   @override
@@ -474,7 +476,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
   }
 
   Future<void> _checkForAppUpdate() async {
-    _appUpdateService ??= AppUpdateService();
+    _appUpdateService ??= widget.appUpdateService ?? AppUpdateService();
     final release = await _appUpdateService!.checkForUpdate();
     if (!mounted || release == null) return;
 
@@ -494,7 +496,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
   }
 
   void _showAppUpdateDialog(AppRelease release) {
-    _appUpdateService ??= AppUpdateService();
+    _appUpdateService ??= widget.appUpdateService ?? AppUpdateService();
     showDialog(
       context: context,
       builder: (ctx) =>

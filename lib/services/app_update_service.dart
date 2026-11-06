@@ -47,13 +47,19 @@ class AppUpdateService {
   bool get _isDesktop =>
       Platform.isMacOS || Platform.isLinux || Platform.isWindows;
 
+  bool get isSupported =>
+      !kPlayStoreBuild &&
+      _isDesktop &&
+      !(Platform.isMacOS && SandboxUtils.isSandboxed);
+
+  /// Close only after all UI using this service has been disposed.
+  void dispose() => _httpClient.close();
+
   Future<AppRelease?> checkForUpdate({
     bool forceRefresh = false,
     bool skipVersionCheck = false,
   }) async {
-    if (kPlayStoreBuild) return null;
-    if (!_isDesktop) return null;
-    if (Platform.isMacOS && SandboxUtils.isSandboxed) return null;
+    if (!isSupported) return null;
 
     if (!forceRefresh &&
         _cachedRelease != null &&
@@ -63,10 +69,12 @@ class AppUpdateService {
     }
 
     try {
-      final response = await _httpClient.get(
-        Uri.parse(_githubApiUrl),
-        headers: {'Accept': 'application/vnd.github.v3+json'},
-      );
+      final response = await _httpClient
+          .get(
+            Uri.parse(_githubApiUrl),
+            headers: {'Accept': 'application/vnd.github.v3+json'},
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) return null;
 

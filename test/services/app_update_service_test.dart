@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/models/app_release.dart';
@@ -86,34 +88,38 @@ void main() {
       expect(release.platformAssets['windows'], contains('windows-setup.exe'));
     });
 
-    test('prefers Windows installer asset regardless of asset order', () {
-      final zipFirst = Map<String, dynamic>.from(_sampleRelease);
-      final zipFirstRelease = AppRelease.fromGitHubJson(zipFirst);
-      expect(
-        zipFirstRelease.platformAssets['windows'],
-        contains('windows-setup.exe'),
-      );
+    test(
+      'prefers Windows installer asset regardless of asset order',
+      () {
+        final zipFirst = Map<String, dynamic>.from(_sampleRelease);
+        final zipFirstRelease = AppRelease.fromGitHubJson(zipFirst);
+        expect(
+          zipFirstRelease.platformAssets['windows'],
+          contains('windows-setup.exe'),
+        );
 
-      final setupFirst = Map<String, dynamic>.from(_sampleRelease);
-      setupFirst['assets'] = [
-        {
-          'name': 'nt_helper-3.0.0-windows-setup.exe',
-          'browser_download_url':
-              'https://github.com/thorinside/nt_helper/releases/download/v3.0.0/nt_helper-3.0.0-windows-setup.exe',
-        },
-        {
-          'name': 'nt_helper-3.0.0-windows.zip',
-          'browser_download_url':
-              'https://github.com/thorinside/nt_helper/releases/download/v3.0.0/nt_helper-3.0.0-windows.zip',
-        },
-      ];
+        final setupFirst = Map<String, dynamic>.from(_sampleRelease);
+        setupFirst['assets'] = [
+          {
+            'name': 'nt_helper-3.0.0-windows-setup.exe',
+            'browser_download_url':
+                'https://github.com/thorinside/nt_helper/releases/download/v3.0.0/nt_helper-3.0.0-windows-setup.exe',
+          },
+          {
+            'name': 'nt_helper-3.0.0-windows.zip',
+            'browser_download_url':
+                'https://github.com/thorinside/nt_helper/releases/download/v3.0.0/nt_helper-3.0.0-windows.zip',
+          },
+        ];
 
-      final setupFirstRelease = AppRelease.fromGitHubJson(setupFirst);
-      expect(
-        setupFirstRelease.platformAssets['windows'],
-        contains('windows-setup.exe'),
-      );
-    }, tags: ['regression']);
+        final setupFirstRelease = AppRelease.fromGitHubJson(setupFirst);
+        expect(
+          setupFirstRelease.platformAssets['windows'],
+          contains('windows-setup.exe'),
+        );
+      },
+      tags: ['regression'],
+    );
 
     test('handles missing assets gracefully', () {
       final json = Map<String, dynamic>.from(_sampleRelease);
@@ -142,6 +148,29 @@ void main() {
         currentVersion: '2.0.0',
       );
     });
+
+    test(
+      'update check times out so the connection-screen action can retry',
+      () {
+        fakeAsync((time) {
+          final response = Completer<http.Response>();
+          when(
+            () => mockClient.get(any(), headers: any(named: 'headers')),
+          ).thenAnswer((_) => response.future);
+          var settled = false;
+          service.checkForUpdate().then((release) {
+            expect(release, isNull);
+            settled = true;
+          });
+          time.flushMicrotasks();
+          time.elapse(const Duration(seconds: 9));
+          expect(settled, isFalse);
+          time.elapse(const Duration(seconds: 1));
+          expect(settled, isTrue);
+        });
+      },
+      tags: ['regression'],
+    );
 
     test('returns null on HTTP error', () async {
       when(
@@ -333,18 +362,22 @@ void main() {
       expect(script, contains(r"$appDir = 'C:\Program Files\NT Helper'"));
     });
 
-    test('buildWindowsUpdateScript escapes single quotes in paths', () {
-      final script = AppUpdateService.buildWindowsUpdateScript(
-        sourceDir: r"C:\Users\Neal's PC\update",
-        appDir: r"C:\Users\Neal's PC\NT Helper",
-        exePath: r"C:\Users\Neal's PC\NT Helper\nt_helper.exe",
-        logPath: r"C:\Users\Neal's PC\update.log",
-        currentPid: 1234,
-      );
+    test(
+      'buildWindowsUpdateScript escapes single quotes in paths',
+      () {
+        final script = AppUpdateService.buildWindowsUpdateScript(
+          sourceDir: r"C:\Users\Neal's PC\update",
+          appDir: r"C:\Users\Neal's PC\NT Helper",
+          exePath: r"C:\Users\Neal's PC\NT Helper\nt_helper.exe",
+          logPath: r"C:\Users\Neal's PC\update.log",
+          currentPid: 1234,
+        );
 
-      expect(script, contains(r"$sourceDir = 'C:\Users\Neal''s PC\update'"));
-      expect(script, contains(r"$appDir = 'C:\Users\Neal''s PC\NT Helper'"));
-    }, tags: ['regression']);
+        expect(script, contains(r"$sourceDir = 'C:\Users\Neal''s PC\update'"));
+        expect(script, contains(r"$appDir = 'C:\Users\Neal''s PC\NT Helper'"));
+      },
+      tags: ['regression'],
+    );
 
     test('buildWindowsInstallerArguments runs current-user installer', () {
       final arguments = AppUpdateService.buildWindowsInstallerArguments(
