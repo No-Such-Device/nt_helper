@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:nt_helper/disting_app.dart';
-import 'package:nt_helper/services/macos_library_storage.dart';
+import 'package:nt_helper/services/library_storage.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:nt_helper/services/startup_controller.dart';
 
 /// Displays recovery controls only after a startup failure. Successful storage
@@ -47,7 +49,7 @@ class _StartupRecoveryAppState extends State<StartupRecoveryApp> {
     final message = controller.closed
         ? 'Closing library'
         : controller.ready
-        ? '${_recoveryMessage(controller.recovery)}Library ready${controller.location == null ? '' : ' at ${controller.location}'}'
+        ? 'Library ready${controller.location == null ? '' : ' at ${controller.location}'}'
         : controller.busy
         ? 'Opening library. Please wait'
         : controller.failure == null
@@ -157,8 +159,81 @@ class _RecoveryDialog extends StatefulWidget {
 
 class _RecoveryDialogState extends State<_RecoveryDialog> {
   bool _showDetails = true;
+  bool _choosing = false;
+  String _version = 'unavailable';
 
   StartupController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadVersion());
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() => _version = '${info.version}+${info.buildNumber}');
+      }
+    } catch (_) {
+      // Version metadata is helpful in reports, never a startup prerequisite.
+    }
+  }
+
+  String get _details =>
+      _errorDetails(controller.failure!, _version, controller.location);
+
+  Future<void> _chooseLibrary() async {
+    setState(() => _choosing = true);
+    try {
+      final result = await FilePicker.pickFiles(
+        dialogTitle: 'Choose saved library',
+        type: FileType.custom,
+        allowedExtensions: ['sqlite', 'sqlite3', 'db'],
+      );
+      final path = result?.files.single.path;
+      if (path != null && mounted && !controller.closed) {
+        await controller.retry(importSource: File(path));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not choose a library: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _choosing = false);
+    }
+  }
+
+  Future<void> _startFresh() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Semantics(
+          header: true,
+          child: const Text('Start with an empty library?'),
+        ),
+        content: const Text(
+          'Saved presets will not appear in the new library. Existing library and recovery files will be kept. Your disting NT hardware will not be changed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Start fresh'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted && !controller.closed) {
+      await controller.retry(startFresh: true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +241,7 @@ class _RecoveryDialogState extends State<_RecoveryDialog> {
     return Dialog(
       child: SizedBox(
         width: 560,
-        height: 460,
+        height: 512,
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: FocusTraversalGroup(
@@ -196,7 +271,7 @@ class _RecoveryDialogState extends State<_RecoveryDialog> {
                             ? 'Preparing storage.'
                             : '${_failureMessage(failure)}\n\n'
                                   'If Retry does not help, copy the error details and send them to nt_helper support. Do not delete or move library files.'
-                                  '${_showDetails ? '\n\n${_errorDetails(failure)}' : ''}',
+                                  '${_showDetails ? '\n\n$_details' : ''}',
                       ),
                     ),
                   ),
@@ -219,7 +294,7 @@ class _RecoveryDialogState extends State<_RecoveryDialog> {
                             ? null
                             : () => unawaited(
                                 Clipboard.setData(
-                                  ClipboardData(text: _errorDetails(failure)),
+                                  ClipboardData(text: _details),
                                 ),
                               ),
                         icon: const Icon(
@@ -257,13 +332,49 @@ class _RecoveryDialogState extends State<_RecoveryDialog> {
                         ),
                 ),
                 const SizedBox(height: 12),
+                SizedBox(
+                  height: 40,
+                  child: Visibility(
+                    visible: controller.canImport,
+                    maintainState: true,
+                    maintainAnimation: true,
+                    maintainSize: true,
+                    child: Row(
+                      children: [
+                        OutlinedButton(
+                          onPressed:
+                              !controller.canImport ||
+                                  controller.busy ||
+                                  _choosing
+                              ? null
+                              : _chooseLibrary,
+                          child: const Text('Choose library…'),
+                        ),
+                        const SizedBox(width: 12),
+                        TextButton(
+                          onPressed:
+                              !controller.canImport ||
+                                  controller.busy ||
+                                  _choosing
+                              ? null
+                              : _startFresh,
+                          child: const Text('Start fresh…'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     FocusTraversalOrder(
                       order: const NumericFocusOrder(1),
                       child: FilledButton(
                         autofocus: true,
-                        onPressed: controller.canRetry && !controller.busy
+                        onPressed:
+                            controller.canRetry &&
+                                !controller.busy &&
+                                !_choosing
                             ? () => unawaited(controller.retry())
                             : null,
                         child: const Text('Retry'),
@@ -279,7 +390,7 @@ class _RecoveryDialogState extends State<_RecoveryDialog> {
                         child: FocusTraversalOrder(
                           order: const NumericFocusOrder(2),
                           child: OutlinedButton(
-                            onPressed: !controller.busy
+                            onPressed: !controller.busy && !_choosing
                                 ? () => unawaited(
                                     controller.retry(
                                       selectLegacyDirectory: true,
@@ -302,37 +413,13 @@ class _RecoveryDialogState extends State<_RecoveryDialog> {
   }
 }
 
-String _errorDetails(Object failure) =>
+String _errorDetails(Object failure, String version, String? location) =>
     'nt_helper library startup failure\n'
+    'App: $version\n'
     'OS: ${Platform.operatingSystemVersion}\n'
-    'Architecture: ${Abi.current()}\n\n$failure';
+    'Architecture: ${Abi.current()}\n'
+    '${location == null ? '' : 'Library: $location\n'}\n$failure';
 
-String _failureMessage(Object failure) {
-  if (failure is! StorageFailure) {
-    return 'An unexpected error prevented nt_helper from opening your library. Select Retry. If this continues, contact support with the error details.';
-  }
-  return switch (failure.kind) {
-    StorageFailureKind.access =>
-      'nt_helper could not access a library file or folder. Check the report below for a missing file or a permission error. For permission errors, check nt_helper’s access in System Settings → Privacy & Security → Files and Folders, then Retry.',
-    StorageFailureKind.busy =>
-      'Another operation is using the library. Close any other running copy of nt_helper, then Retry.',
-    StorageFailureKind.io =>
-      'nt_helper could not read or write a library file. Check that your disk is connected and has free space, then Retry.',
-    StorageFailureKind.native =>
-      'The database could not be opened. This does not necessarily mean it is damaged. Select Retry; if this continues, send the error details to support.',
-    StorageFailureKind.unsupportedSchema =>
-      'This library uses a database version this app cannot open. Install the latest nt_helper version. Do not delete your library.',
-    StorageFailureKind.uncertain =>
-      'nt_helper could not determine which saved library files are safe to use. The report below explains what it found. Please send these details to support so we can help recover access.',
-    StorageFailureKind.damaged =>
-      'The library database appears damaged and automatic recovery could not finish. Please send the error details to support. Do not delete your library files.',
-  };
-}
-
-String _recoveryMessage(LibraryRecovery? recovery) => switch (recovery) {
-  LibraryRecovery.repaired =>
-    'The library was safely repaired in a separate copy. Originals and recovery files are retained. ',
-  LibraryRecovery.freshAfterDamage =>
-    'The previous library was not recovered. Originals and recovery files are retained. A fresh library was opened after confirmed database damage and unsuccessful safe repair. ',
-  null => '',
-};
+String _failureMessage(Object failure) => failure is LibraryImportException
+    ? failure.message
+    : 'nt_helper could not open your library. Select Retry. If this continues, contact support with the error details. No library files have been deleted.';

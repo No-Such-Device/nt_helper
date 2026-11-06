@@ -1,6 +1,9 @@
 import 'dart:io';
 
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nt_helper/db/database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/chat/models/allowed_file_root.dart';
 import 'package:nt_helper/chat/models/chat_settings.dart';
@@ -62,6 +65,48 @@ const Map<String, Object> _nonDefaultSeeds = {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets(
+    'failed Reset App Data stays in settings, reports the error and preserves rows',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({'request_timeout_ms': 12345});
+      await SettingsService().init();
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.customStatement(
+        "INSERT INTO metadata_cache VALUES ('keep', 'data')",
+      );
+      await database.customStatement(
+        "CREATE TRIGGER block_reset BEFORE DELETE ON metadata_cache BEGIN SELECT RAISE(ABORT, 'reset blocked'); END",
+      );
+      await tester.binding.setSurfaceSize(const Size(1200, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        RepositoryProvider<AppDatabase>.value(
+          value: database,
+          child: const MaterialApp(home: Scaffold(body: SettingsDialog())),
+        ),
+      );
+      await tester.pump();
+      final button = find.widgetWithText(OutlinedButton, 'Reset App Data');
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Reset'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Could not reset app data:'), findsOneWidget);
+      expect(
+        (await database.select(database.metadataCache).getSingle()).cacheKey,
+        'keep',
+      );
+      expect(
+        (await SharedPreferences.getInstance()).getInt('request_timeout_ms'),
+        12345,
+      );
+      expect(find.byType(SettingsDialog), findsOneWidget);
+    },
+    tags: ['regression'],
+  );
 
   test(
     'companion widths are isolated by GUID, table and stable column key',
@@ -407,24 +452,28 @@ void main() {
       await settings.init();
     });
 
-    test('migrates legacy chat local directory as chat read/search', () async {
-      SharedPreferences.setMockInitialValues({
-        'chat_local_directory': '/Volumes/DistingSD',
-      });
-      await settings.init();
+    test(
+      'migrates legacy chat local directory as chat read/search',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'chat_local_directory': '/Volumes/DistingSD',
+        });
+        await settings.init();
 
-      final roots = settings.allowedFileRoots;
+        final roots = settings.allowedFileRoots;
 
-      expect(roots, hasLength(1));
-      expect(roots.single.id, 'local_context');
-      expect(roots.single.label, 'Local Context');
-      expect(roots.single.path, '/Volumes/DistingSD');
-      expect(
-        roots.single.permissionsFor(FileRootActor.chat),
-        containsAll({FileRootPermission.read, FileRootPermission.search}),
-      );
-      expect(roots.single.permissionsFor(FileRootActor.mcp), isEmpty);
-    }, tags: ['regression']);
+        expect(roots, hasLength(1));
+        expect(roots.single.id, 'local_context');
+        expect(roots.single.label, 'Local Context');
+        expect(roots.single.path, '/Volumes/DistingSD');
+        expect(
+          roots.single.permissionsFor(FileRootActor.chat),
+          containsAll({FileRootPermission.read, FileRootPermission.search}),
+        );
+        expect(roots.single.permissionsFor(FileRootActor.mcp), isEmpty);
+      },
+      tags: ['regression'],
+    );
 
     test('saves and loads ACL permissions', () async {
       await settings.setAllowedFileRoots([

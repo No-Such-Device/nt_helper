@@ -185,6 +185,7 @@ Future<void> _bootstrapApp(List<String> args) async {
   final opener = StartupStorageOpener();
   final startup = StartupController(
     open: opener.open,
+    libraryLocation: () => opener.location,
     canSelectLegacyDirectory: () => opener.legacyAccessDirectory != null,
     activationSteps: [
       (database) => AlgorithmMetadataService().initialize(database),

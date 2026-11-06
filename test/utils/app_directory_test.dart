@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:nt_helper/services/database_integrity_service.dart';
 import 'package:nt_helper/utils/app_directory.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -84,11 +83,14 @@ void main() {
           );
           expect(result.path, p.join(support.path, 'nt_helper'));
           expect(File(p.join(result.path, '.migrated')).existsSync(), isTrue);
-          final integrity = await DatabaseIntegrityService.checkIntegrity();
-          expect(integrity.fileExists, isFalse);
+          expect(
+            File(p.join(result.path, 'nt_helper_db.sqlite')).existsSync(),
+            isFalse,
+          );
         }, _UnavailableMarker(p.join(app.path, '.migrated')));
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'marker failure never hides a migrated database in an empty fallback',
@@ -117,7 +119,8 @@ void main() {
           expect(support.existsSync(), isFalse);
         }, _UnavailableMarker(p.join(app.path, '.migrated')));
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'marker failure in the fallback is reported and allows retry',
@@ -142,7 +145,8 @@ void main() {
         );
         expect(File(p.join(result.path, '.migrated')).existsSync(), isTrue);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'Windows starts when redirected Documents cannot be created',
@@ -160,11 +164,9 @@ void main() {
           expect(result.path, p.join(support.path, 'nt_helper'));
           expect(result.existsSync(), isTrue);
           expect(File(p.join(result.path, '.migrated')).existsSync(), isTrue);
-          final database = await DatabaseIntegrityService.getDatabaseFile();
+          final database = File(p.join(result.path, 'nt_helper_db.sqlite'));
           expect(database.parent.path, result.path);
-          final integrity = await DatabaseIntegrityService.checkIntegrity();
-          expect(integrity.fileExists, isFalse);
-          expect(integrity.isCorrupt, isFalse);
+          expect(database.existsSync(), isFalse);
 
           File(
             p.join(result.path, 'gallery_cache.json'),
@@ -185,7 +187,8 @@ void main() {
           );
         }, _UnavailableDocuments(p.join(docs.path, 'nt_helper')));
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('Windows keeps fallback data after Documents recovers', () async {
       final support = Directory(p.join(tempRoot.path, 'LocalAppData'));
@@ -352,7 +355,8 @@ void main() {
           isFalse,
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'Windows propagates failure when fallback cannot be created',

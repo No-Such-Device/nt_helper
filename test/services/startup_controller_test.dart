@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
-import 'package:drift/drift.dart' show LazyDatabase;
+import 'package:drift/drift.dart' show LazyDatabase, MigrationStrategy;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/db/database.dart';
@@ -13,16 +14,18 @@ void main() {
     final release = Completer<void>();
     var activations = 0;
     final controller = StartupController(
-      open: ({bool selectLegacyDirectory = false}) async =>
-          OpenedStartupLibrary(
+      open:
+          ({
+            bool selectLegacyDirectory = false,
+            File? importSource,
+            bool startFresh = false,
+          }) async => OpenedStartupLibrary(
             AppDatabase.withExecutor(
-              LazyDatabase(() async => NativeDatabase.memory()),
-              storageCheckpoint: (point) async {
-                if (point == 'during:schema') {
-                  entered.complete();
-                  await release.future;
-                }
-              },
+              LazyDatabase(() async {
+                entered.complete();
+                await release.future;
+                return NativeDatabase.memory();
+              }),
             ),
           ),
       activationSteps: [
@@ -32,7 +35,7 @@ void main() {
       ],
     );
     final pending = controller.retry();
-    await entered.future.timeout(const Duration(seconds: 5));
+    await entered.future;
     expect(activations, 0);
     release.complete();
     await pending;
@@ -50,17 +53,22 @@ void main() {
       var opens = 0;
       var activations = 0;
       final controller = StartupController(
-        open: ({bool selectLegacyDirectory = false}) async {
-          opens++;
-          return OpenedStartupLibrary(
-            opens == 1
-                ? _DelayedCloseDatabase(() async {
-                    closing.complete();
-                    await releaseClose.future;
-                  })
-                : AppDatabase.forTesting(NativeDatabase.memory()),
-          );
-        },
+        open:
+            ({
+              bool selectLegacyDirectory = false,
+              File? importSource,
+              bool startFresh = false,
+            }) async {
+              opens++;
+              return OpenedStartupLibrary(
+                opens == 1
+                    ? _DelayedCloseDatabase(() async {
+                        closing.complete();
+                        await releaseClose.future;
+                      })
+                    : AppDatabase.forTesting(NativeDatabase.memory()),
+              );
+            },
         activationSteps: [
           (_) async {
             activations++;
@@ -83,7 +91,8 @@ void main() {
       await controller.close();
       controller.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   test(
     'close wins over an opener returning a ready but stale real database',
@@ -92,13 +101,18 @@ void main() {
       final release = Completer<void>();
       var activations = 0;
       final controller = StartupController(
-        open: ({bool selectLegacyDirectory = false}) async {
-          final database = AppDatabase.forTesting(NativeDatabase.memory());
-          await database.select(database.algorithms).get();
-          opened.complete();
-          await release.future;
-          return OpenedStartupLibrary(database);
-        },
+        open:
+            ({
+              bool selectLegacyDirectory = false,
+              File? importSource,
+              bool startFresh = false,
+            }) async {
+              final database = AppDatabase.forTesting(NativeDatabase.memory());
+              await database.select(database.algorithms).get();
+              opened.complete();
+              await release.future;
+              return OpenedStartupLibrary(database);
+            },
         activationSteps: [
           (_) async {
             activations++;
@@ -116,20 +130,20 @@ void main() {
       expect(activations, 0);
       controller.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 }
 
 class _DelayedCloseDatabase extends AppDatabase {
   _DelayedCloseDatabase(this.beforeClose)
-    : super.withExecutor(
-        NativeDatabase.memory(),
-        storageCheckpoint: (point) async {
-          if (point == 'before:schema-commit') {
-            throw StateError('simulated schema failure');
-          }
-        },
-      );
+    : super.withExecutor(NativeDatabase.memory());
   final Future<void> Function() beforeClose;
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (_) async {
+      throw StateError('simulated schema failure');
+    },
+  );
   @override
   Future<void> close() async {
     await beforeClose();

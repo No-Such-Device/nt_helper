@@ -8,7 +8,9 @@ import 'package:nt_helper/chat/models/chat_settings.dart';
 import 'package:nt_helper/chat/models/additional_provider_config.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
-import 'package:nt_helper/services/database_integrity_service.dart';
+import 'package:nt_helper/db/database.dart';
+import 'package:nt_helper/services/database_reset_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 import 'package:nt_helper/ui/widgets/ipad_mcp_settings.dart';
@@ -1458,9 +1460,23 @@ class _SettingsDialogState extends State<SettingsDialog> {
                               ],
                             ),
                           );
-                          if (confirmed == true) {
-                            await DatabaseIntegrityService.resetAll();
-                            exit(0);
+                          if (confirmed == true && context.mounted) {
+                            try {
+                              await DatabaseResetService.resetAll(
+                                context.read<AppDatabase>(),
+                              );
+                              exit(0);
+                            } catch (error) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Could not reset app data: $error',
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
                           }
                         },
                         icon: const Icon(Icons.delete_forever),

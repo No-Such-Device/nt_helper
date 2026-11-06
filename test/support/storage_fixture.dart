@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:drift/native.dart';
 import 'package:nt_helper/db/database.dart';
-import 'package:nt_helper/services/macos_library_storage.dart';
+import 'package:nt_helper/services/library_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 
@@ -21,7 +21,7 @@ class StorageFixture {
     bool oldSchema = false,
   }) async {
     directory.createSync(recursive: true);
-    final file = File(p.join(directory.path, libraryFileName));
+    final file = File(p.join(directory.path, LibraryStorage.legacyFileName));
     final raw = sqlite3.open(file.path);
     final app = AppDatabase.forTesting(NativeDatabase.opened(raw));
     await app.select(app.algorithms).get();
@@ -101,55 +101,6 @@ COMMIT;
   );
   Future<void> close() => app.close();
 }
-
-/// Real b-tree damage, not an exception stub. An index entry can be rebuilt
-/// without changing any table rows. An invalid table-page type cannot be safely
-/// recovered by REINDEX. The supported schema and durable identity stay intact.
-void damageLibrary(File file, {required bool repairable}) {
-  final raw = sqlite3.open(file.path, mode: OpenMode.readWrite);
-  late int page;
-  late int pageSize;
-  try {
-    raw.execute('PRAGMA journal_mode=PERSIST');
-    raw.execute(
-      'CREATE INDEX IF NOT EXISTS damage_fixture_index ON metadata_cache(cache_value)',
-    );
-    final version = raw.select('PRAGMA user_version').first.values.single;
-    raw.execute('PRAGMA user_version=$version');
-    pageSize = raw.select('PRAGMA page_size').first.values.single as int;
-    page =
-        raw.select('SELECT rootpage FROM sqlite_schema WHERE name=?', [
-              repairable ? 'damage_fixture_index' : 'metadata_cache',
-            ]).single['rootpage']
-            as int;
-  } finally {
-    raw.close();
-  }
-  final bytes = file.readAsBytesSync();
-  final start = (page - 1) * pageSize;
-  if (repairable) {
-    final needle = utf8.encode('non-preset metadata');
-    var found = false;
-    for (var i = start; i <= start + pageSize - needle.length; i++) {
-      if (base64Encode(bytes.sublist(i, i + needle.length)) ==
-          base64Encode(needle)) {
-        bytes[i + needle.length - 1] = 88;
-        found = true;
-        break;
-      }
-    }
-    if (!found) throw StateError('Index fixture entry was not found');
-  } else {
-    bytes[start] = 0xff; // Invalid b-tree page type; schema page is untouched.
-  }
-  file.writeAsBytesSync(bytes, flush: true);
-}
-
-Map<String, List<int>> storageBytes(File file) => {
-  for (final suffix in ['', '-wal', '-shm', '-journal'])
-    if (File('${file.path}$suffix').existsSync())
-      '${file.path}$suffix': File('${file.path}$suffix').readAsBytesSync(),
-};
 
 Future<Map<String, List<String>>> contents(AppDatabase app) async {
   final result = <String, List<String>>{};

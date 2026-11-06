@@ -2,27 +2,24 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:nt_helper/db/database.dart';
-import 'package:nt_helper/services/database_integrity_service.dart';
-import 'package:nt_helper/services/macos_library_storage.dart';
+import 'package:nt_helper/services/library_storage.dart';
 import 'package:nt_helper/utils/app_directory.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 class OpenedStartupLibrary {
-  const OpenedStartupLibrary(this.database, {this.location, this.recovery});
+  const OpenedStartupLibrary(this.database, {this.location});
   final AppDatabase database;
   final String? location;
-  final LibraryRecovery? recovery;
 }
 
-/// Resolves authority on macOS; other platforms retain their storage policy.
-/// A returned database has completed real SQLite/schema work, not just construction.
+/// Resolve the location, then let Drift and SQLite open the library normally.
 class StartupStorageOpener {
   StartupStorageOpener({
     bool? isMacOS,
     this.docsProvider,
     this.supportProvider,
-    this.checkpoint,
+    this.galleryCheckpoint,
     this.requestAccess = _requestAccess,
     this.releaseAccess = _releaseAccess,
   }) : isMacOS = isMacOS ?? Platform.isMacOS;
@@ -30,10 +27,11 @@ class StartupStorageOpener {
   final bool isMacOS;
   final Future<Directory> Function()? docsProvider;
   final Future<Directory> Function()? supportProvider;
-  final StorageCheckpoint? checkpoint;
+  final Future<void> Function(String)? galleryCheckpoint;
   final Future<bool> Function(String) requestAccess;
   final Future<void> Function() releaseAccess;
   String? legacyAccessDirectory;
+  String? location;
 
   static const _accessChannel = MethodChannel(
     'com.nt_helper.app/legacy_storage_access',
@@ -45,6 +43,8 @@ class StartupStorageOpener {
 
   Future<OpenedStartupLibrary> open({
     bool selectLegacyDirectory = false,
+    File? importSource,
+    bool startFresh = false,
   }) async {
     AppDatabase? database;
     Directory? documents;
@@ -52,74 +52,60 @@ class StartupStorageOpener {
     final requestedDirectory = legacyAccessDirectory;
     legacyAccessDirectory = null;
     try {
-      try {
-        await getAppDirectory(
-          isMacOS: isMacOS,
-          docsProvider: () async {
+      final folder = await getAppDirectory(
+        isMacOS: isMacOS,
+        docsProvider: docsProvider,
+        supportProvider: supportProvider,
+        galleryCheckpoint: galleryCheckpoint,
+      );
+      File file;
+      if (isMacOS) {
+        final storage = LibraryStorage(
+          directory: folder,
+          documentsProvider: () async {
             documents =
                 await (docsProvider ?? getApplicationDocumentsDirectory)();
-            // Selected authority bypasses this provider altogether, including
-            // if another process selected A since the previous blocked attempt.
             if (selectLegacyDirectory && requestedDirectory != null) {
               accessRequested = true;
               if (!await requestAccess(requestedDirectory)) {
                 legacyAccessDirectory = requestedDirectory;
-                throw const StorageFailure(
-                  StorageFailureKind.access,
-                  'Folder selection cancelled; storage access is unchanged. Retry when access is available',
+                throw FileSystemException(
+                  'Folder selection cancelled',
+                  requestedDirectory,
                 );
               }
             }
             return documents!;
           },
-          supportProvider: supportProvider,
-          galleryDocsProvider: docsProvider ?? getApplicationDocumentsDirectory,
-          storageCheckpoint: checkpoint,
         );
-        if (!isMacOS) {
-          final integrity = await DatabaseIntegrityService.checkIntegrity();
-          if (integrity.isCorrupt) {
-            await DatabaseIntegrityService.deleteDatabase();
-          }
-        }
-        final selected = isMacOS ? selectedLibrary : null;
-        database = selected == null
-            ? AppDatabase()
-            : await selected.open(checkpoint: checkpoint);
-        await database.select(database.algorithms).get();
-        return OpenedStartupLibrary(
-          database,
-          location: selected?.file.path,
-          recovery: selected?.recovery,
+        location = storage.file.path;
+        file = await storage.prepare(
+          importSource: importSource,
+          startFresh: startFresh,
         );
-      } finally {
-        // prepare() has released source exclusion and closed source resources.
-        if (accessRequested) await releaseAccess();
+      } else {
+        file = File(p.join(folder.path, 'nt_helper_db.sqlite'));
+        location = file.path;
       }
+      database = AppDatabase.atFile(file);
+      await database.select(database.algorithms).get();
+      return OpenedStartupLibrary(database, location: file.path);
     } catch (error) {
       await database?.close();
-      // Offer selection only for an observed legacy-path access failure, never
-      // as a supposed remedy for destination denial or selected-A unavailability.
-      final cause = error is StorageFailure ? error.cause : error;
-      if (isMacOS &&
-          documents != null &&
+      final cause = error is LibraryImportException ? error.cause : error;
+      if (documents != null &&
           cause is FileSystemException &&
           [1, 13].contains(cause.osError?.errorCode) &&
           cause.path != null &&
-          (cause.path == documents!.path ||
+          (p.equals(cause.path!, documents!.path) ||
               p.isWithin(documents!.path, cause.path!))) {
-        legacyAccessDirectory =
-            p.basename(cause.path!).startsWith(libraryFileName)
-            ? File(cause.path!).parent.path
-            : cause.path;
-      }
-      if (isMacOS) {
-        throw classifyStorageFailure(
-          error,
-          'Cannot resolve or open library storage',
-        );
+        legacyAccessDirectory = FileSystemEntity.isDirectorySync(cause.path!)
+            ? p.normalize(cause.path!)
+            : File(cause.path!).parent.path;
       }
       rethrow;
+    } finally {
+      if (accessRequested) await releaseAccess();
     }
   }
 }
