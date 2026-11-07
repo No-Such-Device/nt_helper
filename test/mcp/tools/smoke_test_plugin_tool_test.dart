@@ -127,6 +127,10 @@ class _FakeNt {
 
   void wire(_MockDistingMidiManager m) {
     when(() => m.requestWake()).thenAnswer((_) async {});
+    // Preset rollback now performs the same full sync as a normal load.
+    when(() => m.requestNumberOfAlgorithms()).thenAnswer((_) async => 0);
+    when(() => m.requestVersionString()).thenAnswer((_) async => '1.12.0');
+    when(() => m.requestUnitStrings()).thenAnswer((_) async => const []);
     when(
       () => m.requestNumAlgorithmsInPreset(
         timeout: any(named: 'timeout'),
