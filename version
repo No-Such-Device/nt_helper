@@ -1,4 +1,15 @@
 #!/bin/bash
+set -euo pipefail
+
+# Prepare a version-bump PR; tag only after its merged main commit is verified.
+if [[ "$(git branch --show-current)" == "main" ]]; then
+  echo "Create a release branch before running ./version." >&2
+  exit 1
+fi
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "Commit or stash changes before preparing a release." >&2
+  exit 1
+fi
 
 # Get the version line from pubspec.yaml
 version_line=$(grep -E "^version:" pubspec.yaml)
@@ -51,8 +62,8 @@ fi
 
 # Commit changes
 git add pubspec.yaml lib/chat/services/codex_client_version.g.dart
-git commit -m "Bump version to ${new_version}"
-git tag "v${major}.${minor}.${patch}"
+git commit -m "chore(release): prepare ${new_version}"
 
-# Output the new version
-echo "Version bumped to ${new_version}"
+# Branch protection requires CI and a merged PR before release tagging.
+echo "Version prepared: ${new_version}. Push this branch and merge its PR."
+echo "After verifying merged main, create and push the exact v${major}.${minor}.${patch} tag."

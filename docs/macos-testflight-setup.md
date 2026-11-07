@@ -124,10 +124,11 @@ The workflow update created these files:
 ## Running the Build
 
 ### Automatic (on tag push)
-The macOS TestFlight build runs automatically when you push a version tag:
-```bash
-./version && git push && git push --tags
-```
+The macOS TestFlight build runs automatically when the verified version tag is
+pushed. Prepare the version on a release branch with `./version`, merge its PR
+after CI passes, then verify merged `main` before creating and pushing the exact
+tag. Follow [the release procedure](../AGENTS.md#release); the script does not
+create tags or bypass branch protection.
 
 ### Manual (workflow dispatch)
 1. Go to Actions → "Multi-Platform Build"

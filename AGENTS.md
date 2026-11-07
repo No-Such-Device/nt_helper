@@ -189,18 +189,24 @@ Use the `thorinside` GitHub CLI credential for this repository. Before release
 checks or GitHub API operations, run `gh auth switch -u thorinside`; do not use
 the `nealsanche` credential.
 
-Before creating a tag:
+Release through a version-bump PR; `main` requires PRs and passing CI:
 
-1. Confirm `main` is clean and synchronized with `origin/main`.
-2. Run `flutter analyze` and the full `flutter test` suite on the exact commit
-   being released.
-3. Start and verify the self-hosted Windows runner as described below. Do not
-   push the tag while that runner is offline.
-4. Choose `patch` for fixes/maintenance, `minor` for any user-visible feature,
-   and `major` only for an intentional breaking release.
-5. Run `./version <patch|minor|major>`, inspect the generated version commit and
-   exact `vX.Y.Z` tag, then push `main` followed by that exact tag. Do not use a
-   broad `git push --tags`.
+1. From clean, synchronized `main`, create a release branch. Choose `patch` for
+   fixes/maintenance, `minor` for user-visible features, or `major` for breaking
+   changes. Run `./version <patch|minor|major>` to commit the version without a tag.
+   Resume an existing version-bump commit instead of bumping twice.
+2. Push the branch, open a PR, wait for required CI, and merge it.
+3. Update local `main` to `origin/main`. Run `flutter analyze` and the full
+   `flutter test` suite on this exact merged release commit.
+4. Verify the Windows runner is online and idle as described below.
+5. Create `vX.Y.Z` on the verified `main` commit and push only that exact tag.
+   Verify its SHA equals `origin/main`; do not push `main` directly or use
+   `git push --tags`.
+
+Published remote tags are immutable. With explicit user authorization, correct
+an incorrect local tag to the remote SHA, or remove a premature local-only tag
+before recreating it on verified merged `main`. First verify the remote state;
+never force-push or delete a remote release tag.
 
 Monitor the tag-triggered release with:
 
