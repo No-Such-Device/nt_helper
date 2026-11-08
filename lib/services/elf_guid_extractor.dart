@@ -163,9 +163,185 @@ class ElfGuidExtractor {
     }
   }
 
+  /// Byte offset of `name` in `_NT_factory`, after the 4-byte `guid`.
+  static const _factoryNameOffset = 4;
+
+  /// Byte offset of `construct` in `_NT_factory`. On the NT's 32-bit target
+  /// it follows eight 4-byte fields: guid, name, description,
+  /// numSpecifications, specifications, calculateStaticRequirements,
+  /// initialise and calculateRequirements.
+  static const _factoryConstructOffset = 32;
+
+  /// Hops the walk from `pluginEntry` follows. One reaches a factory that
+  /// `pluginEntry` returns directly; two reach one behind a pointer array or
+  /// a helper function; three reach one behind both.
+  static const _maxEntryHops = 3;
+
+  static const _sectionFlagAlloc = 0x2;
+  static const _sectionFlagExecInstr = 0x4;
+  static const _sectionTypeNoBits = 8;
+
+  /// Collects the plug-in's GUIDs without duplicates: those of the factories
+  /// reachable from `pluginEntry` or, when none can be reached that way,
+  /// those of recognised factory symbol names.
+  static List<PluginGuid> _collectGuids(ElfReader reader) {
+    final reachable = _collectGuidsFromPluginEntry(reader);
+    if (reachable.isNotEmpty) return reachable;
+    return _collectGuidsFromFactoryNames(reader);
+  }
+
+  /// GUIDs of the factories reachable from `pluginEntry` through relocations:
+  /// the ones the module hands the NT for `kNT_selector_factoryInfo`.
+  ///
+  /// This follows the plug-in contract rather than a compiler's naming, so it
+  /// holds whatever language built the object. A Rust build, for one, emits
+  /// its factory as an anonymous local object (`.Lanon.*`) that no symbol
+  /// name pattern recognises.
+  ///
+  /// Returns an empty list when the object is not relocatable, defines no
+  /// `pluginEntry`, or reaches its factories in a way this walk cannot see
+  /// (for example a call through a section symbol, whose extent is unknown).
+  static List<PluginGuid> _collectGuidsFromPluginEntry(ElfReader reader) {
+    // The factory offsets and the r_info split below are the 32-bit ABI's.
+    if (reader.header.type != ElfFileType.relocatable ||
+        reader.header.word != ElfWordSize.word32Bit) {
+      return const [];
+    }
+    final symbolTable = reader.symbolTableSection;
+    if (symbolTable == null) return const [];
+    final symbols = symbolTable.symbols;
+    final names = reader.stringTable;
+    final sections = reader.sections;
+    bool isDefined(ElfSymbol symbol) =>
+        symbol.shndx != 0 && symbol.shndx < sections.length;
+
+    ElfSymbol? entry;
+    for (final symbol in symbols) {
+      if (isDefined(symbol) && names?.at(symbol.nindex) == pluginEntrySymbol) {
+        entry = symbol;
+        break;
+      }
+    }
+    if (entry == null) return const [];
+
+    // In a relocatable object r_offset is relative to the section that the
+    // relocation table's sh_info names.
+    final relocations = <int, List<ElfRelocation>>{};
+    for (final section in sections) {
+      if (section is! ElfRelocationSection) continue;
+      relocations
+          .putIfAbsent(section.header.info, () => [])
+          .addAll(section.entries);
+    }
+
+    final guids = <PluginGuid>[];
+    final scannedData = <int>{};
+    final followedCode = <(int, int)>{};
+    // A Thumb function's symbol value carries the Thumb bit; clear it.
+    final entryStart = entry.value & ~1;
+    var frontier = <({int section, int start, int end})>[
+      (section: entry.shndx, start: entryStart, end: entryStart + entry.size),
+    ];
+    for (var hop = 0; hop < _maxEntryHops && frontier.isNotEmpty; hop++) {
+      final next = <({int section, int start, int end})>[];
+      for (final range in frontier) {
+        for (final relocation in relocations[range.section] ?? const []) {
+          if (relocation.offset < range.start ||
+              relocation.offset >= range.end) {
+            continue;
+          }
+          final symbolIndex = relocation.info >> 8;
+          if (symbolIndex >= symbols.length) continue;
+          final target = symbols[symbolIndex];
+          if (!isDefined(target)) continue;
+          final section = sections[target.shndx];
+          final flags = section.header.flags;
+          if (flags & _sectionFlagAlloc == 0) continue;
+
+          if (flags & _sectionFlagExecInstr != 0) {
+            // Follow a helper function only when its extent is known.
+            final start = target.value & ~1;
+            if (target.type == ElfSymbolType.func &&
+                target.size > 0 &&
+                followedCode.add((target.shndx, start))) {
+              next.add((
+                section: target.shndx,
+                start: start,
+                end: start + target.size,
+              ));
+            }
+            continue;
+          }
+
+          if (section.header.type == _sectionTypeNoBits) continue;
+          if (!scannedData.add(target.shndx)) continue;
+          final found = _factoriesInSection(section, {
+            for (final r in relocations[target.shndx] ?? const []) r.offset,
+          });
+          if (found.isEmpty) {
+            // Not a factory itself; perhaps an array of factory pointers.
+            next.add((
+              section: target.shndx,
+              start: 0,
+              end: section.header.size,
+            ));
+          }
+          for (final guid in found) {
+            if (!guids.any((g) => g.guid == guid.guid)) guids.add(guid);
+          }
+        }
+      }
+      frontier = next;
+    }
+    return guids;
+  }
+
+  /// GUIDs of the `_NT_factory` structs laid out in [section], whose
+  /// relocations patch the section-relative offsets in [relocatedOffsets].
+  ///
+  /// Matches the struct's shape, not a name. A factory starts with a literal
+  /// guid of four printable ASCII characters, so no relocation patches it.
+  /// Its `name` pointer and its `construct` pointer, the one callback the API
+  /// requires every algorithm to supply, are both relocated.
+  static List<PluginGuid> _factoriesInSection(
+    ElfSection section,
+    Set<int> relocatedOffsets,
+  ) {
+    final data = section.data();
+    final view = ByteData.sublistView(data);
+    final found = <PluginGuid>[];
+    for (
+      var offset = 0;
+      offset + _factoryConstructOffset + 4 <= data.length;
+      offset += 4
+    ) {
+      if (relocatedOffsets.contains(offset) ||
+          !relocatedOffsets.contains(offset + _factoryNameOffset) ||
+          !relocatedOffsets.contains(offset + _factoryConstructOffset)) {
+        continue;
+      }
+      final raw = view.getUint32(offset, Endian.little);
+      final guid = _guidFromU32(raw);
+      if (guid.contains('?')) continue;
+      found.add(PluginGuid(guid: guid, rawValue: raw));
+    }
+    return found;
+  }
+
+  /// GUIDs reachable from `pluginEntry` alone, without the symbol-name
+  /// fallback, so a test can prove the contract path finds them itself.
+  @visibleForTesting
+  static List<PluginGuid> guidsReachableFromPluginEntry(Uint8List bytes) =>
+      _collectGuidsFromPluginEntry(ElfReader.fromBytes(bytes));
+
+  /// GUIDs found by symbol name alone, without the `pluginEntry` walk.
+  @visibleForTesting
+  static List<PluginGuid> guidsFromFactorySymbolNames(Uint8List bytes) =>
+      _collectGuidsFromFactoryNames(ElfReader.fromBytes(bytes));
+
   /// Collects the GUIDs of every recognised factory symbol in [reader],
   /// from the static and dynamic symbol tables, without duplicates.
-  static List<PluginGuid> _collectGuids(ElfReader reader) {
+  static List<PluginGuid> _collectGuidsFromFactoryNames(ElfReader reader) {
     final guids = <PluginGuid>[];
     void scan(ElfSymbolTableSection? table, ElfStringTable? names) {
       if (table == null) return;

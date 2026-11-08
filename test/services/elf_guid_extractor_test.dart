@@ -3,6 +3,37 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/services/elf_guid_extractor.dart';
 
+// Fixtures in test/fixtures/plugins/ are real plug-in objects, one per
+// toolchain, because each lays out `_NT_factory` differently:
+//
+// - directionalSequencer.o: C++ (GCC). Two factories, `ATds` and `ATdm`,
+//   with named `_ZN…FactoryE` symbols.
+// - wavesmith.o: Rust. One factory, `NRws`, emitted as an anonymous local
+//   object (`.Lanon.*`) that no factory symbol name points at. Provenance
+//   and license: wavesmith.o.LICENSE.txt.
+//
+// When a plug-in from a new toolchain is misdetected, add its object here
+// with a test asserting its exact GUIDs.
+Future<Uint8List> _fixture(String name) async =>
+    Uint8List.fromList(await File('test/fixtures/plugins/$name').readAsBytes());
+
+/// Returns a copy of [bytes] in which the one occurrence of [from] is
+/// replaced by [to], which must be the same length.
+Uint8List _replaceOnce(Uint8List bytes, String from, String to) {
+  expect(to.length, from.length);
+  final needle = from.codeUnits;
+  final hits = <int>[];
+  for (var i = 0; i + needle.length <= bytes.length; i++) {
+    var match = true;
+    for (var j = 0; j < needle.length && match; j++) {
+      match = bytes[i + j] == needle[j];
+    }
+    if (match) hits.add(i);
+  }
+  expect(hits, hasLength(1), reason: '"$from" must occur exactly once');
+  return Uint8List.fromList(bytes)..setAll(hits.single, to.codeUnits);
+}
+
 void main() {
   group('ElfGuidExtractor', () {
     group('extractAllGuidsFromBytes', () {
@@ -49,6 +80,74 @@ void main() {
           // Should return a valid GUID
           expect(guid.guid.length, 4);
           expect(guid.isCommunityPlugin, isTrue);
+        },
+      );
+    });
+
+    group('pluginEntry contract', () {
+      test('finds the single GUID of a Rust plug-in', () async {
+        final bytes = await _fixture('wavesmith.o');
+
+        final guids = await ElfGuidExtractor.extractAllGuidsFromBytes(
+          bytes,
+          'wavesmith.o',
+        );
+
+        expect(guids.map((g) => g.guid), ['NRws']);
+        expect(guids.single.isCommunityPlugin, isTrue);
+      });
+
+      test('symbol names alone cannot see the Rust factory', () async {
+        // The control for the test above: the Rust factory has no name the
+        // old heuristic recognises, so only the pluginEntry walk finds it.
+        final bytes = await _fixture('wavesmith.o');
+
+        expect(ElfGuidExtractor.guidsFromFactorySymbolNames(bytes), isEmpty);
+        expect(
+          ElfGuidExtractor.guidsReachableFromPluginEntry(
+            bytes,
+          ).map((g) => g.guid),
+          ['NRws'],
+        );
+      });
+
+      test(
+        'reaches both C++ factories without the symbol-name fallback',
+        () async {
+          final bytes = await _fixture('directionalSequencer.o');
+
+          final guids = ElfGuidExtractor.guidsReachableFromPluginEntry(bytes);
+
+          expect(guids.map((g) => g.guid), unorderedEquals(['ATds', 'ATdm']));
+        },
+      );
+
+      test('falls back to symbol names when pluginEntry is absent', () async {
+        final bytes = _replaceOnce(
+          await _fixture('directionalSequencer.o'),
+          'pluginEntry\u0000',
+          'pluginEntrX\u0000',
+        );
+
+        expect(ElfGuidExtractor.guidsReachableFromPluginEntry(bytes), isEmpty);
+        final guids = await ElfGuidExtractor.extractAllGuidsFromBytes(
+          bytes,
+          'renamed.o',
+        );
+        expect(guids.map((g) => g.guid), unorderedEquals(['ATds', 'ATdm']));
+      });
+
+      test(
+        'inspectPluginObject reports the Rust plug-in as loadable',
+        () async {
+          final info = ElfGuidExtractor.inspectPluginObject(
+            await _fixture('wavesmith.o'),
+            'wavesmith.o',
+          );
+
+          expect(info.isArm32LittleEndian, isTrue);
+          expect(info.hasPluginEntry, isTrue);
+          expect(info.guids.map((g) => g.guid), ['NRws']);
         },
       );
     });

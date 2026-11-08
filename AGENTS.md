@@ -78,6 +78,27 @@ OO framework in `lib/core/routing/` for data-driven routing visualization.
 - `RoutingEditorCubit` orchestrates state; `RoutingEditorWidget` displays only
 - ES-5 algorithms (clck, eucp, clkm, clkd, pycv) support direct output routing via `Es5DirectOutputAlgorithmRouting`
 
+## Plug-in Object Detection
+
+`ElfGuidExtractor` (`lib/services/elf_guid_extractor.dart`) reads the algorithm
+GUIDs of a plug-in `.o` for install checks, the gallery and SD-card scans.
+
+- The contract is `pluginEntry`, not symbol names. GUIDs come from the
+  `_NT_factory` structs reachable from `pluginEntry` through relocations,
+  matched by struct shape. Factory symbol names (`factory`, `_ZL7factory`,
+  `_ZN…FactoryE`) are only a fallback when nothing is reachable.
+- Plug-ins are not only C++. A Rust build emits its factory as an anonymous
+  `.Lanon.*` object that no factory name points at. Do not add detection that
+  depends on one compiler's naming or layout.
+- `test/fixtures/plugins/` holds one real object per toolchain, and
+  `test/services/elf_guid_extractor_test.dart` asserts each one's exact GUIDs.
+  When a plug-in is misdetected, add its object (with provenance and license)
+  and a failing test before changing the extractor.
+- One `.o` with several factories is one plug-in with several algorithms. A
+  gallery collection is an archive with several installable files. The
+  gallery feed's `isCollection` and `collectionGuids` come from the gallery
+  server, not from this code.
+
 ## Key Files
 
 | Area | Path |
