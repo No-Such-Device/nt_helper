@@ -1,0 +1,29 @@
+wavesmith.o is the unmodified release asset of
+NerdRoger/disting_nt_rust_plugins, tag wavesmith/v0.1.0
+(commit 4930426bb712d227fcabf1a78f7be8f353c99c7c):
+https://github.com/NerdRoger/disting_nt_rust_plugins/releases/tag/wavesmith/v0.1.0
+SHA-256 ace50b007a1af86dc5d0421f2f0aedb307be1c6e7032f8a7e4b383e1c50324d2
+
+It is distributed under the following license.
+
+MIT License
+
+Copyright (c) 2025 Roger Arnett
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

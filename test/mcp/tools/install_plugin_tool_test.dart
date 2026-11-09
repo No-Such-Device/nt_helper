@@ -580,7 +580,15 @@ void main() {
     });
 
     test('refuses an object with no readable GUID', () async {
-      await refused(_renamed(fixtureBytes, 'FactoryE', 'FactorXE'), 'no_guid');
+      // Renaming the factory symbols is not enough: the GUIDs stay readable
+      // through pluginEntry, as the NT itself reads them. Make the GUID
+      // words themselves non-ASCII.
+      final unreadable = _renamed(
+        _renamed(fixtureBytes, 'ATds', '\u0001\u0002\u0003\u0004'),
+        'ATdm',
+        '\u0001\u0002\u0003\u0005',
+      );
+      await refused(unreadable, 'no_guid');
     });
 
     test('refuses a GUID owned by a built-in algorithm', () async {
@@ -960,7 +968,8 @@ void main() {
         expect(result['message'], contains('Retry'));
         expectNothingUploaded();
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('content checks still run first while loading', () async {
       await startPartialLibraryLoad();
