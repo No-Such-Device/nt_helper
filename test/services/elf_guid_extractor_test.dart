@@ -11,9 +11,13 @@ import 'package:nt_helper/services/elf_guid_extractor.dart';
 // - wavesmith.o: Rust. One factory, `NRws`, emitted as an anonymous local
 //   object (`.Lanon.*`) that no factory symbol name points at. Provenance
 //   and license: wavesmith.o.LICENSE.txt.
+// - nt_seq.o: C++ (GCC). Seven factories with names the fallback does not
+//   recognise, in `.rodata` beside `_NT_parameter` tables, one of which
+//   starts with the printable word `/*4(`. Provenance and license:
+//   nt_seq.o.LICENSE.txt.
 //
-// When a plug-in from a new toolchain is misdetected, add its object here
-// with a test asserting its exact GUIDs.
+// When a plug-in is misdetected, add its object here with a test asserting
+// its exact GUIDs.
 Future<Uint8List> _fixture(String name) async =>
     Uint8List.fromList(await File('test/fixtures/plugins/$name').readAsBytes());
 
@@ -119,6 +123,34 @@ void main() {
           final guids = ElfGuidExtractor.guidsReachableFromPluginEntry(bytes);
 
           expect(guids.map((g) => g.guid), unorderedEquals(['ATds', 'ATdm']));
+        },
+      );
+
+      test(
+        'reads every factory of a C++ plug-in and no parameter table',
+        () async {
+          // A parameter table also pairs a literal word with a string pointer
+          // and a pointer 32 bytes on; only a factory's `construct` is code.
+          final bytes = await _fixture('nt_seq.o');
+
+          final guids = await ElfGuidExtractor.extractAllGuidsFromBytes(
+            bytes,
+            'nt_seq.o',
+          );
+
+          expect(
+            guids.map((g) => g.guid),
+            unorderedEquals([
+              'NsTh',
+              'NsSo',
+              'NsAe',
+              'NsMk',
+              'NsFe',
+              'NsQu',
+              'NsMx',
+            ]),
+          );
+          expect(ElfGuidExtractor.guidsFromFactorySymbolNames(bytes), isEmpty);
         },
       );
 

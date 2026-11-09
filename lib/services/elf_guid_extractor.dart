@@ -234,6 +234,14 @@ class ElfGuidExtractor {
           .addAll(section.entries);
     }
 
+    bool pointsAtCode(ElfRelocation relocation) {
+      final symbolIndex = relocation.info >> 8;
+      if (symbolIndex >= symbols.length) return false;
+      final symbol = symbols[symbolIndex];
+      return isDefined(symbol) &&
+          sections[symbol.shndx].header.flags & _sectionFlagExecInstr != 0;
+    }
+
     final guids = <PluginGuid>[];
     final scannedData = <int>{};
     final followedCode = <(int, int)>{};
@@ -276,7 +284,8 @@ class ElfGuidExtractor {
           if (section.header.type == _sectionTypeNoBits) continue;
           if (!scannedData.add(target.shndx)) continue;
           final found = _factoriesInSection(section, {
-            for (final r in relocations[target.shndx] ?? const []) r.offset,
+            for (final r in relocations[target.shndx] ?? const [])
+              r.offset: pointsAtCode(r),
           });
           if (found.isEmpty) {
             // Not a factory itself; perhaps an array of factory pointers.
@@ -297,16 +306,22 @@ class ElfGuidExtractor {
   }
 
   /// GUIDs of the `_NT_factory` structs laid out in [section], whose
-  /// relocations patch the section-relative offsets in [relocatedOffsets].
+  /// relocations patch the section-relative offsets that key
+  /// [pointsAtCodeByOffset]; each value says whether that relocation's
+  /// target lies in executable code.
   ///
   /// Matches the struct's shape, not a name. A factory starts with a literal
   /// guid of four printable ASCII characters, so no relocation patches it.
-  /// Its `name` pointer and its `construct` pointer, the one callback the API
-  /// requires every algorithm to supply, are both relocated.
+  /// Its `name` pointer is relocated, and its `construct` pointer, the one
+  /// callback the API requires every algorithm to supply, is relocated to
+  /// code. Requiring code there is what tells a factory from a table of
+  /// `_NT_parameter`s, whose entries also pair a literal word with a string
+  /// pointer and a data pointer 32 bytes on.
   static List<PluginGuid> _factoriesInSection(
     ElfSection section,
-    Set<int> relocatedOffsets,
+    Map<int, bool> pointsAtCodeByOffset,
   ) {
+    final relocatedOffsets = pointsAtCodeByOffset.keys.toSet();
     final data = section.data();
     final view = ByteData.sublistView(data);
     final found = <PluginGuid>[];
@@ -317,7 +332,7 @@ class ElfGuidExtractor {
     ) {
       if (relocatedOffsets.contains(offset) ||
           !relocatedOffsets.contains(offset + _factoryNameOffset) ||
-          !relocatedOffsets.contains(offset + _factoryConstructOffset)) {
+          pointsAtCodeByOffset[offset + _factoryConstructOffset] != true) {
         continue;
       }
       final raw = view.getUint32(offset, Endian.little);

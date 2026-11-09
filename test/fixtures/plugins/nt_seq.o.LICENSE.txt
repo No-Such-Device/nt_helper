@@ -1,0 +1,30 @@
+nt_seq.o is the unmodified release asset of
+thorinside/nt_multi_seq, tag v1.3.0
+(commit d2532837d35422d325b372e8a79741e228bc4051):
+https://github.com/thorinside/nt_multi_seq/releases/tag/v1.3.0
+SHA-256 85b7eb636370dc3c74c874fcd7dc4f2d9c7c08181630a8b413e27e0dfac1a9e3
+
+It is distributed under the following license.
+
+MIT License
+
+Copyright (c) 2026 Neal Sanche
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+

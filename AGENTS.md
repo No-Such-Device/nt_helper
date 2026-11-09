@@ -85,19 +85,29 @@ GUIDs of a plug-in `.o` for install checks, the gallery and SD-card scans.
 
 - The contract is `pluginEntry`, not symbol names. GUIDs come from the
   `_NT_factory` structs reachable from `pluginEntry` through relocations,
-  matched by struct shape. Factory symbol names (`factory`, `_ZL7factory`,
+  matched by struct shape: a guid no relocation patches, a relocated `name`,
+  and a `construct` relocated to code. The last is what tells a factory from
+  an `_NT_parameter` table. Factory symbol names (`factory`, `_ZL7factory`,
   `_ZN…FactoryE`) are only a fallback when nothing is reachable.
-- Plug-ins are not only C++. A Rust build emits its factory as an anonymous
-  `.Lanon.*` object that no factory name points at. Do not add detection that
-  depends on one compiler's naming or layout.
-- `test/fixtures/plugins/` holds one real object per toolchain, and
+- Factory names are not a contract. A Rust build emits its factory as an
+  anonymous `.Lanon.*` object, and C++ authors name theirs freely: on
+  2026-11-08, 14 of the gallery's 99 compiled plug-ins, 13 of them C++, had no
+  factory name the fallback recognises. Do not add detection that depends on
+  one compiler's or author's naming.
+- `test/fixtures/plugins/` holds one real object per toolchain or layout that
+  has broken detection, and
   `test/services/elf_guid_extractor_test.dart` asserts each one's exact GUIDs.
   When a plug-in is misdetected, add its object (with provenance and license)
   and a failing test before changing the extractor.
-- One `.o` with several factories is one plug-in with several algorithms. A
-  gallery collection is an archive with several installable files. The
-  gallery feed's `isCollection` and `collectionGuids` come from the gallery
-  server, not from this code.
+- The gallery feed's `guid`, `isCollection` and `collectionGuids` come from
+  the gallery server, not from this code. There, a collection is any entry
+  with more than one GUID, so one `.o` with several factories is one
+  (`directionalsequencer`). `isActualCollection` in
+  `lib/models/gallery_models.dart` asks something else: whether an archive
+  holds more than one installable file. `GalleryService` matches device
+  algorithms to entries by those feed GUIDs, so an entry whose GUIDs differ
+  from its artifact's goes unrecognised on the device; check the artifact
+  with `ElfGuidExtractor` before trusting the feed.
 
 ## Key Files
 
