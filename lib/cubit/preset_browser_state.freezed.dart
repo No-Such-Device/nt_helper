@@ -12,6 +12,586 @@ part of 'preset_browser_state.dart';
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
+mixin _$BrowserFrame {
+
+ String get path; String? get selectedName;
+/// Create a copy of BrowserFrame
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$BrowserFrameCopyWith<BrowserFrame> get copyWith => _$BrowserFrameCopyWithImpl<BrowserFrame>(this as BrowserFrame, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BrowserFrame&&(identical(other.path, path) || other.path == path)&&(identical(other.selectedName, selectedName) || other.selectedName == selectedName));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,path,selectedName);
+
+@override
+String toString() {
+  return 'BrowserFrame(path: $path, selectedName: $selectedName)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $BrowserFrameCopyWith<$Res>  {
+  factory $BrowserFrameCopyWith(BrowserFrame value, $Res Function(BrowserFrame) _then) = _$BrowserFrameCopyWithImpl;
+@useResult
+$Res call({
+ String path, String? selectedName
+});
+
+
+
+
+}
+/// @nodoc
+class _$BrowserFrameCopyWithImpl<$Res>
+    implements $BrowserFrameCopyWith<$Res> {
+  _$BrowserFrameCopyWithImpl(this._self, this._then);
+
+  final BrowserFrame _self;
+  final $Res Function(BrowserFrame) _then;
+
+/// Create a copy of BrowserFrame
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? selectedName = freezed,}) {
+  return _then(_self.copyWith(
+path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,selectedName: freezed == selectedName ? _self.selectedName : selectedName // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [BrowserFrame].
+extension BrowserFramePatterns on BrowserFrame {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _BrowserFrame value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _BrowserFrame() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _BrowserFrame value)  $default,){
+final _that = this;
+switch (_that) {
+case _BrowserFrame():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _BrowserFrame value)?  $default,){
+final _that = this;
+switch (_that) {
+case _BrowserFrame() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String path,  String? selectedName)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _BrowserFrame() when $default != null:
+return $default(_that.path,_that.selectedName);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String path,  String? selectedName)  $default,) {final _that = this;
+switch (_that) {
+case _BrowserFrame():
+return $default(_that.path,_that.selectedName);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String path,  String? selectedName)?  $default,) {final _that = this;
+switch (_that) {
+case _BrowserFrame() when $default != null:
+return $default(_that.path,_that.selectedName);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _BrowserFrame implements BrowserFrame {
+  const _BrowserFrame({required this.path, this.selectedName});
+
+
+@override final  String path;
+@override final  String? selectedName;
+
+/// Create a copy of BrowserFrame
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$BrowserFrameCopyWith<_BrowserFrame> get copyWith => __$BrowserFrameCopyWithImpl<_BrowserFrame>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BrowserFrame&&(identical(other.path, path) || other.path == path)&&(identical(other.selectedName, selectedName) || other.selectedName == selectedName));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,path,selectedName);
+
+@override
+String toString() {
+  return 'BrowserFrame(path: $path, selectedName: $selectedName)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$BrowserFrameCopyWith<$Res> implements $BrowserFrameCopyWith<$Res> {
+  factory _$BrowserFrameCopyWith(_BrowserFrame value, $Res Function(_BrowserFrame) _then) = __$BrowserFrameCopyWithImpl;
+@override @useResult
+$Res call({
+ String path, String? selectedName
+});
+
+
+
+
+}
+/// @nodoc
+class __$BrowserFrameCopyWithImpl<$Res>
+    implements _$BrowserFrameCopyWith<$Res> {
+  __$BrowserFrameCopyWithImpl(this._self, this._then);
+
+  final _BrowserFrame _self;
+  final $Res Function(_BrowserFrame) _then;
+
+/// Create a copy of BrowserFrame
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? path = null,Object? selectedName = freezed,}) {
+  return _then(_BrowserFrame(
+path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
+as String,selectedName: freezed == selectedName ? _self.selectedName : selectedName // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+mixin _$BrowserSnapshot {
+
+ List<BrowserFrame> get stack; int get activeDepth; bool get sortByDate; Map<String, List<DirectoryEntry>> get listings; Set<String> get refreshing; Map<String, String> get errors; Set<String> get busyPaths; String? get warning; String? get pendingPath; Map<String, String> get renamedPaths;
+/// Create a copy of BrowserSnapshot
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$BrowserSnapshotCopyWith<BrowserSnapshot> get copyWith => _$BrowserSnapshotCopyWithImpl<BrowserSnapshot>(this as BrowserSnapshot, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BrowserSnapshot&&const DeepCollectionEquality().equals(other.stack, stack)&&(identical(other.activeDepth, activeDepth) || other.activeDepth == activeDepth)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other.listings, listings)&&const DeepCollectionEquality().equals(other.refreshing, refreshing)&&const DeepCollectionEquality().equals(other.errors, errors)&&const DeepCollectionEquality().equals(other.busyPaths, busyPaths)&&(identical(other.warning, warning) || other.warning == warning)&&(identical(other.pendingPath, pendingPath) || other.pendingPath == pendingPath)&&const DeepCollectionEquality().equals(other.renamedPaths, renamedPaths));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(stack),activeDepth,sortByDate,const DeepCollectionEquality().hash(listings),const DeepCollectionEquality().hash(refreshing),const DeepCollectionEquality().hash(errors),const DeepCollectionEquality().hash(busyPaths),warning,pendingPath,const DeepCollectionEquality().hash(renamedPaths));
+
+@override
+String toString() {
+  return 'BrowserSnapshot(stack: $stack, activeDepth: $activeDepth, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning, pendingPath: $pendingPath, renamedPaths: $renamedPaths)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $BrowserSnapshotCopyWith<$Res>  {
+  factory $BrowserSnapshotCopyWith(BrowserSnapshot value, $Res Function(BrowserSnapshot) _then) = _$BrowserSnapshotCopyWithImpl;
+@useResult
+$Res call({
+ List<BrowserFrame> stack, int activeDepth, bool sortByDate, Map<String, List<DirectoryEntry>> listings, Set<String> refreshing, Map<String, String> errors, Set<String> busyPaths, String? warning, String? pendingPath, Map<String, String> renamedPaths
+});
+
+
+
+
+}
+/// @nodoc
+class _$BrowserSnapshotCopyWithImpl<$Res>
+    implements $BrowserSnapshotCopyWith<$Res> {
+  _$BrowserSnapshotCopyWithImpl(this._self, this._then);
+
+  final BrowserSnapshot _self;
+  final $Res Function(BrowserSnapshot) _then;
+
+/// Create a copy of BrowserSnapshot
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? stack = null,Object? activeDepth = null,Object? sortByDate = null,Object? listings = null,Object? refreshing = null,Object? errors = null,Object? busyPaths = null,Object? warning = freezed,Object? pendingPath = freezed,Object? renamedPaths = null,}) {
+  return _then(_self.copyWith(
+stack: null == stack ? _self.stack : stack // ignore: cast_nullable_to_non_nullable
+as List<BrowserFrame>,activeDepth: null == activeDepth ? _self.activeDepth : activeDepth // ignore: cast_nullable_to_non_nullable
+as int,sortByDate: null == sortByDate ? _self.sortByDate : sortByDate // ignore: cast_nullable_to_non_nullable
+as bool,listings: null == listings ? _self.listings : listings // ignore: cast_nullable_to_non_nullable
+as Map<String, List<DirectoryEntry>>,refreshing: null == refreshing ? _self.refreshing : refreshing // ignore: cast_nullable_to_non_nullable
+as Set<String>,errors: null == errors ? _self.errors : errors // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,busyPaths: null == busyPaths ? _self.busyPaths : busyPaths // ignore: cast_nullable_to_non_nullable
+as Set<String>,warning: freezed == warning ? _self.warning : warning // ignore: cast_nullable_to_non_nullable
+as String?,pendingPath: freezed == pendingPath ? _self.pendingPath : pendingPath // ignore: cast_nullable_to_non_nullable
+as String?,renamedPaths: null == renamedPaths ? _self.renamedPaths : renamedPaths // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [BrowserSnapshot].
+extension BrowserSnapshotPatterns on BrowserSnapshot {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _BrowserSnapshot value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _BrowserSnapshot() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _BrowserSnapshot value)  $default,){
+final _that = this;
+switch (_that) {
+case _BrowserSnapshot():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _BrowserSnapshot value)?  $default,){
+final _that = this;
+switch (_that) {
+case _BrowserSnapshot() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning,  String? pendingPath,  Map<String, String> renamedPaths)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _BrowserSnapshot() when $default != null:
+return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning,_that.pendingPath,_that.renamedPaths);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning,  String? pendingPath,  Map<String, String> renamedPaths)  $default,) {final _that = this;
+switch (_that) {
+case _BrowserSnapshot():
+return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning,_that.pendingPath,_that.renamedPaths);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning,  String? pendingPath,  Map<String, String> renamedPaths)?  $default,) {final _that = this;
+switch (_that) {
+case _BrowserSnapshot() when $default != null:
+return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning,_that.pendingPath,_that.renamedPaths);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _BrowserSnapshot extends BrowserSnapshot {
+  const _BrowserSnapshot({required final  List<BrowserFrame> stack, this.activeDepth = 0, this.sortByDate = false, final  Map<String, List<DirectoryEntry>> listings = const {}, final  Set<String> refreshing = const {}, final  Map<String, String> errors = const {}, final  Set<String> busyPaths = const {}, this.warning, this.pendingPath, final  Map<String, String> renamedPaths = const {}}): _stack = stack,_listings = listings,_refreshing = refreshing,_errors = errors,_busyPaths = busyPaths,_renamedPaths = renamedPaths,super._();
+
+
+ final  List<BrowserFrame> _stack;
+@override List<BrowserFrame> get stack {
+  if (_stack is EqualUnmodifiableListView) return _stack;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_stack);
+}
+
+@override@JsonKey() final  int activeDepth;
+@override@JsonKey() final  bool sortByDate;
+ final  Map<String, List<DirectoryEntry>> _listings;
+@override@JsonKey() Map<String, List<DirectoryEntry>> get listings {
+  if (_listings is EqualUnmodifiableMapView) return _listings;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_listings);
+}
+
+ final  Set<String> _refreshing;
+@override@JsonKey() Set<String> get refreshing {
+  if (_refreshing is EqualUnmodifiableSetView) return _refreshing;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_refreshing);
+}
+
+ final  Map<String, String> _errors;
+@override@JsonKey() Map<String, String> get errors {
+  if (_errors is EqualUnmodifiableMapView) return _errors;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_errors);
+}
+
+ final  Set<String> _busyPaths;
+@override@JsonKey() Set<String> get busyPaths {
+  if (_busyPaths is EqualUnmodifiableSetView) return _busyPaths;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_busyPaths);
+}
+
+@override final  String? warning;
+@override final  String? pendingPath;
+ final  Map<String, String> _renamedPaths;
+@override@JsonKey() Map<String, String> get renamedPaths {
+  if (_renamedPaths is EqualUnmodifiableMapView) return _renamedPaths;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_renamedPaths);
+}
+
+
+/// Create a copy of BrowserSnapshot
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$BrowserSnapshotCopyWith<_BrowserSnapshot> get copyWith => __$BrowserSnapshotCopyWithImpl<_BrowserSnapshot>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BrowserSnapshot&&const DeepCollectionEquality().equals(other._stack, _stack)&&(identical(other.activeDepth, activeDepth) || other.activeDepth == activeDepth)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other._listings, _listings)&&const DeepCollectionEquality().equals(other._refreshing, _refreshing)&&const DeepCollectionEquality().equals(other._errors, _errors)&&const DeepCollectionEquality().equals(other._busyPaths, _busyPaths)&&(identical(other.warning, warning) || other.warning == warning)&&(identical(other.pendingPath, pendingPath) || other.pendingPath == pendingPath)&&const DeepCollectionEquality().equals(other._renamedPaths, _renamedPaths));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_stack),activeDepth,sortByDate,const DeepCollectionEquality().hash(_listings),const DeepCollectionEquality().hash(_refreshing),const DeepCollectionEquality().hash(_errors),const DeepCollectionEquality().hash(_busyPaths),warning,pendingPath,const DeepCollectionEquality().hash(_renamedPaths));
+
+@override
+String toString() {
+  return 'BrowserSnapshot(stack: $stack, activeDepth: $activeDepth, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning, pendingPath: $pendingPath, renamedPaths: $renamedPaths)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$BrowserSnapshotCopyWith<$Res> implements $BrowserSnapshotCopyWith<$Res> {
+  factory _$BrowserSnapshotCopyWith(_BrowserSnapshot value, $Res Function(_BrowserSnapshot) _then) = __$BrowserSnapshotCopyWithImpl;
+@override @useResult
+$Res call({
+ List<BrowserFrame> stack, int activeDepth, bool sortByDate, Map<String, List<DirectoryEntry>> listings, Set<String> refreshing, Map<String, String> errors, Set<String> busyPaths, String? warning, String? pendingPath, Map<String, String> renamedPaths
+});
+
+
+
+
+}
+/// @nodoc
+class __$BrowserSnapshotCopyWithImpl<$Res>
+    implements _$BrowserSnapshotCopyWith<$Res> {
+  __$BrowserSnapshotCopyWithImpl(this._self, this._then);
+
+  final _BrowserSnapshot _self;
+  final $Res Function(_BrowserSnapshot) _then;
+
+/// Create a copy of BrowserSnapshot
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? stack = null,Object? activeDepth = null,Object? sortByDate = null,Object? listings = null,Object? refreshing = null,Object? errors = null,Object? busyPaths = null,Object? warning = freezed,Object? pendingPath = freezed,Object? renamedPaths = null,}) {
+  return _then(_BrowserSnapshot(
+stack: null == stack ? _self._stack : stack // ignore: cast_nullable_to_non_nullable
+as List<BrowserFrame>,activeDepth: null == activeDepth ? _self.activeDepth : activeDepth // ignore: cast_nullable_to_non_nullable
+as int,sortByDate: null == sortByDate ? _self.sortByDate : sortByDate // ignore: cast_nullable_to_non_nullable
+as bool,listings: null == listings ? _self._listings : listings // ignore: cast_nullable_to_non_nullable
+as Map<String, List<DirectoryEntry>>,refreshing: null == refreshing ? _self._refreshing : refreshing // ignore: cast_nullable_to_non_nullable
+as Set<String>,errors: null == errors ? _self._errors : errors // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,busyPaths: null == busyPaths ? _self._busyPaths : busyPaths // ignore: cast_nullable_to_non_nullable
+as Set<String>,warning: freezed == warning ? _self.warning : warning // ignore: cast_nullable_to_non_nullable
+as String?,pendingPath: freezed == pendingPath ? _self.pendingPath : pendingPath // ignore: cast_nullable_to_non_nullable
+as String?,renamedPaths: null == renamedPaths ? _self._renamedPaths : renamedPaths // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,
+  ));
+}
+
+
+}
+
+/// @nodoc
 mixin _$PresetBrowserState {
 
 
@@ -87,10 +667,7 @@ case _Initial():
 return initial(_that);case _Loading():
 return loading(_that);case _Loaded():
 return loaded(_that);case _Error():
-return error(_that);case _:
-  throw StateError('Unexpected subclass');
-
-}
+return error(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
 ///
@@ -128,12 +705,12 @@ return error(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  initial,TResult Function()?  loading,TResult Function( String currentPath,  List<DirectoryEntry> leftPanelItems,  List<DirectoryEntry> centerPanelItems,  List<DirectoryEntry> rightPanelItems,  DirectoryEntry? selectedLeftItem,  DirectoryEntry? selectedCenterItem,  DirectoryEntry? selectedRightItem,  List<String> navigationHistory,  bool sortByDate,  Map<String, List<DirectoryEntry>>? directoryCache,  String? drillPath,  List<String>? breadcrumbs,  List<DirectoryEntry>? currentDrillItems,  DirectoryEntry? selectedDrillItem)?  loaded,TResult Function( String message,  String? lastPath)?  error,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  initial,TResult Function()?  loading,TResult Function( BrowserSnapshot browser)?  loaded,TResult Function( String message,  String? lastPath)?  error,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Initial() when initial != null:
 return initial();case _Loading() when loading != null:
 return loading();case _Loaded() when loaded != null:
-return loaded(_that.currentPath,_that.leftPanelItems,_that.centerPanelItems,_that.rightPanelItems,_that.selectedLeftItem,_that.selectedCenterItem,_that.selectedRightItem,_that.navigationHistory,_that.sortByDate,_that.directoryCache,_that.drillPath,_that.breadcrumbs,_that.currentDrillItems,_that.selectedDrillItem);case _Error() when error != null:
+return loaded(_that.browser);case _Error() when error != null:
 return error(_that.message,_that.lastPath);case _:
   return orElse();
 
@@ -152,16 +729,13 @@ return error(_that.message,_that.lastPath);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  initial,required TResult Function()  loading,required TResult Function( String currentPath,  List<DirectoryEntry> leftPanelItems,  List<DirectoryEntry> centerPanelItems,  List<DirectoryEntry> rightPanelItems,  DirectoryEntry? selectedLeftItem,  DirectoryEntry? selectedCenterItem,  DirectoryEntry? selectedRightItem,  List<String> navigationHistory,  bool sortByDate,  Map<String, List<DirectoryEntry>>? directoryCache,  String? drillPath,  List<String>? breadcrumbs,  List<DirectoryEntry>? currentDrillItems,  DirectoryEntry? selectedDrillItem)  loaded,required TResult Function( String message,  String? lastPath)  error,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  initial,required TResult Function()  loading,required TResult Function( BrowserSnapshot browser)  loaded,required TResult Function( String message,  String? lastPath)  error,}) {final _that = this;
 switch (_that) {
 case _Initial():
 return initial();case _Loading():
 return loading();case _Loaded():
-return loaded(_that.currentPath,_that.leftPanelItems,_that.centerPanelItems,_that.rightPanelItems,_that.selectedLeftItem,_that.selectedCenterItem,_that.selectedRightItem,_that.navigationHistory,_that.sortByDate,_that.directoryCache,_that.drillPath,_that.breadcrumbs,_that.currentDrillItems,_that.selectedDrillItem);case _Error():
-return error(_that.message,_that.lastPath);case _:
-  throw StateError('Unexpected subclass');
-
-}
+return loaded(_that.browser);case _Error():
+return error(_that.message,_that.lastPath);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -175,12 +749,12 @@ return error(_that.message,_that.lastPath);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  initial,TResult? Function()?  loading,TResult? Function( String currentPath,  List<DirectoryEntry> leftPanelItems,  List<DirectoryEntry> centerPanelItems,  List<DirectoryEntry> rightPanelItems,  DirectoryEntry? selectedLeftItem,  DirectoryEntry? selectedCenterItem,  DirectoryEntry? selectedRightItem,  List<String> navigationHistory,  bool sortByDate,  Map<String, List<DirectoryEntry>>? directoryCache,  String? drillPath,  List<String>? breadcrumbs,  List<DirectoryEntry>? currentDrillItems,  DirectoryEntry? selectedDrillItem)?  loaded,TResult? Function( String message,  String? lastPath)?  error,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  initial,TResult? Function()?  loading,TResult? Function( BrowserSnapshot browser)?  loaded,TResult? Function( String message,  String? lastPath)?  error,}) {final _that = this;
 switch (_that) {
 case _Initial() when initial != null:
 return initial();case _Loading() when loading != null:
 return loading();case _Loaded() when loaded != null:
-return loaded(_that.currentPath,_that.leftPanelItems,_that.centerPanelItems,_that.rightPanelItems,_that.selectedLeftItem,_that.selectedCenterItem,_that.selectedRightItem,_that.navigationHistory,_that.sortByDate,_that.directoryCache,_that.drillPath,_that.breadcrumbs,_that.currentDrillItems,_that.selectedDrillItem);case _Error() when error != null:
+return loaded(_that.browser);case _Error() when error != null:
 return error(_that.message,_that.lastPath);case _:
   return null;
 
@@ -192,9 +766,9 @@ return error(_that.message,_that.lastPath);case _:
 /// @nodoc
 
 
-class _Initial implements PresetBrowserState {
-  const _Initial();
-  
+class _Initial extends PresetBrowserState {
+  const _Initial(): super._();
+
 
 
 
@@ -224,9 +798,9 @@ String toString() {
 /// @nodoc
 
 
-class _Loading implements PresetBrowserState {
-  const _Loading();
-  
+class _Loading extends PresetBrowserState {
+  const _Loading(): super._();
+
 
 
 
@@ -256,73 +830,11 @@ String toString() {
 /// @nodoc
 
 
-class _Loaded implements PresetBrowserState {
-  const _Loaded({required this.currentPath, required final  List<DirectoryEntry> leftPanelItems, required final  List<DirectoryEntry> centerPanelItems, required final  List<DirectoryEntry> rightPanelItems, this.selectedLeftItem, this.selectedCenterItem, this.selectedRightItem, required final  List<String> navigationHistory, required this.sortByDate, final  Map<String, List<DirectoryEntry>>? directoryCache, this.drillPath, final  List<String>? breadcrumbs, final  List<DirectoryEntry>? currentDrillItems, this.selectedDrillItem}): _leftPanelItems = leftPanelItems,_centerPanelItems = centerPanelItems,_rightPanelItems = rightPanelItems,_navigationHistory = navigationHistory,_directoryCache = directoryCache,_breadcrumbs = breadcrumbs,_currentDrillItems = currentDrillItems;
-  
+class _Loaded extends PresetBrowserState {
+  const _Loaded({required this.browser}): super._();
 
- final  String currentPath;
- final  List<DirectoryEntry> _leftPanelItems;
- List<DirectoryEntry> get leftPanelItems {
-  if (_leftPanelItems is EqualUnmodifiableListView) return _leftPanelItems;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_leftPanelItems);
-}
 
- final  List<DirectoryEntry> _centerPanelItems;
- List<DirectoryEntry> get centerPanelItems {
-  if (_centerPanelItems is EqualUnmodifiableListView) return _centerPanelItems;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_centerPanelItems);
-}
-
- final  List<DirectoryEntry> _rightPanelItems;
- List<DirectoryEntry> get rightPanelItems {
-  if (_rightPanelItems is EqualUnmodifiableListView) return _rightPanelItems;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_rightPanelItems);
-}
-
- final  DirectoryEntry? selectedLeftItem;
- final  DirectoryEntry? selectedCenterItem;
- final  DirectoryEntry? selectedRightItem;
- final  List<String> _navigationHistory;
- List<String> get navigationHistory {
-  if (_navigationHistory is EqualUnmodifiableListView) return _navigationHistory;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_navigationHistory);
-}
-
- final  bool sortByDate;
- final  Map<String, List<DirectoryEntry>>? _directoryCache;
- Map<String, List<DirectoryEntry>>? get directoryCache {
-  final value = _directoryCache;
-  if (value == null) return null;
-  if (_directoryCache is EqualUnmodifiableMapView) return _directoryCache;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(value);
-}
-
-// Mobile drill-down navigation fields
- final  String? drillPath;
- final  List<String>? _breadcrumbs;
- List<String>? get breadcrumbs {
-  final value = _breadcrumbs;
-  if (value == null) return null;
-  if (_breadcrumbs is EqualUnmodifiableListView) return _breadcrumbs;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(value);
-}
-
- final  List<DirectoryEntry>? _currentDrillItems;
- List<DirectoryEntry>? get currentDrillItems {
-  final value = _currentDrillItems;
-  if (value == null) return null;
-  if (_currentDrillItems is EqualUnmodifiableListView) return _currentDrillItems;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(value);
-}
-
- final  DirectoryEntry? selectedDrillItem;
+ final  BrowserSnapshot browser;
 
 /// Create a copy of PresetBrowserState
 /// with the given fields replaced by the non-null parameter values.
@@ -334,16 +846,16 @@ _$LoadedCopyWith<_Loaded> get copyWith => __$LoadedCopyWithImpl<_Loaded>(this, _
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Loaded&&(identical(other.currentPath, currentPath) || other.currentPath == currentPath)&&const DeepCollectionEquality().equals(other._leftPanelItems, _leftPanelItems)&&const DeepCollectionEquality().equals(other._centerPanelItems, _centerPanelItems)&&const DeepCollectionEquality().equals(other._rightPanelItems, _rightPanelItems)&&(identical(other.selectedLeftItem, selectedLeftItem) || other.selectedLeftItem == selectedLeftItem)&&(identical(other.selectedCenterItem, selectedCenterItem) || other.selectedCenterItem == selectedCenterItem)&&(identical(other.selectedRightItem, selectedRightItem) || other.selectedRightItem == selectedRightItem)&&const DeepCollectionEquality().equals(other._navigationHistory, _navigationHistory)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other._directoryCache, _directoryCache)&&(identical(other.drillPath, drillPath) || other.drillPath == drillPath)&&const DeepCollectionEquality().equals(other._breadcrumbs, _breadcrumbs)&&const DeepCollectionEquality().equals(other._currentDrillItems, _currentDrillItems)&&(identical(other.selectedDrillItem, selectedDrillItem) || other.selectedDrillItem == selectedDrillItem));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Loaded&&(identical(other.browser, browser) || other.browser == browser));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,currentPath,const DeepCollectionEquality().hash(_leftPanelItems),const DeepCollectionEquality().hash(_centerPanelItems),const DeepCollectionEquality().hash(_rightPanelItems),selectedLeftItem,selectedCenterItem,selectedRightItem,const DeepCollectionEquality().hash(_navigationHistory),sortByDate,const DeepCollectionEquality().hash(_directoryCache),drillPath,const DeepCollectionEquality().hash(_breadcrumbs),const DeepCollectionEquality().hash(_currentDrillItems),selectedDrillItem);
+int get hashCode => Object.hash(runtimeType,browser);
 
 @override
 String toString() {
-  return 'PresetBrowserState.loaded(currentPath: $currentPath, leftPanelItems: $leftPanelItems, centerPanelItems: $centerPanelItems, rightPanelItems: $rightPanelItems, selectedLeftItem: $selectedLeftItem, selectedCenterItem: $selectedCenterItem, selectedRightItem: $selectedRightItem, navigationHistory: $navigationHistory, sortByDate: $sortByDate, directoryCache: $directoryCache, drillPath: $drillPath, breadcrumbs: $breadcrumbs, currentDrillItems: $currentDrillItems, selectedDrillItem: $selectedDrillItem)';
+  return 'PresetBrowserState.loaded(browser: $browser)';
 }
 
 
@@ -354,11 +866,11 @@ abstract mixin class _$LoadedCopyWith<$Res> implements $PresetBrowserStateCopyWi
   factory _$LoadedCopyWith(_Loaded value, $Res Function(_Loaded) _then) = __$LoadedCopyWithImpl;
 @useResult
 $Res call({
- String currentPath, List<DirectoryEntry> leftPanelItems, List<DirectoryEntry> centerPanelItems, List<DirectoryEntry> rightPanelItems, DirectoryEntry? selectedLeftItem, DirectoryEntry? selectedCenterItem, DirectoryEntry? selectedRightItem, List<String> navigationHistory, bool sortByDate, Map<String, List<DirectoryEntry>>? directoryCache, String? drillPath, List<String>? breadcrumbs, List<DirectoryEntry>? currentDrillItems, DirectoryEntry? selectedDrillItem
+ BrowserSnapshot browser
 });
 
 
-
+$BrowserSnapshotCopyWith<$Res> get browser;
 
 }
 /// @nodoc
@@ -371,35 +883,31 @@ class __$LoadedCopyWithImpl<$Res>
 
 /// Create a copy of PresetBrowserState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? currentPath = null,Object? leftPanelItems = null,Object? centerPanelItems = null,Object? rightPanelItems = null,Object? selectedLeftItem = freezed,Object? selectedCenterItem = freezed,Object? selectedRightItem = freezed,Object? navigationHistory = null,Object? sortByDate = null,Object? directoryCache = freezed,Object? drillPath = freezed,Object? breadcrumbs = freezed,Object? currentDrillItems = freezed,Object? selectedDrillItem = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? browser = null,}) {
   return _then(_Loaded(
-currentPath: null == currentPath ? _self.currentPath : currentPath // ignore: cast_nullable_to_non_nullable
-as String,leftPanelItems: null == leftPanelItems ? _self._leftPanelItems : leftPanelItems // ignore: cast_nullable_to_non_nullable
-as List<DirectoryEntry>,centerPanelItems: null == centerPanelItems ? _self._centerPanelItems : centerPanelItems // ignore: cast_nullable_to_non_nullable
-as List<DirectoryEntry>,rightPanelItems: null == rightPanelItems ? _self._rightPanelItems : rightPanelItems // ignore: cast_nullable_to_non_nullable
-as List<DirectoryEntry>,selectedLeftItem: freezed == selectedLeftItem ? _self.selectedLeftItem : selectedLeftItem // ignore: cast_nullable_to_non_nullable
-as DirectoryEntry?,selectedCenterItem: freezed == selectedCenterItem ? _self.selectedCenterItem : selectedCenterItem // ignore: cast_nullable_to_non_nullable
-as DirectoryEntry?,selectedRightItem: freezed == selectedRightItem ? _self.selectedRightItem : selectedRightItem // ignore: cast_nullable_to_non_nullable
-as DirectoryEntry?,navigationHistory: null == navigationHistory ? _self._navigationHistory : navigationHistory // ignore: cast_nullable_to_non_nullable
-as List<String>,sortByDate: null == sortByDate ? _self.sortByDate : sortByDate // ignore: cast_nullable_to_non_nullable
-as bool,directoryCache: freezed == directoryCache ? _self._directoryCache : directoryCache // ignore: cast_nullable_to_non_nullable
-as Map<String, List<DirectoryEntry>>?,drillPath: freezed == drillPath ? _self.drillPath : drillPath // ignore: cast_nullable_to_non_nullable
-as String?,breadcrumbs: freezed == breadcrumbs ? _self._breadcrumbs : breadcrumbs // ignore: cast_nullable_to_non_nullable
-as List<String>?,currentDrillItems: freezed == currentDrillItems ? _self._currentDrillItems : currentDrillItems // ignore: cast_nullable_to_non_nullable
-as List<DirectoryEntry>?,selectedDrillItem: freezed == selectedDrillItem ? _self.selectedDrillItem : selectedDrillItem // ignore: cast_nullable_to_non_nullable
-as DirectoryEntry?,
+browser: null == browser ? _self.browser : browser // ignore: cast_nullable_to_non_nullable
+as BrowserSnapshot,
   ));
 }
 
+/// Create a copy of PresetBrowserState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$BrowserSnapshotCopyWith<$Res> get browser {
 
+  return $BrowserSnapshotCopyWith<$Res>(_self.browser, (value) {
+    return _then(_self.copyWith(browser: value));
+  });
+}
 }
 
 /// @nodoc
 
 
-class _Error implements PresetBrowserState {
-  const _Error({required this.message, this.lastPath});
-  
+class _Error extends PresetBrowserState {
+  const _Error({required this.message, this.lastPath}): super._();
+
 
  final  String message;
  final  String? lastPath;

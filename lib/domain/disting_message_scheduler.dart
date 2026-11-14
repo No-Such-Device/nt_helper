@@ -34,6 +34,10 @@ enum ResponseExpectation {
   none, // Fire-and-forget
 }
 
+/// Whether a request may be sent again after a timeout/receive failure.
+/// A write may already have executed even if its acknowledgement was lost.
+enum RequestReplayPolicy { allow, never }
+
 enum ResponseAttributionPolicy {
   bestEffort,
   failWhenAmbiguous,
@@ -71,7 +75,9 @@ class _ScheduledRequest {
     required this.maxRetries,
     required this.retryDelay,
     required this.attributionPolicy,
+    required this.replayPolicy,
     this.rawResponseMatcher,
+    this.preflight,
   });
 
   final int id;
@@ -83,7 +89,9 @@ class _ScheduledRequest {
   final int maxRetries;
   final Duration retryDelay;
   final ResponseAttributionPolicy attributionPolicy;
+  final RequestReplayPolicy replayPolicy;
   final bool Function(Uint8List)? rawResponseMatcher;
+  final void Function()? preflight;
 
   int attemptCount = 0;
   int transferErrorRecoveryCount = 0;
@@ -179,7 +187,13 @@ final class _StrictResponseAttribution {
         ResponseAttributionPolicy.failWhenAmbiguous;
     if (_activeRequest != null ||
         (blocksBeforeSend &&
-            _responseDebt.any((debt) => debt.key == request.key))) {
+            _responseDebt.any(
+              (debt) =>
+                  debt.key == request.key ||
+                  (debt.key.sdCardOperation != null &&
+                      request.key.sdCardOperation != null &&
+                      debt.key.sysExId == request.key.sysExId),
+            ))) {
       return false;
     }
     _activeRequest = request;
@@ -813,10 +827,8 @@ class DistingMessageScheduler {
 
     // The listener uses cancelOnError: false, so a single stream error does
     // not end the subscription. If it interrupted a split SysEx response,
-    // discard the unusable partial frame and replay the active request once.
-    // This recovery is deliberately separate from the normal timeout budget:
-    // SD requests retain their one-attempt timeout policy, while a confirmed
-    // receive-side transfer failure can recover immediately.
+    // discard the unusable partial frame. Only replay explicitly eligible
+    // requests; SD requests lack transaction IDs and must fail closed instead.
     _subscriptionActive = _subscription != null;
     final request = _currentRequest;
     if (_state != _SchedulerState.waitingForResponse ||
@@ -832,6 +844,16 @@ class DistingMessageScheduler {
     _isBufferingSysEx = false;
     request.timeoutTimer?.cancel();
     request.stopwatch.stop();
+    if (request.replayPolicy == RequestReplayPolicy.never) {
+      _demux.discardActive();
+      request.completer.completeError(
+        StateError(
+          'Receive interrupted; the request may already have executed. It was not replayed.',
+        ),
+      );
+      _finishCurrentRequest();
+      return;
+    }
     request.transferErrorRecoveryCount++;
     _state = _SchedulerState.sending;
     if (request.retryDelay == Duration.zero) {
@@ -863,13 +885,17 @@ class DistingMessageScheduler {
     Uint8List packet,
     bool Function(Uint8List) matches,
   ) async {
-    if (packet.length > 1024 || packet.length < 2 ||
-        packet.first != 0xf0 || packet.last != 0xf7) {
+    if (packet.length > 1024 ||
+        packet.length < 2 ||
+        packet.first != 0xf0 ||
+        packet.last != 0xf7) {
       throw ArgumentError('Expected a SysEx frame of at most 1024 bytes');
     }
     final result = await sendRequest<Uint8List>(
-      packet, RequestKey(sysExId: _sysExId),
-      maxRetries: 1, rawResponseMatcher: matches,
+      packet,
+      RequestKey(sysExId: _sysExId),
+      maxRetries: 1,
+      rawResponseMatcher: matches,
     );
     return result!;
   }
@@ -884,6 +910,8 @@ class DistingMessageScheduler {
     ResponseAttributionPolicy attributionPolicy =
         ResponseAttributionPolicy.bestEffort,
     DistingRequestCancellation? cancellation,
+    RequestReplayPolicy replayPolicy = RequestReplayPolicy.allow,
+    void Function()? preflight,
     bool Function(Uint8List)? rawResponseMatcher,
   }) {
     final completer = Completer<T?>();
@@ -894,9 +922,13 @@ class DistingMessageScheduler {
       expectation: responseExpectation,
       completer: completer,
       timeout: _normalizeDuration(timeout ?? defaultTimeout),
-      maxRetries: maxRetries ?? defaultMaxRetries,
+      maxRetries: replayPolicy == RequestReplayPolicy.never
+          ? 1
+          : maxRetries ?? defaultMaxRetries,
       retryDelay: _normalizeDuration(retryDelay ?? defaultRetryDelay),
       attributionPolicy: attributionPolicy,
+      replayPolicy: replayPolicy,
+      preflight: preflight,
       rawResponseMatcher: rawResponseMatcher,
     );
 
@@ -970,6 +1002,14 @@ class DistingMessageScheduler {
       return;
     }
 
+    try {
+      request.preflight?.call();
+    } catch (error, stack) {
+      request.completer.completeError(error, stack);
+      _finishCurrentRequest();
+      return;
+    }
+
     if (request.attributionPolicy != ResponseAttributionPolicy.bestEffort &&
         !request.attributionStarted) {
       if (!_strictAttribution.begin(request)) {
@@ -1020,8 +1060,10 @@ class DistingMessageScheduler {
 
     // Send the message
     try {
-      _midi.sendData(request.packet, deviceId: _outputDevice.id);
+      // Sending can throw after bytes reached the device. Conservatively retain
+      // attribution debt even when transmission itself reports failure.
       _strictAttribution.markSent(request);
+      _midi.sendData(request.packet, deviceId: _outputDevice.id);
     } catch (e) {
       request.stopwatch.stop();
       _handleSendFailure(request, e);
@@ -1495,7 +1537,8 @@ class DistingMessageScheduler {
   void _dispatchSysEx(Uint8List sysex) {
     try {
       final request = _currentRequest;
-      if (request != null && !request.completer.isCompleted &&
+      if (request != null &&
+          !request.completer.isCompleted &&
           request.rawResponseMatcher?.call(sysex) == true) {
         request.timeoutTimer?.cancel();
         request.stopwatch.stop();

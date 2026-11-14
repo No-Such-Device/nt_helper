@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
-import 'package:nt_helper/domain/disting_midi_manager.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/models/performance_page_item.dart';
 import 'package:nt_helper/services/settings_service.dart';
@@ -319,14 +318,6 @@ class _SectionParameterListViewState extends State<SectionParameterListView> {
           0,
         );
       }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Removed from performance page'),
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
     } catch (e) {
       // Intentionally empty
     }
@@ -385,21 +376,6 @@ class _SectionParameterListViewState extends State<SectionParameterListView> {
         parameterNumber,
         pageIndex,
       );
-      if (mounted) {
-        final manager = cubit.disting();
-        final isConnectedMode = manager is DistingMidiManager;
-        if (isConnectedMode) {
-          final message = pageIndex > 0
-              ? 'Assigned to Page $pageIndex'
-              : 'Removed from performance pages';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message),
-              duration: const Duration(seconds: 1),
-            ),
-          );
-        }
-      }
     } catch (e) {
       if (mounted) {
         setState(() {

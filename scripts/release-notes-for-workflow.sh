@@ -21,6 +21,21 @@ fi
 
 echo "Generating release notes for $CURRENT_TAG (comparing with $PREVIOUS_TAG)"
 
+# A reviewed version-specific summary avoids publishing superseded intermediate
+# implementation descriptions from a multi-commit fix series. Other versions
+# retain the established categorized-commit fallback below.
+VERSION_NOTES="docs/releases/${CURRENT_TAG#v}.md"
+if [ -f "$VERSION_NOTES" ]; then
+    {
+        cat "$VERSION_NOTES"
+        echo ""
+        echo "---"
+        echo "**Full Changelog**: https://github.com/No-Such-Device/nt_helper/compare/${PREVIOUS_TAG}...${CURRENT_TAG}"
+    } > release_notes.md
+    cat release_notes.md
+    exit 0
+fi
+
 # Generate release notes with categorization
 {
     echo "## 🚀 What's New in $CURRENT_TAG"

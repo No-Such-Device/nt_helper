@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
+import 'package:nt_helper/domain/sd_card_file_activity.dart';
 import 'package:nt_helper/interfaces/preset_file_system.dart';
 import 'package:path/path.dart' as p;
 
@@ -57,6 +58,7 @@ class PresetFileSystemImpl implements PresetFileSystem {
 
   @override
   Future<Uint8List?> readFile(String relativePath) {
+    SdCardFileActivity.forManager(manager).requireAvailable(relativePath);
     return manager.requestFileDownload(relativePath);
   }
 }

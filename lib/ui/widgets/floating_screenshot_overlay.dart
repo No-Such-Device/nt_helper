@@ -61,9 +61,6 @@ class _FloatingScreenshotOverlayState extends State<FloatingScreenshotOverlay> {
   Future<void> _copyToClipboard() async {
     if (_screenshot != null) {
       Pasteboard.writeImage(_screenshot);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Screenshot copied to clipboard')),
-      );
     }
   }
 

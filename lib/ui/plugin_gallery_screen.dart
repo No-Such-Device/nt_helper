@@ -1529,9 +1529,6 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
       try {
         await widget.distingCubit.reboot();
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Reboot command sent')));
           Navigator.of(context).pop(); // Return to main screen
         }
       } catch (e) {

@@ -631,12 +631,12 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     try {
       final ctx = _captureKey.currentContext;
       if (ctx == null) {
-        _showFeedback('Canvas not ready');
+        _showException('Canvas not ready');
         return;
       }
       final boundary = ctx.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) {
-        _showFeedback('Capture unavailable');
+        _showException('Capture unavailable');
         return;
       }
       // Capture at device pixel ratio for consistent high quality output
@@ -645,7 +645,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       final ui.Image image = await boundary.toImage(pixelRatio: pixelRatio);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) {
-        _showFeedback('Encode failed');
+        _showException('Encode failed');
         return;
       }
       final bytes = byteData.buffer.asUint8List();
@@ -656,7 +656,6 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
         ok = false;
       }
       if (ok) {
-        _showFeedback('Canvas image copied to clipboard');
         return;
       } else {
         // Fallback to data URL if native image copy is unsupported
@@ -664,7 +663,6 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
         await Clipboard.setData(
           ClipboardData(text: 'data:image/png;base64,$b64'),
         );
-        _showFeedback('Canvas image copied (data URL)');
       }
     } catch (e) {
       _showError('Copy failed: $e');
@@ -677,12 +675,12 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     try {
       final ctx = _captureKey.currentContext;
       if (ctx == null) {
-        _showFeedback('Canvas not ready');
+        _showException('Canvas not ready');
         return;
       }
       final boundary = ctx.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) {
-        _showFeedback('Capture unavailable');
+        _showException('Capture unavailable');
         return;
       }
 
@@ -707,7 +705,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       final ui.Image out = await recorder.endRecording().toImage(outW, outH);
       final byteData = await out.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) {
-        _showFeedback('Encode failed');
+        _showException('Encode failed');
         return;
       }
       final bytes = byteData.buffer.asUint8List();
@@ -718,13 +716,11 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
         ok = false;
       }
       if (ok) {
-        _showFeedback('Viewport copied to clipboard');
       } else {
         final b64 = convert.base64Encode(bytes);
         await Clipboard.setData(
           ClipboardData(text: 'data:image/png;base64,$b64'),
         );
-        _showFeedback('Viewport copied (data URL)');
       }
     } catch (e) {
       _showError('Copy failed: $e');
@@ -735,17 +731,17 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
   Future<void> _copyNodesAreaToClipboard() async {
     try {
       if (_nodePositions.isEmpty) {
-        _showFeedback('Nothing to copy');
+        _showException('Nothing to copy');
         return;
       }
       final ctx = _captureKey.currentContext;
       if (ctx == null) {
-        _showFeedback('Canvas not ready');
+        _showException('Canvas not ready');
         return;
       }
       final boundary = ctx.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) {
-        _showFeedback('Capture unavailable');
+        _showException('Capture unavailable');
         return;
       }
 
@@ -789,7 +785,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       final ui.Image out = await recorder.endRecording().toImage(outW, outH);
       final byteData = await out.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) {
-        _showFeedback('Encode failed');
+        _showException('Encode failed');
         return;
       }
       final bytes = byteData.buffer.asUint8List();
@@ -800,13 +796,11 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
         ok = false;
       }
       if (ok) {
-        _showFeedback('Nodes image copied to clipboard');
       } else {
         final b64 = convert.base64Encode(bytes);
         await Clipboard.setData(
           ClipboardData(text: 'data:image/png;base64,$b64'),
         );
-        _showFeedback('Nodes image copied (data URL)');
       }
     } catch (e) {
       _showError('Copy failed: $e');
@@ -818,12 +812,12 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     try {
       final ctx = _captureKey.currentContext;
       if (ctx == null) {
-        _showFeedback('Canvas not ready');
+        _showException('Canvas not ready');
         return;
       }
       final boundary = ctx.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) {
-        _showFeedback('Capture unavailable');
+        _showException('Capture unavailable');
         return;
       }
 
@@ -871,19 +865,17 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       final ui.Image out = await recorder.endRecording().toImage(outW, outH);
       final byteData = await out.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) {
-        _showFeedback('Encode failed');
+        _showException('Encode failed');
         return;
       }
       final bytes = byteData.buffer.asUint8List();
       try {
         await Pasteboard.writeImage(bytes);
-        _showFeedback('Canvas (fit) copied to clipboard');
       } catch (_) {
         final b64 = convert.base64Encode(bytes);
         await Clipboard.setData(
           ClipboardData(text: 'data:image/png;base64,$b64'),
         );
-        _showFeedback('Canvas (fit) copied (data URL)');
       }
     } catch (e) {
       _showError('Copy failed: $e');
@@ -907,7 +899,6 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
         await SharePlus.instance.share(
           ShareParams(files: [xFile], text: 'Routing diagram from nt_helper'),
         );
-        _showFeedback('Routing diagram shared');
       } else {
         // Fall back to clipboard on desktop
         await _copyNodesAreaToClipboard();
@@ -934,7 +925,6 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
         await SharePlus.instance.share(
           ShareParams(files: [xFile], text: 'Routing canvas from nt_helper'),
         );
-        _showFeedback('Routing canvas shared');
       } else {
         // Fall back to clipboard on desktop
         await _copyCanvasImageViewport();
@@ -947,17 +937,17 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
   // Helper function to capture nodes area image bytes (extracted from _copyNodesAreaToClipboard)
   Future<Uint8List?> _captureNodesAreaImageBytes() async {
     if (_nodePositions.isEmpty) {
-      _showFeedback('Nothing to capture');
+      _showException('Nothing to capture');
       return null;
     }
     final ctx = _captureKey.currentContext;
     if (ctx == null) {
-      _showFeedback('Canvas not ready');
+      _showException('Canvas not ready');
       return null;
     }
     final boundary = ctx.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) {
-      _showFeedback('Capture unavailable');
+      _showException('Capture unavailable');
       return null;
     }
 
@@ -1001,7 +991,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     final ui.Image out = await recorder.endRecording().toImage(outW, outH);
     final byteData = await out.toByteData(format: ui.ImageByteFormat.png);
     if (byteData == null) {
-      _showFeedback('Encode failed');
+      _showException('Encode failed');
       return null;
     }
     return byteData.buffer.asUint8List();
@@ -1011,12 +1001,12 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
   Future<Uint8List?> _captureCanvasViewportImageBytes() async {
     final ctx = _captureKey.currentContext;
     if (ctx == null) {
-      _showFeedback('Canvas not ready');
+      _showException('Canvas not ready');
       return null;
     }
     final boundary = ctx.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) {
-      _showFeedback('Capture unavailable');
+      _showException('Capture unavailable');
       return null;
     }
 
@@ -1041,7 +1031,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     final ui.Image out = await recorder.endRecording().toImage(outW, outH);
     final byteData = await out.toByteData(format: ui.ImageByteFormat.png);
     if (byteData == null) {
-      _showFeedback('Encode failed');
+      _showException('Encode failed');
       return null;
     }
     return byteData.buffer.asUint8List();
@@ -1574,7 +1564,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     });
   }
 
-  void _showFeedback(String message) {
+  void _showException(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), duration: const Duration(seconds: 2)),

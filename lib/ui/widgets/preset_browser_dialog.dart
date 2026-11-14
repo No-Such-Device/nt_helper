@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:cross_file/cross_file.dart';
@@ -5,7 +6,9 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:path/path.dart' as p;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -18,18 +21,16 @@ import 'package:nt_helper/models/sd_card_file_system.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/services/file_conflict_detector.dart';
 import 'package:nt_helper/services/preset_package_analyzer.dart';
-import 'package:nt_helper/services/wave_cache_maintenance_service.dart';
 import 'package:nt_helper/models/preset_action.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 import 'package:nt_helper/ui/widgets/mobile_drill_down_navigator.dart';
 import 'package:nt_helper/ui/widgets/package_install_dialog.dart';
 import 'package:nt_helper/ui/widgets/preset_package_dialog.dart';
-import 'package:nt_helper/ui/widgets/wave_cache_troubleshooting_dialog.dart';
 import 'package:nt_helper/utils/responsive.dart';
 import 'package:nt_helper/services/preset_analyzer.dart';
 
-enum _FileAction { download, upload, newFolder, rename, delete, view }
+enum _FileAction { refresh, download, upload, newFolder, rename, delete, view }
 
 bool get _supportsDesktopDrop =>
     !kIsWeb &&
@@ -55,7 +56,8 @@ class PresetBrowserDialog extends StatefulWidget {
   State<PresetBrowserDialog> createState() => _PresetBrowserDialogState();
 }
 
-class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
+class _PresetBrowserDialogState extends State<PresetBrowserDialog>
+    with WidgetsBindingObserver {
   bool _isDragOver = false;
   bool _isInstallingPackage = false;
   double? _uploadProgress;
@@ -63,19 +65,34 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
   PackageAnalysis? _currentAnalysis;
   Uint8List? _currentPackageData;
 
-  bool get _supportsWaveCacheTroubleshooting {
-    return widget.firmwareVersion?.hasWaveCacheListing ?? false;
-  }
-
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     context.read<PresetBrowserCubit>().loadRootDirectory();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(
+        context.read<PresetBrowserCubit>().refreshVisiblePanes(
+          onlyIfStale: true,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(context);
+    context.read<PresetBrowserCubit>().setSinglePaneLayout(isMobile);
 
     Widget content = Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
@@ -96,93 +113,50 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
         child: Focus(
           autofocus: true,
           child: AlertDialog(
+            key: const Key('preset-browser-dialog'),
             title: Row(
+              key: const Key('preset-browser-toolbar'),
               children: [
                 const Expanded(child: Text('File Browser')),
                 BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
                   builder: (context, state) {
+                    final browser = state.view;
                     return Row(
                       children: [
-                        state.maybeMap(
-                          loaded: (loaded) {
-                            final directory = isMobile
-                                ? loaded.drillPath ?? loaded.currentPath
-                                : loaded.currentPath;
-                            return IconButton(
-                              icon: Icon(
-                                Icons.create_new_folder,
-                                semanticLabel: 'New folder in $directory',
-                              ),
-                              tooltip: 'New folder in $directory',
-                              onPressed: () => _createFolderAction(directory),
-                            );
-                          },
-                          orElse: () => const SizedBox.shrink(),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            semanticLabel: 'Back',
+                          ),
+                          tooltip: 'Back',
+                          onPressed: browser?.canGoBack == true
+                              ? () => context
+                                    .read<PresetBrowserCubit>()
+                                    .navigateBack()
+                              : null,
                         ),
-                        state.maybeMap(
-                          loaded: (loaded) =>
-                              loaded.navigationHistory.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(
-                                    Icons.arrow_back,
-                                    semanticLabel: 'Back',
-                                  ),
-                                  onPressed: () {
-                                    context
-                                        .read<PresetBrowserCubit>()
-                                        .navigateBack();
-                                  },
-                                  tooltip: 'Back',
-                                )
-                              : const SizedBox.shrink(),
-                          orElse: () => const SizedBox.shrink(),
-                        ),
-                        state.maybeMap(
-                          loaded: (loaded) => IconButton(
-                            icon: Icon(
-                              loaded.sortByDate
-                                  ? Icons.date_range
-                                  : Icons.sort_by_alpha,
-                              semanticLabel: loaded.sortByDate
-                                  ? 'Sort by date'
-                                  : 'Sort alphabetically',
-                            ),
-                            onPressed: () {
-                              context
-                                  .read<PresetBrowserCubit>()
-                                  .toggleSortMode();
-                            },
-                            tooltip: loaded.sortByDate
+                        IconButton(
+                          icon: Icon(
+                            state.sortByDate
+                                ? Icons.date_range
+                                : Icons.sort_by_alpha,
+                            semanticLabel: state.sortByDate
                                 ? 'Sort by date'
                                 : 'Sort alphabetically',
                           ),
-                          orElse: () => const SizedBox.shrink(),
+                          tooltip: state.sortByDate
+                              ? 'Sort by date'
+                              : 'Sort alphabetically',
+                          onPressed: browser == null
+                              ? null
+                              : () => context
+                                    .read<PresetBrowserCubit>()
+                                    .toggleSortMode(),
                         ),
                       ],
                     );
                   },
                 ),
-                if (isMobile)
-                  IconButton(
-                    icon: const Icon(
-                      Icons.troubleshoot,
-                      semanticLabel: 'Wave cache troubleshooting',
-                    ),
-                    onPressed: _supportsWaveCacheTroubleshooting
-                        ? _showWaveCacheTroubleshooting
-                        : null,
-                    tooltip: _supportsWaveCacheTroubleshooting
-                        ? 'Wave cache troubleshooting'
-                        : 'Wave cache troubleshooting requires firmware 1.17 or later',
-                  )
-                else
-                  TextButton.icon(
-                    onPressed: _supportsWaveCacheTroubleshooting
-                        ? _showWaveCacheTroubleshooting
-                        : null,
-                    icon: const Icon(Icons.troubleshoot),
-                    label: const Text('Wave cache'),
-                  ),
                 IconButton(
                   icon: const Icon(Icons.close, semanticLabel: 'Close'),
                   onPressed: () => Navigator.of(context).pop(),
@@ -199,123 +173,156 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
                   : MediaQuery.of(context).size.height * 0.6,
               child: Column(
                 children: [
-                  // Desktop breadcrumb bar
                   if (!isMobile)
-                    BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
-                      builder: (context, state) {
-                        return state.maybeMap(
-                          loaded: (loaded) =>
-                              _buildDesktopBreadcrumbs(context, loaded),
-                          orElse: () => const SizedBox.shrink(),
-                        );
-                      },
-                    ),
-                  if (_uploadProgress != null)
-                    LinearProgressIndicator(
-                      value: _uploadProgress,
-                      minHeight: 2,
+                    SizedBox(
+                      key: const Key('preset-browser-breadcrumbs'),
+                      height: 40,
+                      child:
+                          BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
+                            builder: (context, state) =>
+                                _buildDesktopBreadcrumbs(context, state),
+                          ),
                     ),
                   Expanded(
                     child: ClipRect(
                       child:
                           BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
                             builder: (context, state) {
-                              return state.map(
-                                initial: (_) => const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                                loading: (_) => const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                                loaded: (loaded) => isMobile
-                                    ? MobileDrillDownNavigator(
-                                        items:
-                                            loaded.currentDrillItems ??
-                                            loaded.leftPanelItems,
-                                        selectedItem: loaded.selectedDrillItem,
-                                        breadcrumbs: loaded.breadcrumbs ?? [],
-                                        onItemTap: _handleMobileItemTap,
-                                        onBreadcrumbTap: _handleBreadcrumbTap,
-                                        onRefresh: _handleRefresh,
-                                        onLongPress: (entry) {
-                                          final drillPath =
-                                              loaded.drillPath ??
-                                              loaded.currentPath;
+                              final browser =
+                                  state.view ??
+                                  BrowserSnapshot(
+                                    stack: const [BrowserFrame(path: '/')],
+                                    refreshing:
+                                        state.mapOrNull(
+                                              initial: (_) => true,
+                                              loading: (_) => true,
+                                            ) ==
+                                            true
+                                        ? {'/'}
+                                        : {},
+                                  );
+                              final enabled = state.view != null;
+                              return isMobile
+                                  ? MobileDrillDownNavigator(
+                                      items: browser.entriesAt(
+                                        browser.stack.length - 1,
+                                      ),
+                                      selectedItem: browser.selectedAt(
+                                        browser.stack.length - 1,
+                                      ),
+                                      breadcrumbs: _getBreadcrumbsFromPath(
+                                        browser.current.path,
+                                      ),
+                                      onItemTap: _handleMobileItemTap,
+                                      onBreadcrumbTap: _handleBreadcrumbTap,
+                                      onRefresh: _handleRefresh,
+                                      refreshing:
+                                          browser.refreshing.contains(
+                                            browser.current.path,
+                                          ) ||
+                                          browser.busyPaths.any(
+                                            (busy) =>
+                                                p.posix.dirname(busy) ==
+                                                browser.current.path
+                                                    .toLowerCase(),
+                                          ),
+                                      error:
+                                          browser.errors[browser.current.path],
+                                      onDirectoryContextMenu: (position) =>
+                                          _showContextMenu(
+                                            null,
+                                            position,
+                                            browser.current.path,
+                                          ),
+                                      onLongPress: (entry) =>
                                           _showContextMenuAtCenter(
                                             entry,
-                                            drillPath,
-                                          );
-                                        },
-                                      )
-                                    : ThreePanelNavigator(
-                                        leftPanelItems: loaded.leftPanelItems,
-                                        centerPanelItems:
-                                            loaded.centerPanelItems,
-                                        rightPanelItems: loaded.rightPanelItems,
-                                        selectedLeftItem:
-                                            loaded.selectedLeftItem,
-                                        selectedCenterItem:
-                                            loaded.selectedCenterItem,
-                                        selectedRightItem:
-                                            loaded.selectedRightItem,
-                                        onItemSelected: _handleItemSelected,
-                                        currentPath: loaded.currentPath,
-                                        onContextMenu: _handleContextMenu,
-                                        onDirectoryContextMenu:
-                                            (position, path) =>
-                                                _showContextMenu(
-                                                  null,
-                                                  position,
-                                                  path,
-                                                ),
-                                        onFilesDropped: _handlePanelDrop,
-                                        dropEnabled:
-                                            !_isInstallingPackage &&
-                                            _currentAnalysis == null,
+                                            browser.current.path,
+                                          ),
+                                    )
+                                  : ThreePanelNavigator(
+                                      browser: browser,
+                                      onPaneFocused: (panel) => unawaited(
+                                        context
+                                            .read<PresetBrowserCubit>()
+                                            .focusPane(panel),
                                       ),
-                                error: (error) => Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.error_outline,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.error,
-                                        size: 48,
+                                      onPaneBack: (_) => unawaited(
+                                        context
+                                            .read<PresetBrowserCubit>()
+                                            .navigateBack(),
                                       ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        error.message,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          context
-                                              .read<PresetBrowserCubit>()
-                                              .loadRootDirectory();
-                                        },
-                                        child: const Text('Retry'),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
+                                      onItemSelected: _handleItemSelected,
+                                      onContextMenu: _handleContextMenu,
+                                      onDirectoryContextMenu:
+                                          (position, path) => _showContextMenu(
+                                            null,
+                                            position,
+                                            path,
+                                          ),
+                                      onFilesDropped: _handlePanelDrop,
+                                      dropEnabled:
+                                          enabled &&
+                                          !_isInstallingPackage &&
+                                          _currentAnalysis == null,
+                                    );
                             },
                           ),
                     ),
                   ),
-                  BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
-                    builder: (context, state) {
-                      return state.maybeMap(
-                        loading: (_) => const SizedBox(
-                          height: 8,
-                          child: LinearProgressIndicator(),
-                        ),
-                        orElse: () => const SizedBox(height: 8),
-                      );
-                    },
+                  SizedBox(
+                    key: const Key('preset-browser-status'),
+                    height: 32,
+                    child: BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
+                      builder: (context, state) {
+                        final browser = state.view;
+                        final error =
+                            state.mapOrNull(error: (error) => error.message) ??
+                            browser?.errors[browser.focused.path];
+                        final message =
+                            error ??
+                            (browser?.pendingPath == null
+                                ? ''
+                                : 'Opening ${browser!.pendingPath}…');
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: Semantics(
+                                liveRegion: true,
+                                child: Tooltip(
+                                  message: message,
+                                  child: Text(
+                                    message,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 80,
+                              child: state.view != null || error == null
+                                  ? null
+                                  : TextButton(
+                                      onPressed: () => context
+                                          .read<PresetBrowserCubit>()
+                                          .loadRootDirectory(),
+                                      child: const Text('Retry'),
+                                    ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    height: 8,
+                    child: _uploadProgress == null
+                        ? null
+                        : LinearProgressIndicator(
+                            value: _uploadProgress,
+                            minHeight: 2,
+                          ),
                   ),
                 ],
               ),
@@ -336,39 +343,49 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
                       selectedPath.isNotEmpty &&
                       selectedPath.toLowerCase().endsWith('.json');
                   final isMobile = Responsive.isMobile(context);
-
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (isPresetFile && !isMobile) ...[
+                      if (!isMobile) ...[
                         OutlinedButton(
-                          onPressed: () async {
-                            Navigator.of(context).pop();
+                          onPressed: isPresetFile
+                              ? () async {
+                                  if (context
+                                          .read<PresetBrowserCubit>()
+                                          .getSelectedPath() !=
+                                      selectedPath) {
+                                    return;
+                                  }
+                                  Navigator.of(context).pop();
 
-                            Map<String, String>? pluginPaths;
-                            final state = widget.distingCubit.state;
-                            if (state is DistingStateSynchronized) {
-                              // Use the full algorithm library, not just the
-                              // currently-loaded slots. The preset being
-                              // exported may reference plugins that aren't
-                              // currently in any slot — those still need
-                              // their filenames resolved for packaging.
-                              pluginPaths = PresetAnalyzer.extractPluginPaths(
-                                state.algorithms,
-                              );
-                            }
+                                  Map<String, String>? pluginPaths;
+                                  final state = widget.distingCubit.state;
+                                  if (state is DistingStateSynchronized) {
+                                    // Use the full algorithm library, not just the
+                                    // currently-loaded slots. The preset being
+                                    // exported may reference plugins that aren't
+                                    // currently in any slot — those still need
+                                    // their filenames resolved for packaging.
+                                    pluginPaths =
+                                        PresetAnalyzer.extractPluginPaths(
+                                          state.algorithms,
+                                        );
+                                  }
 
-                            await showDialog<void>(
-                              context: context,
-                              builder: (dialogContext) => PresetPackageDialog(
-                                presetFilePath: selectedPath,
-                                fileSystem: PresetFileSystemImpl(
-                                  widget.distingCubit.requireDisting(),
-                                ),
-                                pluginPaths: pluginPaths,
-                              ),
-                            );
-                          },
+                                  await showDialog<void>(
+                                    context: context,
+                                    builder: (dialogContext) =>
+                                        PresetPackageDialog(
+                                          presetFilePath: selectedPath,
+                                          fileSystem: PresetFileSystemImpl(
+                                            widget.distingCubit
+                                                .requireDisting(),
+                                          ),
+                                          pluginPaths: pluginPaths,
+                                        ),
+                                  );
+                                }
+                              : null,
                           child: const Text('Export'),
                         ),
                         const SizedBox(width: 8),
@@ -376,6 +393,12 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
                       ElevatedButton(
                         onPressed: isPresetFile
                             ? () {
+                                if (context
+                                        .read<PresetBrowserCubit>()
+                                        .getSelectedPath() !=
+                                    selectedPath) {
+                                  return;
+                                }
                                 Navigator.of(context).pop({
                                   'sdCardPath': selectedPath,
                                   'action': PresetAction.load,
@@ -393,6 +416,20 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
           ),
         ),
       ),
+    );
+
+    content = BlocListener<PresetBrowserCubit, PresetBrowserState>(
+      listenWhen: (before, after) =>
+          before.view?.warning != after.view?.warning,
+      listener: (context, state) {
+        final warning = state.view?.warning;
+        if (warning != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(warning)));
+        }
+      },
+      child: content,
     );
 
     if (_supportsDesktopDrop && isMobile) {
@@ -419,28 +456,16 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
     return content;
   }
 
-  Future<void> _showWaveCacheTroubleshooting() async {
-    final remountRequested = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => WaveCacheTroubleshootingDialog(
-        service: WaveCacheMaintenanceService(
-          widget.distingCubit.requireDisting(),
-        ),
-      ),
-    );
-    if (remountRequested == true && mounted) {
-      Navigator.of(context).pop();
-    }
-  }
-
-  Widget _buildDesktopBreadcrumbs(BuildContext context, dynamic loaded) {
-    final currentPath = loaded.currentPath as String;
+  Widget _buildDesktopBreadcrumbs(
+    BuildContext context,
+    PresetBrowserState loaded,
+  ) {
+    final currentPath = loaded.currentPath;
     final breadcrumbs = _getBreadcrumbsFromPath(currentPath);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         border: Border(
@@ -556,28 +581,14 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
     final cubit = context.read<PresetBrowserCubit>();
 
     if (index == -1) {
-      cubit.loadRootDirectory();
+      cubit.navigateToAbsolutePath('/');
     } else {
       cubit.navigateToPathSegment(index);
     }
   }
 
-  void _handleRefresh() {
-    final cubit = context.read<PresetBrowserCubit>();
-    cubit.clearCache();
-
-    final state = cubit.state;
-    state.maybeMap(
-      loaded: (loaded) {
-        if (loaded.drillPath != null && loaded.drillPath!.isNotEmpty) {
-          cubit.navigateToPathSegment((loaded.breadcrumbs?.length ?? 1) - 1);
-        } else {
-          cubit.loadRootDirectory();
-        }
-      },
-      orElse: () => cubit.loadRootDirectory(),
-    );
-  }
+  Future<void> _handleRefresh() =>
+      context.read<PresetBrowserCubit>().refreshPane();
 
   void _handleContextMenu(
     DirectoryEntry entry,
@@ -609,11 +620,28 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
     final isFile = entry != null && !entry.isDirectory;
     final isTextFile = entry != null && _isTextFile(entry.name);
 
-    final items = <PopupMenuEntry<_FileAction>>[];
+    final entryReady = entry != null && cubit.canUseEntry(entryPath);
+    final targetDir = entry?.isDirectory == true ? entryPath : panelPath;
+    final directoryReady =
+        cubit.isDirectoryReady(panelPath) &&
+        (entry?.isDirectory != true || entryReady);
+    final items = <PopupMenuEntry<_FileAction>>[
+      const PopupMenuItem(
+        value: _FileAction.refresh,
+        child: ListTile(
+          leading: Icon(Icons.refresh),
+          title: Text('Refresh'),
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+        ),
+      ),
+      const PopupMenuDivider(),
+    ];
 
     if (isTextFile) {
       items.add(
-        const PopupMenuItem(
+        PopupMenuItem(
+          enabled: entryReady,
           value: _FileAction.view,
           child: ListTile(
             leading: Icon(Icons.visibility),
@@ -627,7 +655,8 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
 
     if (isFile) {
       items.add(
-        const PopupMenuItem(
+        PopupMenuItem(
+          enabled: entryReady,
           value: _FileAction.download,
           child: ListTile(
             leading: Icon(Icons.download),
@@ -640,7 +669,8 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
     }
 
     items.addAll([
-      const PopupMenuItem(
+      PopupMenuItem(
+        enabled: directoryReady,
         value: _FileAction.upload,
         child: ListTile(
           leading: Icon(Icons.upload),
@@ -649,7 +679,8 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
           contentPadding: EdgeInsets.zero,
         ),
       ),
-      const PopupMenuItem(
+      PopupMenuItem(
+        enabled: directoryReady,
         value: _FileAction.newFolder,
         child: ListTile(
           leading: Icon(Icons.create_new_folder),
@@ -659,7 +690,8 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
         ),
       ),
       if (entry != null)
-        const PopupMenuItem(
+        PopupMenuItem(
+          enabled: entryReady,
           value: _FileAction.rename,
           child: ListTile(
             leading: Icon(Icons.edit),
@@ -669,7 +701,8 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
           ),
         ),
       if (entry != null)
-        const PopupMenuItem(
+        PopupMenuItem(
+          enabled: entryReady,
           value: _FileAction.delete,
           child: ListTile(
             leading: Icon(Icons.delete),
@@ -680,26 +713,41 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
         ),
     ]);
 
+    final overlay =
+        Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final local = overlay.globalToLocal(position);
     showMenu<_FileAction>(
       context: context,
-      position: RelativeRect.fromLTRB(
-        position.dx,
-        position.dy,
-        position.dx + 1,
-        position.dy + 1,
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(local.dx, local.dy, 1, 1),
+        Offset.zero & overlay.size,
       ),
       items: items,
     ).then((action) {
       if (action == null || !mounted) return;
+      if (action == _FileAction.refresh) {
+        unawaited(cubit.refreshDirectory(panelPath));
+        return;
+      }
+      // A menu may remain open across a refresh, upload, or branch change.
+      if (!cubit.isDirectoryReady(panelPath) ||
+          (entry != null && !cubit.canUseEntry(entryPath))) {
+        return;
+      }
       switch (action) {
+        case _FileAction.refresh:
+          break;
         case _FileAction.download:
           if (entry != null) _downloadFile(entryPath, entry.name);
         case _FileAction.upload:
-          final targetDir = entry?.isDirectory == true ? entryPath : panelPath;
           _uploadFileAction(targetDir);
         case _FileAction.newFolder:
-          final targetDir = entry?.isDirectory == true ? entryPath : panelPath;
-          _createFolderAction(targetDir);
+          _createFolderAction(
+            targetDir,
+            isTargetReady: () =>
+                cubit.isDirectoryReady(panelPath) &&
+                (entry == null || cubit.canUseEntry(entryPath)),
+          );
         case _FileAction.rename:
           if (entry != null) _renameAction(entryPath, entry.name);
         case _FileAction.delete:
@@ -744,9 +792,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
           'Downloaded $fileName',
           TextDirection.ltr,
         );
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Downloaded $fileName')));
       }
     } catch (e) {
       if (mounted) {
@@ -784,9 +829,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
           'Uploaded ${file.name}',
           TextDirection.ltr,
         );
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Uploaded ${file.name}')));
       }
     } catch (e) {
       if (mounted) {
@@ -801,7 +843,10 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
     }
   }
 
-  Future<void> _createFolderAction(String parentDirectory) async {
+  Future<void> _createFolderAction(
+    String parentDirectory, {
+    required bool Function() isTargetReady,
+  }) async {
     final cubit = context.read<PresetBrowserCubit>();
     final controller = TextEditingController();
     final name = await showDialog<String>(
@@ -832,7 +877,9 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
       ),
     );
 
-    if (name == null || name.trim().isEmpty) return;
+    if (name == null || name.trim().isEmpty || !mounted || !isTargetReady()) {
+      return;
+    }
 
     try {
       await cubit.createDirectory(parentDirectory, name.trim());
@@ -841,9 +888,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
           View.of(context),
           'Created folder ${name.trim()}',
           TextDirection.ltr,
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Created folder ${name.trim()}')),
         );
       }
     } catch (e) {
@@ -891,7 +935,9 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
 
     if (newName == null ||
         newName.trim().isEmpty ||
-        newName.trim() == cleanName) {
+        newName.trim() == cleanName ||
+        !mounted ||
+        !cubit.canUseEntry(fullPath)) {
       return;
     }
 
@@ -903,9 +949,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
           'Renamed to ${newName.trim()}',
           TextDirection.ltr,
         );
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Renamed to ${newName.trim()}')));
       }
     } catch (e) {
       if (mounted) {
@@ -946,7 +989,7 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted || !cubit.canUseEntry(fullPath)) return;
 
     try {
       await cubit.deleteEntry(fullPath);
@@ -956,9 +999,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
           'Deleted $cleanName',
           TextDirection.ltr,
         );
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Deleted $cleanName')));
       }
     } catch (e) {
       if (mounted) {
@@ -1112,9 +1152,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
           'Uploaded $fileName',
           TextDirection.ltr,
         );
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Uploaded $fileName')));
       }
     } catch (e) {
       if (mounted) {
@@ -1209,6 +1246,9 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
 
       if (installed == true && mounted) {
         Navigator.of(context).pop();
+      } else if (mounted) {
+        // A cancelled/failed installer may have written part of a package.
+        await context.read<PresetBrowserCubit>().refreshVisiblePanes();
       }
     } catch (e, stackTrace) {
       debugPrintStack(stackTrace: stackTrace);
@@ -1305,30 +1345,21 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog> {
 }
 
 class ThreePanelNavigator extends StatefulWidget {
-  final List<DirectoryEntry> leftPanelItems;
-  final List<DirectoryEntry> centerPanelItems;
-  final List<DirectoryEntry> rightPanelItems;
-  final DirectoryEntry? selectedLeftItem;
-  final DirectoryEntry? selectedCenterItem;
-  final DirectoryEntry? selectedRightItem;
-  final Function(DirectoryEntry, PanelPosition) onItemSelected;
-  final String currentPath;
+  final BrowserSnapshot browser;
+  final void Function(DirectoryEntry, PanelPosition) onItemSelected;
+  final void Function(PanelPosition)? onPaneFocused;
+  final void Function(PanelPosition)? onPaneBack;
   final Function(DirectoryEntry, Offset, String panelPath)? onContextMenu;
   final void Function(Offset, String)? onDirectoryContextMenu;
-  final void Function(List<XFile> files, String targetDirectory)?
-  onFilesDropped;
+  final void Function(List<XFile>, String)? onFilesDropped;
   final bool dropEnabled;
 
   const ThreePanelNavigator({
     super.key,
-    required this.leftPanelItems,
-    required this.centerPanelItems,
-    required this.rightPanelItems,
-    this.selectedLeftItem,
-    this.selectedCenterItem,
-    this.selectedRightItem,
+    required this.browser,
     required this.onItemSelected,
-    required this.currentPath,
+    this.onPaneFocused,
+    this.onPaneBack,
     this.onContextMenu,
     this.onDirectoryContextMenu,
     this.onFilesDropped,
@@ -1340,109 +1371,90 @@ class ThreePanelNavigator extends StatefulWidget {
 }
 
 class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
-  final FocusNode _leftFocusNode = FocusNode();
-  final FocusNode _centerFocusNode = FocusNode();
-  final FocusNode _rightFocusNode = FocusNode();
-
+  final _focusNodes = [for (final _ in PanelPosition.values) FocusNode()];
+  final Map<String, double> _locationOffsets = {};
+  final Map<String, String?> _locationCursors = {};
   @override
   void dispose() {
-    _leftFocusNode.dispose();
-    _centerFocusNode.dispose();
-    _rightFocusNode.dispose();
+    for (final node in _focusNodes) {
+      node.dispose();
+    }
     super.dispose();
   }
 
-  String _cleanName(String name) {
-    return name.endsWith('/') ? name.substring(0, name.length - 1) : name;
-  }
-
-  String _joinPath(String base, String child) {
-    if (base.endsWith('/')) return '$base$child';
-    return '$base/$child';
-  }
-
   @override
-  Widget build(BuildContext context) {
-    final leftPath = widget.currentPath;
-    final leftDropTarget = leftPath;
-
-    String centerPath = widget.currentPath;
-    String? centerDropTarget;
-    if (widget.selectedLeftItem != null &&
-        widget.selectedLeftItem!.isDirectory) {
-      centerPath = _joinPath(
-        widget.currentPath,
-        _cleanName(widget.selectedLeftItem!.name),
-      );
-      centerDropTarget = centerPath;
-    }
-
-    String rightPath = centerPath;
-    String? rightDropTarget;
-    if (widget.selectedCenterItem != null &&
-        widget.selectedCenterItem!.isDirectory) {
-      rightPath = _joinPath(
-        centerPath,
-        _cleanName(widget.selectedCenterItem!.name),
-      );
-      rightDropTarget = rightPath;
-    }
-
-    return Row(
-      children: [
-        Expanded(
-          child: DirectoryPanel(
-            items: widget.leftPanelItems,
-            selectedItem: widget.selectedLeftItem,
-            onItemTap: (item) =>
-                widget.onItemSelected(item, PanelPosition.left),
-            position: PanelPosition.left,
-            currentPath: leftPath,
-            dropTargetDirectory: leftDropTarget,
-            onContextMenu: widget.onContextMenu,
-            onDirectoryContextMenu: widget.onDirectoryContextMenu,
-            onFilesDropped: widget.onFilesDropped,
-            dropEnabled: widget.dropEnabled,
-            focusNode: _leftFocusNode,
-            nextPanelFocusNode: _centerFocusNode,
-          ),
-        ),
-        const VerticalDivider(width: 1),
-        Expanded(
-          child: DirectoryPanel(
-            items: widget.centerPanelItems,
-            selectedItem: widget.selectedCenterItem,
-            onItemTap: (item) =>
-                widget.onItemSelected(item, PanelPosition.center),
-            position: PanelPosition.center,
-            currentPath: centerPath,
-            dropTargetDirectory: centerDropTarget,
-            onContextMenu: widget.onContextMenu,
-            onDirectoryContextMenu: widget.onDirectoryContextMenu,
-            onFilesDropped: widget.onFilesDropped,
-            dropEnabled: widget.dropEnabled,
-            focusNode: _centerFocusNode,
-            nextPanelFocusNode: _rightFocusNode,
-          ),
-        ),
-        const VerticalDivider(width: 1),
-        Expanded(
-          child: DirectoryPanel(
-            items: widget.rightPanelItems,
-            selectedItem: widget.selectedRightItem,
-            onItemTap: (item) =>
-                widget.onItemSelected(item, PanelPosition.right),
-            position: PanelPosition.right,
-            currentPath: rightPath,
-            dropTargetDirectory: rightDropTarget,
-            onContextMenu: widget.onContextMenu,
-            onDirectoryContextMenu: widget.onDirectoryContextMenu,
-            onFilesDropped: widget.onFilesDropped,
-            dropEnabled: widget.dropEnabled,
-            focusNode: _rightFocusNode,
-          ),
-        ),
+  Widget build(BuildContext context) => Row(
+    children: [
+      for (final position in PanelPosition.values) ...[
+        if (position != PanelPosition.left) const VerticalDivider(width: 1),
+        Expanded(child: _pane(context, position)),
       ],
+    ],
+  );
+
+  Widget _pane(BuildContext context, PanelPosition position) {
+    final directory = widget.browser.path(position);
+    final path = directory ?? '';
+    final available = directory != null;
+    final label = '${position.name} pane';
+    return Focus(
+      onFocusChange: (focused) {
+        if (focused && available) widget.onPaneFocused?.call(position);
+      },
+      onKeyEvent: (_, event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+            HardwareKeyboard.instance.isAltPressed) {
+          widget.onPaneBack?.call(position);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Semantics(
+        container: true,
+        explicitChildNodes: true,
+        label: available ? '$label: $path' : '$label: unused column',
+        selected: widget.browser.activePane == position,
+        liveRegion: true,
+        value:
+            widget.browser.errors[path] ??
+            (widget.browser.refreshing.contains(path)
+                ? 'Refreshing; file actions unavailable'
+                : null),
+        child: Listener(
+          onPointerDown: (_) {
+            if (available) widget.onPaneFocused?.call(position);
+          },
+          child: DirectoryPanel(
+            renamedPaths: widget.browser.renamedPaths,
+            locationOffsets: _locationOffsets,
+            locationCursors: _locationCursors,
+            items: widget.browser.items(position),
+            selectedItem: widget.browser.selection(position),
+            onItemTap: (item) => widget.onItemSelected(item, position),
+            position: position,
+            currentPath: path,
+            dropTargetDirectory: directory,
+            onContextMenu: widget.onContextMenu,
+            onDirectoryContextMenu: widget.onDirectoryContextMenu,
+            onFilesDropped: widget.onFilesDropped,
+            dropEnabled: widget.dropEnabled,
+            focusNode: _focusNodes[position.index],
+            onFocused: available
+                ? () => widget.onPaneFocused?.call(position)
+                : null,
+            onBack: () => widget.onPaneBack?.call(position),
+            onDirectoryOpened: () {
+              final depth = widget.browser.depth(position);
+              if (depth == null) return;
+              final next = (depth + 1).clamp(0, 2);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _focusNodes[next].requestFocus();
+              });
+            },
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1463,6 +1475,7 @@ IconData _getFileIcon(String name) {
 
 class DirectoryPanel extends StatefulWidget {
   final List<DirectoryEntry> items;
+  final Map<String, String> renamedPaths;
   final DirectoryEntry? selectedItem;
   final Function(DirectoryEntry) onItemTap;
   final PanelPosition position;
@@ -1474,11 +1487,16 @@ class DirectoryPanel extends StatefulWidget {
   onFilesDropped;
   final bool dropEnabled;
   final FocusNode? focusNode;
-  final FocusNode? nextPanelFocusNode;
+  final Map<String, double>? locationOffsets;
+  final Map<String, String?>? locationCursors;
+  final VoidCallback? onFocused;
+  final VoidCallback? onBack;
+  final VoidCallback? onDirectoryOpened;
 
   const DirectoryPanel({
     super.key,
     required this.items,
+    this.renamedPaths = const {},
     required this.selectedItem,
     required this.onItemTap,
     required this.position,
@@ -1489,7 +1507,11 @@ class DirectoryPanel extends StatefulWidget {
     this.onFilesDropped,
     this.dropEnabled = true,
     this.focusNode,
-    this.nextPanelFocusNode,
+    this.locationOffsets,
+    this.locationCursors,
+    this.onFocused,
+    this.onBack,
+    this.onDirectoryOpened,
   });
 
   @override
@@ -1500,19 +1522,112 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
   FocusNode? _ownedFocusNode;
   FocusNode get _focusNode =>
       widget.focusNode ?? (_ownedFocusNode ??= FocusNode());
-  final ScrollController _scrollController = ScrollController();
+  late ScrollController _scrollController;
   int _focusedIndex = 0;
-  bool _showKeyboardFocus = false;
+  final Map<String, double> _localOffsets = {};
+  final Map<String, String?> _localCursors = {};
+  Map<String, double> get _scrollOffsets =>
+      widget.locationOffsets ?? _localOffsets;
+  Map<String, String?> get _cursorNames =>
+      widget.locationCursors ?? _localCursors;
+  bool _keyboardModality = false;
+  bool get _showKeyboardFocus =>
+      _keyboardModality &&
+      FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
+
+  void _pointerModality(PointerEvent event) {
+    if (_keyboardModality &&
+        (event is PointerDownEvent || event is PointerHoverEvent)) {
+      setState(() => _keyboardModality = false);
+    }
+  }
+
+  bool _keyModality(KeyEvent event) {
+    if (event is KeyDownEvent &&
+        (_focusNode.hasFocus || event.logicalKey == LogicalKeyboardKey.tab)) {
+      if (!_keyboardModality) setState(() => _keyboardModality = true);
+    }
+    return false; // Modality observation must never consume navigation/clicks.
+  }
+
+  String _identity(String path, Map<String, String> aliases) {
+    final ordered = aliases.entries.toList()
+      ..sort((a, b) => b.value.length.compareTo(a.value.length));
+    for (var pass = 0; pass <= aliases.length; pass++) {
+      final before = path;
+      for (final alias in ordered) {
+        if (path == alias.value || path.startsWith('${alias.value}/')) {
+          path = '${alias.key}${path.substring(alias.value.length)}';
+          break;
+        }
+      }
+      if (path == before) break;
+    }
+    return path;
+  }
+
+  String _rebase(String path) {
+    final ordered = widget.renamedPaths.entries.toList()
+      ..sort((a, b) => b.key.length.compareTo(a.key.length));
+    for (var pass = 0; pass <= ordered.length; pass++) {
+      final before = path;
+      for (final alias in ordered) {
+        if (path == alias.key || path.startsWith('${alias.key}/')) {
+          path = '${alias.value}${path.substring(alias.key.length)}';
+          break;
+        }
+      }
+      if (path == before) break;
+    }
+    return path;
+  }
+
+  String _entryPath(String directory, String name) => p.posix.join(
+    directory,
+    name.endsWith('/') ? name.substring(0, name.length - 1) : name,
+  );
+
+  ScrollController _controller(double offset) =>
+      ScrollController(initialScrollOffset: offset, keepScrollOffset: false)
+        ..addListener(_rememberOffset);
+
+  void _highlightChanged(FocusHighlightMode _) {
+    if (mounted) setState(() {});
+  }
+
   bool _isDragOver = false;
 
   @override
   void initState() {
     super.initState();
+    _focusedIndex = widget.items.indexWhere(
+      (item) =>
+          item.name ==
+          (_cursorNames[widget.currentPath] ?? widget.selectedItem?.name),
+    );
+    if (_focusedIndex < 0 && widget.items.isNotEmpty) _focusedIndex = 0;
+    _scrollController = _controller(
+      _scrollOffsets[widget.currentPath] ??
+          _scrollOffsets[_identity(widget.currentPath, widget.renamedPaths)] ??
+          0,
+    );
     _focusNode.addListener(_onFocusChange);
+    FocusManager.instance.addHighlightModeListener(_highlightChanged);
+    GestureBinding.instance.pointerRouter.addGlobalRoute(_pointerModality);
+    HardwareKeyboard.instance.addHandler(_keyModality);
+  }
+
+  void _rememberOffset() {
+    if (_scrollController.hasClients) {
+      _scrollOffsets[widget.currentPath] = _scrollController.offset;
+    }
   }
 
   @override
   void dispose() {
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(_pointerModality);
+    HardwareKeyboard.instance.removeHandler(_keyModality);
+    FocusManager.instance.removeHighlightModeListener(_highlightChanged);
     _focusNode.removeListener(_onFocusChange);
     _ownedFocusNode?.dispose();
     _scrollController.dispose();
@@ -1526,18 +1641,68 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       oldWidget.focusNode?.removeListener(_onFocusChange);
       _focusNode.addListener(_onFocusChange);
     }
-    if (widget.items != oldWidget.items) {
-      _focusedIndex = 0;
+    final oldCursor =
+        _focusedIndex >= 0 && _focusedIndex < oldWidget.items.length
+        ? oldWidget.items[_focusedIndex].name
+        : null;
+    final sameLocation =
+        _identity(widget.currentPath, widget.renamedPaths) ==
+        _identity(oldWidget.currentPath, oldWidget.renamedPaths);
+    if (sameLocation) {
+      final fullCursor = oldCursor == null
+          ? null
+          : _rebase(_entryPath(oldWidget.currentPath, oldCursor));
+      final name = fullCursor == null
+          ? widget.selectedItem?.name
+          : p.posix.basename(fullCursor);
+      // Directory entry names may have a trailing slash; compare paths.
+      if (widget.currentPath != oldWidget.currentPath &&
+          _scrollController.hasClients) {
+        _scrollOffsets[widget.currentPath] = _scrollController.offset;
+      }
+      _focusedIndex = widget.items.indexWhere(
+        (entry) =>
+            _entryPath(widget.currentPath, entry.name) ==
+            _entryPath(widget.currentPath, name ?? ''),
+      );
+      if (_focusedIndex < 0) {
+        _focusedIndex = widget.items.indexWhere(
+          (entry) => entry.name == widget.selectedItem?.name,
+        );
+      }
+    } else {
+      if (_scrollController.hasClients) {
+        _scrollOffsets[oldWidget.currentPath] = _scrollController.offset;
+      }
+      _cursorNames[oldWidget.currentPath] = oldCursor;
+      final previous = _scrollController..removeListener(_rememberOffset);
+      // New location + correct offset are laid out together, not corrected by
+      // a post-frame jump which can first paint an empty/scrolled-out viewport.
+      _scrollController = _controller(
+        _scrollOffsets[widget.currentPath] ??
+            _scrollOffsets[_identity(
+              widget.currentPath,
+              widget.renamedPaths,
+            )] ??
+            0,
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+      final name =
+          _cursorNames[widget.currentPath] ?? widget.selectedItem?.name;
+      _focusedIndex = widget.items.indexWhere((entry) => entry.name == name);
     }
+    if (_focusedIndex < 0 && widget.items.isNotEmpty) _focusedIndex = 0;
+    _cursorNames[widget.currentPath] = _focusedIndex >= 0
+        ? widget.items[_focusedIndex].name
+        : null;
   }
 
   void _onFocusChange() {
     if (_focusNode.hasFocus) {
-      setState(() => _showKeyboardFocus = true);
-      _announceCurrentItem();
-    } else {
-      setState(() => _showKeyboardFocus = false);
+      widget.onFocused?.call();
+      if (_showKeyboardFocus) _announceCurrentItem();
     }
+    setState(() {});
   }
 
   void _announceCurrentItem() {
@@ -1565,14 +1730,20 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+        HardwareKeyboard.instance.isAltPressed &&
+        widget.onBack != null) {
+      widget.onBack!();
+      return KeyEventResult.handled;
+    }
     if (widget.items.isEmpty) return KeyEventResult.ignored;
 
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
       if (_focusedIndex < widget.items.length - 1) {
         setState(() {
           _focusedIndex++;
-          _showKeyboardFocus = true;
         });
+        _cursorNames[widget.currentPath] = widget.items[_focusedIndex].name;
         _scrollToFocused();
         _announceCurrentItem();
       }
@@ -1582,8 +1753,8 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       if (_focusedIndex > 0) {
         setState(() {
           _focusedIndex--;
-          _showKeyboardFocus = true;
         });
+        _cursorNames[widget.currentPath] = widget.items[_focusedIndex].name;
         _scrollToFocused();
         _announceCurrentItem();
       }
@@ -1594,18 +1765,13 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       if (_focusedIndex >= 0 && _focusedIndex < widget.items.length) {
         final item = widget.items[_focusedIndex];
         widget.onItemTap(item);
-        if (item.isDirectory && widget.nextPanelFocusNode != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            widget.nextPanelFocusNode!.requestFocus();
-          });
-        }
+        if (item.isDirectory) widget.onDirectoryOpened?.call();
       }
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.home) {
       setState(() {
         _focusedIndex = 0;
-        _showKeyboardFocus = true;
       });
       _scrollToFocused();
       _announceCurrentItem();
@@ -1614,7 +1780,6 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
     if (event.logicalKey == LogicalKeyboardKey.end) {
       setState(() {
         _focusedIndex = widget.items.length - 1;
-        _showKeyboardFocus = true;
       });
       _scrollToFocused();
       _announceCurrentItem();
@@ -1657,59 +1822,41 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
 
     Widget panel;
 
-    if (widget.items.isEmpty) {
-      panel = Semantics(
-        label: '$panelLabel, empty',
+    panel = Semantics(
+      label: '$panelLabel, ${widget.items.length} items',
+      child: FocusTraversalGroup(
+        descendantsAreTraversable: false,
         child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+          clipBehavior: Clip.hardEdge,
+          decoration: const BoxDecoration(),
+          foregroundDecoration: BoxDecoration(
             border: Border.all(
-              color: Theme.of(context).dividerColor,
-              width: 0.5,
+              color: _showKeyboardFocus && _focusNode.hasFocus
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).dividerColor,
+              width: _showKeyboardFocus && _focusNode.hasFocus ? 2.0 : 0.5,
             ),
           ),
-          child: Center(
-            child: Text(
-              'Empty',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-        ),
-      );
-    } else {
-      panel = Semantics(
-        label: '$panelLabel, ${widget.items.length} items',
-        child: Focus(
-          focusNode: _focusNode,
-          onKeyEvent: _handleKeyEvent,
-          child: FocusTraversalGroup(
-            descendantsAreTraversable: false,
-            child: Container(
-              clipBehavior: Clip.hardEdge,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: _showKeyboardFocus && _focusNode.hasFocus
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).dividerColor,
-                  width: _showKeyboardFocus && _focusNode.hasFocus ? 2.0 : 0.5,
-                ),
-              ),
-              child: Material(
-                color: Theme.of(context).colorScheme.surface,
-                child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: widget.items.length,
-                  itemBuilder: (context, index) => _buildItem(context, index),
-                ),
-              ),
+          child: Material(
+            color: Theme.of(context).colorScheme.surface,
+            child: ListView.builder(
+              key: ValueKey(_identity(widget.currentPath, widget.renamedPaths)),
+              controller: _scrollController,
+              itemCount: widget.items.length,
+              findChildIndexCallback: (key) {
+                if (key is! ValueKey<String>) return null;
+                final index = widget.items.indexWhere(
+                  (item) =>
+                      _entryPath(widget.currentPath, item.name) == key.value,
+                );
+                return index < 0 ? null : index;
+              },
+              itemBuilder: (context, index) => _buildItem(context, index),
             ),
           ),
         ),
-      );
-    }
+      ),
+    );
 
     // A real directory owns its blank space. Child row gestures win the
     // gesture arena, keeping folder-entry actions targeted inside that folder.
@@ -1750,7 +1897,14 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       );
     }
 
-    return panel;
+    return Listener(
+      onPointerDown: (_) => _focusNode.requestFocus(),
+      child: Focus(
+        focusNode: _focusNode,
+        onKeyEvent: _handleKeyEvent,
+        child: panel,
+      ),
+    );
   }
 
   Widget _buildPanelDragOverlay(BuildContext context) {
@@ -1831,7 +1985,7 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
     final fileInfo = !item.isDirectory ? _formatFileInfo(item) : null;
 
     Widget tile = Container(
-      decoration: isKeyboardFocused
+      foregroundDecoration: isKeyboardFocused
           ? BoxDecoration(
               border: Border.all(
                 color: Theme.of(context).colorScheme.primary,
@@ -1840,34 +1994,45 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
               borderRadius: BorderRadius.circular(4),
             )
           : null,
-      child: ListTile(
-        leading: Icon(icon, color: iconColor),
-        title: Text(
-          displayName,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      child: ExcludeFocus(
+        child: ListTile(
+          leading: Icon(icon, color: iconColor),
+          title: Text(
+            displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
+          subtitle: fileInfo != null
+              ? Text(
+                  fileInfo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12),
+                )
+              : null,
+          selected: isSelected,
+          selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
+          onTap: () {
+            setState(() {
+              _focusedIndex = index;
+            });
+            _cursorNames[widget.currentPath] = item.name;
+            widget.onItemTap(item);
+          },
+          dense: true,
         ),
-        subtitle: fileInfo != null
-            ? Text(fileInfo, style: const TextStyle(fontSize: 12))
-            : null,
-        selected: isSelected,
-        selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
-        onTap: () {
-          setState(() {
-            _focusedIndex = index;
-            _showKeyboardFocus = false;
-          });
-          widget.onItemTap(item);
-        },
-        dense: true,
       ),
     );
 
     if (!isParentDir && widget.onContextMenu != null) {
       tile = GestureDetector(
         onSecondaryTapUp: (details) {
+          setState(() => _focusedIndex = index);
+          _cursorNames[widget.currentPath] = item.name;
           widget.onContextMenu!(
             item,
             details.globalPosition,
@@ -1885,7 +2050,10 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       );
     }
 
-    return tile;
+    return KeyedSubtree(
+      key: ValueKey(_entryPath(widget.currentPath, item.name)),
+      child: tile,
+    );
   }
 
   static String _formatFileInfo(DirectoryEntry entry) {

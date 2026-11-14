@@ -8,8 +8,11 @@ class MobileDrillDownNavigator extends StatelessWidget {
   final List<String> breadcrumbs;
   final Function(DirectoryEntry) onItemTap;
   final Function(int) onBreadcrumbTap;
-  final VoidCallback onRefresh;
+  final Future<void> Function() onRefresh;
+  final bool refreshing;
+  final String? error;
   final Function(DirectoryEntry)? onLongPress;
+  final void Function(Offset)? onDirectoryContextMenu;
 
   const MobileDrillDownNavigator({
     super.key,
@@ -19,7 +22,10 @@ class MobileDrillDownNavigator extends StatelessWidget {
     required this.onItemTap,
     required this.onBreadcrumbTap,
     required this.onRefresh,
+    this.refreshing = false,
+    this.error,
     this.onLongPress,
+    this.onDirectoryContextMenu,
   });
 
   @override
@@ -27,10 +33,11 @@ class MobileDrillDownNavigator extends StatelessWidget {
     return Column(
       children: [
         // Breadcrumb navigation
-        if (breadcrumbs.isNotEmpty)
-          Container(
+        SizedBox(
+          height: 40,
+          child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               border: Border(
@@ -107,129 +114,136 @@ class MobileDrillDownNavigator extends StatelessWidget {
               ),
             ),
           ),
+        ),
 
         // Directory listing
         Expanded(
-          child: ClipRect(
-            child: RefreshIndicator(
-              onRefresh: () async => onRefresh(),
-              child: items.isEmpty
-                  ? ListView(
-                      children: [
-                        const SizedBox(height: 100),
-                        Center(
-                          child: Text(
-                            'Empty directory',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : ListView.builder(
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        final isSelected = item == selectedItem;
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onSecondaryTapUp: onDirectoryContextMenu == null
+                ? null
+                : (details) => onDirectoryContextMenu!(details.globalPosition),
+            onLongPressEnd: onDirectoryContextMenu == null
+                ? null
+                : (details) => onDirectoryContextMenu!(details.globalPosition),
+            child: Semantics(
+              liveRegion: true,
+              value:
+                  error ??
+                  (refreshing
+                      ? 'Refreshing; file actions unavailable'
+                      : 'Directory ready'),
+              child: ClipRect(
+                child: RefreshIndicator(
+                  onRefresh: onRefresh,
+                  child: items.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: const [],
+                        )
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          itemCount: items.length,
+                          itemBuilder: (context, index) {
+                            final item = items[index];
+                            final isSelected = item == selectedItem;
 
-                        String displayName = item.name;
-                        if (displayName.endsWith('/')) {
-                          displayName = displayName.substring(
-                            0,
-                            displayName.length - 1,
-                          );
-                        }
+                            String displayName = item.name;
+                            if (displayName.endsWith('/')) {
+                              displayName = displayName.substring(
+                                0,
+                                displayName.length - 1,
+                              );
+                            }
 
-                        final isJsonPreset =
-                            !item.isDirectory &&
-                            item.name.toLowerCase().endsWith('.json');
-                        final isParentDir = item.name == '..';
+                            final isJsonPreset =
+                                !item.isDirectory &&
+                                item.name.toLowerCase().endsWith('.json');
+                            final isParentDir = item.name == '..';
 
-                        final icon = isParentDir
-                            ? Icons.folder_open
-                            : item.isDirectory
-                            ? Icons.folder
-                            : _getFileIcon(item.name);
+                            final icon = isParentDir
+                                ? Icons.folder_open
+                                : item.isDirectory
+                                ? Icons.folder
+                                : _getFileIcon(item.name);
 
-                        final iconColor = isParentDir
-                            ? Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.7)
-                            : item.isDirectory
-                            ? Theme.of(context).colorScheme.primary
-                            : isJsonPreset
-                            ? Theme.of(context).colorScheme.tertiary
-                            : Theme.of(context).colorScheme.secondary;
+                            final iconColor = isParentDir
+                                ? Theme.of(
+                                    context,
+                                  ).colorScheme.primary.withValues(alpha: 0.7)
+                                : item.isDirectory
+                                ? Theme.of(context).colorScheme.primary
+                                : isJsonPreset
+                                ? Theme.of(context).colorScheme.tertiary
+                                : Theme.of(context).colorScheme.secondary;
 
-                        final fileInfo = !item.isDirectory
-                            ? _formatFileInfo(item)
-                            : null;
+                            final fileInfo = !item.isDirectory
+                                ? _formatFileInfo(item)
+                                : null;
 
-                        final semanticLabel = item.isDirectory
-                            ? 'Folder: $displayName'
-                            : 'File: $displayName, $fileInfo';
+                            final semanticLabel = item.isDirectory
+                                ? 'Folder: $displayName'
+                                : 'File: $displayName, $fileInfo';
 
-                        Widget tile = ListTile(
-                          leading: ExcludeSemantics(
-                            child: Icon(icon, size: 28, color: iconColor),
-                          ),
-                          title: Semantics(
-                            label: semanticLabel,
-                            excludeSemantics: true,
-                            child: Text(
-                              displayName,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                            Widget tile = ListTile(
+                              leading: ExcludeSemantics(
+                                child: Icon(icon, size: 28, color: iconColor),
                               ),
-                            ),
-                          ),
-                          subtitle: fileInfo != null
-                              ? ExcludeSemantics(
-                                  child: Text(
-                                    fileInfo,
-                                    style: const TextStyle(fontSize: 13),
+                              title: Semantics(
+                                label: semanticLabel,
+                                excludeSemantics: true,
+                                child: Text(
+                                  displayName,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                                   ),
-                                )
-                              : null,
-                          trailing: item.isDirectory
-                              ? ExcludeSemantics(
-                                  child: Icon(
-                                    Icons.chevron_right,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                                )
-                              : null,
-                          selected: isSelected,
-                          selectedTileColor: Theme.of(
-                            context,
-                          ).colorScheme.primaryContainer,
-                          onTap: () => onItemTap(item),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16.0,
-                            vertical: 4.0,
-                          ),
-                          minVerticalPadding: 8.0,
-                        );
+                                ),
+                              ),
+                              subtitle: fileInfo != null
+                                  ? ExcludeSemantics(
+                                      child: Text(
+                                        fileInfo,
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                    )
+                                  : null,
+                              trailing: item.isDirectory
+                                  ? ExcludeSemantics(
+                                      child: Icon(
+                                        Icons.chevron_right,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                    )
+                                  : null,
+                              selected: isSelected,
+                              selectedTileColor: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
+                              onTap: () => onItemTap(item),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 4.0,
+                              ),
+                              minVerticalPadding: 8.0,
+                            );
 
-                        if (!isParentDir && onLongPress != null) {
-                          tile = GestureDetector(
-                            onLongPress: () => onLongPress!(item),
-                            child: tile,
-                          );
-                        }
+                            if (!isParentDir && onLongPress != null) {
+                              tile = GestureDetector(
+                                onLongPress: () => onLongPress!(item),
+                                child: tile,
+                              );
+                            }
 
-                        return tile;
-                      },
-                    ),
+                            return tile;
+                          },
+                        ),
+                ),
+              ),
             ),
           ),
         ),

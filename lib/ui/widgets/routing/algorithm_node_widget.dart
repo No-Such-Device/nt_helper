@@ -969,14 +969,12 @@ class _AlgorithmNodeWidgetState extends State<AlgorithmNodeWidget> {
   }
 
   void _showFeedback(String message, {bool isError = false}) {
-    if (!mounted) return;
+    if (!mounted || !isError) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError
-            ? Theme.of(context).colorScheme.error
-            : Theme.of(context).colorScheme.primary,
+        backgroundColor: Theme.of(context).colorScheme.error,
         duration: const Duration(seconds: 2),
       ),
     );

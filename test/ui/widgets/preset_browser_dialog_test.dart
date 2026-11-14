@@ -1,3 +1,4 @@
+import '../../test_helpers/browser_fixture.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/cubit/preset_browser_cubit.dart';
 import 'package:nt_helper/ui/widgets/preset_browser_dialog.dart';
+import 'package:nt_helper/ui/widgets/mobile_drill_down_navigator.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/models/sd_card_file_system.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
@@ -35,6 +37,14 @@ void main() {
   setUp(() {
     mockCubit = MockPresetBrowserCubit();
     mockDistingCubit = MockDistingCubit();
+    when(() => mockCubit.focusPane(any())).thenAnswer((_) async {});
+    when(() => mockCubit.refreshPane(any())).thenAnswer((_) async {});
+    when(() => mockCubit.refreshDirectory(any())).thenAnswer((_) async {});
+    when(() => mockCubit.canUseEntry(any())).thenReturn(true);
+    when(() => mockCubit.isDirectoryReady(any())).thenReturn(true);
+    when(
+      () => mockCubit.refreshVisiblePanes(onlyIfStale: true),
+    ).thenAnswer((_) async {});
     // Mock loadRootDirectory to return a Future<void>
     when(() => mockCubit.loadRootDirectory()).thenAnswer((_) async {});
     // Mock getSelectedPath to return empty string by default
@@ -54,8 +64,7 @@ void main() {
     for (final action in [
       'empty root',
       'root',
-      'toolbar',
-      'mobile toolbar',
+      'mobile background',
       'nested',
       'entry',
       'placeholder',
@@ -63,7 +72,7 @@ void main() {
       testWidgets('folder creation targets correct directory via $action', (
         tester,
       ) async {
-        final mobile = action == 'mobile toolbar';
+        final mobile = action == 'mobile background';
         if (mobile) {
           tester.view.physicalSize = const Size(390, 844);
           tester.view.devicePixelRatio = 1;
@@ -73,6 +82,8 @@ void main() {
         final hasFolder = action != 'empty root' && action != 'placeholder';
         final target = mobile || action == 'nested' || action == 'entry'
             ? '/programs'
+            : action == 'placeholder'
+            ? '/empty-center'
             : '/';
         final folder = DirectoryEntry(
           name: 'programs/',
@@ -82,7 +93,7 @@ void main() {
           size: 0,
         );
         when(() => mockCubit.state).thenReturn(
-          PresetBrowserState.loaded(
+          browserFixture(
             currentPath: '/',
             drillPath: mobile ? '/programs' : null,
             leftPanelItems: hasFolder ? [folder] : [],
@@ -107,19 +118,25 @@ void main() {
             ),
           ),
         );
-        if (action == 'toolbar' || mobile) {
-          expect(
-            find.bySemanticsLabel('New folder in $target'),
-            findsOneWidget,
+        if (mobile) {
+          await tester.longPressAt(
+            tester.getBottomLeft(find.byType(MobileDrillDownNavigator)) +
+                const Offset(25, -25),
           );
-          await tester.tap(find.byTooltip('New folder in $target'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('New Folder'));
         } else {
           final panel = find
               .byType(DirectoryPanel)
               .at(action == 'nested' || action == 'placeholder' ? 1 : 0);
           await tester.tapAt(
             action == 'entry'
-                ? tester.getCenter(find.text('programs'))
+                ? tester.getCenter(
+                    find.descendant(
+                      of: find.byType(DirectoryPanel).first,
+                      matching: find.text('programs'),
+                    ),
+                  )
                 : tester.getBottomLeft(panel) + const Offset(25, -25),
             buttons: kSecondaryMouseButton,
           );
@@ -140,13 +157,66 @@ void main() {
         await tester.tap(find.text('Create'));
         await tester.pumpAndSettle();
         verify(() => mockCubit.createDirectory(target, 'helper')).called(1);
+        expect(find.byType(SnackBar), findsNothing);
         expect(tester.takeException(), isNull);
       });
     }
 
+    testWidgets('rename rejection is shown as failure, never success', (
+      tester,
+    ) async {
+      final entry = DirectoryEntry(
+        name: 'Alpha.json',
+        attributes: 0,
+        date: 0,
+        time: 0,
+        size: 0,
+      );
+      when(() => mockCubit.state).thenReturn(
+        browserFixture(
+          currentPath: '/presets',
+          leftPanelItems: [entry],
+          centerPanelItems: const [],
+          rightPanelItems: const [],
+          navigationHistory: const [],
+          sortByDate: false,
+        ),
+      );
+      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
+      when(
+        () => mockCubit.getEntryPath(entry, '/presets'),
+      ).thenReturn('/presets/Alpha.json');
+      when(
+        () => mockCubit.renameEntry('/presets/Alpha.json', 'Alpha #42.json'),
+      ).thenThrow(StateError('Destination exists'));
+      await tester.pumpWidget(
+        createTestWidget(
+          child: Scaffold(
+            body: PresetBrowserDialog(distingCubit: mockDistingCubit),
+          ),
+        ),
+      );
+      await tester.tapAt(
+        tester.getCenter(find.text('Alpha.json')),
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Alpha #42.json');
+      await tester.tap(find.widgetWithText(TextButton, 'Rename'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Rename failed:'), findsOneWidget);
+      expect(find.textContaining('Renamed to'), findsNothing);
+      verify(
+        () => mockCubit.renameEntry('/presets/Alpha.json', 'Alpha #42.json'),
+      ).called(1);
+      expect(tester.takeException(), isNull);
+    }, tags: ['regression']);
+
     testWidgets('displays three panels in row layout', (tester) async {
       when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
+        browserFixture(
           currentPath: '/',
           leftPanelItems: const [],
           centerPanelItems: const [],
@@ -179,20 +249,25 @@ void main() {
       );
     });
 
-    testWidgets('displays loading indicator when loading', (tester) async {
-      when(
-        () => mockCubit.state,
-      ).thenReturn(const PresetBrowserState.loading());
-      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
+    testWidgets(
+      'loading preserves blank three-column skeleton without refresh icons',
+      (tester) async {
+        when(
+          () => mockCubit.state,
+        ).thenReturn(const PresetBrowserState.loading());
+        when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
-      await tester.pumpWidget(
-        createTestWidget(
-          child: PresetBrowserDialog(distingCubit: mockDistingCubit),
-        ),
-      );
+        await tester.pumpWidget(
+          createTestWidget(
+            child: PresetBrowserDialog(distingCubit: mockDistingCubit),
+          ),
+        );
 
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
-    });
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+        expect(find.byType(DirectoryPanel), findsNWidgets(3));
+        expect(find.byIcon(Icons.refresh), findsNothing);
+      },
+    );
 
     testWidgets('displays error message when error state', (tester) async {
       when(() => mockCubit.state).thenReturn(
@@ -211,7 +286,7 @@ void main() {
 
     testWidgets('displays back button and sort toggle', (tester) async {
       when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
+        browserFixture(
           currentPath: '/',
           leftPanelItems: const [],
           centerPanelItems: const [],
@@ -236,85 +311,68 @@ void main() {
       when(() => mockCubit.toggleSortMode()).thenReturn(null);
 
       // Back button should be visible when history exists
-      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+      expect(find.byTooltip('Back'), findsOneWidget);
+      expect(
+        tester
+            .widget<IconButton>(
+              find.byWidgetPredicate(
+                (w) => w is IconButton && w.tooltip == 'Back',
+              ),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(find.byType(DirectoryPanel), findsNWidgets(3));
 
       // Sort toggle should be visible
       expect(find.byIcon(Icons.sort_by_alpha), findsOneWidget);
     });
 
-    testWidgets('enables wave cache troubleshooting on firmware 1.17', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1200, 800);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
-          currentPath: '/',
-          leftPanelItems: const [],
-          centerPanelItems: const [],
-          rightPanelItems: const [],
-          selectedLeftItem: null,
-          selectedCenterItem: null,
-          selectedRightItem: null,
-          navigationHistory: const [],
-          sortByDate: false,
-        ),
-      );
-      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
-
-      await tester.pumpWidget(
-        createTestWidget(
-          child: PresetBrowserDialog(
-            distingCubit: mockDistingCubit,
-            firmwareVersion: FirmwareVersion('1.17.0'),
-          ),
-        ),
-      );
-
-      final action = tester.widget<TextButton>(
-        find.widgetWithText(TextButton, 'Wave cache'),
-      );
-      expect(action.onPressed, isNotNull);
-    });
-
-    testWidgets('disables wave cache troubleshooting before firmware 1.17', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1200, 800);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
-          currentPath: '/',
-          leftPanelItems: const [],
-          centerPanelItems: const [],
-          rightPanelItems: const [],
-          selectedLeftItem: null,
-          selectedCenterItem: null,
-          selectedRightItem: null,
-          navigationHistory: const [],
-          sortByDate: false,
-        ),
-      );
-      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
-
-      await tester.pumpWidget(
-        createTestWidget(
-          child: PresetBrowserDialog(
-            distingCubit: mockDistingCubit,
-            firmwareVersion: FirmwareVersion('1.16.9'),
-          ),
-        ),
-      );
-
-      final action = tester.widget<TextButton>(
-        find.widgetWithText(TextButton, 'Wave cache'),
-      );
-      expect(action.onPressed, isNull);
-    });
+    for (final size in [const Size(1200, 800), const Size(390, 844)]) {
+      for (final firmware in ['1.17.0', '1.16.9']) {
+        testWidgets(
+          'browser toolbar keeps Back Sort Close but no create or wave cache at $size firmware $firmware',
+          (tester) async {
+            tester.view.physicalSize = size;
+            tester.view.devicePixelRatio = 1;
+            addTearDown(tester.view.resetPhysicalSize);
+            addTearDown(tester.view.resetDevicePixelRatio);
+            when(() => mockCubit.state).thenReturn(
+              browserFixture(
+                currentPath: '/',
+                leftPanelItems: const [],
+                centerPanelItems: const [],
+                rightPanelItems: const [],
+                sortByDate: false,
+              ),
+            );
+            when(
+              () => mockCubit.stream,
+            ).thenAnswer((_) => const Stream.empty());
+            await tester.pumpWidget(
+              createTestWidget(
+                child: PresetBrowserDialog(
+                  distingCubit: mockDistingCubit,
+                  firmwareVersion: FirmwareVersion(firmware),
+                ),
+              ),
+            );
+            final toolbar = find.byKey(const Key('preset-browser-toolbar'));
+            expect(
+              find.descendant(of: toolbar, matching: find.byType(IconButton)),
+              findsNWidgets(3),
+            );
+            expect(find.byTooltip('Back'), findsOneWidget);
+            expect(find.byTooltip('Sort alphabetically'), findsOneWidget);
+            expect(find.byTooltip('Close'), findsOneWidget);
+            expect(find.byIcon(Icons.create_new_folder), findsNothing);
+            expect(find.text('Wave cache'), findsNothing);
+            expect(find.byIcon(Icons.troubleshoot), findsNothing);
+            expect(tester.takeException(), isNull);
+          },
+        );
+      }
+    }
 
     testWidgets('calls selectDirectory when directory tapped', (tester) async {
       final testEntry = DirectoryEntry(
@@ -326,7 +384,7 @@ void main() {
       );
 
       when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
+        browserFixture(
           currentPath: '/',
           leftPanelItems: [testEntry],
           centerPanelItems: const [],
@@ -346,7 +404,7 @@ void main() {
       await tester.pumpWidget(
         createTestWidget(
           child: Scaffold(
-            body: ThreePanelNavigator(
+            body: testThreePanelNavigator(
               leftPanelItems: [testEntry],
               centerPanelItems: const [],
               rightPanelItems: const [],
@@ -381,7 +439,7 @@ void main() {
       );
 
       when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
+        browserFixture(
           currentPath: '/',
           leftPanelItems: [testFile],
           centerPanelItems: const [],
@@ -402,7 +460,7 @@ void main() {
       await tester.pumpWidget(
         createTestWidget(
           child: Scaffold(
-            body: ThreePanelNavigator(
+            body: testThreePanelNavigator(
               leftPanelItems: [testFile],
               centerPanelItems: const [],
               rightPanelItems: const [],
@@ -452,7 +510,7 @@ void main() {
         await tester.pumpWidget(
           createTestWidget(
             child: Scaffold(
-              body: ThreePanelNavigator(
+              body: testThreePanelNavigator(
                 leftPanelItems: [midiDir],
                 centerPanelItems: [songsDir],
                 rightPanelItems: const [],
@@ -497,7 +555,7 @@ void main() {
       }
     });
 
-    testWidgets('does not register placeholder panels as drop targets', (
+    testWidgets('empty placeholder columns never become drop targets', (
       tester,
     ) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
@@ -507,7 +565,7 @@ void main() {
         await tester.pumpWidget(
           createTestWidget(
             child: Scaffold(
-              body: ThreePanelNavigator(
+              body: testThreePanelNavigator(
                 leftPanelItems: const [],
                 centerPanelItems: const [],
                 rightPanelItems: const [],
@@ -529,7 +587,7 @@ void main() {
         );
         expect(dropTargets, hasLength(1));
 
-        dropTargets.single.onDragDone!(
+        dropTargets.first.onDragDone!(
           DropDoneDetails(
             files: [DropItemFile('/tmp/groove.mid')],
             localPosition: Offset.zero,
@@ -637,9 +695,5 @@ void main() {
     });
   });
 
-  group('Package Installation Dialog Integration', () {
-    
-
-    
-  });
+  group('Package Installation Dialog Integration', () {});
 }

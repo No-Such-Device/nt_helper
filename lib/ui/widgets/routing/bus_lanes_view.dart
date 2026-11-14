@@ -42,6 +42,7 @@ class _BusLanesViewState extends State<BusLanesView> {
   final ScrollController _v = ScrollController();
   final FocusNode _focusNode = FocusNode(debugLabel: 'BusLanes');
   final Set<String> _collapsed = {};
+  BusAssignmentResult? _lastAssignment;
   String? _draggingId;
   double _dragDy = 0;
   final Set<int> _canvasPanPointers = {};
@@ -139,8 +140,8 @@ class _BusLanesViewState extends State<BusLanesView> {
 
   @override
   Widget build(BuildContext context) {
-    // A scoped messenger so snackbars appear within the Bus Lanes canvas area
-    // rather than at the bottom of the whole window.
+    // Keep exceptional notifications scoped to the canvas. Routine assignment
+    // feedback comes from the diagram and the persistent Undo action.
     return ScaffoldMessenger(
       key: _messengerKey,
       child: Scaffold(
@@ -225,6 +226,7 @@ class _BusLanesViewState extends State<BusLanesView> {
                 _scroll(_h, -event.localPanDelta.dx);
               },
               child: Stack(
+                fit: StackFit.expand,
                 children: [
                   Scrollbar(
                     controller: _v,
@@ -380,6 +382,23 @@ class _BusLanesViewState extends State<BusLanesView> {
                           ),
                         ),
                       ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 16,
+                    right: 16,
+                    child: IconButton(
+                      tooltip: 'Undo last bus assignment',
+                      icon: const Icon(Icons.undo),
+                      onPressed: _lastAssignment == null
+                          ? null
+                          : () async {
+                              final assignment = _lastAssignment!;
+                              setState(() => _lastAssignment = null);
+                              await context
+                                  .read<RoutingEditorCubit>()
+                                  .undoBusAssignment(assignment);
+                            },
                     ),
                   ),
                 ],
@@ -871,28 +890,7 @@ class _BusLanesViewState extends State<BusLanesView> {
       busValue: targetBus,
     );
     if (!mounted) return;
-    final reorder = result.reorder;
-    final what = targetBus == 0
-        ? 'Disconnected ${ref.label}'
-        : 'Connected ${ref.label} → ${_busLabel(targetBus)}';
-    final messenger = _messengerKey.currentState;
-    messenger?.hideCurrentSnackBar();
-    messenger?.showSnackBar(
-      SnackBar(
-        content: Text(
-          (reorder != null && reorder.changed)
-              ? '$what — ${reorder.description}'
-              : what,
-        ),
-        duration: const Duration(seconds: 7),
-        persist: false,
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () => cubit.undoBusAssignment(result),
-        ),
-      ),
-    );
+    setState(() => _lastAssignment = result);
   }
 
   String _busLabel(int bus) {

@@ -68,12 +68,6 @@ class _DebugPanelState extends State<DebugPanel> {
                   onPressed: () {
                     final text = _debugService.debugMessages.join('\n');
                     Clipboard.setData(ClipboardData(text: text));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Debug log copied to clipboard'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
                   },
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,

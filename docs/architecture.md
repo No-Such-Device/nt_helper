@@ -17,6 +17,9 @@ and behavioral contracts from `test/`.
 
 ## Authorities
 
+- File-browser ownership and freshness: [`architecture/preset-browser.md`](architecture/preset-browser.md)
+- Detailed source-inspected retrieval map (with baseline and coverage limits):
+  [`architecture/workspace-index.md`](architecture/workspace-index.md)
 - Repository and release rules: [`../AGENTS.md`](../AGENTS.md)
 - Coding and delegate patterns:
   [`architecture/coding-standards.md`](architecture/coding-standards.md)
