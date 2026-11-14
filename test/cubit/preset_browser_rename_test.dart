@@ -53,7 +53,11 @@ void main() {
     });
     cubit = PresetBrowserCubit(midiManager: manager, prefs: prefs);
     await cubit.loadRootDirectory();
-    await cubit.selectDirectory(files['/']!.single, PanelPosition.left);
+    for (final panel in PanelPosition.values) {
+      await cubit.navigateToAbsolutePath('/presets', panel: panel);
+    }
+    await cubit.focusPane(PanelPosition.left);
+    clearInteractions(manager);
   });
 
   tearDown(() => cubit.close());
@@ -81,8 +85,7 @@ void main() {
     test(
       'renaming #n presets updates desktop, mobile, cache and recents',
       () async {
-        await cubit.navigateIntoDirectory(files['/']!.single);
-        cubit.selectDrillItem(files['/presets']!.first);
+        await cubit.selectDrillItem(files['/presets']!.first);
         await cubit.addToHistory('/presets/Alpha.json');
         await cubit.renameEntry('/presets/Alpha.json', 'Alpha #42.json');
 
@@ -138,7 +141,6 @@ void main() {
     test(
       'renumbering multiple presets never retains old #n browser entries',
       () async {
-        await cubit.navigateIntoDirectory(files['/']!.single);
         for (final (before, after) in [
           ('Alpha.json', 'Alpha #42.json'),
           ('Beta.json', 'Beta #7.json'),
@@ -149,7 +151,7 @@ void main() {
             loaded: (s) =>
                 s.currentDrillItems!.singleWhere((e) => e.name == before),
           )!;
-          cubit.selectDrillItem(entry);
+          await cubit.selectDrillItem(entry);
           await cubit.renameEntry(cubit.getSelectedPath(), after);
           expect(cubit.getSelectedPath(), '/presets/$after');
         }
@@ -199,18 +201,12 @@ void main() {
       test(
         'keeps the renamed file selected in the $panel panel',
         () async {
-          if (panel == PanelPosition.left) {
-            await cubit.navigateToAbsolutePath('/presets');
-          } else if (panel == PanelPosition.right) {
-            files['/presets'] = [_entry('Set/', directory: true)];
+          var target = '/presets';
+          if (panel == PanelPosition.right) {
             files['/presets/Set'] = [_entry('Alpha.json')];
-            await cubit.clearCache();
-            await cubit.selectDirectory(files['/']!.single, PanelPosition.left);
-            await cubit.selectDirectory(
-              files['/presets']!.single,
-              PanelPosition.center,
-            );
+            target = '/presets/Set';
           }
+          await cubit.navigateToAbsolutePath(target, panel: panel);
           final directory = cubit.getPanelDirectory(panel);
           await cubit.selectFile(files[directory]!.first, panel);
           await cubit.renameEntry('$directory/Alpha.json', 'Alpha #42.json');
@@ -231,7 +227,7 @@ void main() {
         files['/presets/Setup'] = [_entry('Other.json')];
         await cubit.navigateToAbsolutePath('/presets/Setup');
         await cubit.navigateToAbsolutePath('/presets/Set');
-        cubit.selectDrillItem(files['/presets/Set']!.single);
+        await cubit.selectDrillItem(files['/presets/Set']!.single);
         await cubit.addToHistory('/presets/Set/Alpha #42.json');
         await cubit.addToHistory('/presets/Setup/Other.json');
         when(
@@ -260,7 +256,7 @@ void main() {
         await cubit.navigateToAbsolutePath('/presets/Live');
         verify(
           () => manager.requestDirectoryListing('/presets/Live'),
-        ).called(1);
+        ).called(2);
       },
       tags: ['regression'],
     );
@@ -279,7 +275,10 @@ void main() {
         );
         expect(await cubit.loadRecentPresets(), ['/presets/Alpha.json']);
         expect(cubit.getSelectedPath(), isEmpty);
-        expect(cubit.state.mapOrNull(error: (_) => true), isTrue);
+        expect(
+          cubit.state.view!.errors['/presets'],
+          contains('could not be verified'),
+        );
       },
       tags: ['regression'],
     );
@@ -316,7 +315,11 @@ void main() {
         cubit.state.mapOrNull(
           loaded: (s) {
             expect(s.selectedLeftItem, isNull);
-            expect(s.centerPanelItems, isEmpty);
+            expect(
+              s.browser.pane(PanelPosition.center).current.path,
+              '/presets',
+            );
+            expect(s.centerPanelItems.first.name, 'Alpha #42.json');
           },
         );
       },

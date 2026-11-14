@@ -189,6 +189,17 @@ cache. `companion_table.dart`, `domain/patch_map/`, `ui/patch_map/` and
 [Patch Helper integration](../patch-helper-integration.md) describe richer
 companion/property/table flows. Do not conflate these with firmware Lua reload.
 
+### Preset browser pane stacks (follow-up architecture update)
+
+`PresetBrowserCubit` now owns three independent `BrowserPane` stacks of
+`BrowserFrame(path, selectedName)` in a canonical `BrowserSnapshot`. Desktop
+and mobile share the active pane's state; panel paths no longer derive from
+neighbor selections. Shared listings revalidate on navigation/mutations and
+stale focus/resume events without polling. See [preset-browser architecture](preset-browser.md)
+for ownership, throttling, race protection, session persistence and tests.
+This focused update supersedes any inference of cascading pane ownership from
+the original snapshot baseline above.
+
 ### Packages and plugins
 
 `interfaces/preset_file_system.dart` abstracts preset/device file access, with

@@ -8,7 +8,9 @@ class MobileDrillDownNavigator extends StatelessWidget {
   final List<String> breadcrumbs;
   final Function(DirectoryEntry) onItemTap;
   final Function(int) onBreadcrumbTap;
-  final VoidCallback onRefresh;
+  final Future<void> Function() onRefresh;
+  final bool refreshing;
+  final String? error;
   final Function(DirectoryEntry)? onLongPress;
 
   const MobileDrillDownNavigator({
@@ -19,6 +21,8 @@ class MobileDrillDownNavigator extends StatelessWidget {
     required this.onItemTap,
     required this.onBreadcrumbTap,
     required this.onRefresh,
+    this.refreshing = false,
+    this.error,
     this.onLongPress,
   });
 
@@ -108,13 +112,45 @@ class MobileDrillDownNavigator extends StatelessWidget {
             ),
           ),
 
+        SizedBox(
+          height: 40,
+          child: Semantics(
+            liveRegion: true,
+            label:
+                error ??
+                (refreshing ? 'Refreshing directory' : 'Directory ready'),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: refreshing
+                  ? const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : IconButton(
+                      tooltip: error == null
+                          ? 'Refresh directory'
+                          : 'Retry: $error',
+                      onPressed: () => onRefresh(),
+                      icon: Icon(
+                        error == null ? Icons.refresh : Icons.error_outline,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+
         // Directory listing
         Expanded(
           child: ClipRect(
             child: RefreshIndicator(
-              onRefresh: () async => onRefresh(),
+              onRefresh: onRefresh,
               child: items.isEmpty
                   ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       children: [
                         const SizedBox(height: 100),
                         Center(
@@ -131,6 +167,7 @@ class MobileDrillDownNavigator extends StatelessWidget {
                       ],
                     )
                   : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       itemCount: items.length,
                       itemBuilder: (context, index) {
                         final item = items[index];

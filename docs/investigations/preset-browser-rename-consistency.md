@@ -55,10 +55,21 @@ is used for rename verification. Invalid/control/non-7-bit filename input is
 rejected before sending the rename's raw MIDI string bytes.
 
 A missing acknowledgement or unverifiable listing is reported as failure /
-uncertainty, not successful completion. The browser enters its retry/error view
-instead of leaving Load enabled for a possibly vanished filename. It is possible that the file did change;
-refresh the browser before retrying. There is no automatic rollback or replay of
+uncertainty, not successful completion. The affected directory enters retry/error
+status instead of leaving Load enabled for a possibly vanished filename. Other
+pane stacks remain navigable. It is possible that the file did change; refresh
+the affected pane before retrying. There is no automatic rollback or replay of
 an ambiguous non-idempotent operation.
+
+## Follow-up: independent pane architecture
+
+The initial fix's localized `_refreshDirectory` reconciliation has since been
+replaced with a single shared listing store and independent pane stacks. Mobile
+is now a projection of the active pane, not another stored drill selection.
+Navigation and mutation-triggered reads plus stale-focus/resume revalidation
+keep views current without polling. See [preset-browser architecture](../architecture/preset-browser.md)
+for the current ownership and traffic policy. The original confirmed app defects
+and the hardware evidence boundary above remain distinct.
 
 ## Program Change: documented, not emulated
 

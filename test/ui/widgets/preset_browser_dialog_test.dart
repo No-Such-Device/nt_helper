@@ -1,3 +1,4 @@
+import '../../test_helpers/browser_fixture.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -35,6 +36,11 @@ void main() {
   setUp(() {
     mockCubit = MockPresetBrowserCubit();
     mockDistingCubit = MockDistingCubit();
+    when(() => mockCubit.focusPane(any())).thenAnswer((_) async {});
+    when(() => mockCubit.refreshPane(any())).thenAnswer((_) async {});
+    when(
+      () => mockCubit.refreshVisiblePanes(onlyIfStale: true),
+    ).thenAnswer((_) async {});
     // Mock loadRootDirectory to return a Future<void>
     when(() => mockCubit.loadRootDirectory()).thenAnswer((_) async {});
     // Mock getSelectedPath to return empty string by default
@@ -58,7 +64,7 @@ void main() {
       'mobile toolbar',
       'nested',
       'entry',
-      'placeholder',
+      'independent empty pane',
     ]) {
       testWidgets('folder creation targets correct directory via $action', (
         tester,
@@ -70,9 +76,12 @@ void main() {
           addTearDown(tester.view.resetPhysicalSize);
           addTearDown(tester.view.resetDevicePixelRatio);
         }
-        final hasFolder = action != 'empty root' && action != 'placeholder';
+        final hasFolder =
+            action != 'empty root' && action != 'independent empty pane';
         final target = mobile || action == 'nested' || action == 'entry'
             ? '/programs'
+            : action == 'independent empty pane'
+            ? '/empty-center'
             : '/';
         final folder = DirectoryEntry(
           name: 'programs/',
@@ -82,7 +91,7 @@ void main() {
           size: 0,
         );
         when(() => mockCubit.state).thenReturn(
-          PresetBrowserState.loaded(
+          browserFixture(
             currentPath: '/',
             drillPath: mobile ? '/programs' : null,
             leftPanelItems: hasFolder ? [folder] : [],
@@ -116,7 +125,11 @@ void main() {
         } else {
           final panel = find
               .byType(DirectoryPanel)
-              .at(action == 'nested' || action == 'placeholder' ? 1 : 0);
+              .at(
+                action == 'nested' || action == 'independent empty pane'
+                    ? 1
+                    : 0,
+              );
           await tester.tapAt(
             action == 'entry'
                 ? tester.getCenter(find.text('programs'))
@@ -124,10 +137,6 @@ void main() {
             buttons: kSecondaryMouseButton,
           );
           await tester.pumpAndSettle();
-          if (action == 'placeholder') {
-            expect(find.text('New Folder'), findsNothing);
-            return;
-          }
           expect(find.text('New Folder'), findsOneWidget);
           if (action != 'entry') {
             expect(find.text('Delete'), findsNothing);
@@ -155,7 +164,7 @@ void main() {
         size: 0,
       );
       when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
+        browserFixture(
           currentPath: '/presets',
           leftPanelItems: [entry],
           centerPanelItems: const [],
@@ -198,7 +207,7 @@ void main() {
 
     testWidgets('displays three panels in row layout', (tester) async {
       when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
+        browserFixture(
           currentPath: '/',
           leftPanelItems: const [],
           centerPanelItems: const [],
@@ -263,7 +272,7 @@ void main() {
 
     testWidgets('displays back button and sort toggle', (tester) async {
       when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
+        browserFixture(
           currentPath: '/',
           leftPanelItems: const [],
           centerPanelItems: const [],
@@ -288,7 +297,10 @@ void main() {
       when(() => mockCubit.toggleSortMode()).thenReturn(null);
 
       // Back button should be visible when history exists
-      expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+      expect(find.byTooltip('Back'), findsOneWidget);
+      expect(find.byTooltip('Back in left pane'), findsOneWidget);
+      expect(find.byTooltip('Back in center pane'), findsOneWidget);
+      expect(find.byTooltip('Back in right pane'), findsOneWidget);
 
       // Sort toggle should be visible
       expect(find.byIcon(Icons.sort_by_alpha), findsOneWidget);
@@ -302,7 +314,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
+        browserFixture(
           currentPath: '/',
           leftPanelItems: const [],
           centerPanelItems: const [],
@@ -339,7 +351,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
+        browserFixture(
           currentPath: '/',
           leftPanelItems: const [],
           centerPanelItems: const [],
@@ -378,7 +390,7 @@ void main() {
       );
 
       when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
+        browserFixture(
           currentPath: '/',
           leftPanelItems: [testEntry],
           centerPanelItems: const [],
@@ -398,7 +410,7 @@ void main() {
       await tester.pumpWidget(
         createTestWidget(
           child: Scaffold(
-            body: ThreePanelNavigator(
+            body: testThreePanelNavigator(
               leftPanelItems: [testEntry],
               centerPanelItems: const [],
               rightPanelItems: const [],
@@ -433,7 +445,7 @@ void main() {
       );
 
       when(() => mockCubit.state).thenReturn(
-        PresetBrowserState.loaded(
+        browserFixture(
           currentPath: '/',
           leftPanelItems: [testFile],
           centerPanelItems: const [],
@@ -454,7 +466,7 @@ void main() {
       await tester.pumpWidget(
         createTestWidget(
           child: Scaffold(
-            body: ThreePanelNavigator(
+            body: testThreePanelNavigator(
               leftPanelItems: [testFile],
               centerPanelItems: const [],
               rightPanelItems: const [],
@@ -504,7 +516,7 @@ void main() {
         await tester.pumpWidget(
           createTestWidget(
             child: Scaffold(
-              body: ThreePanelNavigator(
+              body: testThreePanelNavigator(
                 leftPanelItems: [midiDir],
                 centerPanelItems: [songsDir],
                 rightPanelItems: const [],
@@ -549,7 +561,7 @@ void main() {
       }
     });
 
-    testWidgets('does not register placeholder panels as drop targets', (
+    testWidgets('registers every independent pane as a drop target', (
       tester,
     ) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
@@ -559,7 +571,7 @@ void main() {
         await tester.pumpWidget(
           createTestWidget(
             child: Scaffold(
-              body: ThreePanelNavigator(
+              body: testThreePanelNavigator(
                 leftPanelItems: const [],
                 centerPanelItems: const [],
                 rightPanelItems: const [],
@@ -579,9 +591,9 @@ void main() {
         final dropTargets = tester.widgetList<DropTarget>(
           find.byType(DropTarget),
         );
-        expect(dropTargets, hasLength(1));
+        expect(dropTargets, hasLength(3));
 
-        dropTargets.single.onDragDone!(
+        dropTargets.first.onDragDone!(
           DropDoneDetails(
             files: [DropItemFile('/tmp/groove.mid')],
             localPosition: Offset.zero,

@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/preset_browser_state.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/sd_card_file_system.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
 export 'preset_browser_state.dart';
@@ -12,181 +14,257 @@ export 'preset_browser_state.dart';
 class PresetBrowserCubit extends Cubit<PresetBrowserState> {
   final IDistingMidiManager midiManager;
   final SharedPreferences prefs;
-  final Map<String, List<DirectoryEntry>> _directoryCache = {};
+  final Clock _clock;
+  final Duration focusFreshness;
+  final Map<String, DateTime> _fetched = {};
+  final Map<String, int> _versions = {};
+  final Map<String, Future<bool>> _pending = {};
+  Future<void> _mutationTail = Future.value();
+  static const _historyKey = 'presetHistory';
+  static const _lastPathKey = 'fileBrowserLastPath';
+  static const _sortByDateKey = 'fileBrowserSortByDate';
+  static const _maxHistoryItems = 20;
 
-  static const String _historyKey = 'presetHistory';
-  static const String _lastPathKey = 'fileBrowserLastPath';
-  static const String _sortByDateKey = 'fileBrowserSortByDate';
-  static const int _maxHistoryItems = 20;
+  PresetBrowserCubit({
+    required this.midiManager,
+    required this.prefs,
+    Clock? clock,
+    this.focusFreshness = const Duration(seconds: 5),
+  }) : _clock = clock ?? const Clock(),
+       super(const PresetBrowserState.initial());
 
-  PresetBrowserCubit({required this.midiManager, required this.prefs})
-    : super(const PresetBrowserState.initial());
+  BrowserSnapshot? get _browser => state.view;
+  void _emit(BrowserSnapshot browser) {
+    if (!isClosed) emit(PresetBrowserState.loaded(browser: browser));
+  }
+
+  BrowserFrame _frame(String path) => BrowserFrame(path: path);
+  String _clean(String name) =>
+      name.endsWith('/') ? name.substring(0, name.length - 1) : name;
+  String _join(String base, String name) => p.posix.join(base, _clean(name));
+  bool _below(String path, String root) =>
+      path == root || path.startsWith('$root/');
 
   Future<void> loadRootDirectory() async {
     emit(const PresetBrowserState.loading());
-
-    final savedSortByDate = prefs.getBool(_sortByDateKey) ?? false;
-    final savedPath = prefs.getString(_lastPathKey);
-
-    try {
-      final listing = await midiManager.requestDirectoryListing('/');
-
-      if (listing != null) {
-        final sortedEntries = _sortEntries(
-          listing.entries,
-          savedSortByDate,
-          currentPath: '/',
-          addParentEntry: false,
-        );
-        _directoryCache['/'] = sortedEntries;
-
+    _invalidate({..._fetched.keys, ..._pending.keys});
+    _emit(
+      BrowserSnapshot(
+        panes: [
+          for (final _ in PanelPosition.values)
+            BrowserPane(stack: [_frame('/')]),
+        ],
+        sortByDate: prefs.getBool(_sortByDateKey) ?? false,
+      ),
+    );
+    if (!await _read('/')) {
+      if (!isClosed) {
         emit(
-          PresetBrowserState.loaded(
-            currentPath: '/',
-            leftPanelItems: sortedEntries,
-            centerPanelItems: const [],
-            rightPanelItems: const [],
-            selectedLeftItem: null,
-            selectedCenterItem: null,
-            selectedRightItem: null,
-            navigationHistory: [],
-            sortByDate: savedSortByDate,
-            directoryCache: Map.from(_directoryCache),
-            drillPath: '/',
-            breadcrumbs: const [],
-            currentDrillItems: sortedEntries,
-            selectedDrillItem: null,
-          ),
-        );
-
-        // Restore saved path if available and not root
-        if (savedPath != null && savedPath != '/' && savedPath.isNotEmpty) {
-          await _restoreSavedPath(savedPath);
-        }
-      } else {
-        emit(
-          const PresetBrowserState.error(
-            message: 'Failed to load directory listing',
+          PresetBrowserState.error(
+            message:
+                'Failed to load root directory: ${_browser?.errors['/'] ?? 'No response'}',
+            lastPath: '/',
           ),
         );
       }
-    } catch (e) {
-      emit(PresetBrowserState.error(message: 'Error loading directory: $e'));
+      return;
+    }
+    final savedPath = prefs.getString(_lastPathKey);
+    if (savedPath != null && savedPath != '/' && savedPath.startsWith('/')) {
+      await navigateToAbsolutePath(savedPath);
+      // An unavailable saved folder must not strand the browser.
+      if (_browser?.errors.containsKey(savedPath) == true) {
+        await navigateToAbsolutePath('/');
+      }
     }
   }
 
-  /// Attempts to restore navigation to a previously saved path.
-  /// Rebuilds three-panel context for desktop and drill path for mobile.
-  /// Falls back silently to root if the path no longer exists.
-  Future<void> _restoreSavedPath(String targetPath) async {
-    try {
-      final sortByDate = state.maybeMap(
-        loaded: (s) => s.sortByDate,
-        orElse: () => false,
-      );
+  /// Enter/back always revalidate. Focus/resume only revalidates stale paths.
+  /// Concurrent panes displaying the same path share one in-flight request.
+  Future<void> focusPane(PanelPosition position) async {
+    final browser = _browser;
+    if (browser == null) return;
+    final path = browser.pane(position).current.path;
+    if (browser.activePane != position) {
+      _emit(browser.copyWith(activePane: position));
+      unawaited(prefs.setString(_lastPathKey, path));
+    }
+    final fetched = _fetched[path];
+    if (fetched == null || _clock.now().difference(fetched) >= focusFreshness) {
+      await _refresh(path);
+    }
+  }
 
-      // Load the target directory to verify it exists
-      final targetListing = await midiManager.requestDirectoryListing(
-        targetPath,
-      );
-      if (targetListing == null) return;
-
-      final targetEntries = _sortEntries(
-        targetListing.entries,
-        sortByDate,
-        currentPath: targetPath,
-        addParentEntry: targetPath != '/',
-      );
-      _directoryCache[targetPath] = targetEntries;
-
-      // Parse path segments to rebuild panel hierarchy
-      final segments = targetPath
-          .split('/')
-          .where((s) => s.isNotEmpty)
-          .toList();
-
-      // Determine panel layout based on depth
-      String currentPath;
-      List<DirectoryEntry> leftItems;
-      List<DirectoryEntry> centerItems;
-      DirectoryEntry? selectedLeft;
-      DirectoryEntry? selectedCenter;
-
-      if (segments.length >= 2) {
-        // Deep path: grandparent = currentPath, parent = left, target = center
-        currentPath = '/${segments.take(segments.length - 2).join('/')}';
-        final parentName = segments[segments.length - 2];
-        final targetName = segments.last;
-
-        final parentPath = '/${segments.take(segments.length - 1).join('/')}';
-
-        // Load currentPath (grandparent) for left panel
-        final leftListing = await midiManager.requestDirectoryListing(
-          currentPath,
-        );
-        if (leftListing == null) return;
-        leftItems = _sortEntries(
-          leftListing.entries,
-          sortByDate,
-          currentPath: currentPath,
-          addParentEntry: currentPath != '/',
-        );
-        _directoryCache[currentPath] = leftItems;
-
-        // Load parent directory for center panel
-        final centerListing = await midiManager.requestDirectoryListing(
-          parentPath,
-        );
-        centerItems = centerListing != null
-            ? _sortEntries(
-                centerListing.entries,
-                sortByDate,
-                currentPath: parentPath,
-              )
-            : [];
-        _directoryCache[parentPath] = centerItems;
-
-        // Find selected items by name
-        selectedLeft = leftItems
-            .where((e) => _cleanName(e.name) == parentName)
-            .firstOrNull;
-        selectedCenter = centerItems
-            .where((e) => _cleanName(e.name) == targetName)
-            .firstOrNull;
-      } else if (segments.length == 1) {
-        // One level deep: root = currentPath, target = left selection
-        currentPath = '/';
-        leftItems = _directoryCache['/'] ?? [];
-        centerItems = targetEntries;
-        selectedLeft = leftItems
-            .where((e) => _cleanName(e.name) == segments.first)
-            .firstOrNull;
-        selectedCenter = null;
-      } else {
-        // Root — already there
-        return;
+  Future<void> refreshVisiblePanes({bool onlyIfStale = false}) async {
+    final browser = _browser;
+    if (browser == null) return;
+    for (final path in browser.panes.map((pane) => pane.current.path).toSet()) {
+      final fetched = _fetched[path];
+      if (!onlyIfStale ||
+          fetched == null ||
+          _clock.now().difference(fetched) >= focusFreshness) {
+        await _refresh(path);
       }
+    }
+  }
 
-      emit(
-        PresetBrowserState.loaded(
-          currentPath: currentPath,
-          leftPanelItems: leftItems,
-          centerPanelItems: centerItems,
-          rightPanelItems: selectedCenter != null ? targetEntries : const [],
-          selectedLeftItem: selectedLeft,
-          selectedCenterItem: selectedCenter,
-          selectedRightItem: null,
-          navigationHistory: [],
-          sortByDate: sortByDate,
-          directoryCache: Map.from(_directoryCache),
-          drillPath: targetPath,
-          breadcrumbs: _getBreadcrumbsFromPath(targetPath),
-          currentDrillItems: targetEntries,
-          selectedDrillItem: null,
+  Future<void> refreshPane([PanelPosition? position]) async {
+    final browser = _browser;
+    if (browser != null) {
+      if (position != null && browser.activePane != position) {
+        _emit(browser.copyWith(activePane: position));
+        unawaited(
+          prefs.setString(_lastPathKey, browser.pane(position).current.path),
+        );
+      }
+      await _refresh(browser.pane(position ?? browser.activePane).current.path);
+    }
+  }
+
+  Future<void> _refresh(String path) async {
+    await _read(path);
+  }
+
+  Future<bool> _read(String path) {
+    final pending = _pending[path];
+    if (pending != null) return pending;
+    final version = _versions[path] ?? 0;
+    final browser = _browser;
+    if (browser == null || isClosed) return Future.value(false);
+    _emit(browser.copyWith(refreshing: {...browser.refreshing, path}));
+    late final Future<bool> task;
+    task = Future<bool>.microtask(() async {
+      try {
+        final listing = await midiManager.requestDirectoryListing(path);
+        if (isClosed || version != (_versions[path] ?? 0)) return false;
+        if (listing == null) throw StateError('No directory listing returned');
+        _publishListing(path, listing);
+        return true;
+      } catch (error) {
+        if (!isClosed &&
+            version == (_versions[path] ?? 0) &&
+            _browser != null) {
+          _fetched.remove(path);
+          _emit(
+            _browser!.copyWith(errors: {..._browser!.errors, path: '$error'}),
+          );
+        }
+        return false;
+      } finally {
+        if (identical(_pending[path], task)) {
+          _pending.remove(path);
+          final current = _browser;
+          if (current != null && !isClosed) {
+            _emit(
+              current.copyWith(
+                refreshing: {...current.refreshing}..remove(path),
+              ),
+            );
+          }
+        }
+      }
+    });
+    _pending[path] = task;
+    return task;
+  }
+
+  void _publishListing(String path, DirectoryListing listing) {
+    final browser = _browser;
+    if (browser == null || isClosed) return;
+    final entries = _sort(listing.entries, browser.sortByDate);
+    _fetched[path] = _clock.now();
+    _emit(
+      browser.copyWith(
+        listings: {...browser.listings, path: entries},
+        errors: {...browser.errors}..remove(path),
+        panes: [
+          for (final pane in browser.panes)
+            pane.copyWith(
+              stack: [
+                for (final frame in pane.stack)
+                  frame.path == path &&
+                          !entries.any((e) => e.name == frame.selectedName)
+                      ? frame.copyWith(selectedName: null)
+                      : frame,
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _invalidate(Set<String> roots, {Set<String> subtrees = const {}}) {
+    final browser = _browser;
+    final paths = {
+      ..._fetched.keys,
+      ..._pending.keys,
+      ...?_browser?.listings.keys,
+      ...?_browser?.errors.keys,
+      ...roots,
+      ...subtrees,
+    };
+    final affected = paths
+        .where(
+          (path) =>
+              roots.contains(path) ||
+              subtrees.any((root) => _below(path, root)),
+        )
+        .toSet();
+    for (final path in affected) {
+      _versions[path] = (_versions[path] ?? 0) + 1;
+      _pending.remove(path); // Old requests may finish, but cannot publish.
+      _fetched.remove(path);
+    }
+    if (browser != null) {
+      _emit(
+        browser.copyWith(
+          listings: {...browser.listings}
+            ..removeWhere((path, _) => affected.contains(path)),
+          refreshing: {...browser.refreshing}..removeAll(affected),
+          errors: {...browser.errors}
+            ..removeWhere((path, _) => affected.contains(path)),
         ),
       );
-    } catch (_) {
-      // Path no longer exists — stay at root
+    }
+  }
+
+  Future<void> _navigate(
+    PanelPosition position,
+    List<BrowserFrame> stack,
+  ) async {
+    final browser = _browser;
+    if (browser == null || stack.isEmpty) return;
+    final panes = [...browser.panes];
+    panes[position.index] = BrowserPane(stack: stack);
+    _emit(browser.copyWith(panes: panes, activePane: position));
+    unawaited(prefs.setString(_lastPathKey, stack.last.path));
+    await _refresh(stack.last.path);
+  }
+
+  Future<void> navigateToAbsolutePath(
+    String path, {
+    PanelPosition? panel,
+  }) async {
+    final browser = _browser;
+    if (browser == null) return;
+    if (!path.startsWith('/')) throw ArgumentError.value(path, 'path');
+    path = p.posix.normalize(path);
+    final position = panel ?? browser.activePane;
+    final stack = browser.pane(position).stack;
+    final index = stack.lastIndexWhere((frame) => frame.path == path);
+    await _navigate(
+      position,
+      index < 0 ? [...stack, _frame(path)] : stack.sublist(0, index + 1),
+    );
+  }
+
+  Future<void> navigateBack([PanelPosition? panel]) async {
+    final browser = _browser;
+    if (browser == null) return;
+    final position = panel ?? browser.activePane;
+    final stack = browser.pane(position).stack;
+    if (stack.length > 1) {
+      await _navigate(position, stack.sublist(0, stack.length - 1));
     }
   }
 
@@ -194,380 +272,150 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     DirectoryEntry entry,
     PanelPosition panel,
   ) async {
-    await state.maybeMap(
-      loaded: (currentState) async {
-        if (!entry.isDirectory) return;
-
-        try {
-          // Handle parent directory navigation
-          if (entry.name == '..') {
-            final parentPath = _getParentPath(currentState.currentPath);
-            if (parentPath != null) {
-              await _navigateToPath(parentPath, currentState);
-            }
-            return;
-          }
-
-          // When selecting a directory in the right panel, advance deeper
-          if (panel == PanelPosition.right) {
-            await _advanceDeeper(currentState, entry);
-            return;
-          }
-
-          final path = _buildPath(currentState, entry.name, panel);
-
-          // Check cache first
-          List<DirectoryEntry>? entries = _directoryCache[path];
-
-          if (entries == null) {
-            final listing = await midiManager.requestDirectoryListing(path);
-            if (listing != null) {
-              entries = _sortEntries(
-                listing.entries,
-                currentState.sortByDate,
-                currentPath: path,
-              );
-              _directoryCache[path] = entries;
-            } else {
-              entries = [];
-            }
-          }
-
-          // Update panels based on which panel was clicked
-          final newState = _updatePanelState(
-            currentState,
-            panel,
-            entry,
-            entries,
-          );
-
-          // Save deepest navigated directory path for restore
-          _saveLastPath(_getDeepestPath(newState));
-
-          emit(newState);
-        } catch (e) {
-          emit(
-            PresetBrowserState.error(
-              message: 'Error loading directory: $e',
-              lastPath: currentState.currentPath,
-            ),
-          );
-        }
-      },
-      orElse: () async {},
+    if (!entry.isDirectory || _browser == null) return;
+    final current = _browser!.pane(panel).current.path;
+    await navigateToAbsolutePath(
+      entry.name == '..'
+          ? p.posix.dirname(current)
+          : _join(current, entry.name),
+      panel: panel,
     );
   }
 
-  Future<void> _advanceDeeper(
-    dynamic currentState,
-    DirectoryEntry rightEntry,
-  ) async {
-    // Build the path for the center panel's selected directory
-    final centerEntry = currentState.selectedCenterItem as DirectoryEntry?;
-    final leftEntry = currentState.selectedLeftItem as DirectoryEntry?;
-
-    if (centerEntry == null || leftEntry == null) return;
-
-    // The new currentPath becomes: currentPath + leftEntry
-    final leftClean = _cleanName(leftEntry.name);
-    final centerClean = _cleanName(centerEntry.name);
-    final rightClean = _cleanName(rightEntry.name);
-
-    final currentPath = currentState.currentPath as String;
-    final newCurrentPath = _joinPath(currentPath, leftClean);
-
-    // Load center directory contents (what was the right panel's parent)
-    final centerPath = _joinPath(newCurrentPath, centerClean);
-    List<DirectoryEntry>? centerEntries = _directoryCache[centerPath];
-    if (centerEntries == null) {
-      final listing = await midiManager.requestDirectoryListing(centerPath);
-      if (listing != null) {
-        centerEntries = _sortEntries(
-          listing.entries,
-          currentState.sortByDate,
-          currentPath: centerPath,
-        );
-        _directoryCache[centerPath] = centerEntries;
-      } else {
-        centerEntries = [];
-      }
+  Future<void> selectFile(DirectoryEntry entry, PanelPosition panel) async {
+    final browser = _browser;
+    if (browser == null || entry.isDirectory) return;
+    final pane = browser.pane(panel);
+    final panes = [...browser.panes];
+    panes[panel.index] = pane.copyWith(
+      stack: [
+        ...pane.stack.take(pane.stack.length - 1),
+        pane.current.copyWith(selectedName: entry.name),
+      ],
+    );
+    _emit(browser.copyWith(panes: panes, activePane: panel));
+    if (entry.name.toLowerCase().endsWith('.json')) {
+      await addToHistory(_join(pane.current.path, entry.name));
     }
+  }
 
-    // Load right panel contents (the newly selected directory)
-    final rightPath = _joinPath(centerPath, rightClean);
-    List<DirectoryEntry>? rightEntries = _directoryCache[rightPath];
-    if (rightEntries == null) {
-      final listing = await midiManager.requestDirectoryListing(rightPath);
-      if (listing != null) {
-        rightEntries = _sortEntries(
-          listing.entries,
-          currentState.sortByDate,
-          currentPath: rightPath,
-        );
-        _directoryCache[rightPath] = rightEntries;
-      } else {
-        rightEntries = [];
-      }
+  Future<void> navigateIntoDirectory(DirectoryEntry entry) async {
+    if (_browser != null) await selectDirectory(entry, _browser!.activePane);
+  }
+
+  Future<void> selectDrillItem(DirectoryEntry entry) async {
+    if (_browser != null) await selectFile(entry, _browser!.activePane);
+  }
+
+  Future<void> navigateToPathSegment(int index) async {
+    final path = getCurrentDirectory();
+    final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+    if (index < -1 || index >= segments.length) return;
+    await navigateToAbsolutePath(
+      index == -1 ? '/' : '/${segments.take(index + 1).join('/')}',
+    );
+  }
+
+  String getSelectedPath() {
+    final browser = _browser;
+    if (browser == null) return '';
+    final path = browser.active.current.path;
+    if (browser.refreshing.contains(path) || browser.errors.containsKey(path)) {
+      return '';
     }
+    final selected = browser.selection(browser.activePane);
+    return selected == null || selected.isDirectory
+        ? ''
+        : _join(path, selected.name);
+  }
 
-    // Load left panel (new currentPath)
-    List<DirectoryEntry>? leftEntries = _directoryCache[newCurrentPath];
-    if (leftEntries == null) {
-      final listing = await midiManager.requestDirectoryListing(newCurrentPath);
-      if (listing != null) {
-        leftEntries = _sortEntries(
-          listing.entries,
-          currentState.sortByDate,
-          currentPath: newCurrentPath,
-          addParentEntry: newCurrentPath != '/',
-        );
-        _directoryCache[newCurrentPath] = leftEntries;
-      } else {
-        leftEntries = [];
-      }
-    }
+  String getCurrentDirectory() => _browser?.active.current.path ?? '/';
+  String getPanelDirectory(PanelPosition panel) =>
+      _browser?.pane(panel).current.path ?? '/';
+  String getSelectedDirectoryPath() => getCurrentDirectory();
+  String getEntryPath(DirectoryEntry entry, String panelDirectory) =>
+      _join(panelDirectory, entry.name);
 
-    _saveLastPath(newCurrentPath);
-
-    emit(
-      PresetBrowserState.loaded(
-        currentPath: newCurrentPath,
-        leftPanelItems: leftEntries,
-        centerPanelItems: centerEntries,
-        rightPanelItems: rightEntries,
-        selectedLeftItem: _findEntry(leftEntries, centerEntry.name),
-        selectedCenterItem: _findEntry(centerEntries, rightEntry.name),
-        selectedRightItem: null,
-        navigationHistory: [
-          ...List<String>.from(currentState.navigationHistory),
-          currentState.currentPath as String,
-        ],
-        sortByDate: currentState.sortByDate as bool,
-        directoryCache: Map.from(_directoryCache),
-        drillPath: newCurrentPath,
-        breadcrumbs: _getBreadcrumbsFromPath(newCurrentPath),
-        currentDrillItems: leftEntries,
-        selectedDrillItem: null,
+  void toggleSortMode() {
+    final browser = _browser;
+    if (browser == null) return;
+    final byDate = !browser.sortByDate;
+    unawaited(prefs.setBool(_sortByDateKey, byDate));
+    _emit(
+      browser.copyWith(
+        sortByDate: byDate,
+        listings: {
+          for (final entry in browser.listings.entries)
+            entry.key: _sort(entry.value, byDate),
+        },
       ),
     );
   }
 
-  DirectoryEntry? _findEntry(List<DirectoryEntry> entries, String name) {
-    final clean = _cleanName(name);
-    for (final e in entries) {
-      if (_cleanName(e.name) == clean) return e;
-    }
-    return null;
-  }
-
-  Future<void> selectFile(DirectoryEntry entry, PanelPosition panel) async {
-    await state.maybeMap(
-      loaded: (currentState) async {
-        if (entry.isDirectory) return;
-
-        final newState = _updateFileSelection(currentState, panel, entry);
-        emit(newState);
-
-        final path = _buildPath(currentState, entry.name, panel);
-
-        if (entry.name.toLowerCase().endsWith('.json')) {
-          await addToHistory(path);
+  List<DirectoryEntry> _sort(List<DirectoryEntry> entries, bool byDate) =>
+      [...entries.where((e) => e.name != '..')]..sort((a, b) {
+        if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
+        if (byDate) {
+          final date = b.date.compareTo(a.date);
+          if (date != 0) return date;
+          final time = b.time.compareTo(a.time);
+          if (time != 0) return time;
         }
-      },
-      orElse: () async {},
+        return _clean(
+          a.name,
+        ).toLowerCase().compareTo(_clean(b.name).toLowerCase());
+      });
+
+  Future<List<String>> loadRecentPresets() async =>
+      prefs.getStringList(_historyKey) ?? [];
+  Future<void> addToHistory(String path) async {
+    final history = prefs.getStringList(_historyKey) ?? [];
+    await prefs.setStringList(
+      _historyKey,
+      [
+        path,
+        ...history.where((item) => item != path),
+      ].take(_maxHistoryItems).toList(),
     );
   }
 
-  void toggleSortMode() {
-    state.maybeMap(
-      loaded: (currentState) {
-        final newSortByDate = !currentState.sortByDate;
-        prefs.setBool(_sortByDateKey, newSortByDate);
+  Future<void> clearCache() async =>
+      _invalidate({...?_browser?.listings.keys, ..._pending.keys});
 
-        final leftFiltered = currentState.leftPanelItems
-            .where((e) => e.name != '..')
-            .toList();
-        final centerFiltered = currentState.centerPanelItems
-            .where((e) => e.name != '..')
-            .toList();
-        final rightFiltered = currentState.rightPanelItems
-            .where((e) => e.name != '..')
-            .toList();
-
-        emit(
-          currentState.copyWith(
-            sortByDate: newSortByDate,
-            leftPanelItems: _sortEntries(
-              leftFiltered,
-              newSortByDate,
-              currentPath: currentState.currentPath,
-              addParentEntry: currentState.currentPath != '/',
-            ),
-            centerPanelItems: _sortEntries(
-              centerFiltered,
-              newSortByDate,
-              currentPath: currentState.currentPath,
-            ),
-            rightPanelItems: _sortEntries(
-              rightFiltered,
-              newSortByDate,
-              currentPath: currentState.currentPath,
-            ),
-          ),
-        );
-      },
-      orElse: () {},
-    );
-  }
-
-  Future<void> navigateBack() async {
-    await state.maybeMap(
-      loaded: (currentState) async {
-        if (currentState.navigationHistory.isEmpty) return;
-
-        try {
-          final previousPath = currentState.navigationHistory.last;
-          final newHistory = List<String>.from(currentState.navigationHistory)
-            ..removeLast();
-
-          List<DirectoryEntry>? entries = _directoryCache[previousPath];
-
-          if (entries == null) {
-            final listing = await midiManager.requestDirectoryListing(
-              previousPath,
-            );
-            if (listing != null) {
-              entries = _sortEntries(
-                listing.entries,
-                currentState.sortByDate,
-                currentPath: previousPath,
-                addParentEntry: previousPath != '/',
-              );
-              _directoryCache[previousPath] = entries;
-            } else {
-              entries = [];
-            }
-          }
-
-          _saveLastPath(previousPath);
-
-          emit(
-            PresetBrowserState.loaded(
-              currentPath: previousPath,
-              leftPanelItems: entries,
-              centerPanelItems: const [],
-              rightPanelItems: const [],
-              selectedLeftItem: null,
-              selectedCenterItem: null,
-              selectedRightItem: null,
-              navigationHistory: newHistory,
-              sortByDate: currentState.sortByDate,
-              directoryCache: Map.from(_directoryCache),
-            ),
-          );
-        } catch (e) {
-          emit(
-            PresetBrowserState.error(
-              message: 'Error navigating back: $e',
-              lastPath: currentState.currentPath,
-            ),
-          );
-        }
-      },
-      orElse: () async {},
-    );
-  }
-
-  Future<void> navigateToAbsolutePath(String path) async {
-    await state.maybeMap(
-      loaded: (currentState) async {
-        await _navigateToPath(path, currentState);
-      },
-      orElse: () async {},
-    );
-  }
-
-  Future<List<String>> loadRecentPresets() async {
-    return prefs.getStringList(_historyKey) ?? [];
-  }
-
-  Future<void> addToHistory(String presetPath) async {
-    final history = await loadRecentPresets();
-
-    history.remove(presetPath);
-    history.insert(0, presetPath);
-
-    if (history.length > _maxHistoryItems) {
-      history.removeRange(_maxHistoryItems, history.length);
-    }
-
-    await prefs.setStringList(_historyKey, history);
-  }
-
-  Future<void> clearCache() async {
-    _directoryCache.clear();
-  }
-
-  // File operation methods
-
-  /// Retries [operation] with exponential backoff up to ~30 seconds total.
-  /// Captures errors silently and only throws after all retries are exhausted.
-  static const _maxRetryDuration = Duration(seconds: 30);
-
-  Future<T> _retryOperation<T>(
-    Future<T> Function() operation,
-    String description,
-  ) async {
-    final stopwatch = Stopwatch()..start();
-    var delay = const Duration(milliseconds: 500);
-    Object? lastError;
-
-    while (stopwatch.elapsed < _maxRetryDuration) {
-      try {
-        return await operation();
-      } catch (e) {
-        lastError = e;
-        if (stopwatch.elapsed + delay >= _maxRetryDuration) break;
-        await Future.delayed(delay);
-        delay *= 2;
-        if (delay > const Duration(seconds: 4)) {
-          delay = const Duration(seconds: 4);
-        }
+  Future<void> _afterMutation(
+    String parent, {
+    bool parentAlreadyFresh = false,
+  }) async {
+    final paths = {
+      parent,
+      ...?_browser?.panes.map((pane) => pane.current.path),
+    };
+    for (final path in paths) {
+      if ((path == parent && !parentAlreadyFresh) ||
+          !_fetched.containsKey(path)) {
+        await _refresh(path);
       }
     }
+  }
 
-    throw Exception(
-      '$description failed after ${stopwatch.elapsed.inSeconds}s: $lastError',
+  // Wire requests are sequential already; serialize whole mutation workflows
+  // too, so a later mutation cannot overtake an earlier verification/read-back.
+  Future<void> _mutate(Future<void> Function() operation) {
+    final result = _mutationTail.then((_) {
+      if (isClosed) throw StateError('File browser is closed');
+      return operation();
+    });
+    _mutationTail = result.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
     );
+    return result;
   }
 
-  Future<void> deleteEntry(String fullPath) async {
-    await _retryOperation(() async {
-      final result = await midiManager.requestFileDelete(fullPath);
-      if (result == null) throw Exception('No response');
-      return result;
-    }, 'Delete $fullPath');
+  Future<void> renameEntry(String fullPath, String newName) =>
+      _mutate(() => _renameEntry(fullPath, newName));
 
-    final parentDir = _getParentPath(fullPath) ?? '/';
-    _directoryCache.remove(parentDir);
-    await Future.delayed(const Duration(milliseconds: 200));
-    await _refreshDirectory(parentDir);
-  }
-
-  Future<void> createDirectory(String parentPath, String name) async {
-    final fullPath = _joinPath(parentPath, name);
-    await _retryOperation(() async {
-      final result = await midiManager.requestDirectoryCreate(fullPath);
-      if (result == null) throw Exception('No response');
-      return result;
-    }, 'Create directory $fullPath');
-
-    _directoryCache.remove(parentPath);
-    await Future.delayed(const Duration(milliseconds: 200));
-    await _refreshDirectory(parentPath);
-  }
-
-  Future<void> renameEntry(String fullPath, String newName) async {
+  Future<void> _renameEntry(String fullPath, String newName) async {
     if (newName.isEmpty ||
         newName == '.' ||
         newName == '..' ||
@@ -576,115 +424,181 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
         newName.codeUnits.any((c) => c < 32 || c > 126)) {
       throw ArgumentError.value(newName, 'newName', 'Invalid filename');
     }
-    final parentDir = _getParentPath(fullPath) ?? '/';
-    final newPath = _joinPath(parentDir, newName);
+    final parent = p.posix.dirname(fullPath);
+    final newPath = _join(parent, newName);
     if (newPath == fullPath) return;
-
-    // Rename is not idempotent: a lost acknowledgement must not cause us to
-    // rename the now-missing source again, or claim that a rejection succeeded.
     SdCardStatus? result;
     try {
       result = await midiManager.requestFileRename(fullPath, newPath);
-    } finally {
-      // A transport failure may arrive after the on-card operation completed.
-      _directoryCache.removeWhere(
-        (path, _) =>
-            path == parentDir ||
-            _isAtOrBelow(path, fullPath) ||
-            _isAtOrBelow(path, newPath),
-      );
+    } catch (_) {
+      _invalidate({parent}, subtrees: {fullPath, newPath});
+      await _afterMutation(parent);
+      rethrow;
     }
+    _invalidate({parent}, subtrees: {fullPath, newPath});
     if (result == null) {
-      _renameUncertain(parentDir, 'Rename was not acknowledged.');
+      _renameUncertain(parent, 'Rename was not acknowledged.');
     }
-    if (!result.success) throw StateError(result.message);
-
+    if (!result.success) {
+      await _afterMutation(parent);
+      throw StateError(result.message);
+    }
     final DirectoryListing? listing;
     try {
-      listing = await midiManager.requestDirectoryListing(parentDir);
+      listing = await midiManager.requestDirectoryListing(parent);
     } catch (error) {
       _renameUncertain(
-        parentDir,
+        parent,
         'Rename acknowledged, but read-back failed: $error',
       );
     }
     final renamed = listing?.entries
-        .where((entry) => _cleanName(entry.name) == newName)
+        .where((e) => _clean(e.name) == newName)
         .firstOrNull;
     if (renamed == null ||
         listing!.entries.any(
-          (entry) => _cleanName(entry.name) == fullPath.split('/').last,
+          (e) => _clean(e.name) == p.posix.basename(fullPath),
         )) {
       _renameUncertain(
-        parentDir,
+        parent,
         'Rename acknowledged, but the new directory entry could not be verified.',
       );
     }
-
-    String rewritePath(String path) => _isAtOrBelow(path, fullPath)
+    String rewrite(String path) => _below(path, fullPath)
         ? '$newPath${path.substring(fullPath.length)}'
         : path;
-
-    // Recent paths and remembered folder navigation are separate from listings.
-    final history = prefs.getStringList(_historyKey) ?? [];
     await prefs.setStringList(
       _historyKey,
-      history.map(rewritePath).toSet().toList(),
+      (prefs.getStringList(_historyKey) ?? []).map(rewrite).toSet().toList(),
     );
-    final lastPath = prefs.getString(_lastPathKey);
-    if (lastPath != null) {
-      await prefs.setString(_lastPathKey, rewritePath(lastPath));
-    }
-    if (isClosed) return;
-
-    // Read the current state after I/O: the user may have navigated meanwhile.
-    state.mapOrNull(
-      loaded: (s) {
-        DirectoryEntry? rewriteEntry(DirectoryEntry? entry, String directory) =>
-            entry != null &&
-                _joinPath(directory, _cleanName(entry.name)) == fullPath
-            ? renamed
-            : entry;
-        final centerPath = getPanelDirectory(PanelPosition.center);
-        final rightPath = getPanelDirectory(PanelPosition.right);
-        final drillPath = s.drillPath ?? s.currentPath;
-        emit(
-          s.copyWith(
-            currentPath: rewritePath(s.currentPath),
-            drillPath: rewritePath(drillPath),
-            breadcrumbs: _getBreadcrumbsFromPath(rewritePath(drillPath)),
-            navigationHistory: s.navigationHistory.map(rewritePath).toList(),
-            selectedLeftItem: rewriteEntry(s.selectedLeftItem, s.currentPath),
-            selectedCenterItem: rewriteEntry(s.selectedCenterItem, centerPath),
-            selectedRightItem: rewriteEntry(s.selectedRightItem, rightPath),
-            selectedDrillItem: rewriteEntry(s.selectedDrillItem, drillPath),
-            directoryCache: Map.from(_directoryCache),
-          ),
-        );
-      },
+    final last = prefs.getString(_lastPathKey);
+    if (last != null) await prefs.setString(_lastPathKey, rewrite(last));
+    final browser = _browser;
+    if (browser == null || isClosed) return;
+    _emit(
+      browser.copyWith(
+        panes: [
+          for (final pane in browser.panes)
+            pane.copyWith(
+              stack: [
+                for (final frame in pane.stack)
+                  frame.copyWith(
+                    path: rewrite(frame.path),
+                    selectedName:
+                        frame.selectedName != null &&
+                            _join(frame.path, frame.selectedName!) == fullPath
+                        ? renamed.name
+                        : frame.selectedName,
+                  ),
+              ],
+            ),
+        ],
+      ),
     );
-    await _refreshDirectory(parentDir, listing: listing);
+    _publishListing(parent, listing);
+    await _afterMutation(parent, parentAlreadyFresh: true);
   }
 
-  Never _renameUncertain(String parentDir, String reason) {
+  Never _renameUncertain(String parent, String reason) {
     final message =
         '$reason The file may have changed. Refresh before retrying.';
-    // Do not leave a Load button bound to a possibly vanished source path.
-    if (!isClosed) {
-      emit(PresetBrowserState.error(message: message, lastPath: parentDir));
+    final browser = _browser;
+    if (browser != null && !isClosed) {
+      // Fail closed for this directory without discarding other pane stacks.
+      _emit(browser.copyWith(errors: {...browser.errors, parent: message}));
     }
     throw StateError(message);
   }
 
-  bool _isAtOrBelow(String path, String parent) =>
-      path == parent || path.startsWith('$parent/');
+  Future<void> _checkStatus(Future<SdCardStatus?> operation) async {
+    final status = await operation;
+    if (status == null || !status.success) {
+      throw StateError(status?.message ?? 'No response');
+    }
+  }
 
-  Future<Uint8List?> downloadFile(String fullPath) async {
-    return await _retryOperation(() async {
-      final result = await midiManager.requestFileDownload(fullPath);
-      if (result == null) throw Exception('No response');
-      return result;
-    }, 'Download $fullPath');
+  Future<void> deleteEntry(String fullPath) =>
+      _mutate(() => _deleteEntry(fullPath));
+
+  Future<void> _deleteEntry(String fullPath) async {
+    final parent = p.posix.dirname(fullPath);
+    try {
+      await _checkStatus(midiManager.requestFileDelete(fullPath));
+    } catch (_) {
+      _invalidate({parent}, subtrees: {fullPath});
+      await _afterMutation(parent);
+      rethrow;
+    }
+    _invalidate({parent}, subtrees: {fullPath});
+    final browser = _browser;
+    if (browser != null) {
+      _emit(
+        browser.copyWith(
+          panes: [
+            for (final pane in browser.panes)
+              _pruneDeleted(pane, fullPath, parent),
+          ],
+        ),
+      );
+    }
+    await prefs.setStringList(
+      _historyKey,
+      (prefs.getStringList(_historyKey) ?? [])
+          .where((path) => !_below(path, fullPath))
+          .toList(),
+    );
+    final lastPath = prefs.getString(_lastPathKey);
+    if (lastPath != null && _below(lastPath, fullPath)) {
+      await prefs.setString(_lastPathKey, getCurrentDirectory());
+    }
+    await _afterMutation(parent);
+  }
+
+  BrowserPane _pruneDeleted(BrowserPane pane, String deleted, String parent) {
+    final index = pane.stack.indexWhere((frame) => _below(frame.path, deleted));
+    if (index < 0) return pane;
+    return pane.copyWith(
+      stack: index == 0 ? [_frame(parent)] : pane.stack.sublist(0, index),
+    );
+  }
+
+  Future<void> createDirectory(String parentPath, String name) =>
+      _mutate(() async {
+        try {
+          await _checkStatus(
+            midiManager.requestDirectoryCreate(_join(parentPath, name)),
+          );
+        } finally {
+          _invalidate({parentPath});
+          await _afterMutation(parentPath);
+        }
+      });
+
+  Future<Uint8List?> downloadFile(String fullPath) => _retryRead(() async {
+    final data = await midiManager.requestFileDownload(fullPath);
+    if (data == null) throw StateError('No response');
+    return data;
+  });
+
+  // Keep the existing bounded download recovery, but never replay mutations.
+  Future<T> _retryRead<T>(Future<T> Function() read) async {
+    final watch = Stopwatch()..start();
+    var delay = const Duration(milliseconds: 500);
+    while (true) {
+      if (isClosed) throw StateError('File browser is closed');
+      try {
+        return await read();
+      } catch (_) {
+        if (isClosed || watch.elapsed + delay >= const Duration(seconds: 30)) {
+          rethrow;
+        }
+        await Future<void>.delayed(delay);
+        delay = delay * 2;
+        if (delay > const Duration(seconds: 4)) {
+          delay = const Duration(seconds: 4);
+        }
+      }
+    }
   }
 
   Future<void> uploadFile(
@@ -692,629 +606,41 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     String fileName,
     Uint8List data, {
     void Function(double progress)? onProgress,
+  }) => _mutate(
+    () => _uploadFile(targetDirectory, fileName, data, onProgress: onProgress),
+  );
+
+  Future<void> _uploadFile(
+    String targetDirectory,
+    String fileName,
+    Uint8List data, {
+    void Function(double progress)? onProgress,
   }) async {
-    final targetPath = _joinPath(targetDirectory, fileName);
-
-    // Upload in 512-byte chunks
-    const chunkSize = 512;
-    int uploadPos = 0;
-
-    while (uploadPos < data.length) {
-      final remainingBytes = data.length - uploadPos;
-      final currentChunkSize = remainingBytes < chunkSize
-          ? remainingBytes
-          : chunkSize;
-      final chunk = data.sublist(uploadPos, uploadPos + currentChunkSize);
-
-      await _retryOperation(() async {
-        final result = await midiManager.requestFileUploadChunk(
-          targetPath,
-          chunk,
-          uploadPos,
-          createAlways: uploadPos == 0,
-        );
-        if (result == null) throw Exception('No response');
-        return result;
-      }, 'Upload chunk at $uploadPos');
-
-      uploadPos += currentChunkSize;
-      onProgress?.call(uploadPos / data.length);
-
-      if (uploadPos < data.length) {
-        await Future.delayed(const Duration(milliseconds: 50));
-      }
-    }
-
-    _directoryCache.remove(targetDirectory);
-    await Future.delayed(const Duration(milliseconds: 200));
-    await _refreshDirectory(targetDirectory);
-  }
-
-  /// Returns the deepest selected directory path for context menu operations.
-  String getSelectedDirectoryPath() {
-    return state.maybeMap(
-      loaded: (currentState) {
-        // For mobile drill-down: use drillPath only if it differs from
-        // currentPath (meaning we've navigated deeper on mobile)
-        if (currentState.drillPath != null &&
-            currentState.drillPath!.isNotEmpty &&
-            currentState.drillPath != currentState.currentPath) {
-          return currentState.drillPath!;
-        }
-
-        String dirPath = currentState.currentPath;
-
-        if (currentState.selectedLeftItem != null &&
-            currentState.selectedLeftItem!.isDirectory &&
-            currentState.selectedLeftItem!.name != '..') {
-          dirPath = _joinPath(
-            dirPath,
-            _cleanName(currentState.selectedLeftItem!.name),
-          );
-
-          if (currentState.selectedCenterItem != null &&
-              currentState.selectedCenterItem!.isDirectory) {
-            dirPath = _joinPath(
-              dirPath,
-              _cleanName(currentState.selectedCenterItem!.name),
-            );
-
-            if (currentState.selectedRightItem != null &&
-                currentState.selectedRightItem!.isDirectory) {
-              dirPath = _joinPath(
-                dirPath,
-                _cleanName(currentState.selectedRightItem!.name),
-              );
-            }
-          }
-        }
-
-        return dirPath;
-      },
-      orElse: () => '/',
-    );
-  }
-
-  /// Returns the current navigated directory (for drag-and-drop uploads).
-  /// On mobile this is drillPath; on desktop this is currentPath.
-  String getCurrentDirectory() {
-    return state.maybeMap(
-      loaded: (currentState) =>
-          currentState.drillPath ?? currentState.currentPath,
-      orElse: () => '/',
-    );
-  }
-
-  /// Returns the full path to the selected file/directory given its entry and panel directory.
-  String getEntryPath(DirectoryEntry entry, String panelDirectory) {
-    return _joinPath(panelDirectory, _cleanName(entry.name));
-  }
-
-  /// Returns the directory path for a given panel position.
-  String getPanelDirectory(PanelPosition panel) {
-    return state.maybeMap(
-      loaded: (currentState) {
-        switch (panel) {
-          case PanelPosition.left:
-            return currentState.currentPath;
-          case PanelPosition.center:
-            if (currentState.selectedLeftItem != null &&
-                currentState.selectedLeftItem!.isDirectory) {
-              return _joinPath(
-                currentState.currentPath,
-                _cleanName(currentState.selectedLeftItem!.name),
-              );
-            }
-            return currentState.currentPath;
-          case PanelPosition.right:
-            if (currentState.selectedLeftItem != null &&
-                currentState.selectedLeftItem!.isDirectory &&
-                currentState.selectedCenterItem != null &&
-                currentState.selectedCenterItem!.isDirectory) {
-              return _joinPath(
-                _joinPath(
-                  currentState.currentPath,
-                  _cleanName(currentState.selectedLeftItem!.name),
-                ),
-                _cleanName(currentState.selectedCenterItem!.name),
-              );
-            }
-            return currentState.currentPath;
-        }
-      },
-      orElse: () => '/',
-    );
-  }
-
-  // Helper methods
-
-  /// Refreshes the listing for [dirPath], updating whichever panel shows it
-  /// while preserving the rest of the state.
-  Future<void> _refreshDirectory(
-    String dirPath, {
-    DirectoryListing? listing,
-  }) async {
+    final target = _join(targetDirectory, fileName);
+    // Keep uploads bounded to the protocol's 512-byte file-data chunks.
     try {
-      listing ??= await _retryOperation(() async {
-        final result = await midiManager.requestDirectoryListing(dirPath);
-        if (result == null) throw Exception('No response');
-        return result;
-      }, 'List directory $dirPath');
-    } catch (_) {
-      return;
-    }
-    if (isClosed) return;
-    final freshListing = listing!;
-    state.mapOrNull(
-      loaded: (s) {
-        final entries = _sortEntries(
-          freshListing.entries,
-          s.sortByDate,
-          currentPath: dirPath,
-          addParentEntry: dirPath != '/' && dirPath == s.currentPath,
-        );
-        _directoryCache[dirPath] = entries;
-        final isLeft = dirPath == s.currentPath;
-        final isCenter =
-            s.selectedLeftItem?.isDirectory == true &&
-            dirPath == getPanelDirectory(PanelPosition.center);
-        final isRight =
-            s.selectedCenterItem?.isDirectory == true &&
-            dirPath == getPanelDirectory(PanelPosition.right);
-        final isDrill = dirPath == (s.drillPath ?? s.currentPath);
-        DirectoryEntry? reconcile(DirectoryEntry? selected) =>
-            selected == null ? null : _findEntry(entries, selected.name);
-        final left = isLeft
-            ? reconcile(s.selectedLeftItem)
-            : s.selectedLeftItem;
-        final clearCenter = isLeft && left?.isDirectory != true;
-        final center = clearCenter
-            ? null
-            : isCenter
-            ? reconcile(s.selectedCenterItem)
-            : s.selectedCenterItem;
-        final clearRight =
-            clearCenter || (isCenter && center?.isDirectory != true);
-        emit(
-          s.copyWith(
-            leftPanelItems: isLeft ? entries : s.leftPanelItems,
-            centerPanelItems: clearCenter
-                ? const []
-                : isCenter
-                ? entries
-                : s.centerPanelItems,
-            rightPanelItems: clearRight
-                ? const []
-                : isRight
-                ? entries
-                : s.rightPanelItems,
-            selectedLeftItem: left,
-            selectedCenterItem: center,
-            selectedRightItem: clearRight
-                ? null
-                : isRight
-                ? reconcile(s.selectedRightItem)
-                : s.selectedRightItem,
-            currentDrillItems: isDrill ? entries : s.currentDrillItems,
-            selectedDrillItem: isDrill
-                ? reconcile(s.selectedDrillItem)
-                : s.selectedDrillItem,
-            directoryCache: Map.from(_directoryCache),
+      for (
+        var offset = 0;
+        offset < data.length || (offset == 0 && data.isEmpty);
+        offset += 512
+      ) {
+        final end = (offset + 512).clamp(0, data.length);
+        await _checkStatus(
+          midiManager.requestFileUploadChunk(
+            target,
+            data.sublist(offset, end),
+            offset,
+            createAlways: offset == 0,
           ),
         );
-      },
-    );
-  }
-
-  List<DirectoryEntry> _sortEntries(
-    List<DirectoryEntry> entries,
-    bool byDate, {
-    String? currentPath,
-    bool addParentEntry = false,
-  }) {
-    final sorted = List<DirectoryEntry>.from(entries);
-
-    if (byDate) {
-      sorted.sort((a, b) {
-        if (a.isDirectory != b.isDirectory) {
-          return a.isDirectory ? -1 : 1;
-        }
-        final dateCompare = b.date.compareTo(a.date);
-        if (dateCompare != 0) return dateCompare;
-        return b.time.compareTo(a.time);
-      });
-    } else {
-      sorted.sort((a, b) {
-        if (a.isDirectory != b.isDirectory) {
-          return a.isDirectory ? -1 : 1;
-        }
-        final aName = a.name.endsWith('/')
-            ? a.name.substring(0, a.name.length - 1)
-            : a.name;
-        final bName = b.name.endsWith('/')
-            ? b.name.substring(0, b.name.length - 1)
-            : b.name;
-        return aName.toLowerCase().compareTo(bName.toLowerCase());
-      });
-    }
-
-    if (addParentEntry && currentPath != null && currentPath != '/') {
-      final parentEntry = DirectoryEntry(
-        name: '..',
-        attributes: 0x10,
-        date: 0,
-        time: 0,
-        size: 0,
-      );
-      sorted.insert(0, parentEntry);
-    }
-
-    return sorted;
-  }
-
-  String _buildPath(
-    dynamic currentState,
-    String entryName,
-    PanelPosition panel,
-  ) {
-    final cleanName = _cleanName(entryName);
-    final currentPath = currentState.currentPath as String;
-
-    switch (panel) {
-      case PanelPosition.left:
-        return _joinPath(currentPath, cleanName);
-
-      case PanelPosition.center:
-        final leftItem = currentState.selectedLeftItem as DirectoryEntry?;
-        if (leftItem != null && leftItem.isDirectory) {
-          final leftDir = _joinPath(currentPath, _cleanName(leftItem.name));
-          return _joinPath(leftDir, cleanName);
-        }
-        return _joinPath(currentPath, cleanName);
-
-      case PanelPosition.right:
-        final leftItem = currentState.selectedLeftItem as DirectoryEntry?;
-        final centerItem = currentState.selectedCenterItem as DirectoryEntry?;
-        if (leftItem != null &&
-            leftItem.isDirectory &&
-            centerItem != null &&
-            centerItem.isDirectory) {
-          final leftDir = _joinPath(currentPath, _cleanName(leftItem.name));
-          final centerDir = _joinPath(leftDir, _cleanName(centerItem.name));
-          return _joinPath(centerDir, cleanName);
-        }
-        return _joinPath(currentPath, cleanName);
-    }
-  }
-
-  PresetBrowserState _updatePanelState(
-    dynamic currentState,
-    PanelPosition panel,
-    DirectoryEntry selectedEntry,
-    List<DirectoryEntry> newEntries,
-  ) {
-    final navHistory = currentState.navigationHistory as List;
-    final currentPath = currentState.currentPath as String;
-
-    switch (panel) {
-      case PanelPosition.left:
-        return currentState.copyWith(
-          selectedLeftItem: selectedEntry,
-          centerPanelItems: newEntries,
-          rightPanelItems: <DirectoryEntry>[],
-          selectedCenterItem: null,
-          selectedRightItem: null,
-          navigationHistory: [...navHistory.cast<String>(), currentPath],
-        );
-
-      case PanelPosition.center:
-        return currentState.copyWith(
-          selectedCenterItem: selectedEntry,
-          rightPanelItems: newEntries,
-          selectedRightItem: null,
-        );
-
-      case PanelPosition.right:
-        return currentState.copyWith(selectedRightItem: selectedEntry);
-    }
-  }
-
-  PresetBrowserState _updateFileSelection(
-    dynamic currentState,
-    PanelPosition panel,
-    DirectoryEntry selectedFile,
-  ) {
-    switch (panel) {
-      case PanelPosition.left:
-        return currentState.copyWith(
-          selectedLeftItem: selectedFile,
-          selectedCenterItem: null,
-          selectedRightItem: null,
-        );
-
-      case PanelPosition.center:
-        return currentState.copyWith(
-          selectedCenterItem: selectedFile,
-          selectedRightItem: null,
-        );
-
-      case PanelPosition.right:
-        return currentState.copyWith(selectedRightItem: selectedFile);
-    }
-  }
-
-  String getSelectedPath() {
-    return state.maybeMap(
-      loaded: (currentState) {
-        // For mobile drill-down mode
-        if (currentState.selectedDrillItem != null &&
-            !currentState.selectedDrillItem!.isDirectory) {
-          final drillPath = currentState.drillPath ?? currentState.currentPath;
-          return _joinPath(drillPath, currentState.selectedDrillItem!.name);
-        }
-
-        // Walk panels to find deepest selected file
-        final currentPath = currentState.currentPath;
-
-        if (currentState.selectedLeftItem != null &&
-            currentState.selectedLeftItem!.isDirectory) {
-          final leftDir = _joinPath(
-            currentPath,
-            _cleanName(currentState.selectedLeftItem!.name),
-          );
-
-          if (currentState.selectedCenterItem != null &&
-              currentState.selectedCenterItem!.isDirectory) {
-            final centerDir = _joinPath(
-              leftDir,
-              _cleanName(currentState.selectedCenterItem!.name),
-            );
-
-            if (currentState.selectedRightItem != null &&
-                !currentState.selectedRightItem!.isDirectory) {
-              return _joinPath(centerDir, currentState.selectedRightItem!.name);
-            }
-          } else if (currentState.selectedCenterItem != null &&
-              !currentState.selectedCenterItem!.isDirectory) {
-            return _joinPath(leftDir, currentState.selectedCenterItem!.name);
-          }
-        } else if (currentState.selectedLeftItem != null &&
-            !currentState.selectedLeftItem!.isDirectory) {
-          return _joinPath(currentPath, currentState.selectedLeftItem!.name);
-        }
-
-        return '';
-      },
-      orElse: () => '',
-    );
-  }
-
-  // Mobile drill-down navigation methods
-
-  Future<void> navigateIntoDirectory(DirectoryEntry entry) async {
-    await state.maybeMap(
-      loaded: (currentState) async {
-        if (!entry.isDirectory) return;
-
-        try {
-          final currentDrillPath =
-              currentState.drillPath ?? currentState.currentPath;
-
-          String newPath;
-          if (entry.name == '..') {
-            final parentPath = _getParentPath(currentDrillPath);
-            if (parentPath == null) return;
-            newPath = parentPath;
-          } else {
-            final cleanName = _cleanName(entry.name);
-            newPath = _joinPath(currentDrillPath, cleanName);
-          }
-
-          List<DirectoryEntry>? entries = _directoryCache[newPath];
-
-          if (entries == null) {
-            final listing = await midiManager.requestDirectoryListing(newPath);
-            if (listing != null) {
-              entries = _sortEntries(
-                listing.entries,
-                currentState.sortByDate,
-                currentPath: newPath,
-                addParentEntry: newPath != '/',
-              );
-              _directoryCache[newPath] = entries;
-            } else {
-              entries = [];
-            }
-          }
-
-          _saveLastPath(newPath);
-
-          emit(
-            currentState.copyWith(
-              drillPath: newPath,
-              breadcrumbs: _getBreadcrumbsFromPath(newPath),
-              currentDrillItems: entries,
-              selectedDrillItem: null,
-            ),
-          );
-        } catch (e) {
-          emit(
-            PresetBrowserState.error(
-              message: 'Error loading directory: $e',
-              lastPath: currentState.drillPath ?? currentState.currentPath,
-            ),
-          );
-        }
-      },
-      orElse: () async {},
-    );
-  }
-
-  Future<void> navigateToPathSegment(int index) async {
-    await state.maybeMap(
-      loaded: (currentState) async {
-        final breadcrumbs = currentState.breadcrumbs ?? [];
-        if (index < 0 || index >= breadcrumbs.length) return;
-
-        try {
-          final pathSegments = breadcrumbs.take(index + 1).toList();
-          final newPath = pathSegments.isEmpty
-              ? '/'
-              : '/${pathSegments.join('/')}';
-
-          List<DirectoryEntry>? entries = _directoryCache[newPath];
-
-          if (entries == null) {
-            final listing = await midiManager.requestDirectoryListing(newPath);
-            if (listing != null) {
-              entries = _sortEntries(
-                listing.entries,
-                currentState.sortByDate,
-                currentPath: newPath,
-                addParentEntry: newPath != '/',
-              );
-              _directoryCache[newPath] = entries;
-            } else {
-              entries = [];
-            }
-          }
-
-          _saveLastPath(newPath);
-
-          emit(
-            currentState.copyWith(
-              drillPath: newPath,
-              breadcrumbs: _getBreadcrumbsFromPath(newPath),
-              currentDrillItems: entries,
-              selectedDrillItem: null,
-            ),
-          );
-        } catch (e) {
-          emit(
-            PresetBrowserState.error(
-              message: 'Error navigating to path: $e',
-              lastPath: currentState.drillPath ?? currentState.currentPath,
-            ),
-          );
-        }
-      },
-      orElse: () async {},
-    );
-  }
-
-  void selectDrillItem(DirectoryEntry entry) {
-    state.maybeMap(
-      loaded: (currentState) {
-        emit(currentState.copyWith(selectedDrillItem: entry));
-
-        if (!entry.isDirectory && entry.name.toLowerCase().endsWith('.json')) {
-          final drillPath = currentState.drillPath ?? currentState.currentPath;
-          final fullPath = _joinPath(drillPath, entry.name);
-          addToHistory(fullPath);
-        }
-      },
-      orElse: () {},
-    );
-  }
-
-  List<String> _getBreadcrumbsFromPath(String path) {
-    if (path == '/' || path.isEmpty) return [];
-    return path.split('/').where((s) => s.isNotEmpty).toList();
-  }
-
-  /// Returns the deepest directory path the user is currently viewing,
-  /// walking currentPath + selected panel items.
-  String _getDeepestPath(PresetBrowserState state) {
-    return state.maybeMap(
-      loaded: (s) {
-        var path = s.currentPath;
-
-        final left = s.selectedLeftItem;
-        if (left != null && left.isDirectory && left.name != '..') {
-          path = _joinPath(path, _cleanName(left.name));
-
-          final center = s.selectedCenterItem;
-          if (center != null && center.isDirectory && center.name != '..') {
-            path = _joinPath(path, _cleanName(center.name));
-          }
-        }
-
-        return path;
-      },
-      orElse: () => '/',
-    );
-  }
-
-  void _saveLastPath(String path) {
-    prefs.setString(_lastPathKey, path);
-  }
-
-  String? _getParentPath(String currentPath) {
-    if (currentPath == '/') return null;
-
-    final segments = currentPath.split('/').where((s) => s.isNotEmpty).toList();
-    if (segments.isEmpty) return '/';
-    if (segments.length == 1) return '/';
-
-    segments.removeLast();
-    return '/${segments.join('/')}';
-  }
-
-  String _cleanName(String name) {
-    return name.endsWith('/') ? name.substring(0, name.length - 1) : name;
-  }
-
-  String _joinPath(String base, String child) {
-    if (base.endsWith('/')) return '$base$child';
-    return '$base/$child';
-  }
-
-  Future<void> _navigateToPath(String path, dynamic currentState) async {
-    try {
-      List<DirectoryEntry>? entries = _directoryCache[path];
-
-      if (entries == null) {
-        final listing = await midiManager.requestDirectoryListing(path);
-        if (listing != null) {
-          entries = _sortEntries(
-            listing.entries,
-            currentState.sortByDate,
-            currentPath: path,
-            addParentEntry: path != '/',
-          );
-          _directoryCache[path] = entries;
-        } else {
-          entries = [];
+        onProgress?.call(data.isEmpty ? 1 : end / data.length);
+        if (end < data.length) {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
         }
       }
-
-      _saveLastPath(path);
-
-      emit(
-        PresetBrowserState.loaded(
-          currentPath: path,
-          leftPanelItems: entries,
-          centerPanelItems: const [],
-          rightPanelItems: const [],
-          selectedLeftItem: null,
-          selectedCenterItem: null,
-          selectedRightItem: null,
-          navigationHistory: [],
-          sortByDate: currentState.sortByDate,
-          directoryCache: Map.from(_directoryCache),
-          drillPath: path,
-          breadcrumbs: _getBreadcrumbsFromPath(path),
-          currentDrillItems: entries,
-          selectedDrillItem: null,
-        ),
-      );
-    } catch (e) {
-      emit(
-        PresetBrowserState.error(
-          message: 'Error navigating to path: $e',
-          lastPath: currentState.currentPath,
-        ),
-      );
+    } finally {
+      _invalidate({targetDirectory});
+      await _afterMutation(targetDirectory);
     }
   }
 }
