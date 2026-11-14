@@ -56,6 +56,66 @@ void main() {
     await incoming.close();
   });
 
+  for (final success in [true, false]) {
+    test(
+      'rename preserves #n paths and reports SD success=$success',
+      () async {
+        final sentRename = Completer<Uint8List>();
+        when(
+          () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
+        ).thenAnswer((call) {
+          final packet = call.positionalArguments.single as Uint8List;
+          if (packet[6] ==
+              DistingNTRequestMessageType.requestVersionString.value) {
+            _injectResponse(
+              incoming,
+              device,
+              DistingNTRespMessageType.respMessage,
+              [...ascii.encode('1.17.0'), 0],
+            );
+          } else if (packet[6] == 0x7A &&
+              packet[7] == SdCardOperation.fileRename.code) {
+            sentRename.complete(packet);
+            _injectResponse(
+              incoming,
+              device,
+              DistingNTRespMessageType.respDirectoryListing,
+              success
+                  ? [0, SdCardOperation.fileRename.code]
+                  : [1, ...ascii.encode('Destination exists'), 0],
+            );
+          }
+        });
+        final rename = manager.requestFileRename(
+          '/presets/Alpha.json',
+          '/presets/Alpha #42.json',
+        );
+        if (success) {
+          expect((await rename)!.success, isTrue);
+        } else {
+          await expectLater(
+            rename,
+            throwsA(
+              isA<SdCardOperationException>()
+                  .having(
+                    (e) => e.operation,
+                    'operation',
+                    SdCardOperation.fileRename,
+                  )
+                  .having((e) => e.message, 'message', 'Destination exists'),
+            ),
+          );
+        }
+        final packet = await sentRename.future;
+        expect(
+          ascii.decode(packet.sublist(8, packet.length - 2)),
+          '/presets/Alpha.json\u0000/presets/Alpha #42.json\u0000',
+        );
+      },
+      tags: ['regression'],
+    );
+  }
+
   test(
     'delayed directory listing cannot complete a following upload',
     () async {
@@ -101,7 +161,8 @@ void main() {
       expect(status!.success, isTrue);
       verify(() => midi.sendData(any(), deviceId: device.id)).called(3);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 }
 
 void _injectResponse(

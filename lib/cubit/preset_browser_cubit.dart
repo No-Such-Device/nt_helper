@@ -568,18 +568,116 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
   }
 
   Future<void> renameEntry(String fullPath, String newName) async {
+    if (newName.isEmpty ||
+        newName == '.' ||
+        newName == '..' ||
+        newName.contains('/') ||
+        newName.contains('\\') ||
+        newName.codeUnits.any((c) => c < 32 || c > 126)) {
+      throw ArgumentError.value(newName, 'newName', 'Invalid filename');
+    }
     final parentDir = _getParentPath(fullPath) ?? '/';
     final newPath = _joinPath(parentDir, newName);
-    await _retryOperation(() async {
-      final result = await midiManager.requestFileRename(fullPath, newPath);
-      if (result == null) throw Exception('No response');
-      return result;
-    }, 'Rename $fullPath');
+    if (newPath == fullPath) return;
 
-    _directoryCache.remove(parentDir);
-    await Future.delayed(const Duration(milliseconds: 200));
-    await _refreshDirectory(parentDir);
+    // Rename is not idempotent: a lost acknowledgement must not cause us to
+    // rename the now-missing source again, or claim that a rejection succeeded.
+    SdCardStatus? result;
+    try {
+      result = await midiManager.requestFileRename(fullPath, newPath);
+    } finally {
+      // A transport failure may arrive after the on-card operation completed.
+      _directoryCache.removeWhere(
+        (path, _) =>
+            path == parentDir ||
+            _isAtOrBelow(path, fullPath) ||
+            _isAtOrBelow(path, newPath),
+      );
+    }
+    if (result == null) {
+      _renameUncertain(parentDir, 'Rename was not acknowledged.');
+    }
+    if (!result.success) throw StateError(result.message);
+
+    final DirectoryListing? listing;
+    try {
+      listing = await midiManager.requestDirectoryListing(parentDir);
+    } catch (error) {
+      _renameUncertain(
+        parentDir,
+        'Rename acknowledged, but read-back failed: $error',
+      );
+    }
+    final renamed = listing?.entries
+        .where((entry) => _cleanName(entry.name) == newName)
+        .firstOrNull;
+    if (renamed == null ||
+        listing!.entries.any(
+          (entry) => _cleanName(entry.name) == fullPath.split('/').last,
+        )) {
+      _renameUncertain(
+        parentDir,
+        'Rename acknowledged, but the new directory entry could not be verified.',
+      );
+    }
+
+    String rewritePath(String path) => _isAtOrBelow(path, fullPath)
+        ? '$newPath${path.substring(fullPath.length)}'
+        : path;
+
+    // Recent paths and remembered folder navigation are separate from listings.
+    final history = prefs.getStringList(_historyKey) ?? [];
+    await prefs.setStringList(
+      _historyKey,
+      history.map(rewritePath).toSet().toList(),
+    );
+    final lastPath = prefs.getString(_lastPathKey);
+    if (lastPath != null) {
+      await prefs.setString(_lastPathKey, rewritePath(lastPath));
+    }
+    if (isClosed) return;
+
+    // Read the current state after I/O: the user may have navigated meanwhile.
+    state.mapOrNull(
+      loaded: (s) {
+        DirectoryEntry? rewriteEntry(DirectoryEntry? entry, String directory) =>
+            entry != null &&
+                _joinPath(directory, _cleanName(entry.name)) == fullPath
+            ? renamed
+            : entry;
+        final centerPath = getPanelDirectory(PanelPosition.center);
+        final rightPath = getPanelDirectory(PanelPosition.right);
+        final drillPath = s.drillPath ?? s.currentPath;
+        emit(
+          s.copyWith(
+            currentPath: rewritePath(s.currentPath),
+            drillPath: rewritePath(drillPath),
+            breadcrumbs: _getBreadcrumbsFromPath(rewritePath(drillPath)),
+            navigationHistory: s.navigationHistory.map(rewritePath).toList(),
+            selectedLeftItem: rewriteEntry(s.selectedLeftItem, s.currentPath),
+            selectedCenterItem: rewriteEntry(s.selectedCenterItem, centerPath),
+            selectedRightItem: rewriteEntry(s.selectedRightItem, rightPath),
+            selectedDrillItem: rewriteEntry(s.selectedDrillItem, drillPath),
+            directoryCache: Map.from(_directoryCache),
+          ),
+        );
+      },
+    );
+    await _refreshDirectory(parentDir, listing: listing);
   }
+
+  Never _renameUncertain(String parentDir, String reason) {
+    final message =
+        '$reason The file may have changed. Refresh before retrying.';
+    // Do not leave a Load button bound to a possibly vanished source path.
+    if (!isClosed) {
+      emit(PresetBrowserState.error(message: message, lastPath: parentDir));
+    }
+    throw StateError(message);
+  }
+
+  bool _isAtOrBelow(String path, String parent) =>
+      path == parent || path.startsWith('$parent/');
 
   Future<Uint8List?> downloadFile(String fullPath) async {
     return await _retryOperation(() async {
@@ -732,130 +830,79 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
 
   /// Refreshes the listing for [dirPath], updating whichever panel shows it
   /// while preserving the rest of the state.
-  Future<void> _refreshDirectory(String dirPath) async {
-    await state.maybeMap(
-      loaded: (currentState) async {
-        // Fetch fresh listing with retry
-        final DirectoryListing listing;
-        try {
-          listing = await _retryOperation(() async {
-            final result = await midiManager.requestDirectoryListing(dirPath);
-            if (result == null) throw Exception('No response');
-            return result;
-          }, 'List directory $dirPath');
-        } catch (_) {
-          // If all retries fail, leave current state unchanged
-          return;
-        }
+  Future<void> _refreshDirectory(
+    String dirPath, {
+    DirectoryListing? listing,
+  }) async {
+    try {
+      listing ??= await _retryOperation(() async {
+        final result = await midiManager.requestDirectoryListing(dirPath);
+        if (result == null) throw Exception('No response');
+        return result;
+      }, 'List directory $dirPath');
+    } catch (_) {
+      return;
+    }
+    if (isClosed) return;
+    final freshListing = listing!;
+    state.mapOrNull(
+      loaded: (s) {
         final entries = _sortEntries(
-          listing.entries,
-          currentState.sortByDate,
+          freshListing.entries,
+          s.sortByDate,
           currentPath: dirPath,
-          addParentEntry: dirPath != '/' && dirPath == currentState.currentPath,
+          addParentEntry: dirPath != '/' && dirPath == s.currentPath,
         );
         _directoryCache[dirPath] = entries;
-
-        // Determine which panel(s) this directory corresponds to
-        final leftPath = currentState.currentPath;
-
-        String? centerPath;
-        if (currentState.selectedLeftItem != null &&
-            currentState.selectedLeftItem!.isDirectory) {
-          centerPath = _joinPath(
-            leftPath,
-            _cleanName(currentState.selectedLeftItem!.name),
-          );
-        }
-
-        String? rightPath;
-        if (centerPath != null &&
-            currentState.selectedCenterItem != null &&
-            currentState.selectedCenterItem!.isDirectory) {
-          rightPath = _joinPath(
-            centerPath,
-            _cleanName(currentState.selectedCenterItem!.name),
-          );
-        }
-
-        if (dirPath == leftPath) {
-          // Refresh left panel; clear center/right if selected items no longer exist
-          final leftStillExists =
-              currentState.selectedLeftItem != null &&
-              entries.any((e) => e.name == currentState.selectedLeftItem!.name);
-
-          emit(
-            currentState.copyWith(
-              leftPanelItems: entries,
-              selectedLeftItem: leftStillExists
-                  ? currentState.selectedLeftItem
-                  : null,
-              centerPanelItems: leftStillExists
-                  ? currentState.centerPanelItems
-                  : const [],
-              rightPanelItems: leftStillExists
-                  ? currentState.rightPanelItems
-                  : const [],
-              selectedCenterItem: leftStillExists
-                  ? currentState.selectedCenterItem
-                  : null,
-              selectedRightItem: leftStillExists
-                  ? currentState.selectedRightItem
-                  : null,
-              // Also refresh mobile drill-down if viewing same dir
-              currentDrillItems:
-                  (currentState.drillPath ?? currentState.currentPath) ==
-                      dirPath
-                  ? entries
-                  : currentState.currentDrillItems,
-              selectedDrillItem:
-                  (currentState.drillPath ?? currentState.currentPath) ==
-                      dirPath
-                  ? null
-                  : currentState.selectedDrillItem,
-            ),
-          );
-        } else if (dirPath == centerPath) {
-          final centerStillExists =
-              currentState.selectedCenterItem != null &&
-              entries.any(
-                (e) => e.name == currentState.selectedCenterItem!.name,
-              );
-
-          emit(
-            currentState.copyWith(
-              centerPanelItems: entries,
-              selectedCenterItem: centerStillExists
-                  ? currentState.selectedCenterItem
-                  : null,
-              rightPanelItems: centerStillExists
-                  ? currentState.rightPanelItems
-                  : const [],
-              selectedRightItem: centerStillExists
-                  ? currentState.selectedRightItem
-                  : null,
-            ),
-          );
-        } else if (dirPath == rightPath) {
-          emit(
-            currentState.copyWith(
-              rightPanelItems: entries,
-              selectedRightItem: null,
-            ),
-          );
-        } else {
-          // dirPath is the mobile drill path or doesn't match any panel —
-          // refresh mobile view and left panel as fallback
-          if ((currentState.drillPath ?? currentState.currentPath) == dirPath) {
-            emit(
-              currentState.copyWith(
-                currentDrillItems: entries,
-                selectedDrillItem: null,
-              ),
-            );
-          }
-        }
+        final isLeft = dirPath == s.currentPath;
+        final isCenter =
+            s.selectedLeftItem?.isDirectory == true &&
+            dirPath == getPanelDirectory(PanelPosition.center);
+        final isRight =
+            s.selectedCenterItem?.isDirectory == true &&
+            dirPath == getPanelDirectory(PanelPosition.right);
+        final isDrill = dirPath == (s.drillPath ?? s.currentPath);
+        DirectoryEntry? reconcile(DirectoryEntry? selected) =>
+            selected == null ? null : _findEntry(entries, selected.name);
+        final left = isLeft
+            ? reconcile(s.selectedLeftItem)
+            : s.selectedLeftItem;
+        final clearCenter = isLeft && left?.isDirectory != true;
+        final center = clearCenter
+            ? null
+            : isCenter
+            ? reconcile(s.selectedCenterItem)
+            : s.selectedCenterItem;
+        final clearRight =
+            clearCenter || (isCenter && center?.isDirectory != true);
+        emit(
+          s.copyWith(
+            leftPanelItems: isLeft ? entries : s.leftPanelItems,
+            centerPanelItems: clearCenter
+                ? const []
+                : isCenter
+                ? entries
+                : s.centerPanelItems,
+            rightPanelItems: clearRight
+                ? const []
+                : isRight
+                ? entries
+                : s.rightPanelItems,
+            selectedLeftItem: left,
+            selectedCenterItem: center,
+            selectedRightItem: clearRight
+                ? null
+                : isRight
+                ? reconcile(s.selectedRightItem)
+                : s.selectedRightItem,
+            currentDrillItems: isDrill ? entries : s.currentDrillItems,
+            selectedDrillItem: isDrill
+                ? reconcile(s.selectedDrillItem)
+                : s.selectedDrillItem,
+            directoryCache: Map.from(_directoryCache),
+          ),
+        );
       },
-      orElse: () async {},
     );
   }
 

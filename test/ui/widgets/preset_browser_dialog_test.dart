@@ -144,6 +144,58 @@ void main() {
       });
     }
 
+    testWidgets('rename rejection is shown as failure, never success', (
+      tester,
+    ) async {
+      final entry = DirectoryEntry(
+        name: 'Alpha.json',
+        attributes: 0,
+        date: 0,
+        time: 0,
+        size: 0,
+      );
+      when(() => mockCubit.state).thenReturn(
+        PresetBrowserState.loaded(
+          currentPath: '/presets',
+          leftPanelItems: [entry],
+          centerPanelItems: const [],
+          rightPanelItems: const [],
+          navigationHistory: const [],
+          sortByDate: false,
+        ),
+      );
+      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
+      when(
+        () => mockCubit.getEntryPath(entry, '/presets'),
+      ).thenReturn('/presets/Alpha.json');
+      when(
+        () => mockCubit.renameEntry('/presets/Alpha.json', 'Alpha #42.json'),
+      ).thenThrow(StateError('Destination exists'));
+      await tester.pumpWidget(
+        createTestWidget(
+          child: Scaffold(
+            body: PresetBrowserDialog(distingCubit: mockDistingCubit),
+          ),
+        ),
+      );
+      await tester.tapAt(
+        tester.getCenter(find.text('Alpha.json')),
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rename'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Alpha #42.json');
+      await tester.tap(find.widgetWithText(TextButton, 'Rename'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Rename failed:'), findsOneWidget);
+      expect(find.textContaining('Renamed to'), findsNothing);
+      verify(
+        () => mockCubit.renameEntry('/presets/Alpha.json', 'Alpha #42.json'),
+      ).called(1);
+      expect(tester.takeException(), isNull);
+    }, tags: ['regression']);
+
     testWidgets('displays three panels in row layout', (tester) async {
       when(() => mockCubit.state).thenReturn(
         PresetBrowserState.loaded(
@@ -637,9 +689,5 @@ void main() {
     });
   });
 
-  group('Package Installation Dialog Integration', () {
-    
-
-    
-  });
+  group('Package Installation Dialog Integration', () {});
 }
