@@ -325,7 +325,7 @@ void main() {
     expect(find.text('Check Again'), findsOneWidget);
   });
 
-  testWidgets('shows Windows MidiSrv recovery and copies the command', (
+  testWidgets('Windows MidiSrv recovery copies command without snackbars', (
     tester,
   ) async {
     Object? clipboardArguments;
@@ -354,7 +354,8 @@ void main() {
     await tester.pump();
 
     expect(clipboardArguments, {'text': 'Restart-Service MidiSrv'});
-    expect(find.text('PowerShell command copied'), findsOneWidget);
+    // Clipboard functionality is retained; affirmative snackbars are forbidden.
+    expect(find.byType(SnackBar), findsNothing);
 
     await tester.tap(find.text('Check Again'));
     verify(() => firmwareCubit.checkMidiAgain()).called(1);
