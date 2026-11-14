@@ -61,13 +61,23 @@ void main() {
     );
   });
   tearDown(() => cubit.close());
-  Future<void> mount(WidgetTester tester, {bool settle = true}) async {
+  Future<void> mount(
+    WidgetTester tester, {
+    bool settle = true,
+    double textScale = 1,
+  }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1400, 950);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(
       MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         home: Scaffold(
           body: BlocProvider<PresetBrowserCubit>.value(
             value: cubit,
@@ -582,6 +592,33 @@ void main() {
       await cubit.refreshPane();
       await tester.pumpAndSettle();
       expect(geometry(tester), rects);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+  testWidgets(
+    'breadcrumb text fits the reserved bar at the desktop UI scale without moving it',
+    (tester) async {
+      await mount(tester, textScale: 1.3);
+      await cubit.navigateToAbsolutePath('/A');
+      await tester.pumpAndSettle();
+      final bar = find.byKey(const Key('preset-browser-breadcrumbs'));
+      final normal = tester.getRect(bar);
+      // The native retest exposed inner padding clipping at larger text sizes;
+      // geometry-only navigation assertions could not catch content clipping.
+      final text = find.descendant(of: bar, matching: find.text('A'));
+      final rendered = tester.getRect(text);
+      expect(rendered.top, greaterThanOrEqualTo(normal.top));
+      expect(rendered.bottom, lessThanOrEqualTo(normal.bottom));
+      await cubit.navigateToAbsolutePath('/A/child');
+      await tester.pumpAndSettle();
+      expect(tester.getRect(bar), normal);
+      expect(
+        tester
+            .getRect(find.descendant(of: bar, matching: find.text('child')))
+            .bottom,
+        lessThanOrEqualTo(normal.bottom),
+      );
       expect(tester.takeException(), isNull);
     },
     tags: ['regression'],
