@@ -216,7 +216,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
 
   bool isDirectoryReady(String path) {
     final browser = _browser;
-    if (browser == null) return false;
+    if (browser == null || browser.pendingPath != null) return false;
     final depth = browser.stack.indexWhere((frame) => frame.path == path);
     // A descendant is uncertain too while an ancestor's existence is checked.
     return depth >= 0 &&
@@ -304,12 +304,18 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     if (browser == null || isClosed) return;
     final entries = _sort(listing.entries, browser.sortByDate);
     _fetched[path] = _clock.now();
-    final stack = _reconcile(browser.stack, path, entries);
+    final stack = _reconcile(browser.stack, path, entries, browser.pendingPath);
     _emit(
       browser.copyWith(
         listings: {...browser.listings, path: entries},
         errors: {...browser.errors}..remove(path),
         stack: stack,
+        pendingPath:
+            stack.length < browser.stack.length &&
+                browser.pendingPath != null &&
+                _below(browser.pendingPath!, browser.stack[stack.length].path)
+            ? null
+            : browser.pendingPath,
         activeDepth: browser.activeDepth.clamp(0, stack.length - 1),
       ),
     );
@@ -319,6 +325,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     List<BrowserFrame> stack,
     String path,
     List<DirectoryEntry> entries,
+    String? pendingPath,
   ) {
     final index = stack.indexWhere((frame) => frame.path == path);
     if (index < 0) return stack;
@@ -333,7 +340,11 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
         (selected == null ||
             !selected.isDirectory ||
             _join(path, selected.name) != stack[index + 1].path)) {
-      _navigationVersion++; // Late startup fallback must not restore a removed branch.
+      // Prune the removed committed branch, but do not cancel a newer intent
+      // to open an unrelated sibling that is still being hydrated.
+      if (pendingPath == null || _below(pendingPath, stack[index + 1].path)) {
+        _navigationVersion++;
+      }
       return updated.sublist(0, index + 1);
     }
     return updated;
@@ -386,19 +397,66 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     final browser = _browser;
     if (browser == null || stack.isEmpty) return;
     final version = ++_navigationVersion;
-    _emit(browser.copyWith(stack: stack, activeDepth: stack.length - 1));
-    unawaited(_rememberPath(stack.last.path));
-    // Revisit always revalidates the destination. Absolute jumps also hydrate
-    // previously unseen ancestors so shifting/Back never loses the hierarchy.
+    // Keep the committed hierarchy and its correctly labelled contents until
+    // every destination column is ready. Never publish a new path with [] as
+    // a stand-in for an unanswered listing (or show its predecessor's contents).
+    _emit(browser.copyWith(pendingPath: stack.last.path));
     final paths = [
-      for (final frame in stack.take(stack.length - 1))
-        if (!_fetched.containsKey(frame.path)) frame.path,
+      for (var i = 0; i + 1 < stack.length; i++)
+        if (!_fetched.containsKey(stack[i].path) ||
+            browser.listings[stack[i].path]?.any(
+                  (entry) =>
+                      entry.isDirectory &&
+                      _join(stack[i].path, entry.name) == stack[i + 1].path,
+                ) !=
+                true)
+          stack[i].path,
       stack.last.path,
     ];
     for (final path in paths) {
       if (isClosed || _navigationVersion != version) return;
-      if (!await _read(path)) return;
+      if (!await _read(path)) {
+        if (!isClosed && _navigationVersion == version) {
+          _emit(_browser!.copyWith(pendingPath: null));
+          _warn(
+            'Could not open ${stack.last.path}: ${_browser?.errors[path] ?? 'listing superseded'}',
+          );
+        }
+        return;
+      }
     }
+    if (isClosed || _navigationVersion != version) return;
+    final current = _browser!;
+    // A concurrent parent refresh may have removed the requested branch.
+    final confirmed = [...stack];
+    for (var i = 0; i + 1 < stack.length; i++) {
+      if (current.listings[stack[i].path]?.any(
+            (entry) =>
+                entry.isDirectory &&
+                _join(stack[i].path, entry.name) == stack[i + 1].path,
+          ) !=
+          true) {
+        _emit(current.copyWith(pendingPath: null));
+        _warn(
+          'Could not open ${stack.last.path}: parent entry is unavailable.',
+        );
+        return;
+      }
+      final directory = current.listings[stack[i].path]!.firstWhere(
+        (entry) =>
+            entry.isDirectory &&
+            _join(stack[i].path, entry.name) == stack[i + 1].path,
+      );
+      confirmed[i] = stack[i].copyWith(selectedName: directory.name);
+    }
+    _emit(
+      current.copyWith(
+        stack: confirmed,
+        activeDepth: confirmed.length - 1,
+        pendingPath: null,
+      ),
+    );
+    unawaited(_rememberPath(stack.last.path));
   }
 
   Future<void> navigateToAbsolutePath(String path) async {
@@ -462,7 +520,9 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     final stack = browser.stack.take(depth + 1).toList();
     stack[depth] = stack[depth].copyWith(selectedName: entry.name);
     _navigationVersion++;
-    _emit(browser.copyWith(stack: stack, activeDepth: depth));
+    _emit(
+      browser.copyWith(stack: stack, activeDepth: depth, pendingPath: null),
+    );
     unawaited(_rememberPath(stack.last.path));
     if (entry.name.toLowerCase().endsWith('.json')) {
       await addToHistory(_join(stack.last.path, entry.name));
@@ -673,10 +733,19 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
           parent,
           listing,
           transform: (browser) => browser.copyWith(
-            listings: {...browser.listings}
-              ..removeWhere(
-                (path, _) => _below(path, fullPath) || _below(path, newPath),
-              ),
+            // A directory rename changes its address, not its descendants'
+            // contents. Rebase their last snapshots as stale instead of
+            // dropping them and painting blank columns before verification.
+            listings: {
+              for (final cached in browser.listings.entries)
+                if (!_below(cached.key, newPath))
+                  rewrite(cached.key): cached.value,
+            },
+            renamedPaths: {
+              for (final alias in browser.renamedPaths.entries)
+                alias.key: rewrite(alias.value),
+              fullPath: newPath,
+            },
             stack: [
               for (final frame in browser.stack)
                 frame.copyWith(

@@ -36,18 +36,11 @@ void _expectLiveStatus(WidgetTester tester, String message) {
 }
 
 void main() {
-  testWidgets('removed shows a live notice naming the root path', (
+  testWidgets('successful cleanup never shows an affirmative snackbar', (
     tester,
   ) async {
-    final semantics = tester.ensureSemantics();
     await _show(tester, const PluginCleanupRemoved(_rootPath));
-
-    final message = pluginCleanupMessage(
-      const PluginCleanupRemoved(_rootPath),
-    )!;
-    expect(message, contains(_rootPath));
-    _expectLiveStatus(tester, message);
-    semantics.dispose();
+    expect(find.byType(SnackBar), findsNothing);
   });
 
   testWidgets('deletion failed shows a live warning and no success notice', (

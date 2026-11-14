@@ -274,7 +274,7 @@ as String?,
 /// @nodoc
 mixin _$BrowserSnapshot {
 
- List<BrowserFrame> get stack; int get activeDepth; bool get sortByDate; Map<String, List<DirectoryEntry>> get listings; Set<String> get refreshing; Map<String, String> get errors; Set<String> get busyPaths; String? get warning;
+ List<BrowserFrame> get stack; int get activeDepth; bool get sortByDate; Map<String, List<DirectoryEntry>> get listings; Set<String> get refreshing; Map<String, String> get errors; Set<String> get busyPaths; String? get warning; String? get pendingPath; Map<String, String> get renamedPaths;
 /// Create a copy of BrowserSnapshot
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -285,16 +285,16 @@ $BrowserSnapshotCopyWith<BrowserSnapshot> get copyWith => _$BrowserSnapshotCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BrowserSnapshot&&const DeepCollectionEquality().equals(other.stack, stack)&&(identical(other.activeDepth, activeDepth) || other.activeDepth == activeDepth)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other.listings, listings)&&const DeepCollectionEquality().equals(other.refreshing, refreshing)&&const DeepCollectionEquality().equals(other.errors, errors)&&const DeepCollectionEquality().equals(other.busyPaths, busyPaths)&&(identical(other.warning, warning) || other.warning == warning));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BrowserSnapshot&&const DeepCollectionEquality().equals(other.stack, stack)&&(identical(other.activeDepth, activeDepth) || other.activeDepth == activeDepth)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other.listings, listings)&&const DeepCollectionEquality().equals(other.refreshing, refreshing)&&const DeepCollectionEquality().equals(other.errors, errors)&&const DeepCollectionEquality().equals(other.busyPaths, busyPaths)&&(identical(other.warning, warning) || other.warning == warning)&&(identical(other.pendingPath, pendingPath) || other.pendingPath == pendingPath)&&const DeepCollectionEquality().equals(other.renamedPaths, renamedPaths));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(stack),activeDepth,sortByDate,const DeepCollectionEquality().hash(listings),const DeepCollectionEquality().hash(refreshing),const DeepCollectionEquality().hash(errors),const DeepCollectionEquality().hash(busyPaths),warning);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(stack),activeDepth,sortByDate,const DeepCollectionEquality().hash(listings),const DeepCollectionEquality().hash(refreshing),const DeepCollectionEquality().hash(errors),const DeepCollectionEquality().hash(busyPaths),warning,pendingPath,const DeepCollectionEquality().hash(renamedPaths));
 
 @override
 String toString() {
-  return 'BrowserSnapshot(stack: $stack, activeDepth: $activeDepth, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning)';
+  return 'BrowserSnapshot(stack: $stack, activeDepth: $activeDepth, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning, pendingPath: $pendingPath, renamedPaths: $renamedPaths)';
 }
 
 
@@ -305,7 +305,7 @@ abstract mixin class $BrowserSnapshotCopyWith<$Res>  {
   factory $BrowserSnapshotCopyWith(BrowserSnapshot value, $Res Function(BrowserSnapshot) _then) = _$BrowserSnapshotCopyWithImpl;
 @useResult
 $Res call({
- List<BrowserFrame> stack, int activeDepth, bool sortByDate, Map<String, List<DirectoryEntry>> listings, Set<String> refreshing, Map<String, String> errors, Set<String> busyPaths, String? warning
+ List<BrowserFrame> stack, int activeDepth, bool sortByDate, Map<String, List<DirectoryEntry>> listings, Set<String> refreshing, Map<String, String> errors, Set<String> busyPaths, String? warning, String? pendingPath, Map<String, String> renamedPaths
 });
 
 
@@ -322,7 +322,7 @@ class _$BrowserSnapshotCopyWithImpl<$Res>
 
 /// Create a copy of BrowserSnapshot
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? stack = null,Object? activeDepth = null,Object? sortByDate = null,Object? listings = null,Object? refreshing = null,Object? errors = null,Object? busyPaths = null,Object? warning = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? stack = null,Object? activeDepth = null,Object? sortByDate = null,Object? listings = null,Object? refreshing = null,Object? errors = null,Object? busyPaths = null,Object? warning = freezed,Object? pendingPath = freezed,Object? renamedPaths = null,}) {
   return _then(_self.copyWith(
 stack: null == stack ? _self.stack : stack // ignore: cast_nullable_to_non_nullable
 as List<BrowserFrame>,activeDepth: null == activeDepth ? _self.activeDepth : activeDepth // ignore: cast_nullable_to_non_nullable
@@ -332,7 +332,9 @@ as Map<String, List<DirectoryEntry>>,refreshing: null == refreshing ? _self.refr
 as Set<String>,errors: null == errors ? _self.errors : errors // ignore: cast_nullable_to_non_nullable
 as Map<String, String>,busyPaths: null == busyPaths ? _self.busyPaths : busyPaths // ignore: cast_nullable_to_non_nullable
 as Set<String>,warning: freezed == warning ? _self.warning : warning // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,pendingPath: freezed == pendingPath ? _self.pendingPath : pendingPath // ignore: cast_nullable_to_non_nullable
+as String?,renamedPaths: null == renamedPaths ? _self.renamedPaths : renamedPaths // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,
   ));
 }
 
@@ -417,10 +419,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning,  String? pendingPath,  Map<String, String> renamedPaths)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BrowserSnapshot() when $default != null:
-return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning);case _:
+return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning,_that.pendingPath,_that.renamedPaths);case _:
   return orElse();
 
 }
@@ -438,10 +440,10 @@ return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning,  String? pendingPath,  Map<String, String> renamedPaths)  $default,) {final _that = this;
 switch (_that) {
 case _BrowserSnapshot():
-return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning);case _:
+return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning,_that.pendingPath,_that.renamedPaths);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -458,10 +460,10 @@ return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning,  String? pendingPath,  Map<String, String> renamedPaths)?  $default,) {final _that = this;
 switch (_that) {
 case _BrowserSnapshot() when $default != null:
-return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning);case _:
+return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning,_that.pendingPath,_that.renamedPaths);case _:
   return null;
 
 }
@@ -473,7 +475,7 @@ return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_t
 
 
 class _BrowserSnapshot extends BrowserSnapshot {
-  const _BrowserSnapshot({required final  List<BrowserFrame> stack, this.activeDepth = 0, this.sortByDate = false, final  Map<String, List<DirectoryEntry>> listings = const {}, final  Set<String> refreshing = const {}, final  Map<String, String> errors = const {}, final  Set<String> busyPaths = const {}, this.warning}): _stack = stack,_listings = listings,_refreshing = refreshing,_errors = errors,_busyPaths = busyPaths,super._();
+  const _BrowserSnapshot({required final  List<BrowserFrame> stack, this.activeDepth = 0, this.sortByDate = false, final  Map<String, List<DirectoryEntry>> listings = const {}, final  Set<String> refreshing = const {}, final  Map<String, String> errors = const {}, final  Set<String> busyPaths = const {}, this.warning, this.pendingPath, final  Map<String, String> renamedPaths = const {}}): _stack = stack,_listings = listings,_refreshing = refreshing,_errors = errors,_busyPaths = busyPaths,_renamedPaths = renamedPaths,super._();
 
 
  final  List<BrowserFrame> _stack;
@@ -514,6 +516,14 @@ class _BrowserSnapshot extends BrowserSnapshot {
 }
 
 @override final  String? warning;
+@override final  String? pendingPath;
+ final  Map<String, String> _renamedPaths;
+@override@JsonKey() Map<String, String> get renamedPaths {
+  if (_renamedPaths is EqualUnmodifiableMapView) return _renamedPaths;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_renamedPaths);
+}
+
 
 /// Create a copy of BrowserSnapshot
 /// with the given fields replaced by the non-null parameter values.
@@ -525,16 +535,16 @@ _$BrowserSnapshotCopyWith<_BrowserSnapshot> get copyWith => __$BrowserSnapshotCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BrowserSnapshot&&const DeepCollectionEquality().equals(other._stack, _stack)&&(identical(other.activeDepth, activeDepth) || other.activeDepth == activeDepth)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other._listings, _listings)&&const DeepCollectionEquality().equals(other._refreshing, _refreshing)&&const DeepCollectionEquality().equals(other._errors, _errors)&&const DeepCollectionEquality().equals(other._busyPaths, _busyPaths)&&(identical(other.warning, warning) || other.warning == warning));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BrowserSnapshot&&const DeepCollectionEquality().equals(other._stack, _stack)&&(identical(other.activeDepth, activeDepth) || other.activeDepth == activeDepth)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other._listings, _listings)&&const DeepCollectionEquality().equals(other._refreshing, _refreshing)&&const DeepCollectionEquality().equals(other._errors, _errors)&&const DeepCollectionEquality().equals(other._busyPaths, _busyPaths)&&(identical(other.warning, warning) || other.warning == warning)&&(identical(other.pendingPath, pendingPath) || other.pendingPath == pendingPath)&&const DeepCollectionEquality().equals(other._renamedPaths, _renamedPaths));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_stack),activeDepth,sortByDate,const DeepCollectionEquality().hash(_listings),const DeepCollectionEquality().hash(_refreshing),const DeepCollectionEquality().hash(_errors),const DeepCollectionEquality().hash(_busyPaths),warning);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_stack),activeDepth,sortByDate,const DeepCollectionEquality().hash(_listings),const DeepCollectionEquality().hash(_refreshing),const DeepCollectionEquality().hash(_errors),const DeepCollectionEquality().hash(_busyPaths),warning,pendingPath,const DeepCollectionEquality().hash(_renamedPaths));
 
 @override
 String toString() {
-  return 'BrowserSnapshot(stack: $stack, activeDepth: $activeDepth, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning)';
+  return 'BrowserSnapshot(stack: $stack, activeDepth: $activeDepth, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning, pendingPath: $pendingPath, renamedPaths: $renamedPaths)';
 }
 
 
@@ -545,7 +555,7 @@ abstract mixin class _$BrowserSnapshotCopyWith<$Res> implements $BrowserSnapshot
   factory _$BrowserSnapshotCopyWith(_BrowserSnapshot value, $Res Function(_BrowserSnapshot) _then) = __$BrowserSnapshotCopyWithImpl;
 @override @useResult
 $Res call({
- List<BrowserFrame> stack, int activeDepth, bool sortByDate, Map<String, List<DirectoryEntry>> listings, Set<String> refreshing, Map<String, String> errors, Set<String> busyPaths, String? warning
+ List<BrowserFrame> stack, int activeDepth, bool sortByDate, Map<String, List<DirectoryEntry>> listings, Set<String> refreshing, Map<String, String> errors, Set<String> busyPaths, String? warning, String? pendingPath, Map<String, String> renamedPaths
 });
 
 
@@ -562,7 +572,7 @@ class __$BrowserSnapshotCopyWithImpl<$Res>
 
 /// Create a copy of BrowserSnapshot
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? stack = null,Object? activeDepth = null,Object? sortByDate = null,Object? listings = null,Object? refreshing = null,Object? errors = null,Object? busyPaths = null,Object? warning = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? stack = null,Object? activeDepth = null,Object? sortByDate = null,Object? listings = null,Object? refreshing = null,Object? errors = null,Object? busyPaths = null,Object? warning = freezed,Object? pendingPath = freezed,Object? renamedPaths = null,}) {
   return _then(_BrowserSnapshot(
 stack: null == stack ? _self._stack : stack // ignore: cast_nullable_to_non_nullable
 as List<BrowserFrame>,activeDepth: null == activeDepth ? _self.activeDepth : activeDepth // ignore: cast_nullable_to_non_nullable
@@ -572,7 +582,9 @@ as Map<String, List<DirectoryEntry>>,refreshing: null == refreshing ? _self._ref
 as Set<String>,errors: null == errors ? _self._errors : errors // ignore: cast_nullable_to_non_nullable
 as Map<String, String>,busyPaths: null == busyPaths ? _self._busyPaths : busyPaths // ignore: cast_nullable_to_non_nullable
 as Set<String>,warning: freezed == warning ? _self.warning : warning // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,pendingPath: freezed == pendingPath ? _self.pendingPath : pendingPath // ignore: cast_nullable_to_non_nullable
+as String?,renamedPaths: null == renamedPaths ? _self._renamedPaths : renamedPaths // ignore: cast_nullable_to_non_nullable
+as Map<String, String>,
   ));
 }
 

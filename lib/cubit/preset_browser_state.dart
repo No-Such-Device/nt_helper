@@ -27,6 +27,8 @@ abstract class BrowserSnapshot with _$BrowserSnapshot {
     @Default({}) Map<String, String> errors,
     @Default({}) Set<String> busyPaths,
     String? warning,
+    String? pendingPath,
+    @Default({}) Map<String, String> renamedPaths,
   }) = _BrowserSnapshot;
 
   int get viewportStart => stack.length > 3 ? stack.length - 3 : 0;

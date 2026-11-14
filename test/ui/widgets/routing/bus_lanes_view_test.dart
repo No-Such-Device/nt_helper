@@ -405,7 +405,8 @@ void main() {
       expect(tester.takeException(), isNull);
       semantics.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets('shows empty message when there are no algorithms', (
     tester,
@@ -830,4 +831,47 @@ void main() {
       ),
     ).called(1);
   });
+  testWidgets(
+    'routine bus assignment has no affirmative snackbar and keeps Undo in a fixed control',
+    (tester) async {
+      const result = BusAssignmentResult(
+        algorithmIndex: 0,
+        parameterNumber: 3,
+        previousBusValue: 13,
+        newBusValue: 0,
+        reorder: null,
+      );
+      when(cubit.state).thenReturn(loadedWith([oscWithOutput()]));
+      when(
+        cubit.assignBusAndSolve(
+          algorithmIndex: anyNamed('algorithmIndex'),
+          parameterNumber: anyNamed('parameterNumber'),
+          previousBusValue: anyNamed('previousBusValue'),
+          busValue: anyNamed('busValue'),
+        ),
+      ).thenAnswer((_) async => result);
+      when(cubit.undoBusAssignment(result)).thenAnswer((_) async {});
+      await tester.pumpWidget(host());
+      await tester.pump();
+      final undo = find.byWidgetPredicate(
+        (widget) =>
+            widget is IconButton &&
+            widget.tooltip == 'Undo last bus assignment',
+      );
+      final bounds = tester.getRect(undo);
+      expect(tester.widget<IconButton>(undo).onPressed, isNull);
+      await tester.tapAt(beadCenter);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing);
+      expect(tester.getRect(undo), bounds);
+      expect(tester.widget<IconButton>(undo).onPressed, isNotNull);
+      await tester.tap(undo);
+      await tester.pumpAndSettle();
+      verify(cubit.undoBusAssignment(result)).called(1);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(tester.getRect(undo), bounds);
+    },
+  );
 }

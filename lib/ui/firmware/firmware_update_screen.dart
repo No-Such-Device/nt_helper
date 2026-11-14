@@ -1197,11 +1197,6 @@ class _MidiRecoveryView extends StatelessWidget {
                 await Clipboard.setData(
                   const ClipboardData(text: restartMidiServiceCommand),
                 );
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('PowerShell command copied')),
-                  );
-                }
               },
               icon: const Icon(Icons.copy),
               label: const Text('Copy Command'),

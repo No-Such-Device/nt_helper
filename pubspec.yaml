@@ -103,6 +103,7 @@ dependencies:
   desktop_multi_window: ^0.3.0
 
 dev_dependencies:
+  analyzer: ^10.2.0 # App-wide AST snackbar policy regression.
   flutter_test:
     sdk: flutter
   integration_test:

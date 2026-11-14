@@ -3030,12 +3030,6 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
               onPressed: () {
                 Navigator.of(dialogContext).pop();
                 cubit.remountSd();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('SD card remount requested'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
               },
               child: const ListTile(
                 leading: Icon(Icons.sd_card),
@@ -3075,12 +3069,6 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
               onPressed: () {
                 Navigator.of(dialogContext).pop();
                 cubit.refreshAlgorithms();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Rescanning algorithms...'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
               },
               child: const ListTile(
                 leading: Icon(Icons.refresh),
@@ -3137,12 +3125,6 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
             onPressed: () {
               Navigator.of(dialogContext).pop();
               cubit.reboot();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Reboot command sent'),
-                  duration: Duration(seconds: 3),
-                ),
-              );
             },
             child: const Text('Reboot'),
           ),
@@ -3221,16 +3203,6 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
           final checkpoint = distingCubit.createCheckpoint();
           if (checkpoint != null) {
             setState(() {});
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Checkpoint created (${checkpoint.slotCount} slots)',
-                  ),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            }
           }
         } else if (value.startsWith('restore:')) {
           final index = int.parse(value.substring(8));
@@ -3276,18 +3248,11 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
               }
               if (mounted) {
                 setState(() {});
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      result > 0
-                          ? 'Restored $result parameters'
-                          : result == 0
-                          ? 'Nothing to restore (no changes)'
-                          : 'Restore failed',
-                    ),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
+                if (result < 0) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Restore failed')),
+                  );
+                }
               }
             } catch (_) {
               if (mounted) {

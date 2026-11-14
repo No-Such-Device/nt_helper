@@ -160,6 +160,7 @@ void main() {
         await tester.tap(find.text('Create'));
         await tester.pumpAndSettle();
         verify(() => mockCubit.createDirectory(target, 'helper')).called(1);
+        expect(find.byType(SnackBar), findsNothing);
         expect(tester.takeException(), isNull);
       });
     }

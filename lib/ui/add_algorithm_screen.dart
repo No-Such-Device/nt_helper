@@ -389,16 +389,6 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
     );
     if (algorithm == null) return;
 
-    // Show loading indicator
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Loading plugin ${algorithm.name}...'),
-          duration: const Duration(seconds: 5),
-        ),
-      );
-    }
-
     try {
       final cubit = context.read<DistingCubit>();
 
@@ -514,12 +504,6 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
               ),
               tooltip: 'Rescan Plugins on Hardware',
               onPressed: () async {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Rescanning plugins on hardware...'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
                 await context.read<DistingCubit>().rescanPlugins();
               },
             ),
@@ -532,14 +516,6 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
             onPressed: () {
               // Call the refresh method from DistingCubit
               context.read<DistingCubit>().refreshAlgorithms();
-
-              // Show a brief feedback to user
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Refreshing algorithm list...'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
             },
           ),
           IconButton(

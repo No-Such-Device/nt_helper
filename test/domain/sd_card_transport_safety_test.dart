@@ -35,13 +35,28 @@ void main() {
         final cubit = PresetBrowserCubit(midiManager: manager, prefs: prefs);
         cubit.loadRootDirectory();
         time.flushMicrotasks();
-        wire.reply(_listing('same.json'));
+        // Navigation now validates real ancestors before committing a new
+        // view; model the actual root folders rather than inventing paths.
+        wire.reply([
+          0,
+          1,
+          for (final name in ['A', 'B', 'same.json']) ...[
+            name == 'same.json' ? 0 : 0x10,
+            ...List.filled(16, 0),
+            ...ascii.encode(name),
+            0,
+          ],
+        ]);
         time.flushMicrotasks();
         cubit.navigateToAbsolutePath('/A');
         time.flushMicrotasks();
         time.elapse(const Duration(seconds: 10));
         time.flushMicrotasks();
         expect(cubit.state.view!.errors['/A'], contains('No response'));
+        expect(
+          cubit.getCurrentDirectory(),
+          '/',
+        ); // No unverified blank /A column.
         cubit.navigateToAbsolutePath('/B');
         time.flushMicrotasks();
         expect(wire.sdPaths, [

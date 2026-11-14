@@ -298,55 +298,61 @@ void main() {
         );
       }
 
-      testWidgets('${mode.name} keeps refreshed choices unique and selected', (
-        tester,
-      ) async {
-        SharedPreferences.setMockInitialValues({
-          'add_algorithm_view_mode': mode.index,
-        });
-        final states = StreamController<DistingState>.broadcast();
-        addTearDown(states.close);
-        var state = synchronizedWith([attenuverter(), mockFactoryAlgorithm]);
-        when(() => mockCubit.state).thenAnswer((_) => state);
-        when(() => mockCubit.stream).thenAnswer((_) => states.stream);
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Attenuverter'));
-        await tester.pumpAndSettle();
-        final searchRect = tester.getRect(find.byType(TextField));
-        final countRect = tester.getRect(
-          find.text('Showing 2 of 2 algorithms'),
-        );
+      testWidgets(
+        '${mode.name} keeps refreshed choices unique and selected',
+        (tester) async {
+          SharedPreferences.setMockInitialValues({
+            'add_algorithm_view_mode': mode.index,
+          });
+          final states = StreamController<DistingState>.broadcast();
+          addTearDown(states.close);
+          var state = synchronizedWith([attenuverter(), mockFactoryAlgorithm]);
+          when(() => mockCubit.state).thenAnswer((_) => state);
+          when(() => mockCubit.stream).thenAnswer((_) => states.stream);
+          await tester.pumpWidget(createTestWidget());
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Attenuverter'));
+          await tester.pumpAndSettle();
+          final searchRect = tester.getRect(find.byType(TextField));
+          final countRect = tester.getRect(
+            find.text('Showing 2 of 2 algorithms'),
+          );
 
-        state = synchronizedWith([
-          mockFactoryAlgorithm,
-          attenuverter(channels: 4),
-          attenuverter(index: 9),
-        ]);
-        states.add(state);
-        await tester.pumpAndSettle();
+          state = synchronizedWith([
+            mockFactoryAlgorithm,
+            attenuverter(channels: 4),
+            attenuverter(index: 9),
+          ]);
+          states.add(state);
+          await tester.pumpAndSettle();
 
-        expect(find.text('Attenuverter'), findsOneWidget);
-        expect(find.text('Showing 2 of 2 algorithms'), findsOneWidget);
-        expect(tester.getRect(find.byType(TextField)), searchRect);
-        expect(
-          tester.getRect(find.text('Showing 2 of 2 algorithms')),
-          countRect,
-        );
-        expect(
-          find.widgetWithText(ElevatedButton, 'Add Algorithm'),
-          findsOneWidget,
-        );
-        await tester.tap(find.widgetWithText(ElevatedButton, 'Add Algorithm'));
-        await tester.pumpAndSettle();
-        expect(
-          tester
-              .widget<TextFormField>(find.byKey(const ValueKey('attu_spec_0')))
-              .controller
-              ?.text,
-          '8',
-        );
-      }, tags: ['regression']);
+          expect(find.text('Attenuverter'), findsOneWidget);
+          expect(find.text('Showing 2 of 2 algorithms'), findsOneWidget);
+          expect(tester.getRect(find.byType(TextField)), searchRect);
+          expect(
+            tester.getRect(find.text('Showing 2 of 2 algorithms')),
+            countRect,
+          );
+          expect(
+            find.widgetWithText(ElevatedButton, 'Add Algorithm'),
+            findsOneWidget,
+          );
+          await tester.tap(
+            find.widgetWithText(ElevatedButton, 'Add Algorithm'),
+          );
+          await tester.pumpAndSettle();
+          expect(
+            tester
+                .widget<TextFormField>(
+                  find.byKey(const ValueKey('attu_spec_0')),
+                )
+                .controller
+                ?.text,
+            '8',
+          );
+        },
+        tags: ['regression'],
+      );
     }
 
     testWidgets(
@@ -378,7 +384,8 @@ void main() {
           hasLength(1),
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets('Add retains the first GUID entry and its specifications', (
       tester,
@@ -954,7 +961,7 @@ void main() {
         verify(() => mockCubit.loadPlugin('TestPlugin')).called(1);
       });
 
-      testWidgets('shows loading snackbar during plugin load', (tester) async {
+      testWidgets('plugin loading stays silent', (tester) async {
         // Initial state: unloaded plugin
         when(() => mockCubit.state).thenReturn(
           DistingState.synchronized(
@@ -991,15 +998,15 @@ void main() {
         await tester.tap(find.text('Test Plugin'));
         await tester.pump(); // Start the automatic async operation
 
-        // Assert: Loading snackbar should be visible
-        expect(find.text('Loading plugin Test Plugin...'), findsOneWidget);
+        // Routine progress is inline/state-driven, never a snackbar.
+        expect(find.byType(SnackBar), findsNothing);
 
         // Complete the loading
         completer.complete(mockLoadedPlugin);
         await tester.pumpAndSettle();
 
-        // Assert: Loading snackbar should be dismissed (no success snackbar shown)
-        expect(find.text('Loading plugin Test Plugin...'), findsNothing);
+        // Completion remains silent too; failure cases retain their warnings.
+        expect(find.byType(SnackBar), findsNothing);
 
         // Verify loadPlugin was called
         verify(() => mockCubit.loadPlugin('TestPlugin')).called(1);
@@ -1185,7 +1192,8 @@ void main() {
         expect(find.text('Clock added'), findsNothing);
         expect(find.text('Select Algorithm'), findsOneWidget);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets('bottom actions use a brief state transition', (tester) async {
       when(

@@ -11,7 +11,10 @@ transport, rename and upload safety hardening from `66e3f88d` remains in place.
 It is a hierarchy, **not three histories or a chronological visit list**.
 `activeDepth` is keyboard/action focus only, not a separate navigation root.
 Listings, refreshing/errors and connection-owned busy-file paths are shared by
-absolute path. Mobile and desktop render this same immutable snapshot.
+absolute path. `pendingPath` records an in-flight navigation intent while the
+committed hierarchy remains visible; `renamedPaths` carries verified identity
+rebases for UI cursors and location state. Mobile and desktop render this same
+immutable snapshot.
 
 Desktop always builds exactly three equally sized columns:
 
@@ -29,6 +32,10 @@ canonical hierarchy even when offscreen. No fourth column is ever inserted.
 - Selecting a folder in a column highlights it, discards all obsolete descendants
   after that column, and appends the child directory. Its listing fills the next
   column; at the right edge, the same three columns shift one level deeper.
+  The wire read starts on the first click. Until the destination is ready the
+  previous committed hierarchy remains correctly labelled, with unobtrusive
+  progress in the reserved status slot. The new stack and populated listings
+  publish coherently; rapid sibling clicks use the latest intent.
 - Selecting a sibling replaces the old descendant branch. Selecting a file in
   an ancestor column also discards obsolete descendants; Load/Delete never target
   a hidden selection in the old branch.
@@ -77,8 +84,11 @@ and text-scale changes are separate responsive-layout inputs.
 - Breadcrumbs occupy a fixed-height horizontal scrolling region even at root,
   including on mobile. Long path/filename text is clipped/ellipsized inside its
   allocated region instead of changing row heights.
-- Keyboard/selected outlines paint in the foreground without adding padding or
-  altering row sizes. Per-location scroll offsets/cursor names are shared by
+- Keyboard outlines paint in the foreground without adding padding or altering
+  row sizes, only after keyboard input. Mouse presses/hover hide them; restoring
+  focus after a dialog does not invent keyboard modality. Selection remains a
+  separate state. Row identities survive refresh reordering, so a focus refresh
+  between pointer-down and pointer-up cannot retarget a single click. Per-location scroll offsets/cursor names are shared by
   the column renderer, so a location moving between columns retains its UI
   position; a new location starts at the top. Back restores the parent offset.
 
@@ -107,7 +117,9 @@ wire/data boundary; no second data or navigation controller is introduced.
 - Verified rename atomically rebases the entire ancestry and selected entry with
   the parent read-back, before ancillary preference writes. Old/new subtree
   caches are invalidated; recent/saved paths are rewritten with path boundaries.
-  Preference failure reports a separate warning, not a failed device rename.
+  Descendant snapshots are rebased as stale (not cleared) while their new paths
+  revalidate. Cursor aliases retain renamed entry identity independently of
+  selection. Preference failure reports a warning, not a failed device rename.
 - Delete truncates an actually removed subtree to its nearest surviving ancestor;
   there are no unrelated historical frames to accidentally discard. Create,
   upload and deletion refresh affected visible listings without full-card scans.
@@ -146,4 +158,6 @@ transport evidence and the connected-device acceptance checklist.
 Refresh this map when navigation ownership or reserved geometry changes. Preserve
 transport safety tests; do not reinstate independent pane histories while fixing
 focus or scroll. Native macOS retesting and live device PC selection are separate
-from deterministic unit/widget evidence.
+from deterministic unit/widget evidence. See the
+[focus/frame investigation](../investigations/preset-browser-focus-and-frame-continuity.md)
+for the mouse-outline, single-click race and blank-column diagnoses.

@@ -12,21 +12,20 @@ String? pluginCleanupMessage(PluginCleanupOutcome outcome) => switch (outcome) {
         'Remove it from the SD card if it is an old copy.',
 };
 
-/// Shows a brief notice (removed) or warning (deletion failed, could not be
-/// verified) as live-region status text. Does nothing for skipped outcomes.
+/// Only exceptional cleanup outcomes use a snackbar. Successful/skipped cleanup
+/// stays silent; normal installation state already communicates completion.
 void showPluginCleanupNotice(
   ScaffoldMessengerState messenger,
   PluginCleanupOutcome outcome,
   ColorScheme colorScheme,
 ) {
   final message = pluginCleanupMessage(outcome);
-  if (message == null) return;
-  final isWarning = outcome is! PluginCleanupRemoved;
+  if (message == null || outcome is PluginCleanupRemoved) return;
   messenger.showSnackBar(
     SnackBar(
       content: Semantics(liveRegion: true, child: Text(message)),
-      backgroundColor: isWarning ? colorScheme.error : null,
-      duration: Duration(seconds: isWarning ? 8 : 4),
+      backgroundColor: colorScheme.error,
+      duration: const Duration(seconds: 8),
     ),
   );
 }

@@ -527,4 +527,54 @@ void main() {
     },
     tags: ['regression'],
   );
+  test(
+    'absolute navigation commits fresh directory spellings and never relies on trailing slash guesses',
+    () async {
+      files['/'] = [entry('A', dir: true)];
+      files['/A'] = [entry('child', dir: true)];
+      await cubit.loadRootDirectory();
+      await cubit.navigateToAbsolutePath('/A/child');
+      expect(ancestry(), ['/', '/A', '/A/child']);
+      expect(view().stack[0].selectedName, 'A');
+      expect(view().stack[1].selectedName, 'child');
+      await cubit.refreshDirectory('/A');
+      expect(ancestry(), ['/', '/A', '/A/child']);
+    },
+    tags: ['regression'],
+  );
+  test(
+    'reconciling a vanished old branch does not drop a newer pending sibling click',
+    () async {
+      await cubit.loadRootDirectory();
+      await cubit.navigateToAbsolutePath('/A/child');
+      final root = Completer<DirectoryListing?>();
+      final target = Completer<DirectoryListing?>();
+      final rootStarted = Completer<void>();
+      final targetStarted = Completer<void>();
+      when(() => manager.requestDirectoryListing('/')).thenAnswer((_) {
+        rootStarted.complete();
+        return root.future;
+      });
+      when(() => manager.requestDirectoryListing('/B')).thenAnswer((_) {
+        targetStarted.complete();
+        return target.future;
+      });
+      final refresh = cubit.refreshDirectory('/');
+      await rootStarted.future;
+      final navigation = cubit.selectDirectory(
+        files['/']![1],
+        PanelPosition.left,
+      );
+      await targetStarted.future;
+      root.complete(DirectoryListing(entries: [entry('B/', dir: true)]));
+      await refresh;
+      expect(ancestry(), ['/']);
+      expect(view().pendingPath, '/B');
+      target.complete(DirectoryListing(entries: files['/B']!));
+      await navigation;
+      expect(ancestry(), ['/', '/B']);
+      expect(view().pendingPath, isNull);
+    },
+    tags: ['regression'],
+  );
 }

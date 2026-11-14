@@ -892,4 +892,309 @@ void main() {
     },
     tags: ['regression'],
   );
+  Future<void> mouseClick(
+    WidgetTester tester,
+    Finder target, {
+    int buttons = kPrimaryMouseButton,
+  }) async {
+    final gesture = await tester.startGesture(
+      tester.getCenter(target),
+      kind: PointerDeviceKind.mouse,
+      buttons: buttons,
+    );
+    await tester.pump();
+    await gesture.up();
+    await gesture.removePointer();
+    await tester.pumpAndSettle();
+  }
+
+  List<String> outlinedRows(WidgetTester tester) => tester
+      .widgetList<Container>(find.byType(Container))
+      .where(
+        (container) =>
+            container.foregroundDecoration is BoxDecoration &&
+            (container.foregroundDecoration as BoxDecoration).borderRadius !=
+                null,
+      )
+      .map(
+        (container) =>
+            (((container.child as ExcludeFocus).child as ListTile).title
+                    as Text)
+                .data!,
+      )
+      .toList();
+
+  testWidgets(
+    'mouse focus and rename dialog dismissal never outline row zero; renamed cursor and selection remain meaningful',
+    (tester) async {
+      files['/A'] = [entry('DualFilter.json'), entry('InitA.json')];
+      await mount(tester);
+      await mouseClick(tester, find.text('A'));
+      await mouseClick(tester, find.text('InitA.json'));
+      expect(outlinedRows(tester), isEmpty);
+      when(
+        () => manager.requestFileRename('/A/InitA.json', '/A/InitA1.json'),
+      ).thenAnswer((_) async {
+        files['/A']![1] = entry('InitA1.json');
+        return SdCardStatus(success: true, message: '');
+      });
+      await mouseClick(
+        tester,
+        find.text('InitA.json'),
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.tap(find.text('Rename'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'InitA1.json');
+      await tester.tap(find.widgetWithText(TextButton, 'Rename'));
+      await tester.pumpAndSettle();
+      expect(cubit.getSelectedPath(), '/A/InitA1.json');
+      expect(outlinedRows(tester), isEmpty);
+      expect(find.byType(SnackBar), findsNothing);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(cubit.getSelectedPath(), '/A/InitA1.json');
+      expect(outlinedRows(tester), ['InitA1.json']);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pumpAndSettle();
+      expect(outlinedRows(tester), ['DualFilter.json']);
+      final hover = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await hover.addPointer(
+        location: tester.getCenter(find.text('InitA1.json')),
+      );
+      await hover.moveTo(
+        tester.getCenter(find.text('InitA1.json')) + const Offset(2, 0),
+      );
+      await tester.pump();
+      expect(outlinedRows(tester), isEmpty);
+      await hover.removePointer();
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+
+  testWidgets(
+    'unselected context cursor follows a verified rename instead of falling back to the selected or first row',
+    (tester) async {
+      files['/A'] = [
+        entry('first.json'),
+        entry('middle.json'),
+        entry('selected.json'),
+      ];
+      await mount(tester);
+      await mouseClick(tester, find.text('A'));
+      await mouseClick(tester, find.text('selected.json'));
+      await mouseClick(
+        tester,
+        find.text('middle.json'),
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      when(
+        () => manager.requestFileRename('/A/middle.json', '/A/renamed.json'),
+      ).thenAnswer((_) async {
+        files['/A']![1] = entry('renamed.json');
+        return SdCardStatus(success: true, message: '');
+      });
+      await cubit.renameEntry('/A/middle.json', 'renamed.json');
+      await tester.pumpAndSettle();
+      expect(cubit.getSelectedPath(), '/A/selected.json');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(cubit.getSelectedPath(), '/A/renamed.json');
+      expect(outlinedRows(tester), ['renamed.json']);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+
+  testWidgets(
+    'one mouse click in an unfocused stale column survives a focus refresh and row reorder between pointer down and up',
+    (tester) async {
+      await mount(tester);
+      await mouseClick(tester, find.text('A'));
+      now = now.add(const Duration(seconds: 6));
+      reads.clear();
+      final started = Completer<void>();
+      final response = Completer<DirectoryListing?>();
+      when(() => manager.requestDirectoryListing('/A')).thenAnswer((_) {
+        started.complete();
+        return response.future;
+      });
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('child')),
+        kind: PointerDeviceKind.mouse,
+      );
+      await started.future;
+      await tester.pump();
+      response.complete(
+        DirectoryListing(entries: [entry('aaa/', dir: true), ...files['/A']!]),
+      );
+      await tester.pump();
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+      expect(
+        reads,
+        contains('/A/child'),
+      ); // No double-tap timeout or second click.
+      await gesture.removePointer();
+      await tester.pumpAndSettle();
+      expect(paths(tester), ['/', '/A', '/A/child']);
+      expect(cubit.state.selectedCenterItem!.name, 'child/');
+      expect(outlinedRows(tester), isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+
+  testWidgets(
+    'rapid ordinary sibling clicks honor latest intent while pending and never publish blank or mislabeled destination columns',
+    (tester) async {
+      await mount(tester);
+      final rects = geometry(tester);
+      final started = Completer<void>();
+      final response = Completer<DirectoryListing?>();
+      when(() => manager.requestDirectoryListing('/A')).thenAnswer((_) {
+        started.complete();
+        return response.future;
+      });
+      await mouseClick(tester, find.text('A'));
+      await started.future;
+      expect(paths(tester), ['/', '', '']);
+      expect(cubit.state.view!.pendingPath, '/A');
+      await mouseClick(tester, find.text('B'));
+      expect(paths(tester), ['/', '/B', '']);
+      expect(find.text('B.json'), findsOneWidget);
+      response.complete(DirectoryListing(entries: files['/A']!));
+      await tester.pumpAndSettle();
+      expect(paths(tester), ['/', '/B', '']);
+      expect(find.text('B.json'), findsOneWidget);
+      expect(geometry(tester), rects);
+      expect(outlinedRows(tester), isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+
+  testWidgets(
+    'held cascade navigation publishes path and contents in one frame without background-only real columns',
+    (tester) async {
+      await mount(tester);
+      await tap(tester, 0, 'A');
+      await tap(tester, 1, 'child');
+      final rects = geometry(tester);
+      final prior = paths(tester);
+      final started = Completer<void>();
+      final response = Completer<DirectoryListing?>();
+      when(() => manager.requestDirectoryListing('/A/child/deep')).thenAnswer((
+        _,
+      ) {
+        started.complete();
+        return response.future;
+      });
+      final frames = <BrowserSnapshot>[];
+      final subscription = cubit.stream.listen((state) {
+        if (state.view != null) frames.add(state.view!);
+      });
+      await mouseClick(tester, find.text('deep'));
+      expect(
+        started.isCompleted,
+        isTrue,
+        reason:
+            'reads=$reads paths=${paths(tester)} pending=${cubit.state.view!.pendingPath}',
+      );
+      await started.future;
+      expect(paths(tester), prior);
+      expect(find.text('two.json'), findsOneWidget);
+      expect(geometry(tester), rects);
+      response.complete(DirectoryListing(entries: files['/A/child/deep']!));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(paths(tester), ['/A', '/A/child', '/A/child/deep']);
+      expect(find.text('three.json'), findsOneWidget);
+      for (final frame in frames) {
+        for (final position in PanelPosition.values) {
+          if (frame.path(position) != null) {
+            expect(frame.items(position), isNotEmpty);
+          }
+        }
+      }
+      expect(geometry(tester), rects);
+      await tester.pumpAndSettle();
+      addTearDown(subscription.cancel);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+
+  testWidgets(
+    'folder rename keeps descendant list state and contents through every verification frame with no post-frame scroll correction',
+    (tester) async {
+      await mount(tester);
+      await cubit.navigateToAbsolutePath('/A/child/deep');
+      await tester.pumpAndSettle();
+      final rects = geometry(tester);
+      final scrollBefore = tester.state(
+        find.descendant(of: pane(2), matching: find.byType(Scrollable)),
+      );
+      final response = Completer<DirectoryListing?>();
+      final started = Completer<void>();
+      when(() => manager.requestFileRename('/A/child', '/A/Live')).thenAnswer((
+        _,
+      ) async {
+        files['/A']![0] = entry('Live/', dir: true);
+        for (final path
+            in files.keys
+                .where(
+                  (path) => path == '/A/child' || path.startsWith('/A/child/'),
+                )
+                .toList()) {
+          files['/A/Live${path.substring('/A/child'.length)}'] = files.remove(
+            path,
+          )!;
+        }
+        return SdCardStatus(success: true, message: '');
+      });
+      when(() => manager.requestDirectoryListing('/A/Live/deep')).thenAnswer((
+        _,
+      ) {
+        started.complete();
+        return response.future;
+      });
+      final frames = <BrowserSnapshot>[];
+      final subscription = cubit.stream.listen((state) {
+        if (state.view != null) frames.add(state.view!);
+      });
+      final rename = cubit.renameEntry('/A/child', 'Live');
+      await started.future;
+      await tester.pump();
+      expect(paths(tester), ['/A', '/A/Live', '/A/Live/deep']);
+      expect(find.text('two.json'), findsOneWidget);
+      expect(find.text('three.json'), findsOneWidget);
+      expect(
+        tester.state(
+          find.descendant(of: pane(2), matching: find.byType(Scrollable)),
+        ),
+        same(scrollBefore),
+      );
+      expect(cubit.isDirectoryReady('/A/Live/deep'), isFalse);
+      expect(geometry(tester), rects);
+      response.complete(DirectoryListing(entries: files['/A/Live/deep']!));
+      await rename;
+      await tester.pumpAndSettle();
+      for (final frame in frames) {
+        for (final position in PanelPosition.values) {
+          if (frame.path(position) != null) {
+            expect(frame.items(position), isNotEmpty);
+          }
+        }
+      }
+      expect(geometry(tester), rects);
+      addTearDown(subscription.cancel);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
 }

@@ -361,4 +361,4 @@ as feedback appears or clears. Test geometry across asynchronous state changes.
   canonical whole-file only; do not invent offset/count chunked download
   requests. Verify large WAV uploads by directory listing names/sizes or a
   mounted SD-card filesystem, not whole-file SysEx download.
-- Prefer snackbars for exceptions, failures, or invalid actions; avoid success snackbars unless explicitly requested.
+- Snackbars are exclusively for errors, exceptional warnings, or invalid actions. ZERO affirmative/success or routine progress snackbars anywhere in the app (including helpers). Use ordinary inline state and accessibility announcements; do not replace successes with toasts.

@@ -6,6 +6,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:path/path.dart' as p;
 import 'package:flutter/semantics.dart';
@@ -310,15 +311,20 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
                         final error =
                             state.mapOrNull(error: (error) => error.message) ??
                             browser?.errors[browser.focused.path];
+                        final message =
+                            error ??
+                            (browser?.pendingPath == null
+                                ? ''
+                                : 'Opening ${browser!.pendingPath}…');
                         return Row(
                           children: [
                             Expanded(
                               child: Semantics(
                                 liveRegion: true,
                                 child: Tooltip(
-                                  message: error ?? '',
+                                  message: message,
                                   child: Text(
-                                    error ?? '',
+                                    message,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -831,9 +837,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
           'Downloaded $fileName',
           TextDirection.ltr,
         );
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Downloaded $fileName')));
       }
     } catch (e) {
       if (mounted) {
@@ -871,9 +874,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
           'Uploaded ${file.name}',
           TextDirection.ltr,
         );
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Uploaded ${file.name}')));
       }
     } catch (e) {
       if (mounted) {
@@ -928,9 +928,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
           View.of(context),
           'Created folder ${name.trim()}',
           TextDirection.ltr,
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Created folder ${name.trim()}')),
         );
       }
     } catch (e) {
@@ -992,9 +989,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
           'Renamed to ${newName.trim()}',
           TextDirection.ltr,
         );
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Renamed to ${newName.trim()}')));
       }
     } catch (e) {
       if (mounted) {
@@ -1045,9 +1039,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
           'Deleted $cleanName',
           TextDirection.ltr,
         );
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Deleted $cleanName')));
       }
     } catch (e) {
       if (mounted) {
@@ -1201,9 +1192,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
           'Uploaded $fileName',
           TextDirection.ltr,
         );
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Uploaded $fileName')));
       }
     } catch (e) {
       if (mounted) {
@@ -1478,6 +1466,7 @@ class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
             if (available) widget.onPaneFocused?.call(position);
           },
           child: DirectoryPanel(
+            renamedPaths: widget.browser.renamedPaths,
             locationOffsets: _locationOffsets,
             locationCursors: _locationCursors,
             items: widget.browser.items(position),
@@ -1526,6 +1515,7 @@ IconData _getFileIcon(String name) {
 
 class DirectoryPanel extends StatefulWidget {
   final List<DirectoryEntry> items;
+  final Map<String, String> renamedPaths;
   final DirectoryEntry? selectedItem;
   final Function(DirectoryEntry) onItemTap;
   final PanelPosition position;
@@ -1546,6 +1536,7 @@ class DirectoryPanel extends StatefulWidget {
   const DirectoryPanel({
     super.key,
     required this.items,
+    this.renamedPaths = const {},
     required this.selectedItem,
     required this.onItemTap,
     required this.position,
@@ -1571,9 +1562,7 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
   FocusNode? _ownedFocusNode;
   FocusNode get _focusNode =>
       widget.focusNode ?? (_ownedFocusNode ??= FocusNode());
-  final ScrollController _scrollController = ScrollController(
-    keepScrollOffset: false,
-  );
+  late ScrollController _scrollController;
   int _focusedIndex = 0;
   final Map<String, double> _localOffsets = {};
   final Map<String, String?> _localCursors = {};
@@ -1581,25 +1570,104 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       widget.locationOffsets ?? _localOffsets;
   Map<String, String?> get _cursorNames =>
       widget.locationCursors ?? _localCursors;
-  String? _restoreScrollFor;
-  bool _showKeyboardFocus = false;
+  bool _keyboardModality = false;
+  bool get _showKeyboardFocus =>
+      _keyboardModality &&
+      FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
+
+  void _pointerModality(PointerEvent event) {
+    if (_keyboardModality &&
+        (event is PointerDownEvent || event is PointerHoverEvent)) {
+      setState(() => _keyboardModality = false);
+    }
+  }
+
+  bool _keyModality(KeyEvent event) {
+    if (event is KeyDownEvent &&
+        (_focusNode.hasFocus || event.logicalKey == LogicalKeyboardKey.tab)) {
+      if (!_keyboardModality) setState(() => _keyboardModality = true);
+    }
+    return false; // Modality observation must never consume navigation/clicks.
+  }
+
+  String _identity(String path, Map<String, String> aliases) {
+    final ordered = aliases.entries.toList()
+      ..sort((a, b) => b.value.length.compareTo(a.value.length));
+    for (var pass = 0; pass <= aliases.length; pass++) {
+      final before = path;
+      for (final alias in ordered) {
+        if (path == alias.value || path.startsWith('${alias.value}/')) {
+          path = '${alias.key}${path.substring(alias.value.length)}';
+          break;
+        }
+      }
+      if (path == before) break;
+    }
+    return path;
+  }
+
+  String _rebase(String path) {
+    final ordered = widget.renamedPaths.entries.toList()
+      ..sort((a, b) => b.key.length.compareTo(a.key.length));
+    for (var pass = 0; pass <= ordered.length; pass++) {
+      final before = path;
+      for (final alias in ordered) {
+        if (path == alias.key || path.startsWith('${alias.key}/')) {
+          path = '${alias.value}${path.substring(alias.key.length)}';
+          break;
+        }
+      }
+      if (path == before) break;
+    }
+    return path;
+  }
+
+  String _entryPath(String directory, String name) => p.posix.join(
+    directory,
+    name.endsWith('/') ? name.substring(0, name.length - 1) : name,
+  );
+
+  ScrollController _controller(double offset) =>
+      ScrollController(initialScrollOffset: offset, keepScrollOffset: false)
+        ..addListener(_rememberOffset);
+
+  void _highlightChanged(FocusHighlightMode _) {
+    if (mounted) setState(() {});
+  }
+
   bool _isDragOver = false;
 
   @override
   void initState() {
     super.initState();
+    _focusedIndex = widget.items.indexWhere(
+      (item) =>
+          item.name ==
+          (_cursorNames[widget.currentPath] ?? widget.selectedItem?.name),
+    );
+    if (_focusedIndex < 0 && widget.items.isNotEmpty) _focusedIndex = 0;
+    _scrollController = _controller(
+      _scrollOffsets[widget.currentPath] ??
+          _scrollOffsets[_identity(widget.currentPath, widget.renamedPaths)] ??
+          0,
+    );
     _focusNode.addListener(_onFocusChange);
-    _scrollController.addListener(_rememberOffset);
+    FocusManager.instance.addHighlightModeListener(_highlightChanged);
+    GestureBinding.instance.pointerRouter.addGlobalRoute(_pointerModality);
+    HardwareKeyboard.instance.addHandler(_keyModality);
   }
 
   void _rememberOffset() {
-    if (_restoreScrollFor == null && _scrollController.hasClients) {
+    if (_scrollController.hasClients) {
       _scrollOffsets[widget.currentPath] = _scrollController.offset;
     }
   }
 
   @override
   void dispose() {
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(_pointerModality);
+    HardwareKeyboard.instance.removeHandler(_keyModality);
+    FocusManager.instance.removeHighlightModeListener(_highlightChanged);
     _focusNode.removeListener(_onFocusChange);
     _ownedFocusNode?.dispose();
     _scrollController.dispose();
@@ -1613,58 +1681,68 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       oldWidget.focusNode?.removeListener(_onFocusChange);
       _focusNode.addListener(_onFocusChange);
     }
-    if (widget.currentPath != oldWidget.currentPath) {
-      // Do not let a reused offscreen row's InkWell focus auto-scroll the new
-      // directory back to the parent's old row index.
-      if (_focusNode.hasFocus) _focusNode.requestFocus();
+    final oldCursor =
+        _focusedIndex >= 0 && _focusedIndex < oldWidget.items.length
+        ? oldWidget.items[_focusedIndex].name
+        : null;
+    final sameLocation =
+        _identity(widget.currentPath, widget.renamedPaths) ==
+        _identity(oldWidget.currentPath, oldWidget.renamedPaths);
+    if (sameLocation) {
+      final fullCursor = oldCursor == null
+          ? null
+          : _rebase(_entryPath(oldWidget.currentPath, oldCursor));
+      final name = fullCursor == null
+          ? widget.selectedItem?.name
+          : p.posix.basename(fullCursor);
+      // Directory entry names may have a trailing slash; compare paths.
+      if (widget.currentPath != oldWidget.currentPath &&
+          _scrollController.hasClients) {
+        _scrollOffsets[widget.currentPath] = _scrollController.offset;
+      }
+      _focusedIndex = widget.items.indexWhere(
+        (entry) =>
+            _entryPath(widget.currentPath, entry.name) ==
+            _entryPath(widget.currentPath, name ?? ''),
+      );
+      if (_focusedIndex < 0) {
+        _focusedIndex = widget.items.indexWhere(
+          (entry) => entry.name == widget.selectedItem?.name,
+        );
+      }
+    } else {
       if (_scrollController.hasClients) {
         _scrollOffsets[oldWidget.currentPath] = _scrollController.offset;
       }
-      _cursorNames[oldWidget.currentPath] =
-          _focusedIndex < oldWidget.items.length
-          ? oldWidget.items[_focusedIndex].name
-          : null;
-      _restoreScrollFor = widget.currentPath;
+      _cursorNames[oldWidget.currentPath] = oldCursor;
+      final previous = _scrollController..removeListener(_rememberOffset);
+      // New location + correct offset are laid out together, not corrected by
+      // a post-frame jump which can first paint an empty/scrolled-out viewport.
+      _scrollController = _controller(
+        _scrollOffsets[widget.currentPath] ??
+            _scrollOffsets[_identity(
+              widget.currentPath,
+              widget.renamedPaths,
+            )] ??
+            0,
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
       final name =
           _cursorNames[widget.currentPath] ?? widget.selectedItem?.name;
       _focusedIndex = widget.items.indexWhere((entry) => entry.name == name);
-      if (_focusedIndex < 0) _focusedIndex = 0;
-    } else if (widget.items != oldWidget.items) {
-      final name = _restoreScrollFor == widget.currentPath
-          ? _cursorNames[widget.currentPath]
-          : _focusedIndex < oldWidget.items.length
-          ? oldWidget.items[_focusedIndex].name
-          : widget.selectedItem?.name;
-      _focusedIndex = widget.items.indexWhere((entry) => entry.name == name);
-      if (_focusedIndex < 0) _focusedIndex = 0;
     }
-    if (_restoreScrollFor == widget.currentPath) {
-      final path = widget.currentPath;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted ||
-            widget.currentPath != path ||
-            !_scrollController.hasClients) {
-          return;
-        }
-        _scrollController.jumpTo(
-          (_scrollOffsets[path] ?? 0).clamp(
-            0,
-            _scrollController.position.maxScrollExtent,
-          ),
-        );
-        _restoreScrollFor = null;
-      });
-    }
+    if (_focusedIndex < 0 && widget.items.isNotEmpty) _focusedIndex = 0;
+    _cursorNames[widget.currentPath] = _focusedIndex >= 0
+        ? widget.items[_focusedIndex].name
+        : null;
   }
 
   void _onFocusChange() {
     if (_focusNode.hasFocus) {
       widget.onFocused?.call();
-      setState(() => _showKeyboardFocus = true);
-      _announceCurrentItem();
-    } else {
-      setState(() => _showKeyboardFocus = false);
+      if (_showKeyboardFocus) _announceCurrentItem();
     }
+    setState(() {});
   }
 
   void _announceCurrentItem() {
@@ -1704,7 +1782,6 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       if (_focusedIndex < widget.items.length - 1) {
         setState(() {
           _focusedIndex++;
-          _showKeyboardFocus = true;
         });
         _cursorNames[widget.currentPath] = widget.items[_focusedIndex].name;
         _scrollToFocused();
@@ -1716,7 +1793,6 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       if (_focusedIndex > 0) {
         setState(() {
           _focusedIndex--;
-          _showKeyboardFocus = true;
         });
         _cursorNames[widget.currentPath] = widget.items[_focusedIndex].name;
         _scrollToFocused();
@@ -1736,7 +1812,6 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
     if (event.logicalKey == LogicalKeyboardKey.home) {
       setState(() {
         _focusedIndex = 0;
-        _showKeyboardFocus = true;
       });
       _scrollToFocused();
       _announceCurrentItem();
@@ -1745,7 +1820,6 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
     if (event.logicalKey == LogicalKeyboardKey.end) {
       setState(() {
         _focusedIndex = widget.items.length - 1;
-        _showKeyboardFocus = true;
       });
       _scrollToFocused();
       _announceCurrentItem();
@@ -1788,50 +1862,41 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
 
     Widget panel;
 
-    if (widget.items.isEmpty) {
-      panel = Semantics(
-        label: widget.currentPath.isEmpty
-            ? '$panelLabel, empty column'
-            : '$panelLabel, empty directory',
+    panel = Semantics(
+      label: '$panelLabel, ${widget.items.length} items',
+      child: FocusTraversalGroup(
+        descendantsAreTraversable: false,
         child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+          clipBehavior: Clip.hardEdge,
+          decoration: const BoxDecoration(),
+          foregroundDecoration: BoxDecoration(
             border: Border.all(
-              color: Theme.of(context).dividerColor,
-              width: 0.5,
+              color: _showKeyboardFocus && _focusNode.hasFocus
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).dividerColor,
+              width: _showKeyboardFocus && _focusNode.hasFocus ? 2.0 : 0.5,
+            ),
+          ),
+          child: Material(
+            color: Theme.of(context).colorScheme.surface,
+            child: ListView.builder(
+              key: ValueKey(_identity(widget.currentPath, widget.renamedPaths)),
+              controller: _scrollController,
+              itemCount: widget.items.length,
+              findChildIndexCallback: (key) {
+                if (key is! ValueKey<String>) return null;
+                final index = widget.items.indexWhere(
+                  (item) =>
+                      _entryPath(widget.currentPath, item.name) == key.value,
+                );
+                return index < 0 ? null : index;
+              },
+              itemBuilder: (context, index) => _buildItem(context, index),
             ),
           ),
         ),
-      );
-    } else {
-      panel = Semantics(
-        label: '$panelLabel, ${widget.items.length} items',
-        child: FocusTraversalGroup(
-          descendantsAreTraversable: false,
-          child: Container(
-            clipBehavior: Clip.hardEdge,
-            decoration: const BoxDecoration(),
-            foregroundDecoration: BoxDecoration(
-              border: Border.all(
-                color: _showKeyboardFocus && _focusNode.hasFocus
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).dividerColor,
-                width: _showKeyboardFocus && _focusNode.hasFocus ? 2.0 : 0.5,
-              ),
-            ),
-            child: Material(
-              color: Theme.of(context).colorScheme.surface,
-              child: ListView.builder(
-                key: ValueKey(widget.currentPath),
-                controller: _scrollController,
-                itemCount: widget.items.length,
-                itemBuilder: (context, index) => _buildItem(context, index),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+      ),
+    );
 
     // A real directory owns its blank space. Child row gestures win the
     // gesture arena, keeping folder-entry actions targeted inside that folder.
@@ -1969,42 +2034,45 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
               borderRadius: BorderRadius.circular(4),
             )
           : null,
-      child: ListTile(
-        leading: Icon(icon, color: iconColor),
-        title: Text(
-          displayName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      child: ExcludeFocus(
+        child: ListTile(
+          leading: Icon(icon, color: iconColor),
+          title: Text(
+            displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
+          subtitle: fileInfo != null
+              ? Text(
+                  fileInfo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12),
+                )
+              : null,
+          selected: isSelected,
+          selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
+          onTap: () {
+            setState(() {
+              _focusedIndex = index;
+            });
+            _cursorNames[widget.currentPath] = item.name;
+            widget.onItemTap(item);
+          },
+          dense: true,
         ),
-        subtitle: fileInfo != null
-            ? Text(
-                fileInfo,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12),
-              )
-            : null,
-        selected: isSelected,
-        selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
-        onTap: () {
-          setState(() {
-            _focusedIndex = index;
-            _showKeyboardFocus = false;
-          });
-          _cursorNames[widget.currentPath] = item.name;
-          widget.onItemTap(item);
-        },
-        dense: true,
       ),
     );
 
     if (!isParentDir && widget.onContextMenu != null) {
       tile = GestureDetector(
         onSecondaryTapUp: (details) {
+          setState(() => _focusedIndex = index);
+          _cursorNames[widget.currentPath] = item.name;
           widget.onContextMenu!(
             item,
             details.globalPosition,
@@ -2022,7 +2090,10 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       );
     }
 
-    return tile;
+    return KeyedSubtree(
+      key: ValueKey(_entryPath(widget.currentPath, item.name)),
+      child: tile,
+    );
   }
 
   static String _formatFileInfo(DirectoryEntry entry) {
