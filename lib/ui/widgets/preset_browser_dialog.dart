@@ -21,14 +21,12 @@ import 'package:nt_helper/models/sd_card_file_system.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/services/file_conflict_detector.dart';
 import 'package:nt_helper/services/preset_package_analyzer.dart';
-import 'package:nt_helper/services/wave_cache_maintenance_service.dart';
 import 'package:nt_helper/models/preset_action.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 import 'package:nt_helper/ui/widgets/mobile_drill_down_navigator.dart';
 import 'package:nt_helper/ui/widgets/package_install_dialog.dart';
 import 'package:nt_helper/ui/widgets/preset_package_dialog.dart';
-import 'package:nt_helper/ui/widgets/wave_cache_troubleshooting_dialog.dart';
 import 'package:nt_helper/utils/responsive.dart';
 import 'package:nt_helper/services/preset_analyzer.dart';
 
@@ -66,10 +64,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
 
   PackageAnalysis? _currentAnalysis;
   Uint8List? _currentPackageData;
-
-  bool get _supportsWaveCacheTroubleshooting {
-    return widget.firmwareVersion?.hasWaveCacheListing ?? false;
-  }
 
   @override
   void initState() {
@@ -127,19 +121,8 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
                 BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
                   builder: (context, state) {
                     final browser = state.view;
-                    final directory = state.currentPath;
                     return Row(
                       children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.create_new_folder,
-                            semanticLabel: 'New folder in $directory',
-                          ),
-                          tooltip: 'New folder in $directory',
-                          onPressed: browser == null
-                              ? null
-                              : () => _createFolderAction(directory),
-                        ),
                         IconButton(
                           icon: const Icon(
                             Icons.arrow_back,
@@ -174,27 +157,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
                     );
                   },
                 ),
-                if (isMobile)
-                  IconButton(
-                    icon: const Icon(
-                      Icons.troubleshoot,
-                      semanticLabel: 'Wave cache troubleshooting',
-                    ),
-                    onPressed: _supportsWaveCacheTroubleshooting
-                        ? _showWaveCacheTroubleshooting
-                        : null,
-                    tooltip: _supportsWaveCacheTroubleshooting
-                        ? 'Wave cache troubleshooting'
-                        : 'Wave cache troubleshooting requires firmware 1.17 or later',
-                  )
-                else
-                  TextButton.icon(
-                    onPressed: _supportsWaveCacheTroubleshooting
-                        ? _showWaveCacheTroubleshooting
-                        : null,
-                    icon: const Icon(Icons.troubleshoot),
-                    label: const Text('Wave cache'),
-                  ),
                 IconButton(
                   icon: const Icon(Icons.close, semanticLabel: 'Close'),
                   onPressed: () => Navigator.of(context).pop(),
@@ -266,6 +228,12 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
                                           ),
                                       error:
                                           browser.errors[browser.current.path],
+                                      onDirectoryContextMenu: (position) =>
+                                          _showContextMenu(
+                                            null,
+                                            position,
+                                            browser.current.path,
+                                          ),
                                       onLongPress: (entry) =>
                                           _showContextMenuAtCenter(
                                             entry,
@@ -486,24 +454,6 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
     }
 
     return content;
-  }
-
-  Future<void> _showWaveCacheTroubleshooting() async {
-    final remountRequested = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => WaveCacheTroubleshootingDialog(
-        service: WaveCacheMaintenanceService(
-          widget.distingCubit.requireDisting(),
-        ),
-      ),
-    );
-    if (remountRequested == true && mounted) {
-      Navigator.of(context).pop();
-    } else if (mounted) {
-      // This child tool can change device files outside the browser cubit.
-      await context.read<PresetBrowserCubit>().refreshVisiblePanes();
-    }
   }
 
   Widget _buildDesktopBreadcrumbs(
@@ -792,7 +742,12 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
         case _FileAction.upload:
           _uploadFileAction(targetDir);
         case _FileAction.newFolder:
-          _createFolderAction(targetDir);
+          _createFolderAction(
+            targetDir,
+            isTargetReady: () =>
+                cubit.isDirectoryReady(panelPath) &&
+                (entry == null || cubit.canUseEntry(entryPath)),
+          );
         case _FileAction.rename:
           if (entry != null) _renameAction(entryPath, entry.name);
         case _FileAction.delete:
@@ -888,7 +843,10 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
     }
   }
 
-  Future<void> _createFolderAction(String parentDirectory) async {
+  Future<void> _createFolderAction(
+    String parentDirectory, {
+    required bool Function() isTargetReady,
+  }) async {
     final cubit = context.read<PresetBrowserCubit>();
     final controller = TextEditingController();
     final name = await showDialog<String>(
@@ -919,7 +877,9 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
       ),
     );
 
-    if (name == null || name.trim().isEmpty) return;
+    if (name == null || name.trim().isEmpty || !mounted || !isTargetReady()) {
+      return;
+    }
 
     try {
       await cubit.createDirectory(parentDirectory, name.trim());

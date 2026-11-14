@@ -9,6 +9,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/cubit/preset_browser_cubit.dart';
 import 'package:nt_helper/ui/widgets/preset_browser_dialog.dart';
+import 'package:nt_helper/ui/widgets/mobile_drill_down_navigator.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/models/sd_card_file_system.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
@@ -63,8 +64,7 @@ void main() {
     for (final action in [
       'empty root',
       'root',
-      'toolbar',
-      'mobile toolbar',
+      'mobile background',
       'nested',
       'entry',
       'placeholder',
@@ -72,7 +72,7 @@ void main() {
       testWidgets('folder creation targets correct directory via $action', (
         tester,
       ) async {
-        final mobile = action == 'mobile toolbar';
+        final mobile = action == 'mobile background';
         if (mobile) {
           tester.view.physicalSize = const Size(390, 844);
           tester.view.devicePixelRatio = 1;
@@ -80,11 +80,7 @@ void main() {
           addTearDown(tester.view.resetDevicePixelRatio);
         }
         final hasFolder = action != 'empty root' && action != 'placeholder';
-        final target =
-            mobile ||
-                action == 'nested' ||
-                action == 'entry' ||
-                action == 'toolbar'
+        final target = mobile || action == 'nested' || action == 'entry'
             ? '/programs'
             : action == 'placeholder'
             ? '/empty-center'
@@ -122,12 +118,13 @@ void main() {
             ),
           ),
         );
-        if (action == 'toolbar' || mobile) {
-          expect(
-            find.bySemanticsLabel('New folder in $target'),
-            findsOneWidget,
+        if (mobile) {
+          await tester.longPressAt(
+            tester.getBottomLeft(find.byType(MobileDrillDownNavigator)) +
+                const Offset(25, -25),
           );
-          await tester.tap(find.byTooltip('New folder in $target'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('New Folder'));
         } else {
           final panel = find
               .byType(DirectoryPanel)
@@ -331,79 +328,51 @@ void main() {
       expect(find.byIcon(Icons.sort_by_alpha), findsOneWidget);
     });
 
-    testWidgets('enables wave cache troubleshooting on firmware 1.17', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1200, 800);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      when(() => mockCubit.state).thenReturn(
-        browserFixture(
-          currentPath: '/',
-          leftPanelItems: const [],
-          centerPanelItems: const [],
-          rightPanelItems: const [],
-          selectedLeftItem: null,
-          selectedCenterItem: null,
-          selectedRightItem: null,
-          navigationHistory: const [],
-          sortByDate: false,
-        ),
-      );
-      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
-
-      await tester.pumpWidget(
-        createTestWidget(
-          child: PresetBrowserDialog(
-            distingCubit: mockDistingCubit,
-            firmwareVersion: FirmwareVersion('1.17.0'),
-          ),
-        ),
-      );
-
-      final action = tester.widget<TextButton>(
-        find.widgetWithText(TextButton, 'Wave cache'),
-      );
-      expect(action.onPressed, isNotNull);
-    });
-
-    testWidgets('disables wave cache troubleshooting before firmware 1.17', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1200, 800);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      when(() => mockCubit.state).thenReturn(
-        browserFixture(
-          currentPath: '/',
-          leftPanelItems: const [],
-          centerPanelItems: const [],
-          rightPanelItems: const [],
-          selectedLeftItem: null,
-          selectedCenterItem: null,
-          selectedRightItem: null,
-          navigationHistory: const [],
-          sortByDate: false,
-        ),
-      );
-      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
-
-      await tester.pumpWidget(
-        createTestWidget(
-          child: PresetBrowserDialog(
-            distingCubit: mockDistingCubit,
-            firmwareVersion: FirmwareVersion('1.16.9'),
-          ),
-        ),
-      );
-
-      final action = tester.widget<TextButton>(
-        find.widgetWithText(TextButton, 'Wave cache'),
-      );
-      expect(action.onPressed, isNull);
-    });
+    for (final size in [const Size(1200, 800), const Size(390, 844)]) {
+      for (final firmware in ['1.17.0', '1.16.9']) {
+        testWidgets(
+          'browser toolbar keeps Back Sort Close but no create or wave cache at $size firmware $firmware',
+          (tester) async {
+            tester.view.physicalSize = size;
+            tester.view.devicePixelRatio = 1;
+            addTearDown(tester.view.resetPhysicalSize);
+            addTearDown(tester.view.resetDevicePixelRatio);
+            when(() => mockCubit.state).thenReturn(
+              browserFixture(
+                currentPath: '/',
+                leftPanelItems: const [],
+                centerPanelItems: const [],
+                rightPanelItems: const [],
+                sortByDate: false,
+              ),
+            );
+            when(
+              () => mockCubit.stream,
+            ).thenAnswer((_) => const Stream.empty());
+            await tester.pumpWidget(
+              createTestWidget(
+                child: PresetBrowserDialog(
+                  distingCubit: mockDistingCubit,
+                  firmwareVersion: FirmwareVersion(firmware),
+                ),
+              ),
+            );
+            final toolbar = find.byKey(const Key('preset-browser-toolbar'));
+            expect(
+              find.descendant(of: toolbar, matching: find.byType(IconButton)),
+              findsNWidgets(3),
+            );
+            expect(find.byTooltip('Back'), findsOneWidget);
+            expect(find.byTooltip('Sort alphabetically'), findsOneWidget);
+            expect(find.byTooltip('Close'), findsOneWidget);
+            expect(find.byIcon(Icons.create_new_folder), findsNothing);
+            expect(find.text('Wave cache'), findsNothing);
+            expect(find.byIcon(Icons.troubleshoot), findsNothing);
+            expect(tester.takeException(), isNull);
+          },
+        );
+      }
+    }
 
     testWidgets('calls selectDirectory when directory tapped', (tester) async {
       final testEntry = DirectoryEntry(

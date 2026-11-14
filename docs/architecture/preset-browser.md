@@ -66,7 +66,10 @@ and text-scale changes are separate responsive-layout inputs.
   breadcrumb region, three column boundaries, status area, upload-progress strip
   and action row reserve space in every state. There is no column header row:
   path ancestry is already visible in the fixed breadcrumb bar.
-- Back, folder creation, sort, Export and Load stay in place. Unavailable actions
+- Back, sort, Close, Export and Load stay in place. Folder creation lives only
+  in column background/item context menus (mobile includes background long press),
+  with the clicked directory captured and rechecked before submitting. Wave cache
+  troubleshooting belongs to the top-level System dialog, not this toolbar. Unavailable actions
   are disabled rather than inserted/removed. Placeholder columns keep their full
   geometry and stay blank without misleading paths or controls.
 - Loading/error/empty states render inside the same column skeleton. Root errors

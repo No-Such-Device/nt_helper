@@ -1197,4 +1197,138 @@ void main() {
     },
     tags: ['regression'],
   );
+  for (final scenario in [
+    (column: 0, item: null, directory: '/A'),
+    (column: 1, item: null, directory: '/A/child'),
+    (column: 2, item: null, directory: '/A/child/deep'),
+    (column: 0, item: 'child', directory: '/A/child'),
+    (column: 0, item: 'one.json', directory: '/A'),
+    (column: 2, item: 'four', directory: '/A/child/deep/four'),
+  ]) {
+    testWidgets(
+      'context New Folder targets ${scenario.directory} from shifted column ${scenario.column} item ${scenario.item}, regardless of action focus',
+      (tester) async {
+        await mount(tester);
+        await cubit.navigateToAbsolutePath('/A/child/deep');
+        await tester.pumpAndSettle();
+        final rects = geometry(tester);
+        final created = <String>[];
+        when(() => manager.requestDirectoryCreate(any())).thenAnswer((
+          call,
+        ) async {
+          final path = call.positionalArguments.single as String;
+          created.add(path);
+          files[scenario.directory]!.add(entry('helper/', dir: true));
+          return SdCardStatus(success: true, message: '');
+        });
+        expect(cubit.getCurrentDirectory(), '/A/child/deep');
+        if (scenario.item == null) {
+          await backgroundMenu(tester, scenario.column);
+        } else {
+          await tester.tap(
+            find.descendant(
+              of: pane(scenario.column),
+              matching: find.text(scenario.item!),
+            ),
+            buttons: kSecondaryMouseButton,
+          );
+          await tester.pumpAndSettle();
+        }
+        expect(find.text('Refresh'), findsOneWidget);
+        expect(
+          tester.widget<PopupMenuItem>(menuItem('New Folder')).enabled,
+          isTrue,
+        );
+        // A context operation belongs to its captured source, not a later focus.
+        await cubit.focusPane(PanelPosition.right);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('New Folder'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'helper');
+        await tester.tap(find.widgetWithText(TextButton, 'Create'));
+        await tester.pumpAndSettle();
+        expect(created, ['${scenario.directory}/helper']);
+        expect(find.byType(SnackBar), findsNothing);
+        expect(geometry(tester), rects);
+        expect(paths(tester), ['/A', '/A/child', '/A/child/deep']);
+        expect(tester.takeException(), isNull);
+      },
+      tags: ['regression'],
+    );
+  }
+
+  testWidgets(
+    'context New Folder is disabled while the clicked column or its ancestor is refreshing or uncertain; Refresh remains available',
+    (tester) async {
+      await mount(tester);
+      await cubit.navigateToAbsolutePath('/A/child/deep');
+      await tester.pumpAndSettle();
+      final rects = geometry(tester);
+      final response = Completer<DirectoryListing?>();
+      final started = Completer<void>();
+      when(() => manager.requestDirectoryListing('/A')).thenAnswer((_) {
+        started.complete();
+        return response.future;
+      });
+      final refresh = cubit.refreshDirectory('/A');
+      await started.future;
+      await tester.pump();
+      await backgroundMenu(tester, 0);
+      expect(
+        tester.widget<PopupMenuItem>(menuItem('New Folder')).enabled,
+        isFalse,
+      );
+      expect(tester.widget<PopupMenuItem>(menuItem('Refresh')).enabled, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      response.completeError(StateError('Unavailable'));
+      await refresh;
+      await tester.pumpAndSettle();
+      await backgroundMenu(tester, 2);
+      expect(
+        tester.widget<PopupMenuItem>(menuItem('New Folder')).enabled,
+        isFalse,
+      );
+      expect(tester.widget<PopupMenuItem>(menuItem('Refresh')).enabled, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      verifyNever(() => manager.requestDirectoryCreate(any()));
+      expect(geometry(tester), rects);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+
+  testWidgets(
+    'New Folder confirmation cannot create into a captured target whose ancestor becomes uncertain while typing',
+    (tester) async {
+      await mount(tester);
+      await cubit.navigateToAbsolutePath('/A/child/deep');
+      await tester.pumpAndSettle();
+      final rects = geometry(tester);
+      await backgroundMenu(tester, 1);
+      await tester.tap(find.text('New Folder'));
+      await tester.pumpAndSettle();
+      final response = Completer<DirectoryListing?>();
+      final started = Completer<void>();
+      when(() => manager.requestDirectoryListing('/A')).thenAnswer((_) {
+        started.complete();
+        return response.future;
+      });
+      final refresh = cubit.refreshDirectory('/A');
+      await started.future;
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'helper');
+      await tester.tap(find.widgetWithText(TextButton, 'Create'));
+      await tester.pumpAndSettle();
+      verifyNever(() => manager.requestDirectoryCreate(any()));
+      response.complete(DirectoryListing(entries: files['/A']!));
+      await refresh;
+      await tester.pumpAndSettle();
+      expect(geometry(tester), rects);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
 }
