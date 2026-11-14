@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:path/path.dart' as p;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -96,6 +97,7 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
   @override
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(context);
+    context.read<PresetBrowserCubit>().setSinglePaneLayout(isMobile);
 
     Widget content = Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
@@ -258,8 +260,16 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
                                         onItemTap: _handleMobileItemTap,
                                         onBreadcrumbTap: _handleBreadcrumbTap,
                                         onRefresh: _handleRefresh,
-                                        refreshing: loaded.browser.refreshing
-                                            .contains(loaded.currentPath),
+                                        refreshing:
+                                            loaded.browser.refreshing.contains(
+                                              loaded.currentPath,
+                                            ) ||
+                                            loaded.browser.busyPaths.any(
+                                              (busy) =>
+                                                  p.posix.dirname(busy) ==
+                                                  loaded.currentPath
+                                                      .toLowerCase(),
+                                            ),
                                         error: loaded
                                             .browser
                                             .errors[loaded.currentPath],
@@ -364,39 +374,57 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
                       selectedPath.isNotEmpty &&
                       selectedPath.toLowerCase().endsWith('.json');
                   final isMobile = Responsive.isMobile(context);
+                  final view = state.view;
+                  final remembered = view?.selection(view.activePane);
+                  final hasPresetSelection =
+                      isPresetFile ||
+                      (remembered != null &&
+                          !remembered.isDirectory &&
+                          remembered.name.toLowerCase().endsWith('.json'));
 
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (isPresetFile && !isMobile) ...[
+                      if (hasPresetSelection && !isMobile) ...[
                         OutlinedButton(
-                          onPressed: () async {
-                            Navigator.of(context).pop();
+                          onPressed: isPresetFile
+                              ? () async {
+                                  if (context
+                                          .read<PresetBrowserCubit>()
+                                          .getSelectedPath() !=
+                                      selectedPath) {
+                                    return;
+                                  }
+                                  Navigator.of(context).pop();
 
-                            Map<String, String>? pluginPaths;
-                            final state = widget.distingCubit.state;
-                            if (state is DistingStateSynchronized) {
-                              // Use the full algorithm library, not just the
-                              // currently-loaded slots. The preset being
-                              // exported may reference plugins that aren't
-                              // currently in any slot — those still need
-                              // their filenames resolved for packaging.
-                              pluginPaths = PresetAnalyzer.extractPluginPaths(
-                                state.algorithms,
-                              );
-                            }
+                                  Map<String, String>? pluginPaths;
+                                  final state = widget.distingCubit.state;
+                                  if (state is DistingStateSynchronized) {
+                                    // Use the full algorithm library, not just the
+                                    // currently-loaded slots. The preset being
+                                    // exported may reference plugins that aren't
+                                    // currently in any slot — those still need
+                                    // their filenames resolved for packaging.
+                                    pluginPaths =
+                                        PresetAnalyzer.extractPluginPaths(
+                                          state.algorithms,
+                                        );
+                                  }
 
-                            await showDialog<void>(
-                              context: context,
-                              builder: (dialogContext) => PresetPackageDialog(
-                                presetFilePath: selectedPath,
-                                fileSystem: PresetFileSystemImpl(
-                                  widget.distingCubit.requireDisting(),
-                                ),
-                                pluginPaths: pluginPaths,
-                              ),
-                            );
-                          },
+                                  await showDialog<void>(
+                                    context: context,
+                                    builder: (dialogContext) =>
+                                        PresetPackageDialog(
+                                          presetFilePath: selectedPath,
+                                          fileSystem: PresetFileSystemImpl(
+                                            widget.distingCubit
+                                                .requireDisting(),
+                                          ),
+                                          pluginPaths: pluginPaths,
+                                        ),
+                                  );
+                                }
+                              : null,
                           child: const Text('Export'),
                         ),
                         const SizedBox(width: 8),
@@ -404,6 +432,12 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
                       ElevatedButton(
                         onPressed: isPresetFile
                             ? () {
+                                if (context
+                                        .read<PresetBrowserCubit>()
+                                        .getSelectedPath() !=
+                                    selectedPath) {
+                                  return;
+                                }
                                 Navigator.of(context).pop({
                                   'sdCardPath': selectedPath,
                                   'action': PresetAction.load,
@@ -421,6 +455,20 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
           ),
         ),
       ),
+    );
+
+    content = BlocListener<PresetBrowserCubit, PresetBrowserState>(
+      listenWhen: (before, after) =>
+          before.view?.warning != after.view?.warning,
+      listener: (context, state) {
+        final warning = state.view?.warning;
+        if (warning != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(warning)));
+        }
+      },
+      child: content,
     );
 
     if (_supportsDesktopDrop && isMobile) {
@@ -1357,10 +1405,18 @@ class ThreePanelNavigator extends StatefulWidget {
 
 class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
   final _focusNodes = [for (final _ in PanelPosition.values) FocusNode()];
+  final _headerFocus = [
+    for (final _ in PanelPosition.values) [FocusNode(), FocusNode()],
+  ];
   @override
   void dispose() {
     for (final node in _focusNodes) {
       node.dispose();
+    }
+    for (final pair in _headerFocus) {
+      for (final node in pair) {
+        node.dispose();
+      }
     }
     super.dispose();
   }
@@ -1380,85 +1436,110 @@ class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
     final path = pane.current.path;
     final label = '${position.name} pane';
     final error = widget.browser.errors[path];
-    final refreshing = widget.browser.refreshing.contains(path);
-    return Column(
-      children: [
-        SizedBox(
-          height: 48,
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: 'Back in $label',
-                onPressed: pane.canGoBack
-                    ? () => widget.onPaneBack?.call(position)
-                    : null,
-                icon: const Icon(Icons.arrow_back),
-              ),
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  label: '$label: $path',
-                  excludeSemantics: true,
-                  selected: widget.browser.activePane == position,
-                  child: Tooltip(
-                    message: path,
-                    child: Text(
-                      path,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+    final refreshing =
+        widget.browser.refreshing.contains(path) ||
+        widget.browser.busyPaths.any(
+          (busy) =>
+              busy == path.toLowerCase() ||
+              p.posix.dirname(busy) == path.toLowerCase(),
+        );
+    return Focus(
+      onFocusChange: (focused) {
+        if (focused) widget.onPaneFocused?.call(position);
+      },
+      onKeyEvent: (_, event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+            HardwareKeyboard.instance.isAltPressed) {
+          widget.onPaneBack?.call(position);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Column(
+        children: [
+          SizedBox(
+            height: 48,
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Back in $label',
+                  focusNode: _headerFocus[position.index][0],
+                  onPressed: pane.canGoBack
+                      ? () => widget.onPaneBack?.call(position)
+                      : null,
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    label: '$label: $path',
+                    excludeSemantics: true,
+                    selected: widget.browser.activePane == position,
+                    child: Tooltip(
+                      message: path,
+                      child: Text(
+                        path,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: Semantics(
-                  liveRegion: error != null,
-                  label: error == null ? null : '$label: $error',
-                  child: refreshing
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            semanticsLabel: 'Refreshing directory',
+                SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Semantics(
+                    liveRegion: error != null,
+                    label: error == null ? null : '$label: $error',
+                    child: refreshing
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              semanticsLabel: 'Refreshing directory',
+                            ),
+                          )
+                        : IconButton(
+                            focusNode: _headerFocus[position.index][1],
+                            tooltip: error == null
+                                ? 'Refresh $label'
+                                : 'Retry $label: $error',
+                            onPressed: () =>
+                                widget.onPaneRefresh?.call(position),
+                            icon: Icon(
+                              error == null
+                                  ? Icons.refresh
+                                  : Icons.error_outline,
+                            ),
                           ),
-                        )
-                      : IconButton(
-                          tooltip: error == null
-                              ? 'Refresh $label'
-                              : 'Retry $label: $error',
-                          onPressed: () => widget.onPaneRefresh?.call(position),
-                          icon: Icon(
-                            error == null ? Icons.refresh : Icons.error_outline,
-                          ),
-                        ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Listener(
-            onPointerDown: (_) => widget.onPaneFocused?.call(position),
-            child: DirectoryPanel(
-              items: widget.browser.items(position),
-              selectedItem: widget.browser.selection(position),
-              onItemTap: (item) => widget.onItemSelected(item, position),
-              position: position,
-              currentPath: path,
-              dropTargetDirectory: path,
-              onContextMenu: widget.onContextMenu,
-              onDirectoryContextMenu: widget.onDirectoryContextMenu,
-              onFilesDropped: widget.onFilesDropped,
-              dropEnabled: widget.dropEnabled,
-              focusNode: _focusNodes[position.index],
-              onFocused: () => widget.onPaneFocused?.call(position),
-              onBack: () => widget.onPaneBack?.call(position),
+              ],
             ),
           ),
-        ),
-      ],
+          Expanded(
+            child: Listener(
+              onPointerDown: (_) => widget.onPaneFocused?.call(position),
+              child: DirectoryPanel(
+                items: widget.browser.items(position),
+                selectedItem: widget.browser.selection(position),
+                onItemTap: (item) => widget.onItemSelected(item, position),
+                position: position,
+                currentPath: path,
+                dropTargetDirectory: path,
+                onContextMenu: widget.onContextMenu,
+                onDirectoryContextMenu: widget.onDirectoryContextMenu,
+                onFilesDropped: widget.onFilesDropped,
+                dropEnabled: widget.dropEnabled,
+                focusNode: _focusNodes[position.index],
+                onFocused: () => widget.onPaneFocused?.call(position),
+                onBack: () => widget.onPaneBack?.call(position),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1518,8 +1599,13 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
   FocusNode? _ownedFocusNode;
   FocusNode get _focusNode =>
       widget.focusNode ?? (_ownedFocusNode ??= FocusNode());
-  final ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController(
+    keepScrollOffset: false,
+  );
   int _focusedIndex = 0;
+  final Map<String, double> _scrollOffsets = {};
+  final Map<String, String?> _cursorNames = {};
+  String? _restoreScrollFor;
   bool _showKeyboardFocus = false;
   bool _isDragOver = false;
 
@@ -1544,12 +1630,47 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       oldWidget.focusNode?.removeListener(_onFocusChange);
       _focusNode.addListener(_onFocusChange);
     }
-    if (widget.items != oldWidget.items ||
-        widget.currentPath != oldWidget.currentPath) {
-      final selected = widget.items.indexWhere(
-        (item) => item.name == widget.selectedItem?.name,
-      );
-      _focusedIndex = selected < 0 ? 0 : selected;
+    if (widget.currentPath != oldWidget.currentPath) {
+      // Do not let a reused offscreen row's InkWell focus auto-scroll the new
+      // directory back to the parent's old row index.
+      if (_focusNode.hasFocus) _focusNode.requestFocus();
+      if (_scrollController.hasClients) {
+        _scrollOffsets[oldWidget.currentPath] = _scrollController.offset;
+      }
+      _cursorNames[oldWidget.currentPath] =
+          _focusedIndex < oldWidget.items.length
+          ? oldWidget.items[_focusedIndex].name
+          : null;
+      _restoreScrollFor = widget.currentPath;
+      final name =
+          _cursorNames[widget.currentPath] ?? widget.selectedItem?.name;
+      _focusedIndex = widget.items.indexWhere((entry) => entry.name == name);
+      if (_focusedIndex < 0) _focusedIndex = 0;
+    } else if (widget.items != oldWidget.items) {
+      final name = _restoreScrollFor == widget.currentPath
+          ? _cursorNames[widget.currentPath]
+          : _focusedIndex < oldWidget.items.length
+          ? oldWidget.items[_focusedIndex].name
+          : widget.selectedItem?.name;
+      _focusedIndex = widget.items.indexWhere((entry) => entry.name == name);
+      if (_focusedIndex < 0) _focusedIndex = 0;
+    }
+    if (_restoreScrollFor == widget.currentPath) {
+      final path = widget.currentPath;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted ||
+            widget.currentPath != path ||
+            !_scrollController.hasClients) {
+          return;
+        }
+        _scrollController.jumpTo(
+          (_scrollOffsets[path] ?? 0).clamp(
+            0,
+            _scrollController.position.maxScrollExtent,
+          ),
+        );
+        _restoreScrollFor = null;
+      });
     }
   }
 
@@ -1721,6 +1842,7 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
             child: Material(
               color: Theme.of(context).colorScheme.surface,
               child: ListView.builder(
+                key: ValueKey(widget.currentPath),
                 controller: _scrollController,
                 itemCount: widget.items.length,
                 itemBuilder: (context, index) => _buildItem(context, index),

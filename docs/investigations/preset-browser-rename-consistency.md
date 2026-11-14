@@ -93,6 +93,14 @@ not a targeted preset-PC-cache invalidation API. Consequently this patch does
 **not** automatically remount the card, reboot, rescan plugins, or assert that
 such a workaround is necessary/safe while algorithms use SD resources.
 
+## Independent review cleanup
+
+The [review cleanup record](preset-browser-review-cleanup.md) covers subsequent
+transport, upload ownership, rename publication/persistence ordering, startup,
+focus, scrolling and visible-pane fixes. In particular, Cubit generations do not
+prove wire-level directory identity: real SD transport now rejects ambiguous
+successor requests instead of accepting an old reply under a new path.
+
 ## Verification and connected-device acceptance still needed
 
 Automated regression coverage:

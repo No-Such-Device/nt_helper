@@ -5,6 +5,9 @@ import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/preset_browser_state.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
+import 'package:nt_helper/domain/sd_card_file_activity.dart';
+import 'package:nt_helper/domain/disting_message_scheduler.dart'
+    show AmbiguousResponseAttributionException;
 import 'package:nt_helper/models/sd_card_file_system.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,11 +18,16 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
   final IDistingMidiManager midiManager;
   final SharedPreferences prefs;
   final Clock _clock;
+  final SdCardFileActivity _activity;
+  Set<String> _busySeen = {};
+  Set<String> _ownedPaths = {};
+  bool _singlePaneLayout = false;
+  final List<int> _navigationVersions = [0, 0, 0];
   final Duration focusFreshness;
   final Map<String, DateTime> _fetched = {};
   final Map<String, int> _versions = {};
   final Map<String, Future<bool>> _pending = {};
-  Future<void> _mutationTail = Future.value();
+  Future<void>? _mutationTail;
   static const _historyKey = 'presetHistory';
   static const _lastPathKey = 'fileBrowserLastPath';
   static const _sortByDateKey = 'fileBrowserSortByDate';
@@ -31,11 +39,80 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     Clock? clock,
     this.focusFreshness = const Duration(seconds: 5),
   }) : _clock = clock ?? const Clock(),
-       super(const PresetBrowserState.initial());
+       _activity = SdCardFileActivity.forManager(midiManager),
+       super(const PresetBrowserState.initial()) {
+    _busySeen = _activity.value;
+    _activity.addListener(_activityChanged);
+  }
+
+  @override
+  Future<void> close() {
+    _activity.removeListener(_activityChanged);
+    return super.close(); // The connection lease outlives an in-flight upload.
+  }
+
+  void setSinglePaneLayout(bool value) {
+    _singlePaneLayout = value;
+  }
+
+  Iterable<PanelPosition> _visible(BrowserSnapshot browser) => _singlePaneLayout
+      ? [browser.activePane]
+      : [
+          browser.activePane,
+          ...PanelPosition.values.where((p) => p != browser.activePane),
+        ];
+
+  void _activityChanged() {
+    final released = _busySeen
+        .difference(_activity.value)
+        .difference(_ownedPaths);
+    _busySeen = _activity.value;
+    final browser = _browser;
+    if (browser == null || isClosed) return;
+    _emit(browser);
+    if (released.isNotEmpty) {
+      final parents = released.map(p.posix.dirname).toSet();
+      final visible = _visible(
+        _browser!,
+      ).map((pane) => _browser!.pane(pane).current.path).toSet();
+      final affected = {
+        ..._fetched.keys,
+        ..._browser!.listings.keys,
+        ...visible,
+      }.where((path) => parents.contains(path.toLowerCase())).toSet();
+      _invalidate(affected, retainListings: true);
+      for (final path in visible) {
+        if (parents.contains(path.toLowerCase())) unawaited(_refresh(path));
+      }
+    }
+  }
+
+  void _warn(String message) {
+    final browser = _browser;
+    if (browser != null) _emit(browser.copyWith(warning: message));
+  }
+
+  Future<void> _rememberPath(String path) async {
+    try {
+      if (!await prefs.setString(_lastPathKey, path)) {
+        throw StateError('Preference write rejected');
+      }
+    } catch (_) {
+      _warn(
+        'Browser location could not be saved. Device files are unchanged by this warning.',
+      );
+    }
+  }
 
   BrowserSnapshot? get _browser => state.view;
   void _emit(BrowserSnapshot browser) {
-    if (!isClosed) emit(PresetBrowserState.loaded(browser: browser));
+    if (!isClosed) {
+      emit(
+        PresetBrowserState.loaded(
+          browser: browser.copyWith(busyPaths: _activity.value),
+        ),
+      );
+    }
   }
 
   BrowserFrame _frame(String path) => BrowserFrame(path: path);
@@ -46,6 +123,9 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
       path == root || path.startsWith('$root/');
 
   Future<void> loadRootDirectory() async {
+    // Capture before interactive root panes can update the same preference.
+    final savedPath = prefs.getString(_lastPathKey);
+    final initialNavigation = List.of(_navigationVersions);
     emit(const PresetBrowserState.loading());
     _invalidate({..._fetched.keys, ..._pending.keys});
     _emit(
@@ -57,8 +137,16 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
         sortByDate: prefs.getBool(_sortByDateKey) ?? false,
       ),
     );
-    if (!await _read('/')) {
-      if (!isClosed) {
+    var rootReady = await _read('/');
+    if (!rootReady && _browser?.errors['/'] == null && !isClosed) {
+      rootReady = await _read('/');
+    }
+    if (!rootReady) {
+      if (!isClosed &&
+          List.generate(
+            3,
+            (i) => _navigationVersions[i] == initialNavigation[i],
+          ).every((v) => v)) {
         emit(
           PresetBrowserState.error(
             message:
@@ -69,12 +157,24 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
       }
       return;
     }
-    final savedPath = prefs.getString(_lastPathKey);
-    if (savedPath != null && savedPath != '/' && savedPath.startsWith('/')) {
-      await navigateToAbsolutePath(savedPath);
-      // An unavailable saved folder must not strand the browser.
-      if (_browser?.errors.containsKey(savedPath) == true) {
-        await navigateToAbsolutePath('/');
+    if (savedPath != null &&
+        savedPath != '/' &&
+        savedPath.startsWith('/') &&
+        _navigationVersions[0] == initialNavigation[0]) {
+      final restorationVersion = _navigationVersions[0] + 1;
+      await navigateToAbsolutePath(
+        savedPath,
+        panel: PanelPosition.left,
+        activate: false,
+      );
+      if (_navigationVersions[0] == restorationVersion &&
+          _browser?.pane(PanelPosition.left).current.path == savedPath &&
+          _browser?.errors.containsKey(savedPath) == true) {
+        await navigateToAbsolutePath(
+          '/',
+          panel: PanelPosition.left,
+          activate: false,
+        );
       }
     }
   }
@@ -87,7 +187,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     final path = browser.pane(position).current.path;
     if (browser.activePane != position) {
       _emit(browser.copyWith(activePane: position));
-      unawaited(prefs.setString(_lastPathKey, path));
+      unawaited(_rememberPath(path));
     }
     final fetched = _fetched[path];
     if (fetched == null || _clock.now().difference(fetched) >= focusFreshness) {
@@ -98,7 +198,9 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
   Future<void> refreshVisiblePanes({bool onlyIfStale = false}) async {
     final browser = _browser;
     if (browser == null) return;
-    for (final path in browser.panes.map((pane) => pane.current.path).toSet()) {
+    for (final path in _visible(
+      browser,
+    ).map((pane) => browser.pane(pane).current.path).toSet()) {
       final fetched = _fetched[path];
       if (!onlyIfStale ||
           fetched == null ||
@@ -113,9 +215,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     if (browser != null) {
       if (position != null && browser.activePane != position) {
         _emit(browser.copyWith(activePane: position));
-        unawaited(
-          prefs.setString(_lastPathKey, browser.pane(position).current.path),
-        );
+        unawaited(_rememberPath(browser.pane(position).current.path));
       }
       await _refresh(browser.pane(position ?? browser.activePane).current.path);
     }
@@ -125,7 +225,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     await _read(path);
   }
 
-  Future<bool> _read(String path) {
+  Future<bool> _read(String path, {void Function(DirectoryListing)? publish}) {
     final pending = _pending[path];
     if (pending != null) return pending;
     final version = _versions[path] ?? 0;
@@ -138,7 +238,11 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
         final listing = await midiManager.requestDirectoryListing(path);
         if (isClosed || version != (_versions[path] ?? 0)) return false;
         if (listing == null) throw StateError('No directory listing returned');
-        _publishListing(path, listing);
+        if (publish == null) {
+          _publishListing(path, listing);
+        } else {
+          publish(listing);
+        }
         return true;
       } catch (error) {
         if (!isClosed &&
@@ -168,8 +272,15 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     return task;
   }
 
-  void _publishListing(String path, DirectoryListing listing) {
-    final browser = _browser;
+  void _publishListing(
+    String path,
+    DirectoryListing listing, {
+    BrowserSnapshot Function(BrowserSnapshot)? transform,
+  }) {
+    final current = _browser;
+    final browser = current == null
+        ? null
+        : transform?.call(current) ?? current;
     if (browser == null || isClosed) return;
     final entries = _sort(listing.entries, browser.sortByDate);
     _fetched[path] = _clock.now();
@@ -193,7 +304,11 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     );
   }
 
-  void _invalidate(Set<String> roots, {Set<String> subtrees = const {}}) {
+  void _invalidate(
+    Set<String> roots, {
+    Set<String> subtrees = const {},
+    bool retainListings = false,
+  }) {
     final browser = _browser;
     final paths = {
       ..._fetched.keys,
@@ -219,7 +334,9 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
       _emit(
         browser.copyWith(
           listings: {...browser.listings}
-            ..removeWhere((path, _) => affected.contains(path)),
+            ..removeWhere(
+              (path, _) => affected.contains(path) && !retainListings,
+            ),
           refreshing: {...browser.refreshing}..removeAll(affected),
           errors: {...browser.errors}
             ..removeWhere((path, _) => affected.contains(path)),
@@ -230,20 +347,28 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
 
   Future<void> _navigate(
     PanelPosition position,
-    List<BrowserFrame> stack,
-  ) async {
+    List<BrowserFrame> stack, {
+    bool activate = true,
+  }) async {
     final browser = _browser;
     if (browser == null || stack.isEmpty) return;
     final panes = [...browser.panes];
     panes[position.index] = BrowserPane(stack: stack);
-    _emit(browser.copyWith(panes: panes, activePane: position));
-    unawaited(prefs.setString(_lastPathKey, stack.last.path));
+    _navigationVersions[position.index]++;
+    _emit(
+      browser.copyWith(
+        panes: panes,
+        activePane: activate ? position : browser.activePane,
+      ),
+    );
+    if (activate) unawaited(_rememberPath(stack.last.path));
     await _refresh(stack.last.path);
   }
 
   Future<void> navigateToAbsolutePath(
     String path, {
     PanelPosition? panel,
+    bool activate = true,
   }) async {
     final browser = _browser;
     if (browser == null) return;
@@ -255,6 +380,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     await _navigate(
       position,
       index < 0 ? [...stack, _frame(path)] : stack.sublist(0, index + 1),
+      activate: activate,
     );
   }
 
@@ -324,9 +450,9 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
       return '';
     }
     final selected = browser.selection(browser.activePane);
-    return selected == null || selected.isDirectory
-        ? ''
-        : _join(path, selected.name);
+    if (selected == null || selected.isDirectory) return '';
+    final fullPath = _join(path, selected.name);
+    return _activity.isBusy(fullPath) ? '' : fullPath;
   }
 
   String getCurrentDirectory() => _browser?.active.current.path ?? '/';
@@ -388,7 +514,11 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
   }) async {
     final paths = {
       parent,
-      ...?_browser?.panes.map((pane) => pane.current.path),
+      ...(_browser == null
+          ? <String>[]
+          : _visible(
+              _browser!,
+            ).map((pane) => _browser!.pane(pane).current.path)),
     };
     for (final path in paths) {
       if ((path == parent && !parentAlreadyFresh) ||
@@ -400,11 +530,35 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
 
   // Wire requests are sequential already; serialize whole mutation workflows
   // too, so a later mutation cannot overtake an earlier verification/read-back.
-  Future<void> _mutate(Future<void> Function() operation) {
-    final result = _mutationTail.then((_) {
+  Future<void> _mutate(
+    Future<void> Function() operation, {
+    Set<String> touched = const {},
+  }) {
+    Future<void> run() async {
       if (isClosed) throw StateError('File browser is closed');
-      return operation();
-    });
+      try {
+        await _activity.hold(touched, () async {
+          // Mark only leases actually acquired, and retain ownership through
+          // hold's release notification (not through a failed acquisition).
+          _ownedPaths = touched
+              .map(
+                (path) => p.posix
+                    .normalize(path.startsWith('/') ? path : '/$path')
+                    .toLowerCase(),
+              )
+              .toSet();
+          await operation();
+        });
+      } finally {
+        _ownedPaths = {};
+      }
+    }
+
+    // Acquire the first lease immediately, before the first chunk can truncate.
+    final previous = _mutationTail;
+    final result = previous == null
+        ? Future<void>.sync(run)
+        : previous.then((_) => run());
     _mutationTail = result.then<void>(
       (_) {},
       onError: (Object _, StackTrace _) {},
@@ -412,8 +566,10 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     return result;
   }
 
-  Future<void> renameEntry(String fullPath, String newName) =>
-      _mutate(() => _renameEntry(fullPath, newName));
+  Future<void> renameEntry(String fullPath, String newName) => _mutate(
+    () => _renameEntry(fullPath, newName),
+    touched: {fullPath, _join(p.posix.dirname(fullPath), newName)},
+  );
 
   Future<void> _renameEntry(String fullPath, String newName) async {
     if (newName.isEmpty ||
@@ -431,11 +587,15 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     try {
       result = await midiManager.requestFileRename(fullPath, newPath);
     } catch (_) {
-      _invalidate({parent}, subtrees: {fullPath, newPath});
+      _invalidate(
+        {parent},
+        subtrees: {fullPath, newPath},
+        retainListings: true,
+      );
       await _afterMutation(parent);
       rethrow;
     }
-    _invalidate({parent}, subtrees: {fullPath, newPath});
+    _invalidate({parent}, subtrees: {fullPath, newPath}, retainListings: true);
     if (result == null) {
       _renameUncertain(parent, 'Rename was not acknowledged.');
     }
@@ -443,60 +603,75 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
       await _afterMutation(parent);
       throw StateError(result.message);
     }
-    final DirectoryListing? listing;
-    try {
-      listing = await midiManager.requestDirectoryListing(parent);
-    } catch (error) {
-      _renameUncertain(
-        parent,
-        'Rename acknowledged, but read-back failed: $error',
-      );
-    }
-    final renamed = listing?.entries
-        .where((e) => _clean(e.name) == newName)
-        .firstOrNull;
-    if (renamed == null ||
-        listing!.entries.any(
-          (e) => _clean(e.name) == p.posix.basename(fullPath),
-        )) {
-      _renameUncertain(
-        parent,
-        'Rename acknowledged, but the new directory entry could not be verified.',
-      );
-    }
     String rewrite(String path) => _below(path, fullPath)
         ? '$newPath${path.substring(fullPath.length)}'
         : path;
-    await prefs.setStringList(
-      _historyKey,
-      (prefs.getStringList(_historyKey) ?? []).map(rewrite).toSet().toList(),
+    final verified = await _read(
+      parent,
+      publish: (listing) {
+        final renamed = listing.entries
+            .where((e) => _clean(e.name) == newName)
+            .firstOrNull;
+        if (renamed == null ||
+            listing.entries.any(
+              (e) => _clean(e.name) == p.posix.basename(fullPath),
+            )) {
+          throw StateError('The new directory entry could not be verified.');
+        }
+        // Atomic with publication, before selection reconciliation and preferences.
+        _publishListing(
+          parent,
+          listing,
+          transform: (browser) => browser.copyWith(
+            listings: {...browser.listings}
+              ..removeWhere(
+                (path, _) => _below(path, fullPath) || _below(path, newPath),
+              ),
+            panes: [
+              for (final pane in browser.panes)
+                pane.copyWith(
+                  stack: [
+                    for (final frame in pane.stack)
+                      frame.copyWith(
+                        path: rewrite(frame.path),
+                        selectedName:
+                            frame.selectedName != null &&
+                                _join(frame.path, frame.selectedName!) ==
+                                    fullPath
+                            ? renamed.name
+                            : frame.selectedName,
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        );
+      },
     );
-    final last = prefs.getString(_lastPathKey);
-    if (last != null) await prefs.setString(_lastPathKey, rewrite(last));
-    final browser = _browser;
-    if (browser == null || isClosed) return;
-    _emit(
-      browser.copyWith(
-        panes: [
-          for (final pane in browser.panes)
-            pane.copyWith(
-              stack: [
-                for (final frame in pane.stack)
-                  frame.copyWith(
-                    path: rewrite(frame.path),
-                    selectedName:
-                        frame.selectedName != null &&
-                            _join(frame.path, frame.selectedName!) == fullPath
-                        ? renamed.name
-                        : frame.selectedName,
-                  ),
-              ],
-            ),
-        ],
-      ),
-    );
-    _publishListing(parent, listing);
+    if (!verified) {
+      _renameUncertain(
+        parent,
+        'Rename acknowledged, but read-back failed: ${_browser?.errors[parent] ?? 'verification superseded'}',
+      );
+    }
     await _afterMutation(parent, parentAlreadyFresh: true);
+    // Ancillary persistence cannot roll back authoritative device/view state.
+    try {
+      if (!await prefs.setStringList(
+        _historyKey,
+        (prefs.getStringList(_historyKey) ?? []).map(rewrite).toSet().toList(),
+      )) {
+        throw StateError('Preference write rejected');
+      }
+      final last = prefs.getString(_lastPathKey);
+      if (last != null && !await prefs.setString(_lastPathKey, rewrite(last))) {
+        throw StateError('Preference write rejected');
+      }
+    } catch (_) {
+      _warn(
+        'Renamed on the device, but recent history/location could not be saved.',
+      );
+    }
   }
 
   Never _renameUncertain(String parent, String reason) {
@@ -518,7 +693,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
   }
 
   Future<void> deleteEntry(String fullPath) =>
-      _mutate(() => _deleteEntry(fullPath));
+      _mutate(() => _deleteEntry(fullPath), touched: {fullPath});
 
   Future<void> _deleteEntry(String fullPath) async {
     final parent = p.posix.dirname(fullPath);
@@ -555,10 +730,11 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
   }
 
   BrowserPane _pruneDeleted(BrowserPane pane, String deleted, String parent) {
-    final index = pane.stack.indexWhere((frame) => _below(frame.path, deleted));
-    if (index < 0) return pane;
+    final survivors = pane.stack
+        .where((frame) => !_below(frame.path, deleted))
+        .toList();
     return pane.copyWith(
-      stack: index == 0 ? [_frame(parent)] : pane.stack.sublist(0, index),
+      stack: survivors.isEmpty ? [_frame(parent)] : survivors,
     );
   }
 
@@ -572,9 +748,10 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
           _invalidate({parentPath});
           await _afterMutation(parentPath);
         }
-      });
+      }, touched: {_join(parentPath, name)});
 
   Future<Uint8List?> downloadFile(String fullPath) => _retryRead(() async {
+    _activity.requireAvailable(fullPath);
     final data = await midiManager.requestFileDownload(fullPath);
     if (data == null) throw StateError('No response');
     return data;
@@ -588,7 +765,11 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
       if (isClosed) throw StateError('File browser is closed');
       try {
         return await read();
-      } catch (_) {
+      } catch (error) {
+        if (error is AmbiguousResponseAttributionException ||
+            error is SdCardFileBusyException) {
+          rethrow;
+        }
         if (isClosed || watch.elapsed + delay >= const Duration(seconds: 30)) {
           rethrow;
         }
@@ -608,6 +789,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     void Function(double progress)? onProgress,
   }) => _mutate(
     () => _uploadFile(targetDirectory, fileName, data, onProgress: onProgress),
+    touched: {_join(targetDirectory, fileName)},
   );
 
   Future<void> _uploadFile(

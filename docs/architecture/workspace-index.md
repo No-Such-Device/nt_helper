@@ -197,6 +197,9 @@ and mobile share the active pane's state; panel paths no longer derive from
 neighbor selections. Shared listings revalidate on navigation/mutations and
 stale focus/resume events without polling. See [preset-browser architecture](preset-browser.md)
 for ownership, throttling, race protection, session persistence and tests.
+The [review cleanup record](../investigations/preset-browser-review-cleanup.md)
+adds connection-scoped upload ownership, fail-closed SD attribution and guarded
+rename publication; hardware Program Change acceptance remains unverified.
 This focused update supersedes any inference of cascading pane ownership from
 the original snapshot baseline above.
 

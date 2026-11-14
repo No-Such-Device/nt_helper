@@ -33,6 +33,8 @@ abstract class BrowserSnapshot with _$BrowserSnapshot {
     @Default({}) Map<String, List<DirectoryEntry>> listings,
     @Default({}) Set<String> refreshing,
     @Default({}) Map<String, String> errors,
+    @Default({}) Set<String> busyPaths,
+    String? warning,
   }) = _BrowserSnapshot;
 
   BrowserPane pane(PanelPosition position) => panes[position.index];

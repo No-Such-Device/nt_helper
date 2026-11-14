@@ -13,6 +13,7 @@ import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/domain/memory_query_input.dart';
 import 'package:nt_helper/domain/request_key.dart';
 import 'package:nt_helper/domain/sd_card_operation.dart';
+import 'package:nt_helper/domain/sd_card_file_activity.dart';
 import 'package:nt_helper/domain/sysex/requests/add_algorithm.dart';
 import 'package:nt_helper/domain/sysex/requests/execute_lua.dart';
 import 'package:nt_helper/domain/sysex/requests/install_lua.dart';
@@ -91,7 +92,8 @@ class DistingMidiManager
         AlgorithmVisualStyleWriter,
         AlgorithmRespecificationWriter,
         RemoteControlWriter,
-        PatchMapTransport {
+        PatchMapTransport,
+        SdCardFileActivityOwner {
   @override
   Future<Uint8List> exchangePatchMessage(
     Uint8List request,
@@ -100,6 +102,8 @@ class DistingMidiManager
 
   // Implement interface
   final DistingMessageScheduler _scheduler;
+  @override
+  final SdCardFileActivity fileActivity;
   final int sysExId;
   String? _firmwareVersion;
 
@@ -108,7 +112,12 @@ class DistingMidiManager
     required MidiDevice inputDevice,
     required MidiDevice outputDevice,
     required this.sysExId,
-  }) : _scheduler = DistingMessageScheduler(
+  }) : fileActivity = SdCardFileActivity.forEndpoint(
+         midiCommand,
+         inputDevice.id,
+         sysExId,
+       ),
+       _scheduler = DistingMessageScheduler(
          midiCommand: midiCommand,
          inputDevice: inputDevice,
          outputDevice: outputDevice,
@@ -137,6 +146,7 @@ class DistingMidiManager
     Uint8List packet,
     SdCardOperation operation, {
     ResponseExpectation responseExpectation = ResponseExpectation.required,
+    void Function()? preflight,
   }) {
     return _scheduler.sendRequest<T>(
       packet,
@@ -150,6 +160,9 @@ class DistingMidiManager
       // SD replies have no request identifier. Retrying can leave duplicate
       // acknowledgements that are indistinguishable from a later request.
       maxRetries: 1,
+      attributionPolicy: ResponseAttributionPolicy.failWhenAmbiguous,
+      replayPolicy: RequestReplayPolicy.never,
+      preflight: preflight,
     );
   }
 
@@ -833,6 +846,7 @@ class DistingMidiManager
 
   @override
   Future<void> requestLoadPreset(String presetName, bool append) {
+    fileActivity.requireAvailable(presetName, preset: true);
     final message = LoadPresetMessage(
       sysExId: sysExId,
       presetName: presetName,
@@ -845,6 +859,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      preflight: () => fileActivity.requireAvailable(presetName, preset: true),
     );
   }
 
@@ -1222,6 +1237,7 @@ class DistingMidiManager
 
   @override
   Future<Uint8List?> requestFileDownload(String path) async {
+    fileActivity.requireAvailable(path);
     await _checkSdCardSupport();
     final absolutePath = path.startsWith('/') ? path : '/$path';
     final parent = p.posix.dirname(absolutePath);
@@ -1293,8 +1309,13 @@ class DistingMidiManager
       final chunk = await _sendSdRequest<FileChunk>(
         packet,
         SdCardOperation.fileDownload,
+        preflight: () => fileActivity.requireAvailable(absolutePath),
       );
       return chunk?.data;
+    } on AmbiguousResponseAttributionException {
+      rethrow;
+    } on SdCardFileBusyException {
+      rethrow;
     } on StateError {
       // Firmware returned a malformed response. Treat it as not found.
       return null;
@@ -1365,11 +1386,9 @@ class DistingMidiManager
     await _checkSdCardSupport();
     final message = RequestRescanPluginsMessage(sysExId: sysExId);
     final packet = message.encode();
-    await _sendSdRequest<void>(
-      packet,
-      SdCardOperation.rescanPlugins,
-      responseExpectation: ResponseExpectation.none, // Fire-and-forget
-    );
+    // The protocol acknowledges rescan too. Discarding its reply would leave
+    // an uncorrelatable error able to contaminate the next SD operation.
+    await _sendSdRequest<SdCardStatus>(packet, SdCardOperation.rescanPlugins);
   }
 
   @override

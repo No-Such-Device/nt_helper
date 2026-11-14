@@ -10,7 +10,8 @@
   to that frame rather than adding a loop. An absolute jump records the visited
   location, not synthetic visits to every ancestor.
 - `BrowserSnapshot` owns three panes, the active pane, shared listings keyed by
-  absolute path, sorting, in-flight path status and path-specific errors.
+  absolute path, sorting, in-flight path status, path-specific errors, shared
+  busy-file paths and ancillary persistence warnings.
 - `PresetBrowserState.loaded(browser: ...)` contains that snapshot. Older-named
   renderer getters (`currentPath`, panel items, drill items, breadcrumbs,
   navigation history) are **derived projections**, not additional stored state.
@@ -41,10 +42,11 @@ history format. Recent preset file history remains a separate bounded preference
   are shared; concurrent requests for that path share one in-flight future.
 - Enter, Back, breadcrumbs, absolute navigation and explicit Refresh revalidate
   the destination. Cached data never suppresses a revisit read.
-- Pane pointer/keyboard focus and app resume revalidate only stale visible paths.
-  The default five-second freshness window uses an injectable `Clock`; it is a
-  throttle, **not a timer**. Repeated focus/clicks on fresh data cause no reads.
-  Resume deduplicates paths shared by multiple panes. Returning from a child tool
+- Pane pointer/keyboard focus (including headers) and app resume revalidate only
+  stale visible paths. Mobile supplies only the active pane; desktop prioritizes
+  the active pane and deduplicates shared paths. The default five-second
+  freshness window uses an injectable `Clock`; it is a throttle, **not a timer**.
+  Repeated focus/clicks on fresh data cause no reads. Returning from a child tool
   that can mutate device files also revalidates visible paths.
 - Successful file mutations invalidate their parent listing and the relevant
   old/new subtree when necessary. All panes displaying those paths update from
@@ -52,7 +54,9 @@ history format. Recent preset file history remains a separate bounded preference
   folders pop affected stacks to a surviving location. Unrelated fresh panes
   are not reread. A verified rename's parent read-back is reused, not repeated.
 - Mutation workflows are serialized through verification, not merely at the MIDI
-  packet scheduler. Writes are never blindly replayed after ambiguous replies.
+  packet scheduler. A connection-owned busy-file lease disables Load/export and
+  read preflights before truncation, surviving dialog closure/reopening and
+  manager replacement on the same MIDI endpoint. Writes are never blindly replayed after ambiguous replies.
   Upload chunks stay bounded to 512 data bytes and preserve inter-chunk pacing;
   read-only downloads retain bounded retry recovery.
 - Path generations invalidate older in-flight replies. A reply can update a
@@ -78,7 +82,10 @@ remain: single-dispatch rename, status/error propagation, fresh parent
 verification, old/new cache invalidation and remembered-path reconciliation.
 An uncertain rename leaves affected paths in retry/error status, with stale
 loading disabled, rather than destroying unrelated pane stacks or claiming
-success. A later fresh listing can resolve the view, not prove lost device
+success. Verification uses the same coalesced, generation-checked read/publish
+path; disabled stale content stays visible while waiting. Verified paths,
+selection and listing publish atomically before ancillary preference writes.
+Preference failure raises a separate warning, not a failed device rename. A later fresh listing can resolve the view, not prove lost device
 acknowledgement semantics.
 
 Browser listings are host UI state. The Disting NT firmware implements `#n`
@@ -86,6 +93,27 @@ Program Change matching and alphabetical fallback. No host-side PC index or
 firmware invalidation command is introduced. The original report's exact
 connected-device symptom still requires the manual hardware acceptance checklist
 in the investigation; app tests do not emulate or prove firmware PC behavior.
+
+## Transport and review hardening
+
+Successful SD replies identify only an operation, not a path/transaction, and
+error replies omit even that operation. The real manager now fails closed on
+shared unresolved SD response debt and disables receive-error replay for SD
+requests. No arbitrary wait establishes attribution. Debt survives same-endpoint
+manager replacement and has no time expiry; an incomplete response that never
+finishes can require a verified device reset followed by a fresh app MIDI session;
+ordinary reconnect/manager replacement does not clear debt. Rescan awaits its
+documented acknowledgement. This deliberately favors safety over availability.
+
+Whole-pane focus includes header controls and Alt-Left. Location-keyed scroll
+views restore per-location offsets on Back, and same-path refresh preserves the
+arrow cursor by filename rather than resetting it to committed selection.
+Startup captures saved preferences before interaction, then guards restoration
+and fallback by the left pane's navigation version. Deleting a historical frame
+removes that frame without discarding a surviving current location.
+
+See [review cleanup](../investigations/preset-browser-review-cleanup.md) for every
+finding from reviews #684/#701, deterministic regressions and protocol limits.
 
 ## Retrieval and verification
 
