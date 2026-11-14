@@ -64,7 +64,7 @@ void main() {
       'mobile toolbar',
       'nested',
       'entry',
-      'independent empty pane',
+      'placeholder',
     ]) {
       testWidgets('folder creation targets correct directory via $action', (
         tester,
@@ -76,11 +76,14 @@ void main() {
           addTearDown(tester.view.resetPhysicalSize);
           addTearDown(tester.view.resetDevicePixelRatio);
         }
-        final hasFolder =
-            action != 'empty root' && action != 'independent empty pane';
-        final target = mobile || action == 'nested' || action == 'entry'
+        final hasFolder = action != 'empty root' && action != 'placeholder';
+        final target =
+            mobile ||
+                action == 'nested' ||
+                action == 'entry' ||
+                action == 'toolbar'
             ? '/programs'
-            : action == 'independent empty pane'
+            : action == 'placeholder'
             ? '/empty-center'
             : '/';
         final folder = DirectoryEntry(
@@ -125,18 +128,23 @@ void main() {
         } else {
           final panel = find
               .byType(DirectoryPanel)
-              .at(
-                action == 'nested' || action == 'independent empty pane'
-                    ? 1
-                    : 0,
-              );
+              .at(action == 'nested' || action == 'placeholder' ? 1 : 0);
           await tester.tapAt(
             action == 'entry'
-                ? tester.getCenter(find.text('programs'))
+                ? tester.getCenter(
+                    find.descendant(
+                      of: find.byType(DirectoryPanel).first,
+                      matching: find.text('programs'),
+                    ),
+                  )
                 : tester.getBottomLeft(panel) + const Offset(25, -25),
             buttons: kSecondaryMouseButton,
           );
           await tester.pumpAndSettle();
+          if (action == 'placeholder') {
+            expect(find.text('New Folder'), findsNothing);
+            return;
+          }
           expect(find.text('New Folder'), findsOneWidget);
           if (action != 'entry') {
             expect(find.text('Delete'), findsNothing);
@@ -252,7 +260,8 @@ void main() {
         ),
       );
 
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(DirectoryPanel), findsNWidgets(3));
     });
 
     testWidgets('displays error message when error state', (tester) async {
@@ -298,9 +307,17 @@ void main() {
 
       // Back button should be visible when history exists
       expect(find.byTooltip('Back'), findsOneWidget);
-      expect(find.byTooltip('Back in left pane'), findsOneWidget);
-      expect(find.byTooltip('Back in center pane'), findsOneWidget);
-      expect(find.byTooltip('Back in right pane'), findsOneWidget);
+      expect(
+        tester
+            .widget<IconButton>(
+              find.byWidgetPredicate(
+                (w) => w is IconButton && w.tooltip == 'Back',
+              ),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(find.byType(DirectoryPanel), findsNWidgets(3));
 
       // Sort toggle should be visible
       expect(find.byIcon(Icons.sort_by_alpha), findsOneWidget);
@@ -561,7 +578,7 @@ void main() {
       }
     });
 
-    testWidgets('registers every independent pane as a drop target', (
+    testWidgets('empty placeholder columns never become drop targets', (
       tester,
     ) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
@@ -591,7 +608,7 @@ void main() {
         final dropTargets = tester.widgetList<DropTarget>(
           find.byType(DropTarget),
         );
-        expect(dropTargets, hasLength(3));
+        expect(dropTargets, hasLength(1));
 
         dropTargets.first.onDragDone!(
           DropDoneDetails(

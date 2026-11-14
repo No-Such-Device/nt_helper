@@ -118,64 +118,56 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
         child: Focus(
           autofocus: true,
           child: AlertDialog(
+            key: const Key('preset-browser-dialog'),
             title: Row(
+              key: const Key('preset-browser-toolbar'),
               children: [
                 const Expanded(child: Text('File Browser')),
                 BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
                   builder: (context, state) {
+                    final browser = state.view;
+                    final directory = state.currentPath;
                     return Row(
                       children: [
-                        state.maybeMap(
-                          loaded: (loaded) {
-                            final directory = loaded.currentPath;
-                            return IconButton(
-                              icon: Icon(
-                                Icons.create_new_folder,
-                                semanticLabel: 'New folder in $directory',
-                              ),
-                              tooltip: 'New folder in $directory',
-                              onPressed: () => _createFolderAction(directory),
-                            );
-                          },
-                          orElse: () => const SizedBox.shrink(),
+                        IconButton(
+                          icon: Icon(
+                            Icons.create_new_folder,
+                            semanticLabel: 'New folder in $directory',
+                          ),
+                          tooltip: 'New folder in $directory',
+                          onPressed: browser == null
+                              ? null
+                              : () => _createFolderAction(directory),
                         ),
-                        state.maybeMap(
-                          loaded: (loaded) => loaded.browser.active.canGoBack
-                              ? IconButton(
-                                  icon: const Icon(
-                                    Icons.arrow_back,
-                                    semanticLabel: 'Back',
-                                  ),
-                                  onPressed: () {
-                                    context
-                                        .read<PresetBrowserCubit>()
-                                        .navigateBack();
-                                  },
-                                  tooltip: 'Back',
-                                )
-                              : const SizedBox.shrink(),
-                          orElse: () => const SizedBox.shrink(),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.arrow_back,
+                            semanticLabel: 'Back',
+                          ),
+                          tooltip: 'Back',
+                          onPressed: browser?.canGoBack == true
+                              ? () => context
+                                    .read<PresetBrowserCubit>()
+                                    .navigateBack()
+                              : null,
                         ),
-                        state.maybeMap(
-                          loaded: (loaded) => IconButton(
-                            icon: Icon(
-                              loaded.sortByDate
-                                  ? Icons.date_range
-                                  : Icons.sort_by_alpha,
-                              semanticLabel: loaded.sortByDate
-                                  ? 'Sort by date'
-                                  : 'Sort alphabetically',
-                            ),
-                            onPressed: () {
-                              context
-                                  .read<PresetBrowserCubit>()
-                                  .toggleSortMode();
-                            },
-                            tooltip: loaded.sortByDate
+                        IconButton(
+                          icon: Icon(
+                            state.sortByDate
+                                ? Icons.date_range
+                                : Icons.sort_by_alpha,
+                            semanticLabel: state.sortByDate
                                 ? 'Sort by date'
                                 : 'Sort alphabetically',
                           ),
-                          orElse: () => const SizedBox.shrink(),
+                          tooltip: state.sortByDate
+                              ? 'Sort by date'
+                              : 'Sort alphabetically',
+                          onPressed: browser == null
+                              ? null
+                              : () => context
+                                    .read<PresetBrowserCubit>()
+                                    .toggleSortMode(),
                         ),
                       ],
                     );
@@ -218,79 +210,80 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
                   : MediaQuery.of(context).size.height * 0.6,
               child: Column(
                 children: [
-                  // Desktop breadcrumb bar
                   if (!isMobile)
-                    BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
-                      builder: (context, state) {
-                        return state.maybeMap(
-                          loaded: (loaded) =>
-                              _buildDesktopBreadcrumbs(context, loaded),
-                          orElse: () => const SizedBox.shrink(),
-                        );
-                      },
-                    ),
-                  if (_uploadProgress != null)
-                    LinearProgressIndicator(
-                      value: _uploadProgress,
-                      minHeight: 2,
+                    SizedBox(
+                      key: const Key('preset-browser-breadcrumbs'),
+                      height: 40,
+                      child:
+                          BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
+                            builder: (context, state) =>
+                                _buildDesktopBreadcrumbs(context, state),
+                          ),
                     ),
                   Expanded(
                     child: ClipRect(
                       child:
                           BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
                             builder: (context, state) {
-                              return state.map(
-                                initial: (_) => const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                                loading: (_) => const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                                loaded: (loaded) => isMobile
+                              final browser =
+                                  state.view ??
+                                  BrowserSnapshot(
+                                    stack: const [BrowserFrame(path: '/')],
+                                    refreshing:
+                                        state.mapOrNull(
+                                              initial: (_) => true,
+                                              loading: (_) => true,
+                                            ) ==
+                                            true
+                                        ? {'/'}
+                                        : {},
+                                  );
+                              final enabled = state.view != null;
+                              return AbsorbPointer(
+                                absorbing: !enabled,
+                                child: isMobile
                                     ? MobileDrillDownNavigator(
-                                        items: loaded.browser.items(
-                                          loaded.browser.activePane,
+                                        items: browser.entriesAt(
+                                          browser.stack.length - 1,
                                         ),
-                                        selectedItem: loaded.browser.selection(
-                                          loaded.browser.activePane,
+                                        selectedItem: browser.selectedAt(
+                                          browser.stack.length - 1,
                                         ),
                                         breadcrumbs: _getBreadcrumbsFromPath(
-                                          loaded.currentPath,
+                                          browser.current.path,
                                         ),
                                         onItemTap: _handleMobileItemTap,
                                         onBreadcrumbTap: _handleBreadcrumbTap,
                                         onRefresh: _handleRefresh,
                                         refreshing:
-                                            loaded.browser.refreshing.contains(
-                                              loaded.currentPath,
+                                            browser.refreshing.contains(
+                                              browser.current.path,
                                             ) ||
-                                            loaded.browser.busyPaths.any(
+                                            browser.busyPaths.any(
                                               (busy) =>
                                                   p.posix.dirname(busy) ==
-                                                  loaded.currentPath
+                                                  browser.current.path
                                                       .toLowerCase(),
                                             ),
-                                        error: loaded
-                                            .browser
-                                            .errors[loaded.currentPath],
-                                        onLongPress: (entry) {
-                                          _showContextMenuAtCenter(
-                                            entry,
-                                            loaded.currentPath,
-                                          );
-                                        },
+                                        error: browser
+                                            .errors[browser.current.path],
+                                        onLongPress: (entry) =>
+                                            _showContextMenuAtCenter(
+                                              entry,
+                                              browser.current.path,
+                                            ),
                                       )
                                     : ThreePanelNavigator(
-                                        browser: loaded.browser,
+                                        browser: browser,
                                         onPaneFocused: (panel) => unawaited(
                                           context
                                               .read<PresetBrowserCubit>()
                                               .focusPane(panel),
                                         ),
-                                        onPaneBack: (panel) => unawaited(
+                                        onPaneBack: (_) => unawaited(
                                           context
                                               .read<PresetBrowserCubit>()
-                                              .navigateBack(panel),
+                                              .navigateBack(),
                                         ),
                                         onPaneRefresh: (panel) => unawaited(
                                           context
@@ -308,52 +301,61 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
                                                 ),
                                         onFilesDropped: _handlePanelDrop,
                                         dropEnabled:
+                                            enabled &&
                                             !_isInstallingPackage &&
                                             _currentAnalysis == null,
                                       ),
-                                error: (error) => Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.error_outline,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.error,
-                                        size: 48,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        error.message,
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          context
-                                              .read<PresetBrowserCubit>()
-                                              .loadRootDirectory();
-                                        },
-                                        child: const Text('Retry'),
-                                      ),
-                                    ],
-                                  ),
-                                ),
                               );
                             },
                           ),
                     ),
                   ),
-                  BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
-                    builder: (context, state) {
-                      return state.maybeMap(
-                        loading: (_) => const SizedBox(
-                          height: 8,
-                          child: LinearProgressIndicator(),
-                        ),
-                        orElse: () => const SizedBox(height: 8),
-                      );
-                    },
+                  SizedBox(
+                    key: const Key('preset-browser-status'),
+                    height: 32,
+                    child: BlocBuilder<PresetBrowserCubit, PresetBrowserState>(
+                      builder: (context, state) {
+                        final error = state.mapOrNull(
+                          error: (error) => error.message,
+                        );
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: Semantics(
+                                liveRegion: true,
+                                child: Tooltip(
+                                  message: error ?? '',
+                                  child: Text(
+                                    error ?? '',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Retry',
+                              padding: EdgeInsets.zero,
+                              onPressed: error == null
+                                  ? null
+                                  : () => context
+                                        .read<PresetBrowserCubit>()
+                                        .loadRootDirectory(),
+                              icon: const Icon(Icons.refresh, size: 18),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    height: 8,
+                    child: _uploadProgress == null
+                        ? null
+                        : LinearProgressIndicator(
+                            value: _uploadProgress,
+                            minHeight: 2,
+                          ),
                   ),
                 ],
               ),
@@ -374,18 +376,10 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
                       selectedPath.isNotEmpty &&
                       selectedPath.toLowerCase().endsWith('.json');
                   final isMobile = Responsive.isMobile(context);
-                  final view = state.view;
-                  final remembered = view?.selection(view.activePane);
-                  final hasPresetSelection =
-                      isPresetFile ||
-                      (remembered != null &&
-                          !remembered.isDirectory &&
-                          remembered.name.toLowerCase().endsWith('.json'));
-
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (hasPresetSelection && !isMobile) ...[
+                      if (!isMobile) ...[
                         OutlinedButton(
                           onPressed: isPresetFile
                               ? () async {
@@ -1405,18 +1399,16 @@ class ThreePanelNavigator extends StatefulWidget {
 
 class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
   final _focusNodes = [for (final _ in PanelPosition.values) FocusNode()];
-  final _headerFocus = [
-    for (final _ in PanelPosition.values) [FocusNode(), FocusNode()],
-  ];
+  final Map<String, double> _locationOffsets = {};
+  final Map<String, String?> _locationCursors = {};
+  final _headerFocus = [for (final _ in PanelPosition.values) FocusNode()];
   @override
   void dispose() {
     for (final node in _focusNodes) {
       node.dispose();
     }
-    for (final pair in _headerFocus) {
-      for (final node in pair) {
-        node.dispose();
-      }
+    for (final node in _headerFocus) {
+      node.dispose();
     }
     super.dispose();
   }
@@ -1432,8 +1424,9 @@ class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
   );
 
   Widget _pane(BuildContext context, PanelPosition position) {
-    final pane = widget.browser.pane(position);
-    final path = pane.current.path;
+    final directory = widget.browser.path(position);
+    final path = directory ?? '';
+    final available = directory != null;
     final label = '${position.name} pane';
     final error = widget.browser.errors[path];
     final refreshing =
@@ -1445,7 +1438,7 @@ class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
         );
     return Focus(
       onFocusChange: (focused) {
-        if (focused) widget.onPaneFocused?.call(position);
+        if (focused && available) widget.onPaneFocused?.call(position);
       },
       onKeyEvent: (_, event) {
         if (event is KeyDownEvent &&
@@ -1459,27 +1452,20 @@ class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
       child: Column(
         children: [
           SizedBox(
+            key: ValueKey('browser-column-header-${position.name}'),
             height: 48,
             child: Row(
               children: [
-                IconButton(
-                  tooltip: 'Back in $label',
-                  focusNode: _headerFocus[position.index][0],
-                  onPressed: pane.canGoBack
-                      ? () => widget.onPaneBack?.call(position)
-                      : null,
-                  icon: const Icon(Icons.arrow_back),
-                ),
                 Expanded(
                   child: Semantics(
                     header: true,
-                    label: '$label: $path',
+                    label: available ? '$label: $path' : '$label: empty column',
                     excludeSemantics: true,
                     selected: widget.browser.activePane == position,
                     child: Tooltip(
                       message: path,
                       child: Text(
-                        path,
+                        available ? path : '—',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1501,12 +1487,13 @@ class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
                             ),
                           )
                         : IconButton(
-                            focusNode: _headerFocus[position.index][1],
+                            focusNode: _headerFocus[position.index],
                             tooltip: error == null
                                 ? 'Refresh $label'
                                 : 'Retry $label: $error',
-                            onPressed: () =>
-                                widget.onPaneRefresh?.call(position),
+                            onPressed: available
+                                ? () => widget.onPaneRefresh?.call(position)
+                                : null,
                             icon: Icon(
                               error == null
                                   ? Icons.refresh
@@ -1520,21 +1507,35 @@ class _ThreePanelNavigatorState extends State<ThreePanelNavigator> {
           ),
           Expanded(
             child: Listener(
-              onPointerDown: (_) => widget.onPaneFocused?.call(position),
+              onPointerDown: (_) {
+                if (available) widget.onPaneFocused?.call(position);
+              },
               child: DirectoryPanel(
+                locationOffsets: _locationOffsets,
+                locationCursors: _locationCursors,
                 items: widget.browser.items(position),
                 selectedItem: widget.browser.selection(position),
                 onItemTap: (item) => widget.onItemSelected(item, position),
                 position: position,
                 currentPath: path,
-                dropTargetDirectory: path,
+                dropTargetDirectory: directory,
                 onContextMenu: widget.onContextMenu,
                 onDirectoryContextMenu: widget.onDirectoryContextMenu,
                 onFilesDropped: widget.onFilesDropped,
                 dropEnabled: widget.dropEnabled,
                 focusNode: _focusNodes[position.index],
-                onFocused: () => widget.onPaneFocused?.call(position),
+                onFocused: available
+                    ? () => widget.onPaneFocused?.call(position)
+                    : null,
                 onBack: () => widget.onPaneBack?.call(position),
+                onDirectoryOpened: () {
+                  final depth = widget.browser.depth(position);
+                  if (depth == null) return;
+                  final next = (depth + 1).clamp(0, 2);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _focusNodes[next].requestFocus();
+                  });
+                },
               ),
             ),
           ),
@@ -1571,8 +1572,11 @@ class DirectoryPanel extends StatefulWidget {
   onFilesDropped;
   final bool dropEnabled;
   final FocusNode? focusNode;
+  final Map<String, double>? locationOffsets;
+  final Map<String, String?>? locationCursors;
   final VoidCallback? onFocused;
   final VoidCallback? onBack;
+  final VoidCallback? onDirectoryOpened;
 
   const DirectoryPanel({
     super.key,
@@ -1587,8 +1591,11 @@ class DirectoryPanel extends StatefulWidget {
     this.onFilesDropped,
     this.dropEnabled = true,
     this.focusNode,
+    this.locationOffsets,
+    this.locationCursors,
     this.onFocused,
     this.onBack,
+    this.onDirectoryOpened,
   });
 
   @override
@@ -1603,8 +1610,12 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
     keepScrollOffset: false,
   );
   int _focusedIndex = 0;
-  final Map<String, double> _scrollOffsets = {};
-  final Map<String, String?> _cursorNames = {};
+  final Map<String, double> _localOffsets = {};
+  final Map<String, String?> _localCursors = {};
+  Map<String, double> get _scrollOffsets =>
+      widget.locationOffsets ?? _localOffsets;
+  Map<String, String?> get _cursorNames =>
+      widget.locationCursors ?? _localCursors;
   String? _restoreScrollFor;
   bool _showKeyboardFocus = false;
   bool _isDragOver = false;
@@ -1613,6 +1624,13 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
   void initState() {
     super.initState();
     _focusNode.addListener(_onFocusChange);
+    _scrollController.addListener(_rememberOffset);
+  }
+
+  void _rememberOffset() {
+    if (_restoreScrollFor == null && _scrollController.hasClients) {
+      _scrollOffsets[widget.currentPath] = _scrollController.offset;
+    }
   }
 
   @override
@@ -1723,6 +1741,7 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
           _focusedIndex++;
           _showKeyboardFocus = true;
         });
+        _cursorNames[widget.currentPath] = widget.items[_focusedIndex].name;
         _scrollToFocused();
         _announceCurrentItem();
       }
@@ -1734,6 +1753,7 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
           _focusedIndex--;
           _showKeyboardFocus = true;
         });
+        _cursorNames[widget.currentPath] = widget.items[_focusedIndex].name;
         _scrollToFocused();
         _announceCurrentItem();
       }
@@ -1744,6 +1764,7 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
       if (_focusedIndex >= 0 && _focusedIndex < widget.items.length) {
         final item = widget.items[_focusedIndex];
         widget.onItemTap(item);
+        if (item.isDirectory) widget.onDirectoryOpened?.call();
       }
       return KeyEventResult.handled;
     }
@@ -1804,7 +1825,9 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
 
     if (widget.items.isEmpty) {
       panel = Semantics(
-        label: '$panelLabel, empty',
+        label: widget.currentPath.isEmpty
+            ? '$panelLabel, empty column'
+            : '$panelLabel, empty directory',
         child: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
@@ -1815,7 +1838,7 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
           ),
           child: Center(
             child: Text(
-              'Empty',
+              widget.currentPath.isEmpty ? 'Select a folder' : 'Empty',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontStyle: FontStyle.italic,
@@ -1831,7 +1854,8 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
           descendantsAreTraversable: false,
           child: Container(
             clipBehavior: Clip.hardEdge,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(),
+            foregroundDecoration: BoxDecoration(
               border: Border.all(
                 color: _showKeyboardFocus && _focusNode.hasFocus
                     ? Theme.of(context).colorScheme.primary
@@ -1980,7 +2004,7 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
     final fileInfo = !item.isDirectory ? _formatFileInfo(item) : null;
 
     Widget tile = Container(
-      decoration: isKeyboardFocused
+      foregroundDecoration: isKeyboardFocused
           ? BoxDecoration(
               border: Border.all(
                 color: Theme.of(context).colorScheme.primary,
@@ -1993,13 +2017,20 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
         leading: Icon(icon, color: iconColor),
         title: Text(
           displayName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: 14,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
         subtitle: fileInfo != null
-            ? Text(fileInfo, style: const TextStyle(fontSize: 12))
+            ? Text(
+                fileInfo,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12),
+              )
             : null,
         selected: isSelected,
         selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
@@ -2008,6 +2039,7 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
             _focusedIndex = index;
             _showKeyboardFocus = false;
           });
+          _cursorNames[widget.currentPath] = item.name;
           widget.onItemTap(item);
         },
         dense: true,

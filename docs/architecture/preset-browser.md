@@ -1,136 +1,141 @@
-# Preset browser: independent pane stacks
+# Preset browser: one hierarchy, three fixed columns
 
-## Ownership and navigation
+This is the corrected user-approved model. The independent-browser interpretation
+introduced in `53e115ad` was rejected during manual testing and is superseded;
+transport, rename and upload safety hardening from `66e3f88d` remains in place.
 
-`lib/cubit/preset_browser_state.dart` defines the only stored browser view state:
+## Canonical state and exact navigation semantics
 
-- `BrowserFrame(path, selectedName)` is one visited location and its selection.
-- `BrowserPane(stack)` owns a non-empty stack of frames. Enter pushes a location;
-  Back pops that pane only. Returning to an existing location truncates the stack
-  to that frame rather than adding a loop. An absolute jump records the visited
-  location, not synthetic visits to every ancestor.
-- `BrowserSnapshot` owns three panes, the active pane, shared listings keyed by
-  absolute path, sorting, in-flight path status, path-specific errors, shared
-  busy-file paths and ancillary persistence warnings.
-- `PresetBrowserState.loaded(browser: ...)` contains that snapshot. Older-named
-  renderer getters (`currentPath`, panel items, drill items, breadcrumbs,
-  navigation history) are **derived projections**, not additional stored state.
+`lib/cubit/preset_browser_state.dart` stores a single `BrowserSnapshot.stack` of
+`BrowserFrame(path, selectedName)` from `/` to the deepest browsed directory.
+It is a hierarchy, **not three histories or a chronological visit list**.
+`activeDepth` is keyboard/action focus only, not a separate navigation root.
+Listings, refreshing/errors and connection-owned busy-file paths are shared by
+absolute path. Mobile and desktop render this same immutable snapshot.
 
-`PresetBrowserCubit` owns navigation, revalidation and file operations.
-`ThreePanelNavigator` renders explicit pane paths from the snapshot. A directory
-click/Enter navigates **inside the clicked pane**, rather than rebuilding the
-other panes as cascading previews. Each pane has its own path header, Back and
-Refresh/Retry controls, including empty folders. Alt-Left pops the focused pane;
-Tab can move focus to other panes/controls. Enter no longer advances focus to a
-different pane after opening a directory.
+Desktop always builds exactly three equally sized columns:
 
-Mobile renders the **active pane's same frame/listing/selection**. Changing
-viewport size does not copy/rebuild navigation, and a hidden mobile selection
-cannot override a desktop selection. Root/breadcrumb navigation affects only
-that pane. The global toolbar, Load/Delete target and mobile view follow the
-active pane. Context menus and drops use their explicit pane directory, not an
-inferred directory from another pane's selected entry.
+| Shared hierarchy | Visible column paths |
+| --- | --- |
+| `/` | `/`, empty placeholder, empty placeholder |
+| `/ → /A` | `/`, `/A`, empty placeholder |
+| `/ → /A → /A/child` | `/`, `/A`, `/A/child` |
+| `/ → /A → /A/child → /A/child/deep` | `/A`, `/A/child`, `/A/child/deep` |
+| One more level | `/A/child`, `/A/child/deep`, its selected child |
 
-All three panes initially represent real root directories. Only the previous
-active location (`fileBrowserLastPath`, the existing preference) is restored into
-the first pane; full per-pane stacks are session state, not a new persistent
-history format. Recent preset file history remains a separate bounded preference.
+The viewport starts at `max(0, stack.length - 3)`. Earlier frames remain in the
+canonical hierarchy even when offscreen. No fourth column is ever inserted.
 
-## Automatic freshness without polling
+- Selecting a folder in a column highlights it, discards all obsolete descendants
+  after that column, and appends the child directory. Its listing fills the next
+  column; at the right edge, the same three columns shift one level deeper.
+- Selecting a sibling replaces the old descendant branch. Selecting a file in
+  an ancestor column also discards obsolete descendants; Load/Delete never target
+  a hidden selection in the old branch.
+- Shared **Back** removes one deepest directory frame, re-exposing its parent and
+  retaining the parent's folder highlight. It does not reopen that folder. At
+  root Back remains present but disabled.
+- Breadcrumbs show the full deepest path, including offscreen ancestors. Choosing
+  an ancestor truncates to it; Home truncates to `/`. Absolute/saved-path jumps
+  reconstruct **every ancestor**, not just the clicked/remembered destination.
+- Keyboard Enter opens the focused folder and moves focus to its child column
+  (or stays in the right column after a shift). Alt-Left anywhere in the browser
+  column/header uses the shared Back operation.
+- Column focus does not alter the hierarchy or remembered deepest directory.
+  Context menus and drops use explicit column paths. Empty placeholders have no
+  path, no drop target, no context-menu directory and no network request.
 
-- Startup requests root **once** for all three panes. Listings for the same path
-  are shared; concurrent requests for that path share one in-flight future.
-- Enter, Back, breadcrumbs, absolute navigation and explicit Refresh revalidate
-  the destination. Cached data never suppresses a revisit read.
-- Pane pointer/keyboard focus (including headers) and app resume revalidate only
-  stale visible paths. Mobile supplies only the active pane; desktop prioritizes
-  the active pane and deduplicates shared paths. The default five-second
-  freshness window uses an injectable `Clock`; it is a throttle, **not a timer**.
-  Repeated focus/clicks on fresh data cause no reads. Returning from a child tool
-  that can mutate device files also revalidates visible paths.
-- Successful file mutations invalidate their parent listing and the relevant
-  old/new subtree when necessary. All panes displaying those paths update from
-  the same result. Renamed open stacks and recent paths are rebased; deleted
-  folders pop affected stacks to a surviving location. Unrelated fresh panes
-  are not reread. A verified rename's parent read-back is reused, not repeated.
-- Mutation workflows are serialized through verification, not merely at the MIDI
-  packet scheduler. A connection-owned busy-file lease disables Load/export and
-  read preflights before truncation, surviving dialog closure/reopening and
-  manager replacement on the same MIDI endpoint. Writes are never blindly replayed after ambiguous replies.
-  Upload chunks stay bounded to 512 data bytes and preserve inter-chunk pacing;
-  read-only downloads retain bounded retry recovery.
-- Path generations invalidate older in-flight replies. A reply can update a
-  listing, but never restore an earlier pane stack/active selection. Mutation
-  invalidation prevents an older listing from overwriting post-mutation data.
+Mobile shows the deepest frame with the same breadcrumbs/Back behavior. Resizing
+between layouts does not copy navigation or maintain an independent drill-down
+selection. `fileBrowserLastPath` remembers only the deepest directory. Recent
+preset file history is a separate bounded preference; neither is a pane history.
 
-A refreshed directory reconciles selection by filename, not object identity.
-A vanished selection is cleared. Loading/error feedback uses reserved header
-slots; failed or still-refreshing active listings cannot supply a Load target.
-Path-specific refresh errors do not discard other pane stacks. Mobile pull-to-
-refresh awaits the actual request and works in an empty directory.
+## Layout continuity is an acceptance contract
 
-This is event-driven freshness, not an SD-card watcher. Changes made externally
-while a pane remains continuously focused are seen on revisit, a later focus /
-resume event, or explicit refresh. There is no background polling, full-card
-scan, automatic remount, or claim of instant detection of external edits.
+Content may change; action-driven geometry may not. User-driven window resizing
+and text-scale changes are separate responsive-layout inputs.
 
-## Rename and hardware boundaries
+- The dialog's content bounds derive only from available window size. The toolbar,
+  breadcrumb region, three column boundaries, per-column 48px headers, status
+  area, upload-progress strip and action row reserve space in every state.
+- Back, folder creation, sort, Export and Load stay in place. Unavailable actions
+  are disabled rather than inserted/removed. Placeholder columns keep their full
+  geometry, with disabled header controls.
+- Loading/error/empty states render inside the same column skeleton. Root errors
+  use the reserved status/retry area, not a replacement page that removes columns.
+  Refresh/verification feedback replaces content in a fixed status slot.
+- Pending file mutations retain disabled stale content when verification reads
+  back the directory. Upload progress uses its always-reserved strip.
+- Breadcrumbs occupy a fixed-height horizontal scrolling region even at root,
+  including on mobile. Long path/filename text is clipped/ellipsized inside its
+  allocated region instead of changing row/header heights.
+- Keyboard/selected outlines paint in the foreground without adding padding or
+  altering row sizes. Per-location scroll offsets/cursor names are shared by
+  the column renderer, so a location moving between columns retains its UI
+  position; a new location starts at the top. Back restores the parent offset.
 
-The protections described in
-[preset-browser rename consistency](../investigations/preset-browser-rename-consistency.md)
-remain: single-dispatch rename, status/error propagation, fresh parent
-verification, old/new cache invalidation and remembered-path reconciliation.
-An uncertain rename leaves affected paths in retry/error status, with stale
-loading disabled, rather than destroying unrelated pane stacks or claiming
-success. Verification uses the same coalesced, generation-checked read/publish
-path; disabled stale content stays visible while waiting. Verified paths,
-selection and listing publish atomically before ancillary preference writes.
-Preference failure raises a separate warning, not a failed device rename. A later fresh listing can resolve the view, not prove lost device
-acknowledgement semantics.
+`test/ui/widgets/preset_browser_panes_test.dart` compares exact rectangles for
+dialog, toolbar, breadcrumb/status areas, headers, columns and action controls
+across root → child → grandchild → deeper shifts, sibling/file selections,
+Back/breadcrumbs, held root/refresh/rename/upload replies, empty/error/retry and
+mobile transitions. It also tests row geometry during keyboard focus/refresh.
+These protect the requested continuity, not incidental colors or typography.
 
-Browser listings are host UI state. The Disting NT firmware implements `#n`
-Program Change matching and alphabetical fallback. No host-side PC index or
-firmware invalidation command is introduced. The original report's exact
-connected-device symptom still requires the manual hardware acceptance checklist
-in the investigation; app tests do not emulate or prove firmware PC behavior.
+## Freshness, reconciliation and safety
 
-## Transport and review hardening
+`PresetBrowserCubit` owns navigation/state and revalidation; widgets own layout,
+focus and scroll only. The existing injected `IDistingMidiManager` remains the
+wire/data boundary; no second data or navigation controller is introduced.
 
-Successful SD replies identify only an operation, not a path/transaction, and
-error replies omit even that operation. The real manager now fails closed on
-shared unresolved SD response debt and disables receive-error replay for SD
-requests. No arbitrary wait establishes attribution. Debt survives same-endpoint
-manager replacement and has no time expiry; an incomplete response that never
-finishes can require a verified device reset followed by a fresh app MIDI session;
-ordinary reconnect/manager replacement does not clear debt. Rescan awaits its
-documented acknowledgement. This deliberately favors safety over availability.
+- Startup reads root once. Navigation/Back/breadcrumbs always revalidate the
+  destination; absolute jumps hydrate previously unseen ancestors. Concurrent
+  reads of a path coalesce, and generation checks reject superseded publications.
+- Focus/resume revalidate stale **visible** paths, with a five-second injectable
+  clock throttle, not polling. Desktop prioritizes the deepest path; mobile reads
+  only the deepest displayed directory, never hidden columns/offscreen ancestors.
+- Refresh reconciles selected entries by name. A vanished selected folder prunes
+  its obsolete descendants; a vanished file clears selection. Delayed reads can
+  update a cache but cannot restore a superseded branch/navigation snapshot.
+- Verified rename atomically rebases the entire ancestry and selected entry with
+  the parent read-back, before ancillary preference writes. Old/new subtree
+  caches are invalidated; recent/saved paths are rewritten with path boundaries.
+  Preference failure reports a separate warning, not a failed device rename.
+- Delete truncates an actually removed subtree to its nearest surviving ancestor;
+  there are no unrelated historical frames to accidentally discard. Create,
+  upload and deletion refresh affected visible listings without full-card scans.
+- Serialized mutation workflows and connection-owned busy-file leases survive
+  browser closure/reopening. UI Load/export, file reads and queued manager load/
+  download preflights cannot consume a partially overwritten file. Upload chunks
+  stay at most 512 file-data bytes with existing pacing.
+- Real SD replies lack path/transaction IDs; errors omit even operation identity.
+  Strict unresolved-response debt fails closed before another ambiguous SD
+  command is sent and survives same-endpoint manager replacement. SD mutations
+  are not replayed after interrupted responses. Debt has no arbitrary time expiry;
+  verified device reset plus a fresh app MIDI session may be needed for recovery.
 
-Whole-pane focus includes header controls and Alt-Left. Location-keyed scroll
-views restore per-location offsets on Back, and same-path refresh preserves the
-arrow cursor by filename rather than resetting it to committed selection.
-Startup captures saved preferences before interaction, then guards restoration
-and fallback by the left pane's navigation version. Deleting a historical frame
-removes that frame without discarding a surviving current location.
+No automatic remount, reboot, directory polling or firmware Program Change index
+is introduced. UI cache correctness does not prove actual firmware `#n` matching.
+See [rename investigation](../investigations/preset-browser-rename-consistency.md)
+and the [review cleanup](../investigations/preset-browser-review-cleanup.md) for
+transport evidence and the connected-device acceptance checklist.
 
-See [review cleanup](../investigations/preset-browser-review-cleanup.md) for every
-finding from reviews #684/#701, deterministic regressions and protocol limits.
+## Retrieval and refresh
 
-## Retrieval and verification
-
-- Ownership/navigation/freshness: `lib/cubit/preset_browser_cubit.dart` and
-  `preset_browser_state.dart` (regenerate `preset_browser_state.freezed.dart`
-  using build_runner after model changes).
-- Desktop/active context/lifecycle: `lib/ui/widgets/preset_browser_dialog.dart`.
-- Mobile rendering/awaited refresh: `lib/ui/widgets/mobile_drill_down_navigator.dart`.
-- State/races/traffic boundaries: `test/cubit/preset_browser_cubit_test.dart`.
-- Retained rename regressions: `test/cubit/preset_browser_rename_test.dart`.
-- Real-cubit widget flows, keyboard, resize, resume and stable feedback geometry:
+- Models/projections: `lib/cubit/preset_browser_state.dart`; regenerate its
+  Freezed output with build_runner after changes.
+- Navigation/read/mutation orchestration: `lib/cubit/preset_browser_cubit.dart`.
+- Fixed desktop skeleton and UI lifecycle: `lib/ui/widgets/preset_browser_dialog.dart`.
+- Fixed mobile breadcrumbs/refresh: `lib/ui/widgets/mobile_drill_down_navigator.dart`.
+- Hierarchy, viewport, freshness/races: `test/cubit/preset_browser_cubit_test.dart`.
+- Retained rename and upload regressions: `test/cubit/preset_browser_rename_test.dart`,
+  `test/cubit/preset_browser_review_regression_test.dart`.
+- Fixed-column flows, focus, scroll and layout continuity:
   `test/ui/widgets/preset_browser_panes_test.dart`.
-- Existing rendering, context-menu/drop and wire contracts:
+- Context-menu/drop and real wire contracts:
   `test/ui/widgets/preset_browser_dialog_test.dart`,
-  `test/domain/disting_midi_manager_sd_operation_test.dart`.
+  `test/domain/sd_card_transport_safety_test.dart`.
 
-Tests use controlled completers and a fake clock rather than sleeps to establish
-freshness/race behavior. Live MIDI/USB throughput, cross-platform native focus
-notifications and actual module Program Change selection remain device-validation
-work; unit/widget passes do not establish them.
+Refresh this map when navigation ownership or reserved geometry changes. Preserve
+transport safety tests; do not reinstate independent pane histories while fixing
+focus or scroll. Native macOS retesting and live device PC selection are separate
+from deterministic unit/widget evidence.

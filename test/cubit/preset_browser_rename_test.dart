@@ -43,7 +43,9 @@ void main() {
     ) async {
       final oldPath = call.positionalArguments[0] as String;
       final newPath = call.positionalArguments[1] as String;
-      final parent = oldPath.substring(0, oldPath.lastIndexOf('/'));
+      final parent = oldPath.lastIndexOf('/') == 0
+          ? '/'
+          : oldPath.substring(0, oldPath.lastIndexOf('/'));
       final oldName = oldPath.split('/').last;
       final entries = files[parent]!;
       final index = entries.indexWhere((e) => e.name == oldName);
@@ -53,10 +55,7 @@ void main() {
     });
     cubit = PresetBrowserCubit(midiManager: manager, prefs: prefs);
     await cubit.loadRootDirectory();
-    for (final panel in PanelPosition.values) {
-      await cubit.navigateToAbsolutePath('/presets', panel: panel);
-    }
-    await cubit.focusPane(PanelPosition.left);
+    await cubit.navigateToAbsolutePath('/presets');
     clearInteractions(manager);
   });
 
@@ -116,10 +115,10 @@ void main() {
         await cubit.navigateToAbsolutePath('/presets');
         cubit.state.mapOrNull(
           loaded: (s) {
-            expect(
-              s.leftPanelItems.where((e) => e.name != '..').map((e) => e.name),
-              ['Alpha #7.json', 'Beta.json'],
-            );
+            expect(s.currentDrillItems!.map((e) => e.name), [
+              'Alpha #7.json',
+              'Beta.json',
+            ]);
             expect(
               s.currentDrillItems!.any((e) => e.name == 'Alpha.json'),
               isFalse,
@@ -201,16 +200,29 @@ void main() {
       test(
         'keeps the renamed file selected in the $panel panel',
         () async {
-          var target = '/presets';
-          if (panel == PanelPosition.right) {
+          var directory = '/presets';
+          if (panel == PanelPosition.left) {
+            files['/']!.add(_entry('Alpha.json'));
+            await cubit.navigateToAbsolutePath('/');
+            directory = '/';
+          } else if (panel == PanelPosition.right) {
+            files['/presets']!.add(_entry('Set/', directory: true));
             files['/presets/Set'] = [_entry('Alpha.json')];
-            target = '/presets/Set';
+            await cubit.navigateToAbsolutePath('/presets/Set');
+            directory = '/presets/Set';
           }
-          await cubit.navigateToAbsolutePath(target, panel: panel);
-          final directory = cubit.getPanelDirectory(panel);
-          await cubit.selectFile(files[directory]!.first, panel);
-          await cubit.renameEntry('$directory/Alpha.json', 'Alpha #42.json');
-          expect(cubit.getSelectedPath(), '$directory/Alpha #42.json');
+          await cubit.selectFile(
+            files[directory]!.firstWhere((e) => e.name == 'Alpha.json'),
+            panel,
+          );
+          await cubit.renameEntry(
+            directory == '/' ? '/Alpha.json' : '$directory/Alpha.json',
+            'Alpha #42.json',
+          );
+          expect(
+            cubit.getSelectedPath(),
+            directory == '/' ? '/Alpha #42.json' : '$directory/Alpha #42.json',
+          );
         },
         tags: ['regression'],
       );
@@ -314,12 +326,9 @@ void main() {
         expect(cubit.getCurrentDirectory(), '/');
         cubit.state.mapOrNull(
           loaded: (s) {
-            expect(s.selectedLeftItem, isNull);
-            expect(
-              s.browser.pane(PanelPosition.center).current.path,
-              '/presets',
-            );
-            expect(s.centerPanelItems.first.name, 'Alpha #42.json');
+            expect(s.selectedLeftItem!.name, 'presets/');
+            expect(s.browser.path(PanelPosition.center), null);
+            expect(s.centerPanelItems, isEmpty);
           },
         );
       },

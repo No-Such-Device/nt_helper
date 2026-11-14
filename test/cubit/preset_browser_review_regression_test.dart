@@ -68,41 +68,35 @@ void main() {
       final startup = cubit.loadRootDirectory();
       await started.future;
       final focus = cubit.focusPane(PanelPosition.center);
-      expect(prefs.getString('fileBrowserLastPath'), '/');
+      expect(prefs.getString('fileBrowserLastPath'), '/A');
       reply.complete(DirectoryListing(entries: files['/']!));
       await Future.wait([startup, focus]);
-      expect(cubit.getPanelDirectory(PanelPosition.left), '/A');
-      expect(cubit.state.view!.activePane, PanelPosition.center);
-      expect(cubit.getCurrentDirectory(), '/');
+      expect(cubit.getPanelDirectory(PanelPosition.center), '/A');
+      expect(cubit.getCurrentDirectory(), '/A');
     },
     tags: ['regression'],
   );
 
-  for (final targetPane in [PanelPosition.left, PanelPosition.right]) {
-    test(
-      'failed restoration cannot reset newer navigation in $targetPane',
-      () async {
-        await prefs.setString('fileBrowserLastPath', '/missing');
-        final started = Completer<void>();
-        final reply = Completer<DirectoryListing?>();
-        when(() => manager.requestDirectoryListing('/missing')).thenAnswer((_) {
-          started.complete();
-          return reply.future;
-        });
-        final startup = cubit.loadRootDirectory();
-        await started.future;
-        await cubit.navigateToAbsolutePath('/B', panel: targetPane);
-        reply.complete(null);
-        await startup;
-        expect(cubit.getPanelDirectory(targetPane), '/B');
-        expect(cubit.state.view!.activePane, targetPane);
-        if (targetPane == PanelPosition.right) {
-          expect(cubit.getPanelDirectory(PanelPosition.left), '/');
-        }
-      },
-      tags: ['regression'],
-    );
-  }
+  test(
+    'failed restoration cannot reset newer shared navigation',
+    () async {
+      await prefs.setString('fileBrowserLastPath', '/missing');
+      final started = Completer<void>();
+      final reply = Completer<DirectoryListing?>();
+      when(() => manager.requestDirectoryListing('/missing')).thenAnswer((_) {
+        started.complete();
+        return reply.future;
+      });
+      final startup = cubit.loadRootDirectory();
+      await started.future;
+      await cubit.navigateToAbsolutePath('/B');
+      reply.complete(null);
+      await startup;
+      expect(cubit.getCurrentDirectory(), '/B');
+      expect(cubit.state.view!.stack.map((f) => f.path), ['/', '/B']);
+    },
+    tags: ['regression'],
+  );
 
   test(
     'deleting an old stack frame preserves a surviving current location',
@@ -110,17 +104,13 @@ void main() {
       await cubit.loadRootDirectory();
       await cubit.navigateToAbsolutePath('/A/child');
       await cubit.navigateToPathSegment(0);
-      expect(cubit.state.view!.active.stack.map((f) => f.path), [
-        '/',
-        '/A/child',
-        '/A',
-      ]);
+      expect(cubit.state.view!.stack.map((f) => f.path), ['/', '/A']);
       when(() => manager.requestFileDelete('/A/child')).thenAnswer((_) async {
         files['/A']!.removeWhere((e) => e.name == 'child/');
         return SdCardStatus(success: true, message: '');
       });
       await cubit.deleteEntry('/A/child');
-      expect(cubit.state.view!.active.stack.map((f) => f.path), ['/', '/A']);
+      expect(cubit.state.view!.stack.map((f) => f.path), ['/', '/A']);
       expect(cubit.getCurrentDirectory(), '/A');
     },
     tags: ['regression'],
@@ -131,7 +121,7 @@ void main() {
     () async {
       await cubit.loadRootDirectory();
       await cubit.navigateToAbsolutePath('/A');
-      await cubit.selectFile(files['/A']!.first, PanelPosition.left);
+      await cubit.selectFile(files['/A']!.first, PanelPosition.center);
       final started = Completer<void>();
       final reply = Completer<DirectoryListing?>();
       when(() => manager.requestDirectoryListing('/A')).thenAnswer((_) {
@@ -142,7 +132,7 @@ void main() {
       await started.future;
       expect(cubit.state.view!.refreshing, contains('/A'));
       expect(
-        cubit.state.view!.items(PanelPosition.left).map((e) => e.name),
+        cubit.state.view!.items(PanelPosition.center).map((e) => e.name),
         contains('one.json'),
       );
       expect(cubit.getSelectedPath(), isEmpty);
@@ -175,18 +165,21 @@ void main() {
       cubit = PresetBrowserCubit(midiManager: manager, prefs: storage);
       await cubit.loadRootDirectory();
       await cubit.navigateToAbsolutePath('/A');
-      await cubit.selectFile(files['/A']!.first, PanelPosition.left);
+      await cubit.selectFile(files['/A']!.first, PanelPosition.center);
       delay = true;
       final rename = cubit.renameEntry('/A/one.json', 'new.json');
       await started.future;
-      expect(cubit.state.view!.selection(PanelPosition.left)!.name, 'new.json');
+      expect(
+        cubit.state.view!.selection(PanelPosition.center)!.name,
+        'new.json',
+      );
       files['/A']!.add(entry('external.json'));
       await cubit.refreshPane();
       persisted.complete(false);
       await rename; // Device rename still succeeds.
       expect(cubit.getSelectedPath(), '/A/new.json');
       expect(
-        cubit.state.view!.items(PanelPosition.left).map((e) => e.name),
+        cubit.state.view!.items(PanelPosition.center).map((e) => e.name),
         contains('external.json'),
       );
       expect(cubit.state.view!.warning, contains('Renamed on the device'));
@@ -199,7 +192,7 @@ void main() {
     () async {
       await cubit.loadRootDirectory();
       await cubit.navigateToAbsolutePath('/A');
-      await cubit.selectFile(files['/A']!.first, PanelPosition.left);
+      await cubit.selectFile(files['/A']!.first, PanelPosition.center);
       final started = Completer<void>();
       final acknowledgement = Completer<SdCardStatus?>();
       when(
@@ -226,7 +219,7 @@ void main() {
       try {
         await reopened.loadRootDirectory();
         await reopened.navigateToAbsolutePath('/A');
-        await reopened.selectFile(files['/A']!.first, PanelPosition.left);
+        await reopened.selectFile(files['/A']!.first, PanelPosition.center);
         expect(reopened.getSelectedPath(), isEmpty);
         expect(
           () => PresetFileSystemImpl(manager).readFile('/A/one.json'),
@@ -242,7 +235,7 @@ void main() {
         await upload;
         await reopened.refreshPane();
         expect(reopened.getSelectedPath(), '/A/one.json');
-        expect(reopened.state.view!.selection(PanelPosition.left)!.size, 1);
+        expect(reopened.state.view!.selection(PanelPosition.center)!.size, 1);
       } finally {
         await reopened.close();
       }

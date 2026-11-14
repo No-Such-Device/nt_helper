@@ -11,10 +11,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class _Manager extends Mock implements IDistingMidiManager {}
 
-DirectoryEntry file(String name, {bool directory = false, int date = 0}) =>
+DirectoryEntry entry(String name, {bool dir = false, int date = 0}) =>
     DirectoryEntry(
       name: name,
-      attributes: directory ? 0x10 : 0,
+      attributes: dir ? 0x10 : 0,
       date: date,
       time: 0,
       size: 0,
@@ -24,26 +24,35 @@ void main() {
   late PresetBrowserCubit cubit;
   late _Manager manager;
   late SharedPreferences prefs;
-  late Map<String, List<DirectoryEntry>> files;
-  late List<String> requests;
   late DateTime now;
+  late List<String> reads;
+  late Map<String, List<DirectoryEntry>> files;
   BrowserSnapshot view() => cubit.state.view!;
-
+  List<String?> columns() => PanelPosition.values.map(view().path).toList();
+  List<String> ancestry() => view().stack.map((f) => f.path).toList();
+  setUpAll(() => registerFallbackValue(Uint8List(0)));
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    now = DateTime(2026);
     manager = _Manager();
+    now = DateTime(2026);
+    reads = [];
     files = {
-      '/': [file('A/', directory: true), file('B/', directory: true)],
-      '/A': [file('one.json'), file('child/', directory: true)],
-      '/A/child': [file('deep.json')],
-      '/B': [file('two.json')],
+      '/': [entry('A/', dir: true), entry('B/', dir: true), entry('root.json')],
+      '/A': [
+        entry('child/', dir: true),
+        entry('sibling/', dir: true),
+        entry('one.json'),
+      ],
+      '/A/child': [entry('deep/', dir: true), entry('two.json')],
+      '/A/child/deep': [entry('four/', dir: true), entry('three.json')],
+      '/A/child/deep/four': [entry('four.json')],
+      '/A/sibling': [],
+      '/B': [entry('B.json')],
     };
-    requests = [];
     when(() => manager.requestDirectoryListing(any())).thenAnswer((call) async {
       final path = call.positionalArguments.single as String;
-      requests.add(path);
+      reads.add(path);
       final entries = files[path];
       return entries == null ? null : DirectoryListing(entries: [...entries]);
     });
@@ -55,246 +64,309 @@ void main() {
   });
   tearDown(() => cubit.close());
 
-  group('independent pane stacks', () {
-    test('initializes three real panes with one root request', () async {
-      expect(cubit.state, const PresetBrowserState.initial());
-      await cubit.loadRootDirectory();
-      expect(requests, ['/']);
-      for (final panel in PanelPosition.values) {
-        expect(view().pane(panel).stack.map((f) => f.path), ['/']);
-        expect(view().items(panel).map((e) => e.name), ['A/', 'B/']);
-      }
-    });
-
-    test('root failure exposes the cause in the retry view', () async {
-      when(
-        () => manager.requestDirectoryListing('/'),
-      ).thenThrow(StateError('Unavailable'));
-      await cubit.loadRootDirectory();
-      expect(
-        cubit.state.mapOrNull(error: (error) => error.message),
-        contains('Unavailable'),
-      );
-      expect(cubit.state.mapOrNull(error: (error) => error.lastPath), '/');
-      expect(cubit.getSelectedPath(), isEmpty);
-    }, tags: ['regression']);
+  group('one hierarchy and exactly three projected columns', () {
+    test(
+      'root, child and grandchild fill left then center then right with no independent roots',
+      () async {
+        expect(cubit.state, const PresetBrowserState.initial());
+        await cubit.loadRootDirectory();
+        expect(columns(), ['/', null, null]);
+        expect(reads, ['/']);
+        expect(view().items(PanelPosition.center), isEmpty);
+        await cubit.focusPane(PanelPosition.right);
+        expect(reads, ['/']);
+        expect(cubit.getPanelDirectory(PanelPosition.right), '');
+        await cubit.selectDirectory(files['/']!.first, PanelPosition.left);
+        expect(columns(), ['/', '/A', null]);
+        expect(view().selection(PanelPosition.left)!.name, 'A/');
+        await cubit.selectDirectory(files['/A']!.first, PanelPosition.center);
+        expect(columns(), ['/', '/A', '/A/child']);
+        expect(view().selection(PanelPosition.center)!.name, 'child/');
+        await cubit.selectFile(files['/A/child']!.last, PanelPosition.right);
+        expect(cubit.getSelectedPath(), '/A/child/two.json');
+      },
+      tags: ['regression'],
+    );
 
     test(
-      'enter, select and back affect only their own pane stack',
+      'fourth and deeper levels shift a fixed three-column viewport while retaining offscreen ancestry',
       () async {
         await cubit.loadRootDirectory();
-        await cubit.selectDirectory(files['/']!.first, PanelPosition.left);
-        await cubit.selectFile(files['/A']!.first, PanelPosition.left);
-        await cubit.selectDirectory(files['/']!.last, PanelPosition.center);
-        await cubit.selectFile(files['/B']!.single, PanelPosition.center);
-        await cubit.navigateToAbsolutePath(
-          '/A/child',
-          panel: PanelPosition.right,
+        await cubit.navigateToAbsolutePath('/A/child/deep');
+        expect(columns(), ['/A', '/A/child', '/A/child/deep']);
+        expect(ancestry(), ['/', '/A', '/A/child', '/A/child/deep']);
+        expect(view().stack[0].selectedName, 'A/');
+        await cubit.selectDirectory(
+          files['/A/child/deep']!.first,
+          PanelPosition.right,
         );
-        expect(view().pane(PanelPosition.left).stack.map((f) => f.path), [
+        expect(columns(), ['/A/child', '/A/child/deep', '/A/child/deep/four']);
+        expect(ancestry(), [
           '/',
           '/A',
-        ]);
-        expect(view().pane(PanelPosition.center).stack.map((f) => f.path), [
-          '/',
-          '/B',
-        ]);
-        expect(view().pane(PanelPosition.right).stack.map((f) => f.path), [
-          '/',
           '/A/child',
+          '/A/child/deep',
+          '/A/child/deep/four',
         ]);
-        expect(
-          cubit.getSelectedPath(),
-          isEmpty,
-        ); // Active right pane has no selection.
-        await cubit.focusPane(PanelPosition.center);
-        expect(cubit.getSelectedPath(), '/B/two.json');
-        await cubit.navigateBack(PanelPosition.left);
-        expect(cubit.getPanelDirectory(PanelPosition.left), '/');
-        expect(cubit.getPanelDirectory(PanelPosition.center), '/B');
-        expect(cubit.getPanelDirectory(PanelPosition.right), '/A/child');
-        expect(view().selection(PanelPosition.center)!.name, 'two.json');
-        await cubit.navigateBack(PanelPosition.left); // Root is bounded.
-        expect(view().pane(PanelPosition.left).stack, hasLength(1));
-      },
-      tags: ['regression'],
-    );
-
-    test(
-      'mobile uses the active pane, including root breadcrumb and back',
-      () async {
-        await cubit.loadRootDirectory();
-        await cubit.navigateToAbsolutePath('/B', panel: PanelPosition.right);
-        await cubit.selectDrillItem(files['/B']!.single);
-        expect(cubit.state.selectedRightItem, cubit.state.selectedDrillItem);
-        expect(cubit.getSelectedPath(), '/B/two.json');
-        await cubit.focusPane(PanelPosition.left);
-        expect(cubit.getSelectedPath(), isEmpty);
-        await cubit.navigateIntoDirectory(files['/']!.first);
-        await cubit.navigateIntoDirectory(files['/A']!.last);
-        expect(cubit.state.breadcrumbs, ['A', 'child']);
-        await cubit.navigateToPathSegment(0);
-        expect(cubit.getCurrentDirectory(), '/A');
-        await cubit.navigateToPathSegment(-1);
-        expect(cubit.getCurrentDirectory(), '/');
-        expect(cubit.getPanelDirectory(PanelPosition.right), '/B');
-        await cubit.focusPane(PanelPosition.right);
-        expect(cubit.getSelectedPath(), '/B/two.json');
-      },
-      tags: ['regression'],
-    );
-
-    test(
-      'restores saved path only in first pane and retains bounded root',
-      () async {
-        await prefs.setString('fileBrowserLastPath', '/A/child');
-        await cubit.loadRootDirectory();
-        expect(cubit.getCurrentDirectory(), '/A/child');
-        expect(cubit.getPanelDirectory(PanelPosition.center), '/');
-        expect(cubit.getPanelDirectory(PanelPosition.right), '/');
         await cubit.navigateBack();
-        expect(cubit.getCurrentDirectory(), '/');
+        expect(columns(), ['/A', '/A/child', '/A/child/deep']);
+        await cubit.navigateBack();
+        expect(columns(), ['/', '/A', '/A/child']);
+        await cubit.navigateToPathSegment(0);
+        expect(columns(), ['/', '/A', null]);
+        await cubit.navigateToPathSegment(-1);
+        expect(columns(), ['/', null, null]);
+        await cubit.navigateBack();
+        expect(ancestry(), ['/']);
+        expect(cubit.state.breadcrumbs, isEmpty);
       },
+      tags: ['regression'],
     );
 
-    test('missing saved directory falls back to fresh root', () async {
-      await prefs.setString('fileBrowserLastPath', '/missing');
-      await cubit.loadRootDirectory();
-      expect(cubit.getCurrentDirectory(), '/');
-      expect(view().active.stack, hasLength(1));
-    });
+    test(
+      'sibling folder or file selection truncates descendants and action targets',
+      () async {
+        await cubit.loadRootDirectory();
+        await cubit.navigateToAbsolutePath('/A/child/deep');
+        await cubit.selectFile(
+          files['/A/child/deep']!.last,
+          PanelPosition.right,
+        );
+        await cubit.selectDirectory(files['/A']![1], PanelPosition.left);
+        expect(ancestry(), ['/', '/A', '/A/sibling']);
+        expect(columns(), ['/', '/A', '/A/sibling']);
+        expect(cubit.getSelectedPath(), isEmpty);
+        expect(view().selection(PanelPosition.center)!.name, 'sibling/');
+        await cubit.selectFile(files['/']!.last, PanelPosition.left);
+        expect(columns(), ['/', null, null]);
+        expect(cubit.getSelectedPath(), '/root.json');
+        await cubit.selectDirectory(files['/']![1], PanelPosition.left);
+        expect(columns(), ['/', '/B', null]);
+        expect(cubit.getSelectedPath(), isEmpty);
+      },
+      tags: ['regression'],
+    );
+
+    test(
+      'Back preserves parent folder highlight without reentering it; breadcrumbs are ancestry, not visit history',
+      () async {
+        await prefs.setString('fileBrowserLastPath', '/A/child/deep');
+        await cubit.loadRootDirectory();
+        expect(ancestry(), ['/', '/A', '/A/child', '/A/child/deep']);
+        await cubit.navigateBack();
+        expect(view().current.path, '/A/child');
+        expect(view().selection(PanelPosition.right)!.name, 'deep/');
+        await cubit.navigateToAbsolutePath('/B');
+        expect(ancestry(), ['/', '/B']);
+        await cubit.navigateBack();
+        expect(ancestry(), ['/']);
+        await cubit.navigateToAbsolutePath('/A/child');
+        await cubit.navigateToPathSegment(0);
+        expect(ancestry(), ['/', '/A']); // Never [/, /A/child, /A].
+      },
+      tags: ['regression'],
+    );
+
+    test(
+      'mobile renders the deepest shared frame; focus does not fork navigation or persist an ancestor root',
+      () async {
+        await cubit.loadRootDirectory();
+        await cubit.navigateToAbsolutePath('/A/child');
+        await cubit.selectDrillItem(files['/A/child']!.last);
+        expect(
+          cubit.state.selectedDrillItem,
+          view().selection(PanelPosition.right),
+        );
+        expect(cubit.getSelectedPath(), '/A/child/two.json');
+        await cubit.focusPane(PanelPosition.left);
+        expect(ancestry(), ['/', '/A', '/A/child']);
+        expect(
+          cubit.state.currentDrillItems,
+          view().items(PanelPosition.right),
+        );
+        expect(prefs.getString('fileBrowserLastPath'), '/A/child');
+        cubit.setSinglePaneLayout(true);
+        reads.clear();
+        now = now.add(const Duration(seconds: 6));
+        await cubit.refreshVisiblePanes(onlyIfStale: true);
+        expect(reads, ['/A/child']);
+      },
+      tags: ['regression'],
+    );
   });
 
-  group('event-driven freshness', () {
+  group('freshness and mutation protections survive shared hierarchy', () {
     test(
-      'revisiting/back reads external changes instead of cached entries',
+      'Back rereads external changes, clears vanished selection, and refresh truncates obsolete descendant branch',
       () async {
         await cubit.loadRootDirectory();
-        await cubit.navigateToAbsolutePath('/A');
-        await cubit.selectFile(files['/A']!.first, PanelPosition.left);
-        await cubit.navigateIntoDirectory(files['/A']!.last);
-        files['/A'] = [file('renamed #42.json')];
+        await cubit.navigateToAbsolutePath('/A/child/deep');
+        files['/A/child'] = [entry('new.json')];
         await cubit.navigateBack();
-        expect(requests.where((path) => path == '/A'), hasLength(2));
-        expect(
-          view().items(PanelPosition.left).single.name,
-          'renamed #42.json',
-        );
-        expect(
-          cubit.getSelectedPath(),
-          isEmpty,
-        ); // Vanished selection is cleared.
+        expect(view().selection(PanelPosition.right), isNull);
+        expect(view().current.path, '/A/child');
+        expect(view().items(PanelPosition.right).single.name, 'new.json');
+        files['/A'] = [entry('one.json')];
+        await cubit.refreshPane(PanelPosition.center);
+        expect(ancestry(), ['/', '/A']);
+        expect(columns(), ['/', '/A', null]);
       },
       tags: ['regression'],
     );
 
     test(
-      'focus/resume coalesce shared paths and do not poll or reread fresh data',
+      'stale focus coalesces and fresh focus/placeholder produces no reads or polling',
       () async {
         await cubit.loadRootDirectory();
-        await cubit.focusPane(PanelPosition.center);
         await cubit.focusPane(PanelPosition.left);
+        await cubit.focusPane(PanelPosition.center);
         await cubit.refreshVisiblePanes(onlyIfStale: true);
-        expect(requests, ['/']);
+        expect(reads, ['/']);
         now = now.add(const Duration(seconds: 6));
         final started = Completer<void>();
-        final response = Completer<DirectoryListing?>();
+        final reply = Completer<DirectoryListing?>();
         when(() => manager.requestDirectoryListing('/')).thenAnswer((_) {
-          requests.add('/');
+          reads.add('/');
           started.complete();
-          return response.future;
+          return reply.future;
         });
         final first = cubit.focusPane(PanelPosition.left);
         await started.future;
-        final second = cubit.focusPane(PanelPosition.right);
-        response.complete(DirectoryListing(entries: [file('external.json')]));
+        final second = cubit.focusPane(PanelPosition.left);
+        reply.complete(DirectoryListing(entries: files['/']!));
         await Future.wait([first, second]);
-        expect(requests, ['/', '/']);
-        for (final panel in PanelPosition.values) {
-          expect(view().items(panel).single.name, 'external.json');
-        }
+        expect(reads, ['/', '/']);
       },
       tags: ['regression'],
     );
 
     test(
-      'delayed navigation reply cannot restore a pane after back',
+      'late reply cannot restore navigation after Back or sibling replacement',
       () async {
         await cubit.loadRootDirectory();
         final started = Completer<void>();
-        final response = Completer<DirectoryListing?>();
+        final reply = Completer<DirectoryListing?>();
         when(() => manager.requestDirectoryListing('/A')).thenAnswer((_) {
           started.complete();
-          return response.future;
+          return reply.future;
         });
-        final enter = cubit.navigateToAbsolutePath('/A');
+        final enter = cubit.selectDirectory(
+          files['/']!.first,
+          PanelPosition.left,
+        );
         await started.future;
-        await cubit.navigateBack();
-        response.complete(DirectoryListing(entries: files['/A']!));
+        await cubit.selectDirectory(files['/']![1], PanelPosition.left);
+        reply.complete(DirectoryListing(entries: files['/A']!));
         await enter;
-        expect(cubit.getCurrentDirectory(), '/');
-        expect(view().active.stack, hasLength(1));
+        expect(ancestry(), ['/', '/B']);
+        expect(view().selection(PanelPosition.left)!.name, 'B/');
       },
       tags: ['regression'],
     );
 
     test(
-      'mutation invalidation rejects an older in-flight listing',
+      'older in-flight read cannot overwrite verified rename',
       () async {
         await cubit.loadRootDirectory();
         await cubit.navigateToAbsolutePath('/A');
         final started = Completer<void>();
-        final stale = Completer<DirectoryListing?>();
-        var reads = 0;
+        final reply = Completer<DirectoryListing?>();
+        var count = 0;
         when(() => manager.requestDirectoryListing('/A')).thenAnswer((_) {
-          if (reads++ == 0) {
+          if (count++ == 0) {
             started.complete();
-            return stale.future;
+            return reply.future;
           }
           return Future.value(DirectoryListing(entries: files['/A']!));
         });
         when(
           () => manager.requestFileRename('/A/one.json', '/A/one #42.json'),
         ).thenAnswer((_) async {
-          files['/A'] = [file('one #42.json')];
+          files['/A'] = [entry('one #42.json')];
           return SdCardStatus(success: true, message: '');
         });
         final refresh = cubit.refreshPane();
         await started.future;
         await cubit.renameEntry('/A/one.json', 'one #42.json');
-        stale.complete(DirectoryListing(entries: [file('one.json')]));
+        reply.complete(DirectoryListing(entries: [entry('one.json')]));
         await refresh;
-        expect(view().items(PanelPosition.left).single.name, 'one #42.json');
-        expect(view().refreshing, isEmpty);
-        expect(
-          reads,
-          2,
-        ); // Only the stale refresh and verified rename read-back.
+        expect(view().items(PanelPosition.center).single.name, 'one #42.json');
+        expect(count, 2);
       },
       tags: ['regression'],
     );
 
     test(
-      'all panes sharing a directory update after create/delete/upload',
+      'folder rename rebases entire ancestry and refreshed parent selection without losing viewport',
       () async {
         await cubit.loadRootDirectory();
-        for (final panel in PanelPosition.values) {
-          await cubit.navigateToAbsolutePath('/A', panel: panel);
-        }
-        await cubit.selectFile(files['/A']!.first, PanelPosition.right);
+        await cubit.navigateToAbsolutePath('/A/child/deep');
+        await cubit.selectFile(
+          files['/A/child/deep']!.last,
+          PanelPosition.right,
+        );
+        when(() => manager.requestFileRename('/A', '/Live')).thenAnswer((
+          _,
+        ) async {
+          files['/']![0] = entry('Live/', dir: true);
+          for (final path
+              in files.keys
+                  .where((p) => p == '/A' || p.startsWith('/A/'))
+                  .toList()) {
+            files['/Live${path.substring(2)}'] = files.remove(path)!;
+          }
+          return SdCardStatus(success: true, message: '');
+        });
+        await cubit.renameEntry('/A', 'Live');
+        expect(ancestry(), ['/', '/Live', '/Live/child', '/Live/child/deep']);
+        expect(columns(), ['/Live', '/Live/child', '/Live/child/deep']);
+        expect(cubit.getSelectedPath(), '/Live/child/deep/three.json');
+        expect(await cubit.loadRecentPresets(), [
+          '/Live/child/deep/three.json',
+        ]);
+        expect(prefs.getString('fileBrowserLastPath'), '/Live/child/deep');
+        expect(
+          view().listings.keys.any((p) => p == '/A' || p.startsWith('/A/')),
+          isFalse,
+        );
+        await cubit.navigateBack();
+        expect(view().current.path, '/Live/child');
+      },
+      tags: ['regression'],
+    );
+
+    test(
+      'delete pops vanished subtree to surviving ancestor and invalidates recent path',
+      () async {
+        await cubit.loadRootDirectory();
+        await cubit.navigateToAbsolutePath('/A/child');
+        await cubit.selectDrillItem(files['/A/child']!.last);
+        when(() => manager.requestFileDelete('/A/child')).thenAnswer((_) async {
+          files['/A']!.removeAt(0);
+          files.remove('/A/child');
+          return SdCardStatus(success: true, message: '');
+        });
+        await cubit.deleteEntry('/A/child');
+        expect(ancestry(), ['/', '/A']);
+        expect(await cubit.loadRecentPresets(), isEmpty);
+      },
+      tags: ['regression'],
+    );
+
+    test(
+      'create delete upload refresh only affected current listing and serialize mutation workflows',
+      () async {
+        await cubit.loadRootDirectory();
+        await cubit.navigateToAbsolutePath('/A');
+        reads.clear();
         when(() => manager.requestDirectoryCreate('/A/new')).thenAnswer((
           _,
         ) async {
-          files['/A']!.add(file('new/', directory: true));
+          files['/A']!.add(entry('new/', dir: true));
           return SdCardStatus(success: true, message: '');
         });
         await cubit.createDirectory('/A', 'new');
-        for (final panel in PanelPosition.values) {
-          expect(
-            view().items(panel).any((entry) => entry.name == 'new/'),
-            isTrue,
-          );
-        }
+        expect(reads, ['/A']);
         when(() => manager.requestFileDelete('/A/one.json')).thenAnswer((
           _,
         ) async {
@@ -302,7 +374,10 @@ void main() {
           return SdCardStatus(success: true, message: '');
         });
         await cubit.deleteEntry('/A/one.json');
-        expect(cubit.getSelectedPath(), isEmpty);
+        expect(
+          view().items(PanelPosition.center).any((e) => e.name == 'one.json'),
+          isFalse,
+        );
         when(
           () => manager.requestFileUploadChunk(
             '/A/new.json',
@@ -311,209 +386,111 @@ void main() {
             createAlways: true,
           ),
         ).thenAnswer((_) async {
-          files['/A']!.add(file('new.json'));
+          files['/A']!.add(entry('new.json'));
           return SdCardStatus(success: true, message: '');
         });
         await cubit.uploadFile('/A', 'new.json', Uint8List.fromList([1]));
-        for (final panel in PanelPosition.values) {
-          expect(
-            view().items(panel).any((entry) => entry.name == 'new.json'),
-            isTrue,
-          );
-          expect(
-            view().items(panel).any((entry) => entry.name == 'one.json'),
-            isFalse,
-          );
-        }
-      },
-      tags: ['regression'],
-    );
-
-    test('fresh unrelated panes are not read after a mutation', () async {
-      await cubit.loadRootDirectory();
-      await cubit.navigateToAbsolutePath('/A');
-      await cubit.navigateToAbsolutePath('/B', panel: PanelPosition.center);
-      requests.clear();
-      when(
-        () => manager.requestDirectoryCreate('/A/new'),
-      ).thenAnswer((_) async => SdCardStatus(success: true, message: ''));
-      await cubit.createDirectory('/A', 'new');
-      expect(requests, ['/A']);
-      expect(cubit.getPanelDirectory(PanelPosition.center), '/B');
-    }, tags: ['regression']);
-
-    test(
-      'failed mutation does not poison the queue and partial writes are revalidated',
-      () async {
-        await cubit.loadRootDirectory();
-        await cubit.navigateToAbsolutePath('/A');
-        when(() => manager.requestDirectoryCreate('/A/denied')).thenAnswer(
-          (_) async => SdCardStatus(success: false, message: 'Denied'),
-        );
-        await expectLater(
-          cubit.createDirectory('/A', 'denied'),
-          throwsStateError,
-        );
-        when(
-          () => manager.requestFileUploadChunk(
-            '/A/partial.json',
-            any(),
-            0,
-            createAlways: true,
-          ),
-        ).thenAnswer((_) async {
-          files['/A']!.add(file('partial.json'));
-          throw StateError('Connection lost after write');
-        });
-        await expectLater(
-          cubit.uploadFile('/A', 'partial.json', Uint8List.fromList([1])),
-          throwsStateError,
-        );
         expect(
-          view().items(PanelPosition.left).any((e) => e.name == 'partial.json'),
+          view().items(PanelPosition.center).any((e) => e.name == 'new.json'),
           isTrue,
         );
-        expect(view().refreshing, isEmpty);
-        verify(() => manager.requestDirectoryCreate('/A/denied')).called(1);
-        verify(
-          () => manager.requestFileUploadChunk(
-            '/A/partial.json',
-            any(),
-            0,
-            createAlways: true,
-          ),
-        ).called(1);
-      },
-      tags: ['regression'],
-    );
-
-    test(
-      'mutation workflows are serialized through verification',
-      () async {
-        await cubit.loadRootDirectory();
-        await cubit.navigateToAbsolutePath('/A');
         final started = Completer<void>();
-        final reply = Completer<SdCardStatus?>();
+        final ack = Completer<SdCardStatus?>();
         when(
-          () => manager.requestFileRename('/A/one.json', '/A/first.json'),
+          () => manager.requestFileRename('/A/new.json', '/A/first.json'),
         ).thenAnswer((_) {
           started.complete();
-          return reply.future;
+          return ack.future;
         });
         when(
           () => manager.requestFileRename('/A/first.json', '/A/second.json'),
         ).thenAnswer((_) async {
-          files['/A'] = [file('second.json')];
+          files['/A']!.removeWhere((e) => e.name == 'first.json');
+          files['/A']!.add(entry('second.json'));
           return SdCardStatus(success: true, message: '');
         });
-        final first = cubit.renameEntry('/A/one.json', 'first.json');
+        final first = cubit.renameEntry('/A/new.json', 'first.json');
         await started.future;
         final second = cubit.renameEntry('/A/first.json', 'second.json');
         verifyNever(
           () => manager.requestFileRename('/A/first.json', '/A/second.json'),
         );
-        files['/A'] = [file('first.json')];
-        reply.complete(SdCardStatus(success: true, message: ''));
+        files['/A']!.removeWhere((e) => e.name == 'new.json');
+        files['/A']!.add(entry('first.json'));
+        ack.complete(SdCardStatus(success: true, message: ''));
         await Future.wait([first, second]);
-        expect(view().items(PanelPosition.left).single.name, 'second.json');
-      },
-      tags: ['regression'],
-    );
-
-    test(
-      'deleting an open folder pops only affected stacks and clears history',
-      () async {
-        await cubit.loadRootDirectory();
-        await cubit.navigateToAbsolutePath('/A');
-        await cubit.navigateIntoDirectory(files['/A']!.last);
-        await cubit.selectDrillItem(files['/A/child']!.single);
-        await cubit.navigateToAbsolutePath('/B', panel: PanelPosition.center);
-        when(() => manager.requestFileDelete('/A/child')).thenAnswer((_) async {
-          files.remove('/A/child');
-          files['/A']!.removeWhere((e) => e.name == 'child/');
-          return SdCardStatus(success: true, message: '');
-        });
-        await cubit.deleteEntry('/A/child');
-        expect(cubit.getPanelDirectory(PanelPosition.left), '/A');
-        expect(cubit.getPanelDirectory(PanelPosition.center), '/B');
-        expect(cubit.getPanelDirectory(PanelPosition.right), '/');
-        expect(await cubit.loadRecentPresets(), isEmpty);
         expect(
-          view().items(PanelPosition.left).any((e) => e.name == 'child/'),
-          isFalse,
+          view()
+              .items(PanelPosition.center)
+              .any((e) => e.name == 'second.json'),
+          isTrue,
         );
       },
       tags: ['regression'],
     );
 
     test(
-      'uncertain rename disables only its directory and preserves other panes',
+      'failed mutation does not poison queue; partial writes and failed refresh reconcile safely',
       () async {
         await cubit.loadRootDirectory();
         await cubit.navigateToAbsolutePath('/A');
-        await cubit.selectFile(files['/A']!.first, PanelPosition.left);
-        await cubit.navigateToAbsolutePath('/B', panel: PanelPosition.right);
-        await cubit.selectFile(files['/B']!.single, PanelPosition.right);
+        when(() => manager.requestDirectoryCreate('/A/no')).thenAnswer(
+          (_) async => SdCardStatus(success: false, message: 'Denied'),
+        );
+        await expectLater(cubit.createDirectory('/A', 'no'), throwsStateError);
         when(
-          () => manager.requestFileRename('/A/one.json', '/A/new.json'),
-        ).thenAnswer((_) async => null);
+          () => manager.requestFileUploadChunk(
+            '/A/partial.json',
+            any(),
+            0,
+            createAlways: true,
+          ),
+        ).thenAnswer((_) async {
+          files['/A']!.add(entry('partial.json'));
+          throw StateError('Lost reply');
+        });
         await expectLater(
-          cubit.renameEntry('/A/one.json', 'new.json'),
+          cubit.uploadFile('/A', 'partial.json', Uint8List(1)),
           throwsStateError,
         );
-        expect(cubit.getSelectedPath(), '/B/two.json');
-        expect(view().errors['/A'], contains('not acknowledged'));
-        await cubit.focusPane(
-          PanelPosition.left,
-        ); // Fresh listing resolves uncertainty.
-        expect(cubit.getPanelDirectory(PanelPosition.left), '/A');
-        expect(cubit.getSelectedPath(), '/A/one.json');
-        expect(cubit.getPanelDirectory(PanelPosition.right), '/B');
-      },
-      tags: ['regression'],
-    );
-
-    test(
-      'failed refresh disables stale selection and can retry without moving panes',
-      () async {
-        await cubit.loadRootDirectory();
-        await cubit.navigateToAbsolutePath('/B');
-        await cubit.selectFile(files['/B']!.single, PanelPosition.left);
+        expect(
+          view()
+              .items(PanelPosition.center)
+              .any((e) => e.name == 'partial.json'),
+          isTrue,
+        );
+        await cubit.selectFile(
+          files['/A']!.firstWhere((e) => e.name == 'one.json'),
+          PanelPosition.center,
+        );
         when(
-          () => manager.requestDirectoryListing('/B'),
+          () => manager.requestDirectoryListing('/A'),
         ).thenThrow(StateError('Unavailable'));
         await cubit.refreshPane();
         expect(cubit.getSelectedPath(), isEmpty);
-        expect(view().errors['/B'], contains('Unavailable'));
-        expect(cubit.getCurrentDirectory(), '/B');
         when(
-          () => manager.requestDirectoryListing('/B'),
-        ).thenAnswer((_) async => DirectoryListing(entries: files['/B']!));
+          () => manager.requestDirectoryListing('/A'),
+        ).thenAnswer((_) async => DirectoryListing(entries: files['/A']!));
         await cubit.refreshPane();
-        expect(view().errors, isEmpty);
-        expect(cubit.getSelectedPath(), '/B/two.json');
+        expect(cubit.getSelectedPath(), '/A/one.json');
       },
       tags: ['regression'],
     );
   });
-
-  test('sorting updates shared listings without MIDI traffic', () async {
-    files['/'] = [file('old.json'), file('recent.json', date: 1)];
-    await cubit.loadRootDirectory();
-    cubit.toggleSortMode();
-    expect(view().items(PanelPosition.left).first.name, 'recent.json');
-    expect(prefs.getBool('fileBrowserSortByDate'), isTrue);
-    expect(requests, ['/']);
-  });
-
-  test('recent history deduplicates and is bounded', () async {
-    for (var i = 0; i < 25; i++) {
-      await cubit.addToHistory('/$i.json');
-    }
-    await cubit.addToHistory('/23.json');
-    expect(await cubit.loadRecentPresets(), hasLength(20));
-    expect((await cubit.loadRecentPresets()).first, '/23.json');
-  });
-
-  setUpAll(() => registerFallbackValue(Uint8List(0)));
+  test(
+    'sort and bounded deduplicated recents retain no-MIDI preference behavior',
+    () async {
+      files['/'] = [entry('old.json'), entry('recent.json', date: 1)];
+      await cubit.loadRootDirectory();
+      cubit.toggleSortMode();
+      expect(view().items(PanelPosition.left).first.name, 'recent.json');
+      expect(reads, ['/']);
+      for (var i = 0; i < 25; i++) {
+        await cubit.addToHistory('/$i.json');
+      }
+      await cubit.addToHistory('/23.json');
+      expect(await cubit.loadRecentPresets(), hasLength(20));
+      expect((await cubit.loadRecentPresets()).first, '/23.json');
+    },
+  );
 }

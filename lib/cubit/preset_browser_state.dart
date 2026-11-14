@@ -13,22 +13,14 @@ abstract class BrowserFrame with _$BrowserFrame {
       _BrowserFrame;
 }
 
-@freezed
-abstract class BrowserPane with _$BrowserPane {
-  const BrowserPane._();
-  const factory BrowserPane({required List<BrowserFrame> stack}) = _BrowserPane;
-  BrowserFrame get current => stack.last;
-  bool get canGoBack => stack.length > 1;
-}
-
-/// Canonical browser state. Frames own navigation/selection; listings are shared
-/// by path. Mobile renders the active desktop pane, never a second selection.
+/// One root-to-current hierarchy. The three desktop columns are a sliding
+/// viewport over these frames, never independent navigation roots/histories.
 @freezed
 abstract class BrowserSnapshot with _$BrowserSnapshot {
   const BrowserSnapshot._();
   const factory BrowserSnapshot({
-    required List<BrowserPane> panes,
-    @Default(PanelPosition.left) PanelPosition activePane,
+    required List<BrowserFrame> stack,
+    @Default(0) int activeDepth,
     @Default(false) bool sortByDate,
     @Default({}) Map<String, List<DirectoryEntry>> listings,
     @Default({}) Set<String> refreshing,
@@ -37,13 +29,37 @@ abstract class BrowserSnapshot with _$BrowserSnapshot {
     String? warning,
   }) = _BrowserSnapshot;
 
-  BrowserPane pane(PanelPosition position) => panes[position.index];
-  BrowserPane get active => pane(activePane);
-  List<DirectoryEntry> items(PanelPosition position) =>
-      listings[pane(position).current.path] ?? const [];
-  DirectoryEntry? selection(PanelPosition position) => items(
-    position,
-  ).where((e) => e.name == pane(position).current.selectedName).firstOrNull;
+  int get viewportStart => stack.length > 3 ? stack.length - 3 : 0;
+  bool get canGoBack => stack.length > 1;
+  BrowserFrame get current => stack.last;
+  BrowserFrame get focused => stack[activeDepth.clamp(0, stack.length - 1)];
+  PanelPosition get activePane =>
+      PanelPosition.values[(activeDepth - viewportStart).clamp(0, 2)];
+  int? depth(PanelPosition position) {
+    final index = viewportStart + position.index;
+    return index < stack.length ? index : null;
+  }
+
+  BrowserFrame? frame(PanelPosition position) {
+    final index = depth(position);
+    return index == null ? null : stack[index];
+  }
+
+  String? path(PanelPosition position) => frame(position)?.path;
+  List<DirectoryEntry> entriesAt(int depth) =>
+      listings[stack[depth].path] ?? const [];
+  List<DirectoryEntry> items(PanelPosition position) {
+    final index = depth(position);
+    return index == null ? const [] : entriesAt(index);
+  }
+
+  DirectoryEntry? selectedAt(int depth) => entriesAt(
+    depth,
+  ).where((e) => e.name == stack[depth].selectedName).firstOrNull;
+  DirectoryEntry? selection(PanelPosition position) {
+    final index = depth(position);
+    return index == null ? null : selectedAt(index);
+  }
 }
 
 @freezed
@@ -59,15 +75,12 @@ sealed class PresetBrowserState with _$PresetBrowserState {
   }) = _Error;
 
   // Read-only projections for renderers. There is no stored global path/history
-  // or mobile drill-down copy that can diverge from the pane stacks.
+  // or mobile drill-down copy that can diverge from the shared hierarchy.
   BrowserSnapshot? get view => mapOrNull(loaded: (s) => s.browser);
-  String get currentPath => view?.active.current.path ?? '/';
+  String get currentPath => view?.current.path ?? '/';
   bool get sortByDate => view?.sortByDate ?? false;
   List<String> get navigationHistory =>
-      view?.active.stack
-          .map((f) => f.path)
-          .toList()
-          .sublist(0, view!.active.stack.length - 1) ??
+      view?.stack.take(view!.stack.length - 1).map((f) => f.path).toList() ??
       const [];
   List<DirectoryEntry> get leftPanelItems =>
       view?.items(PanelPosition.left) ?? const [];
@@ -80,9 +93,11 @@ sealed class PresetBrowserState with _$PresetBrowserState {
       view?.selection(PanelPosition.center);
   DirectoryEntry? get selectedRightItem => view?.selection(PanelPosition.right);
   Map<String, List<DirectoryEntry>>? get directoryCache => view?.listings;
-  String? get drillPath => view?.active.current.path;
+  String? get drillPath => view?.current.path;
   List<String>? get breadcrumbs =>
       drillPath?.split('/').where((s) => s.isNotEmpty).toList();
-  List<DirectoryEntry>? get currentDrillItems => view?.items(view!.activePane);
-  DirectoryEntry? get selectedDrillItem => view?.selection(view!.activePane);
+  List<DirectoryEntry>? get currentDrillItems =>
+      view?.entriesAt(view!.stack.length - 1);
+  DirectoryEntry? get selectedDrillItem =>
+      view?.selectedAt(view!.stack.length - 1);
 }

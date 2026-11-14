@@ -22,7 +22,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
   Set<String> _busySeen = {};
   Set<String> _ownedPaths = {};
   bool _singlePaneLayout = false;
-  final List<int> _navigationVersions = [0, 0, 0];
+  int _navigationVersion = 0;
   final Duration focusFreshness;
   final Map<String, DateTime> _fetched = {};
   final Map<String, int> _versions = {};
@@ -55,12 +55,12 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     _singlePaneLayout = value;
   }
 
-  Iterable<PanelPosition> _visible(BrowserSnapshot browser) => _singlePaneLayout
-      ? [browser.activePane]
-      : [
-          browser.activePane,
-          ...PanelPosition.values.where((p) => p != browser.activePane),
-        ];
+  Iterable<String> _visiblePaths(BrowserSnapshot browser) => _singlePaneLayout
+      ? [browser.current.path]
+      : {
+          browser.current.path,
+          ...PanelPosition.values.map(browser.path).whereType<String>(),
+        };
 
   void _activityChanged() {
     final released = _busySeen
@@ -72,9 +72,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     _emit(browser);
     if (released.isNotEmpty) {
       final parents = released.map(p.posix.dirname).toSet();
-      final visible = _visible(
-        _browser!,
-      ).map((pane) => _browser!.pane(pane).current.path).toSet();
+      final visible = _visiblePaths(_browser!).toSet();
       final affected = {
         ..._fetched.keys,
         ..._browser!.listings.keys,
@@ -123,17 +121,13 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
       path == root || path.startsWith('$root/');
 
   Future<void> loadRootDirectory() async {
-    // Capture before interactive root panes can update the same preference.
     final savedPath = prefs.getString(_lastPathKey);
-    final initialNavigation = List.of(_navigationVersions);
+    final initialNavigation = _navigationVersion;
     emit(const PresetBrowserState.loading());
     _invalidate({..._fetched.keys, ..._pending.keys});
     _emit(
       BrowserSnapshot(
-        panes: [
-          for (final _ in PanelPosition.values)
-            BrowserPane(stack: [_frame('/')]),
-        ],
+        stack: [_frame('/')],
         sortByDate: prefs.getBool(_sortByDateKey) ?? false,
       ),
     );
@@ -142,11 +136,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
       rootReady = await _read('/');
     }
     if (!rootReady) {
-      if (!isClosed &&
-          List.generate(
-            3,
-            (i) => _navigationVersions[i] == initialNavigation[i],
-          ).every((v) => v)) {
+      if (!isClosed && _navigationVersion == initialNavigation) {
         emit(
           PresetBrowserState.error(
             message:
@@ -160,34 +150,26 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     if (savedPath != null &&
         savedPath != '/' &&
         savedPath.startsWith('/') &&
-        _navigationVersions[0] == initialNavigation[0]) {
-      final restorationVersion = _navigationVersions[0] + 1;
-      await navigateToAbsolutePath(
-        savedPath,
-        panel: PanelPosition.left,
-        activate: false,
-      );
-      if (_navigationVersions[0] == restorationVersion &&
-          _browser?.pane(PanelPosition.left).current.path == savedPath &&
+        _navigationVersion == initialNavigation) {
+      final restoration = _navigationVersion + 1;
+      await navigateToAbsolutePath(savedPath);
+      if (_navigationVersion == restoration &&
+          _browser?.current.path == savedPath &&
           _browser?.errors.containsKey(savedPath) == true) {
-        await navigateToAbsolutePath(
-          '/',
-          panel: PanelPosition.left,
-          activate: false,
-        );
+        await navigateToAbsolutePath('/');
       }
     }
   }
 
-  /// Enter/back always revalidate. Focus/resume only revalidates stale paths.
-  /// Concurrent panes displaying the same path share one in-flight request.
+  /// Focus changes action context, not the shared hierarchy. Placeholders have
+  /// no path and cannot trigger network traffic or become upload targets.
   Future<void> focusPane(PanelPosition position) async {
     final browser = _browser;
-    if (browser == null) return;
-    final path = browser.pane(position).current.path;
-    if (browser.activePane != position) {
-      _emit(browser.copyWith(activePane: position));
-      unawaited(_rememberPath(path));
+    final depth = browser?.depth(position);
+    if (browser == null || depth == null) return;
+    final path = browser.stack[depth].path;
+    if (browser.activeDepth != depth) {
+      _emit(browser.copyWith(activeDepth: depth));
     }
     final fetched = _fetched[path];
     if (fetched == null || _clock.now().difference(fetched) >= focusFreshness) {
@@ -198,9 +180,9 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
   Future<void> refreshVisiblePanes({bool onlyIfStale = false}) async {
     final browser = _browser;
     if (browser == null) return;
-    for (final path in _visible(
-      browser,
-    ).map((pane) => browser.pane(pane).current.path).toSet()) {
+    for (final path in _visiblePaths(browser)) {
+      // A parent refresh can truncate vanished descendants; don't fetch them.
+      if (_browser?.stack.any((frame) => frame.path == path) != true) continue;
       final fetched = _fetched[path];
       if (!onlyIfStale ||
           fetched == null ||
@@ -212,13 +194,13 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
 
   Future<void> refreshPane([PanelPosition? position]) async {
     final browser = _browser;
-    if (browser != null) {
-      if (position != null && browser.activePane != position) {
-        _emit(browser.copyWith(activePane: position));
-        unawaited(_rememberPath(browser.pane(position).current.path));
-      }
-      await _refresh(browser.pane(position ?? browser.activePane).current.path);
-    }
+    if (browser == null) return;
+    final depth = position == null
+        ? browser.stack.length - 1
+        : browser.depth(position);
+    if (depth == null) return;
+    if (position != null) _emit(browser.copyWith(activeDepth: depth));
+    await _refresh(browser.stack[depth].path);
   }
 
   Future<void> _refresh(String path) async {
@@ -284,24 +266,39 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     if (browser == null || isClosed) return;
     final entries = _sort(listing.entries, browser.sortByDate);
     _fetched[path] = _clock.now();
+    final stack = _reconcile(browser.stack, path, entries);
     _emit(
       browser.copyWith(
         listings: {...browser.listings, path: entries},
         errors: {...browser.errors}..remove(path),
-        panes: [
-          for (final pane in browser.panes)
-            pane.copyWith(
-              stack: [
-                for (final frame in pane.stack)
-                  frame.path == path &&
-                          !entries.any((e) => e.name == frame.selectedName)
-                      ? frame.copyWith(selectedName: null)
-                      : frame,
-              ],
-            ),
-        ],
+        stack: stack,
+        activeDepth: browser.activeDepth.clamp(0, stack.length - 1),
       ),
     );
+  }
+
+  List<BrowserFrame> _reconcile(
+    List<BrowserFrame> stack,
+    String path,
+    List<DirectoryEntry> entries,
+  ) {
+    final index = stack.indexWhere((frame) => frame.path == path);
+    if (index < 0) return stack;
+    final selected = entries
+        .where((entry) => entry.name == stack[index].selectedName)
+        .firstOrNull;
+    final updated = [...stack];
+    if (selected == null) {
+      updated[index] = updated[index].copyWith(selectedName: null);
+    }
+    if (index + 1 < stack.length &&
+        (selected == null ||
+            !selected.isDirectory ||
+            _join(path, selected.name) != stack[index + 1].path)) {
+      _navigationVersion++; // Late startup fallback must not restore a removed branch.
+      return updated.sublist(0, index + 1);
+    }
+    return updated;
   }
 
   void _invalidate(
@@ -345,52 +342,59 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     }
   }
 
-  Future<void> _navigate(
-    PanelPosition position,
-    List<BrowserFrame> stack, {
-    bool activate = true,
-  }) async {
+  Future<void> _navigateStack(List<BrowserFrame> stack) async {
     final browser = _browser;
     if (browser == null || stack.isEmpty) return;
-    final panes = [...browser.panes];
-    panes[position.index] = BrowserPane(stack: stack);
-    _navigationVersions[position.index]++;
-    _emit(
-      browser.copyWith(
-        panes: panes,
-        activePane: activate ? position : browser.activePane,
-      ),
-    );
-    if (activate) unawaited(_rememberPath(stack.last.path));
-    await _refresh(stack.last.path);
+    final version = ++_navigationVersion;
+    _emit(browser.copyWith(stack: stack, activeDepth: stack.length - 1));
+    unawaited(_rememberPath(stack.last.path));
+    // Revisit always revalidates the destination. Absolute jumps also hydrate
+    // previously unseen ancestors so shifting/Back never loses the hierarchy.
+    final paths = [
+      for (final frame in stack.take(stack.length - 1))
+        if (!_fetched.containsKey(frame.path)) frame.path,
+      stack.last.path,
+    ];
+    for (final path in paths) {
+      if (isClosed || _navigationVersion != version) return;
+      if (!await _read(path)) return;
+    }
   }
 
-  Future<void> navigateToAbsolutePath(
-    String path, {
-    PanelPosition? panel,
-    bool activate = true,
-  }) async {
+  Future<void> navigateToAbsolutePath(String path) async {
     final browser = _browser;
     if (browser == null) return;
     if (!path.startsWith('/')) throw ArgumentError.value(path, 'path');
     path = p.posix.normalize(path);
-    final position = panel ?? browser.activePane;
-    final stack = browser.pane(position).stack;
-    final index = stack.lastIndexWhere((frame) => frame.path == path);
-    await _navigate(
-      position,
-      index < 0 ? [...stack, _frame(path)] : stack.sublist(0, index + 1),
-      activate: activate,
-    );
+    final parts = path.split('/').where((s) => s.isNotEmpty).toList();
+    final paths = [
+      '/',
+      for (var i = 1; i <= parts.length; i++) '/${parts.take(i).join('/')}',
+    ];
+    final stack = <BrowserFrame>[];
+    for (var i = 0; i < paths.length; i++) {
+      final old = browser.stack
+          .where((frame) => frame.path == paths[i])
+          .firstOrNull;
+      final selectedName = i + 1 < paths.length
+          ? browser.listings[paths[i]]
+                    ?.where(
+                      (entry) =>
+                          entry.isDirectory && _clean(entry.name) == parts[i],
+                    )
+                    .firstOrNull
+                    ?.name ??
+                '${parts[i]}/'
+          : old?.selectedName;
+      stack.add(BrowserFrame(path: paths[i], selectedName: selectedName));
+    }
+    await _navigateStack(stack);
   }
 
-  Future<void> navigateBack([PanelPosition? panel]) async {
+  Future<void> navigateBack() async {
     final browser = _browser;
-    if (browser == null) return;
-    final position = panel ?? browser.activePane;
-    final stack = browser.pane(position).stack;
-    if (stack.length > 1) {
-      await _navigate(position, stack.sublist(0, stack.length - 1));
+    if (browser != null && browser.canGoBack) {
+      await _navigateStack(browser.stack.sublist(0, browser.stack.length - 1));
     }
   }
 
@@ -398,66 +402,76 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     DirectoryEntry entry,
     PanelPosition panel,
   ) async {
-    if (!entry.isDirectory || _browser == null) return;
-    final current = _browser!.pane(panel).current.path;
-    await navigateToAbsolutePath(
-      entry.name == '..'
-          ? p.posix.dirname(current)
-          : _join(current, entry.name),
-      panel: panel,
-    );
+    final browser = _browser;
+    final depth = browser?.depth(panel);
+    if (browser == null || depth == null || !entry.isDirectory) return;
+    if (entry.name == '..') {
+      await navigateToAbsolutePath(p.posix.dirname(browser.stack[depth].path));
+      return;
+    }
+    final stack = browser.stack.take(depth + 1).toList();
+    stack[depth] = stack[depth].copyWith(selectedName: entry.name);
+    stack.add(_frame(_join(stack[depth].path, entry.name)));
+    await _navigateStack(stack);
   }
 
   Future<void> selectFile(DirectoryEntry entry, PanelPosition panel) async {
     final browser = _browser;
-    if (browser == null || entry.isDirectory) return;
-    final pane = browser.pane(panel);
-    final panes = [...browser.panes];
-    panes[panel.index] = pane.copyWith(
-      stack: [
-        ...pane.stack.take(pane.stack.length - 1),
-        pane.current.copyWith(selectedName: entry.name),
-      ],
-    );
-    _emit(browser.copyWith(panes: panes, activePane: panel));
+    final depth = browser?.depth(panel);
+    if (browser == null || depth == null || entry.isDirectory) return;
+    final stack = browser.stack.take(depth + 1).toList();
+    stack[depth] = stack[depth].copyWith(selectedName: entry.name);
+    _navigationVersion++;
+    _emit(browser.copyWith(stack: stack, activeDepth: depth));
+    unawaited(_rememberPath(stack.last.path));
     if (entry.name.toLowerCase().endsWith('.json')) {
-      await addToHistory(_join(pane.current.path, entry.name));
+      await addToHistory(_join(stack.last.path, entry.name));
     }
   }
 
   Future<void> navigateIntoDirectory(DirectoryEntry entry) async {
-    if (_browser != null) await selectDirectory(entry, _browser!.activePane);
+    if (_browser != null) {
+      await selectDirectory(
+        entry,
+        PanelPosition.values[_browser!.stack.length -
+            1 -
+            _browser!.viewportStart],
+      );
+    }
   }
 
   Future<void> selectDrillItem(DirectoryEntry entry) async {
-    if (_browser != null) await selectFile(entry, _browser!.activePane);
+    if (_browser != null) {
+      await selectFile(
+        entry,
+        PanelPosition.values[_browser!.stack.length -
+            1 -
+            _browser!.viewportStart],
+      );
+    }
   }
 
   Future<void> navigateToPathSegment(int index) async {
-    final path = getCurrentDirectory();
-    final segments = path.split('/').where((s) => s.isNotEmpty).toList();
-    if (index < -1 || index >= segments.length) return;
-    await navigateToAbsolutePath(
-      index == -1 ? '/' : '/${segments.take(index + 1).join('/')}',
-    );
+    final stack = _browser?.stack;
+    if (stack == null || index < -1 || index >= stack.length - 1) return;
+    await _navigateStack(stack.take(index + 2).toList());
   }
 
   String getSelectedPath() {
     final browser = _browser;
     if (browser == null) return '';
-    final path = browser.active.current.path;
+    final path = browser.focused.path;
     if (browser.refreshing.contains(path) || browser.errors.containsKey(path)) {
       return '';
     }
-    final selected = browser.selection(browser.activePane);
+    final selected = browser.selectedAt(browser.activeDepth);
     if (selected == null || selected.isDirectory) return '';
     final fullPath = _join(path, selected.name);
     return _activity.isBusy(fullPath) ? '' : fullPath;
   }
 
-  String getCurrentDirectory() => _browser?.active.current.path ?? '/';
-  String getPanelDirectory(PanelPosition panel) =>
-      _browser?.pane(panel).current.path ?? '/';
+  String getCurrentDirectory() => _browser?.current.path ?? '/';
+  String getPanelDirectory(PanelPosition panel) => _browser?.path(panel) ?? '';
   String getSelectedDirectoryPath() => getCurrentDirectory();
   String getEntryPath(DirectoryEntry entry, String panelDirectory) =>
       _join(panelDirectory, entry.name);
@@ -514,11 +528,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
   }) async {
     final paths = {
       parent,
-      ...(_browser == null
-          ? <String>[]
-          : _visible(
-              _browser!,
-            ).map((pane) => _browser!.pane(pane).current.path)),
+      ...(_browser == null ? <String>[] : _visiblePaths(_browser!)),
     };
     for (final path in paths) {
       if ((path == parent && !parentAlreadyFresh) ||
@@ -627,21 +637,15 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
               ..removeWhere(
                 (path, _) => _below(path, fullPath) || _below(path, newPath),
               ),
-            panes: [
-              for (final pane in browser.panes)
-                pane.copyWith(
-                  stack: [
-                    for (final frame in pane.stack)
-                      frame.copyWith(
-                        path: rewrite(frame.path),
-                        selectedName:
-                            frame.selectedName != null &&
-                                _join(frame.path, frame.selectedName!) ==
-                                    fullPath
-                            ? renamed.name
-                            : frame.selectedName,
-                      ),
-                  ],
+            stack: [
+              for (final frame in browser.stack)
+                frame.copyWith(
+                  path: rewrite(frame.path),
+                  selectedName:
+                      frame.selectedName != null &&
+                          _join(frame.path, frame.selectedName!) == fullPath
+                      ? renamed.name
+                      : frame.selectedName,
                 ),
             ],
           ),
@@ -679,7 +683,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
         '$reason The file may have changed. Refresh before retrying.';
     final browser = _browser;
     if (browser != null && !isClosed) {
-      // Fail closed for this directory without discarding other pane stacks.
+      // Fail closed for this directory without discarding the shared ancestry.
       _emit(browser.copyWith(errors: {...browser.errors, parent: message}));
     }
     throw StateError(message);
@@ -707,12 +711,17 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     _invalidate({parent}, subtrees: {fullPath});
     final browser = _browser;
     if (browser != null) {
+      final survivors = browser.stack
+          .takeWhile((frame) => !_below(frame.path, fullPath))
+          .toList();
+      _navigationVersion++;
       _emit(
         browser.copyWith(
-          panes: [
-            for (final pane in browser.panes)
-              _pruneDeleted(pane, fullPath, parent),
-          ],
+          stack: survivors.isEmpty ? [_frame('/')] : survivors,
+          activeDepth: browser.activeDepth.clamp(
+            0,
+            survivors.isEmpty ? 0 : survivors.length - 1,
+          ),
         ),
       );
     }
@@ -727,15 +736,6 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
       await prefs.setString(_lastPathKey, getCurrentDirectory());
     }
     await _afterMutation(parent);
-  }
-
-  BrowserPane _pruneDeleted(BrowserPane pane, String deleted, String parent) {
-    final survivors = pane.stack
-        .where((frame) => !_below(frame.path, deleted))
-        .toList();
-    return pane.copyWith(
-      stack: survivors.isEmpty ? [_frame(parent)] : survivors,
-    );
   }
 
   Future<void> createDirectory(String parentPath, String name) =>

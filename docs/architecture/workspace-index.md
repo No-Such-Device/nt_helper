@@ -189,19 +189,17 @@ cache. `companion_table.dart`, `domain/patch_map/`, `ui/patch_map/` and
 [Patch Helper integration](../patch-helper-integration.md) describe richer
 companion/property/table flows. Do not conflate these with firmware Lua reload.
 
-### Preset browser pane stacks (follow-up architecture update)
+### Preset browser: shared hierarchy and fixed-column viewport
 
-`PresetBrowserCubit` now owns three independent `BrowserPane` stacks of
-`BrowserFrame(path, selectedName)` in a canonical `BrowserSnapshot`. Desktop
-and mobile share the active pane's state; panel paths no longer derive from
-neighbor selections. Shared listings revalidate on navigation/mutations and
-stale focus/resume events without polling. See [preset-browser architecture](preset-browser.md)
-for ownership, throttling, race protection, session persistence and tests.
-The [review cleanup record](../investigations/preset-browser-review-cleanup.md)
-adds connection-scoped upload ownership, fail-closed SD attribution and guarded
-rename publication; hardware Program Change acceptance remains unverified.
-This focused update supersedes any inference of cascading pane ownership from
-the original snapshot baseline above.
+`PresetBrowserCubit` owns one root-to-current `BrowserSnapshot.stack` of
+`BrowserFrame(path, selectedName)`. Desktop always projects three columns; deeper
+navigation shifts their viewport while preserving full offscreen ancestry.
+Folder/file/sibling selection truncates obsolete descendants. Back and breadcrumbs
+operate on that shared hierarchy; mobile projects the deepest frame, not another
+stored navigation state. The earlier independent-pane implementation was rejected
+and is superseded. See [preset-browser architecture](preset-browser.md) for exact
+interaction semantics, layout continuity, freshness/lease/transport safety and
+tests. Hardware Program Change acceptance remains unverified.
 
 ### Packages and plugins
 

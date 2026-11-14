@@ -31,8 +31,9 @@ class MobileDrillDownNavigator extends StatelessWidget {
     return Column(
       children: [
         // Breadcrumb navigation
-        if (breadcrumbs.isNotEmpty)
-          Container(
+        SizedBox(
+          height: 40,
+          child: Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
             decoration: BoxDecoration(
@@ -111,6 +112,7 @@ class MobileDrillDownNavigator extends StatelessWidget {
               ),
             ),
           ),
+        ),
 
         SizedBox(
           height: 40,

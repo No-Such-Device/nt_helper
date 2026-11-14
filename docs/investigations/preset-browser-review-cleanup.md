@@ -1,5 +1,15 @@
 # Preset-browser review cleanup
 
+## Subsequent user correction
+
+This record describes the review cleanup of the now-superseded independent-pane
+model. The user subsequently clarified Finder-style cascading browsing with one
+shared hierarchy and exactly three fixed columns. The current
+[preset-browser architecture](../architecture/preset-browser.md) supersedes
+independent-stack language here. Transport debt, mutation leases, atomic rename
+publication and preference-error protections remain; regression tests were
+adapted to the shared ancestry rather than retaining rejected interaction tests.
+
 ## Review provenance
 
 The complete final review outputs were retrieved read-only from the workspace's

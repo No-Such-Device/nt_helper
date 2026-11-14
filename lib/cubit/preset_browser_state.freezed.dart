@@ -272,272 +272,9 @@ as String?,
 }
 
 /// @nodoc
-mixin _$BrowserPane {
-
- List<BrowserFrame> get stack;
-/// Create a copy of BrowserPane
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$BrowserPaneCopyWith<BrowserPane> get copyWith => _$BrowserPaneCopyWithImpl<BrowserPane>(this as BrowserPane, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BrowserPane&&const DeepCollectionEquality().equals(other.stack, stack));
-}
-
-
-@override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(stack));
-
-@override
-String toString() {
-  return 'BrowserPane(stack: $stack)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $BrowserPaneCopyWith<$Res>  {
-  factory $BrowserPaneCopyWith(BrowserPane value, $Res Function(BrowserPane) _then) = _$BrowserPaneCopyWithImpl;
-@useResult
-$Res call({
- List<BrowserFrame> stack
-});
-
-
-
-
-}
-/// @nodoc
-class _$BrowserPaneCopyWithImpl<$Res>
-    implements $BrowserPaneCopyWith<$Res> {
-  _$BrowserPaneCopyWithImpl(this._self, this._then);
-
-  final BrowserPane _self;
-  final $Res Function(BrowserPane) _then;
-
-/// Create a copy of BrowserPane
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? stack = null,}) {
-  return _then(_self.copyWith(
-stack: null == stack ? _self.stack : stack // ignore: cast_nullable_to_non_nullable
-as List<BrowserFrame>,
-  ));
-}
-
-}
-
-
-/// Adds pattern-matching-related methods to [BrowserPane].
-extension BrowserPanePatterns on BrowserPane {
-/// A variant of `map` that fallback to returning `orElse`.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case _:
-///     return orElse();
-/// }
-/// ```
-
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _BrowserPane value)?  $default,{required TResult orElse(),}){
-final _that = this;
-switch (_that) {
-case _BrowserPane() when $default != null:
-return $default(_that);case _:
-  return orElse();
-
-}
-}
-/// A `switch`-like method, using callbacks.
-///
-/// Callbacks receives the raw object, upcasted.
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case final Subclass2 value:
-///     return ...;
-/// }
-/// ```
-
-@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _BrowserPane value)  $default,){
-final _that = this;
-switch (_that) {
-case _BrowserPane():
-return $default(_that);case _:
-  throw StateError('Unexpected subclass');
-
-}
-}
-/// A variant of `map` that fallback to returning `null`.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case _:
-///     return null;
-/// }
-/// ```
-
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _BrowserPane value)?  $default,){
-final _that = this;
-switch (_that) {
-case _BrowserPane() when $default != null:
-return $default(_that);case _:
-  return null;
-
-}
-}
-/// A variant of `when` that fallback to an `orElse` callback.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case _:
-///     return orElse();
-/// }
-/// ```
-
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<BrowserFrame> stack)?  $default,{required TResult orElse(),}) {final _that = this;
-switch (_that) {
-case _BrowserPane() when $default != null:
-return $default(_that.stack);case _:
-  return orElse();
-
-}
-}
-/// A `switch`-like method, using callbacks.
-///
-/// As opposed to `map`, this offers destructuring.
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case Subclass2(:final field2):
-///     return ...;
-/// }
-/// ```
-
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<BrowserFrame> stack)  $default,) {final _that = this;
-switch (_that) {
-case _BrowserPane():
-return $default(_that.stack);case _:
-  throw StateError('Unexpected subclass');
-
-}
-}
-/// A variant of `when` that fallback to returning `null`
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case _:
-///     return null;
-/// }
-/// ```
-
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<BrowserFrame> stack)?  $default,) {final _that = this;
-switch (_that) {
-case _BrowserPane() when $default != null:
-return $default(_that.stack);case _:
-  return null;
-
-}
-}
-
-}
-
-/// @nodoc
-
-
-class _BrowserPane extends BrowserPane {
-  const _BrowserPane({required final  List<BrowserFrame> stack}): _stack = stack,super._();
-
-
- final  List<BrowserFrame> _stack;
-@override List<BrowserFrame> get stack {
-  if (_stack is EqualUnmodifiableListView) return _stack;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_stack);
-}
-
-
-/// Create a copy of BrowserPane
-/// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-_$BrowserPaneCopyWith<_BrowserPane> get copyWith => __$BrowserPaneCopyWithImpl<_BrowserPane>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BrowserPane&&const DeepCollectionEquality().equals(other._stack, _stack));
-}
-
-
-@override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_stack));
-
-@override
-String toString() {
-  return 'BrowserPane(stack: $stack)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class _$BrowserPaneCopyWith<$Res> implements $BrowserPaneCopyWith<$Res> {
-  factory _$BrowserPaneCopyWith(_BrowserPane value, $Res Function(_BrowserPane) _then) = __$BrowserPaneCopyWithImpl;
-@override @useResult
-$Res call({
- List<BrowserFrame> stack
-});
-
-
-
-
-}
-/// @nodoc
-class __$BrowserPaneCopyWithImpl<$Res>
-    implements _$BrowserPaneCopyWith<$Res> {
-  __$BrowserPaneCopyWithImpl(this._self, this._then);
-
-  final _BrowserPane _self;
-  final $Res Function(_BrowserPane) _then;
-
-/// Create a copy of BrowserPane
-/// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? stack = null,}) {
-  return _then(_BrowserPane(
-stack: null == stack ? _self._stack : stack // ignore: cast_nullable_to_non_nullable
-as List<BrowserFrame>,
-  ));
-}
-
-
-}
-
-/// @nodoc
 mixin _$BrowserSnapshot {
 
- List<BrowserPane> get panes; PanelPosition get activePane; bool get sortByDate; Map<String, List<DirectoryEntry>> get listings; Set<String> get refreshing; Map<String, String> get errors; Set<String> get busyPaths; String? get warning;
+ List<BrowserFrame> get stack; int get activeDepth; bool get sortByDate; Map<String, List<DirectoryEntry>> get listings; Set<String> get refreshing; Map<String, String> get errors; Set<String> get busyPaths; String? get warning;
 /// Create a copy of BrowserSnapshot
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -548,16 +285,16 @@ $BrowserSnapshotCopyWith<BrowserSnapshot> get copyWith => _$BrowserSnapshotCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BrowserSnapshot&&const DeepCollectionEquality().equals(other.panes, panes)&&(identical(other.activePane, activePane) || other.activePane == activePane)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other.listings, listings)&&const DeepCollectionEquality().equals(other.refreshing, refreshing)&&const DeepCollectionEquality().equals(other.errors, errors)&&const DeepCollectionEquality().equals(other.busyPaths, busyPaths)&&(identical(other.warning, warning) || other.warning == warning));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BrowserSnapshot&&const DeepCollectionEquality().equals(other.stack, stack)&&(identical(other.activeDepth, activeDepth) || other.activeDepth == activeDepth)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other.listings, listings)&&const DeepCollectionEquality().equals(other.refreshing, refreshing)&&const DeepCollectionEquality().equals(other.errors, errors)&&const DeepCollectionEquality().equals(other.busyPaths, busyPaths)&&(identical(other.warning, warning) || other.warning == warning));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(panes),activePane,sortByDate,const DeepCollectionEquality().hash(listings),const DeepCollectionEquality().hash(refreshing),const DeepCollectionEquality().hash(errors),const DeepCollectionEquality().hash(busyPaths),warning);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(stack),activeDepth,sortByDate,const DeepCollectionEquality().hash(listings),const DeepCollectionEquality().hash(refreshing),const DeepCollectionEquality().hash(errors),const DeepCollectionEquality().hash(busyPaths),warning);
 
 @override
 String toString() {
-  return 'BrowserSnapshot(panes: $panes, activePane: $activePane, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning)';
+  return 'BrowserSnapshot(stack: $stack, activeDepth: $activeDepth, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning)';
 }
 
 
@@ -568,7 +305,7 @@ abstract mixin class $BrowserSnapshotCopyWith<$Res>  {
   factory $BrowserSnapshotCopyWith(BrowserSnapshot value, $Res Function(BrowserSnapshot) _then) = _$BrowserSnapshotCopyWithImpl;
 @useResult
 $Res call({
- List<BrowserPane> panes, PanelPosition activePane, bool sortByDate, Map<String, List<DirectoryEntry>> listings, Set<String> refreshing, Map<String, String> errors, Set<String> busyPaths, String? warning
+ List<BrowserFrame> stack, int activeDepth, bool sortByDate, Map<String, List<DirectoryEntry>> listings, Set<String> refreshing, Map<String, String> errors, Set<String> busyPaths, String? warning
 });
 
 
@@ -585,11 +322,11 @@ class _$BrowserSnapshotCopyWithImpl<$Res>
 
 /// Create a copy of BrowserSnapshot
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? panes = null,Object? activePane = null,Object? sortByDate = null,Object? listings = null,Object? refreshing = null,Object? errors = null,Object? busyPaths = null,Object? warning = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? stack = null,Object? activeDepth = null,Object? sortByDate = null,Object? listings = null,Object? refreshing = null,Object? errors = null,Object? busyPaths = null,Object? warning = freezed,}) {
   return _then(_self.copyWith(
-panes: null == panes ? _self.panes : panes // ignore: cast_nullable_to_non_nullable
-as List<BrowserPane>,activePane: null == activePane ? _self.activePane : activePane // ignore: cast_nullable_to_non_nullable
-as PanelPosition,sortByDate: null == sortByDate ? _self.sortByDate : sortByDate // ignore: cast_nullable_to_non_nullable
+stack: null == stack ? _self.stack : stack // ignore: cast_nullable_to_non_nullable
+as List<BrowserFrame>,activeDepth: null == activeDepth ? _self.activeDepth : activeDepth // ignore: cast_nullable_to_non_nullable
+as int,sortByDate: null == sortByDate ? _self.sortByDate : sortByDate // ignore: cast_nullable_to_non_nullable
 as bool,listings: null == listings ? _self.listings : listings // ignore: cast_nullable_to_non_nullable
 as Map<String, List<DirectoryEntry>>,refreshing: null == refreshing ? _self.refreshing : refreshing // ignore: cast_nullable_to_non_nullable
 as Set<String>,errors: null == errors ? _self.errors : errors // ignore: cast_nullable_to_non_nullable
@@ -680,10 +417,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<BrowserPane> panes,  PanelPosition activePane,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BrowserSnapshot() when $default != null:
-return $default(_that.panes,_that.activePane,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning);case _:
+return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning);case _:
   return orElse();
 
 }
@@ -701,10 +438,10 @@ return $default(_that.panes,_that.activePane,_that.sortByDate,_that.listings,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<BrowserPane> panes,  PanelPosition activePane,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning)  $default,) {final _that = this;
 switch (_that) {
 case _BrowserSnapshot():
-return $default(_that.panes,_that.activePane,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning);case _:
+return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -721,10 +458,10 @@ return $default(_that.panes,_that.activePane,_that.sortByDate,_that.listings,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<BrowserPane> panes,  PanelPosition activePane,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<BrowserFrame> stack,  int activeDepth,  bool sortByDate,  Map<String, List<DirectoryEntry>> listings,  Set<String> refreshing,  Map<String, String> errors,  Set<String> busyPaths,  String? warning)?  $default,) {final _that = this;
 switch (_that) {
 case _BrowserSnapshot() when $default != null:
-return $default(_that.panes,_that.activePane,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning);case _:
+return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_that.refreshing,_that.errors,_that.busyPaths,_that.warning);case _:
   return null;
 
 }
@@ -736,17 +473,17 @@ return $default(_that.panes,_that.activePane,_that.sortByDate,_that.listings,_th
 
 
 class _BrowserSnapshot extends BrowserSnapshot {
-  const _BrowserSnapshot({required final  List<BrowserPane> panes, this.activePane = PanelPosition.left, this.sortByDate = false, final  Map<String, List<DirectoryEntry>> listings = const {}, final  Set<String> refreshing = const {}, final  Map<String, String> errors = const {}, final  Set<String> busyPaths = const {}, this.warning}): _panes = panes,_listings = listings,_refreshing = refreshing,_errors = errors,_busyPaths = busyPaths,super._();
+  const _BrowserSnapshot({required final  List<BrowserFrame> stack, this.activeDepth = 0, this.sortByDate = false, final  Map<String, List<DirectoryEntry>> listings = const {}, final  Set<String> refreshing = const {}, final  Map<String, String> errors = const {}, final  Set<String> busyPaths = const {}, this.warning}): _stack = stack,_listings = listings,_refreshing = refreshing,_errors = errors,_busyPaths = busyPaths,super._();
 
 
- final  List<BrowserPane> _panes;
-@override List<BrowserPane> get panes {
-  if (_panes is EqualUnmodifiableListView) return _panes;
+ final  List<BrowserFrame> _stack;
+@override List<BrowserFrame> get stack {
+  if (_stack is EqualUnmodifiableListView) return _stack;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_panes);
+  return EqualUnmodifiableListView(_stack);
 }
 
-@override@JsonKey() final  PanelPosition activePane;
+@override@JsonKey() final  int activeDepth;
 @override@JsonKey() final  bool sortByDate;
  final  Map<String, List<DirectoryEntry>> _listings;
 @override@JsonKey() Map<String, List<DirectoryEntry>> get listings {
@@ -788,16 +525,16 @@ _$BrowserSnapshotCopyWith<_BrowserSnapshot> get copyWith => __$BrowserSnapshotCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BrowserSnapshot&&const DeepCollectionEquality().equals(other._panes, _panes)&&(identical(other.activePane, activePane) || other.activePane == activePane)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other._listings, _listings)&&const DeepCollectionEquality().equals(other._refreshing, _refreshing)&&const DeepCollectionEquality().equals(other._errors, _errors)&&const DeepCollectionEquality().equals(other._busyPaths, _busyPaths)&&(identical(other.warning, warning) || other.warning == warning));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BrowserSnapshot&&const DeepCollectionEquality().equals(other._stack, _stack)&&(identical(other.activeDepth, activeDepth) || other.activeDepth == activeDepth)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other._listings, _listings)&&const DeepCollectionEquality().equals(other._refreshing, _refreshing)&&const DeepCollectionEquality().equals(other._errors, _errors)&&const DeepCollectionEquality().equals(other._busyPaths, _busyPaths)&&(identical(other.warning, warning) || other.warning == warning));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_panes),activePane,sortByDate,const DeepCollectionEquality().hash(_listings),const DeepCollectionEquality().hash(_refreshing),const DeepCollectionEquality().hash(_errors),const DeepCollectionEquality().hash(_busyPaths),warning);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_stack),activeDepth,sortByDate,const DeepCollectionEquality().hash(_listings),const DeepCollectionEquality().hash(_refreshing),const DeepCollectionEquality().hash(_errors),const DeepCollectionEquality().hash(_busyPaths),warning);
 
 @override
 String toString() {
-  return 'BrowserSnapshot(panes: $panes, activePane: $activePane, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning)';
+  return 'BrowserSnapshot(stack: $stack, activeDepth: $activeDepth, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning)';
 }
 
 
@@ -808,7 +545,7 @@ abstract mixin class _$BrowserSnapshotCopyWith<$Res> implements $BrowserSnapshot
   factory _$BrowserSnapshotCopyWith(_BrowserSnapshot value, $Res Function(_BrowserSnapshot) _then) = __$BrowserSnapshotCopyWithImpl;
 @override @useResult
 $Res call({
- List<BrowserPane> panes, PanelPosition activePane, bool sortByDate, Map<String, List<DirectoryEntry>> listings, Set<String> refreshing, Map<String, String> errors, Set<String> busyPaths, String? warning
+ List<BrowserFrame> stack, int activeDepth, bool sortByDate, Map<String, List<DirectoryEntry>> listings, Set<String> refreshing, Map<String, String> errors, Set<String> busyPaths, String? warning
 });
 
 
@@ -825,11 +562,11 @@ class __$BrowserSnapshotCopyWithImpl<$Res>
 
 /// Create a copy of BrowserSnapshot
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? panes = null,Object? activePane = null,Object? sortByDate = null,Object? listings = null,Object? refreshing = null,Object? errors = null,Object? busyPaths = null,Object? warning = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? stack = null,Object? activeDepth = null,Object? sortByDate = null,Object? listings = null,Object? refreshing = null,Object? errors = null,Object? busyPaths = null,Object? warning = freezed,}) {
   return _then(_BrowserSnapshot(
-panes: null == panes ? _self._panes : panes // ignore: cast_nullable_to_non_nullable
-as List<BrowserPane>,activePane: null == activePane ? _self.activePane : activePane // ignore: cast_nullable_to_non_nullable
-as PanelPosition,sortByDate: null == sortByDate ? _self.sortByDate : sortByDate // ignore: cast_nullable_to_non_nullable
+stack: null == stack ? _self._stack : stack // ignore: cast_nullable_to_non_nullable
+as List<BrowserFrame>,activeDepth: null == activeDepth ? _self.activeDepth : activeDepth // ignore: cast_nullable_to_non_nullable
+as int,sortByDate: null == sortByDate ? _self.sortByDate : sortByDate // ignore: cast_nullable_to_non_nullable
 as bool,listings: null == listings ? _self._listings : listings // ignore: cast_nullable_to_non_nullable
 as Map<String, List<DirectoryEntry>>,refreshing: null == refreshing ? _self._refreshing : refreshing // ignore: cast_nullable_to_non_nullable
 as Set<String>,errors: null == errors ? _self._errors : errors // ignore: cast_nullable_to_non_nullable

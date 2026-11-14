@@ -4,8 +4,7 @@ import 'package:nt_helper/cubit/preset_browser_state.dart';
 import 'package:nt_helper/models/sd_card_file_system.dart';
 import 'package:nt_helper/ui/widgets/preset_browser_dialog.dart';
 
-/// Converts existing static renderer fixtures to independent pane locations.
-/// Production has no legacy cascading-column or mobile-state adapter.
+/// Static cascade renderer fixture; production owns one root-to-leaf stack.
 PresetBrowserState browserFixture({
   required String currentPath,
   required List<DirectoryEntry> leftPanelItems,
@@ -24,41 +23,42 @@ PresetBrowserState browserFixture({
   String join(String base, String child) =>
       '${base == '/' ? '' : base}/${clean(child)}';
   final left = drillPath ?? currentPath;
-  final center = selectedLeftItem?.isDirectory == true
-      ? join(currentPath, selectedLeftItem!.name)
-      : '/empty-center';
-  final right = selectedCenterItem?.isDirectory == true
-      ? join(center, selectedCenterItem!.name)
-      : '/empty-right';
+  final paths = <String>['/'];
+  final parts = left.split('/').where((s) => s.isNotEmpty).toList();
+  for (var i = 1; i <= parts.length; i++) {
+    paths.add('/${parts.take(i).join('/')}');
+  }
+  final stack = <BrowserFrame>[
+    for (var i = 0; i < paths.length; i++)
+      BrowserFrame(
+        path: paths[i],
+        selectedName: i + 1 < paths.length
+            ? '${parts[i]}/'
+            : (selectedDrillItem ?? selectedLeftItem)?.name,
+      ),
+  ];
+  final listings = <String, List<DirectoryEntry>>{
+    left: currentDrillItems ?? leftPanelItems,
+  };
+  if (drillPath == null && selectedLeftItem?.isDirectory == true) {
+    final center = join(left, selectedLeftItem!.name);
+    stack.add(
+      BrowserFrame(path: center, selectedName: selectedCenterItem?.name),
+    );
+    listings[center] = centerPanelItems;
+    if (selectedCenterItem?.isDirectory == true) {
+      final right = join(center, selectedCenterItem!.name);
+      stack.add(
+        BrowserFrame(path: right, selectedName: selectedRightItem?.name),
+      );
+      listings[right] = rightPanelItems;
+    }
+  }
   return PresetBrowserState.loaded(
     browser: BrowserSnapshot(
-      panes: [
-        BrowserPane(
-          stack: [
-            for (final path in navigationHistory) BrowserFrame(path: path),
-            BrowserFrame(
-              path: left,
-              selectedName: (selectedDrillItem ?? selectedLeftItem)?.name,
-            ),
-          ],
-        ),
-        BrowserPane(
-          stack: [
-            BrowserFrame(path: center, selectedName: selectedCenterItem?.name),
-          ],
-        ),
-        BrowserPane(
-          stack: [
-            BrowserFrame(path: right, selectedName: selectedRightItem?.name),
-          ],
-        ),
-      ],
+      stack: stack,
       sortByDate: sortByDate,
-      listings: {
-        left: currentDrillItems ?? leftPanelItems,
-        center: centerPanelItems,
-        right: rightPanelItems,
-      },
+      listings: listings,
     ),
   );
 }
