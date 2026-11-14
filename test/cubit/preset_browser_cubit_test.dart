@@ -577,4 +577,47 @@ void main() {
     },
     tags: ['regression'],
   );
+  for (final deleteFolder in [false, true]) {
+    test(
+      'delete completion ${deleteFolder ? 'cancels a deleted navigation target without leaving pending state' : 'preserves an unrelated latest navigation intent'}',
+      () async {
+        await cubit.loadRootDirectory();
+        await cubit.navigateToAbsolutePath('/A');
+        final path = deleteFolder ? '/A' : '/A/one.json';
+        final destination = deleteFolder ? '/A/child' : '/B';
+        final ack = Completer<SdCardStatus?>();
+        final reply = Completer<DirectoryListing?>();
+        final deleteStarted = Completer<void>();
+        final navigationStarted = Completer<void>();
+        when(() => manager.requestFileDelete(path)).thenAnswer((_) {
+          deleteStarted.complete();
+          return ack.future;
+        });
+        when(() => manager.requestDirectoryListing(destination)).thenAnswer((
+          _,
+        ) {
+          navigationStarted.complete();
+          return reply.future;
+        });
+        final deletion = cubit.deleteEntry(path);
+        await deleteStarted.future;
+        final navigation = cubit.navigateToAbsolutePath(destination);
+        await navigationStarted.future;
+        expect(view().pendingPath, destination);
+        if (deleteFolder) {
+          files['/']!.removeWhere((entry) => entry.name == 'A/');
+        } else {
+          files['/A']!.removeWhere((entry) => entry.name == 'one.json');
+        }
+        ack.complete(SdCardStatus(success: true, message: ''));
+        await deletion;
+        expect(view().pendingPath, deleteFolder ? isNull : destination);
+        reply.complete(DirectoryListing(entries: files[destination]!));
+        await navigation;
+        expect(ancestry(), deleteFolder ? ['/'] : ['/', '/B']);
+        expect(view().pendingPath, isNull);
+      },
+      tags: ['regression'],
+    );
+  }
 }

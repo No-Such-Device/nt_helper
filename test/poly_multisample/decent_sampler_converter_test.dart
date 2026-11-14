@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:nt_helper/poly_multisample/decent_sampler_converter.dart';
 
 void main() {
@@ -209,7 +210,8 @@ void main() {
           isTrue,
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'does not read directory import samples outside selected root',
@@ -254,7 +256,8 @@ void main() {
           isEmpty,
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'does not read absolute local sample paths inside selected root',
@@ -296,7 +299,8 @@ void main() {
           isEmpty,
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'does not treat Windows rooted local paths as missing samples',
@@ -338,7 +342,8 @@ void main() {
           isEmpty,
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'does not follow local sample symlinks outside common parent',
@@ -387,7 +392,8 @@ void main() {
           isEmpty,
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('ignores macOS archive metadata entries', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -472,15 +478,17 @@ void main() {
       );
     });
 
-    test('does not read archive samples outside the archive root', () async {
-      final tempDir = await Directory.systemTemp.createTemp(
-        'decent_converter_archive_escape_test_',
-      );
-      addTearDown(() async {
-        if (await tempDir.exists()) await tempDir.delete(recursive: true);
-      });
+    test(
+      'does not read archive samples outside the archive root',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'decent_converter_archive_escape_test_',
+        );
+        addTearDown(() async {
+          if (await tempDir.exists()) await tempDir.delete(recursive: true);
+        });
 
-      final preset = '''
+        final preset = '''
 <DecentSampler>
   <groups>
     <group>
@@ -489,48 +497,52 @@ void main() {
   </groups>
 </DecentSampler>
 ''';
-      final archive = Archive()
-        ..addFile(
-          ArchiveFile(
-            'Presets/Escape.dspreset',
-            preset.length,
-            preset.codeUnits,
-          ),
-        )
-        ..addFile(
-          ArchiveFile('../Outside/leak.wav', _dummyWav.length, _dummyWav),
+        final archive = Archive()
+          ..addFile(
+            ArchiveFile(
+              'Presets/Escape.dspreset',
+              preset.length,
+              preset.codeUnits,
+            ),
+          )
+          ..addFile(
+            ArchiveFile('../Outside/leak.wav', _dummyWav.length, _dummyWav),
+          );
+
+        final source = File('${tempDir.path}/Escape.zip');
+        await source.writeAsBytes(ZipEncoder().encode(archive), flush: true);
+
+        final result = await DecentSamplerConverter().convert(
+          sourcePath: source.path,
+          outputParentPath: '${tempDir.path}/out',
         );
 
-      final source = File('${tempDir.path}/Escape.zip');
-      await source.writeAsBytes(ZipEncoder().encode(archive), flush: true);
+        expect(result.copiedFiles, 0);
+        expect(
+          result.warnings.join('\n'),
+          contains('outside the selected source'),
+        );
+        expect(
+          result.warnings.where(
+            (warning) => warning.startsWith('Missing source sample'),
+          ),
+          isEmpty,
+        );
+      },
+      tags: ['regression'],
+    );
 
-      final result = await DecentSamplerConverter().convert(
-        sourcePath: source.path,
-        outputParentPath: '${tempDir.path}/out',
-      );
+    test(
+      'does not rebase unsafe archive preset entries above root',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'decent_converter_archive_preset_rebase_test_',
+        );
+        addTearDown(() async {
+          if (await tempDir.exists()) await tempDir.delete(recursive: true);
+        });
 
-      expect(result.copiedFiles, 0);
-      expect(
-        result.warnings.join('\n'),
-        contains('outside the selected source'),
-      );
-      expect(
-        result.warnings.where(
-          (warning) => warning.startsWith('Missing source sample'),
-        ),
-        isEmpty,
-      );
-    }, tags: ['regression']);
-
-    test('does not rebase unsafe archive preset entries above root', () async {
-      final tempDir = await Directory.systemTemp.createTemp(
-        'decent_converter_archive_preset_rebase_test_',
-      );
-      addTearDown(() async {
-        if (await tempDir.exists()) await tempDir.delete(recursive: true);
-      });
-
-      final preset = '''
+        final preset = '''
 <DecentSampler>
   <groups>
     <group>
@@ -539,26 +551,28 @@ void main() {
   </groups>
 </DecentSampler>
 ''';
-      final archive = Archive()
-        ..addFile(
-          ArchiveFile('../Escape.dspreset', preset.length, preset.codeUnits),
-        )
-        ..addFile(
-          ArchiveFile('../Samples/C4.wav', _dummyWav.length, _dummyWav),
+        final archive = Archive()
+          ..addFile(
+            ArchiveFile('../Escape.dspreset', preset.length, preset.codeUnits),
+          )
+          ..addFile(
+            ArchiveFile('../Samples/C4.wav', _dummyWav.length, _dummyWav),
+          );
+
+        final source = File('${tempDir.path}/Rebase.zip');
+        await source.writeAsBytes(ZipEncoder().encode(archive), flush: true);
+
+        await expectLater(
+          DecentSamplerConverter().convert(
+            sourcePath: source.path,
+            outputParentPath: '${tempDir.path}/out',
+          ),
+          throwsA(isA<FormatException>()),
         );
-
-      final source = File('${tempDir.path}/Rebase.zip');
-      await source.writeAsBytes(ZipEncoder().encode(archive), flush: true);
-
-      await expectLater(
-        DecentSamplerConverter().convert(
-          sourcePath: source.path,
-          outputParentPath: '${tempDir.path}/out',
-        ),
-        throwsA(isA<FormatException>()),
-      );
-      expect(Directory('${tempDir.path}/out').existsSync(), isFalse);
-    }, tags: ['regression']);
+        expect(Directory('${tempDir.path}/out').existsSync(), isFalse);
+      },
+      tags: ['regression'],
+    );
 
     test('does not read absolute archive sample paths', () async {
       final tempDir = await Directory.systemTemp.createTemp(
@@ -1290,7 +1304,9 @@ void main() {
 
     test('keeps pure group-level round robins as round robins', () async {
       final tempDir = await Directory.systemTemp.createTemp(
-        'decent_converter_pure_group_rr_test_',
+        // Parent names (including random temp suffixes) must not be treated as
+        // output velocity tags. Force _V in the parent to reproduce the defect.
+        'decent_converter_pure_group_rr_V_test_',
       );
       addTearDown(() async {
         if (await tempDir.exists()) await tempDir.delete(recursive: true);
@@ -1331,9 +1347,10 @@ void main() {
       expect(await File('$outputFolder/Pure_RR_D4_RR1.wav').exists(), isTrue);
       expect(await File('$outputFolder/Pure_RR_D4_RR2.wav').exists(), isTrue);
       expect(
-        await Directory(
-          outputFolder,
-        ).list().where((entity) => entity.path.contains('_V')).isEmpty,
+        await Directory(outputFolder)
+            .list()
+            .where((entity) => p.basename(entity.path).contains('_V'))
+            .isEmpty,
         isTrue,
       );
       expect(result.warnings, isEmpty);
@@ -1635,7 +1652,8 @@ void main() {
         ]);
         expect(result.warnings, isEmpty);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'selected tag options apply ranges, layers and round robins',

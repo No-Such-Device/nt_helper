@@ -823,9 +823,16 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
       final survivors = browser.stack
           .takeWhile((frame) => !_below(frame.path, fullPath))
           .toList();
-      _navigationVersion++;
+      final pendingWasDeleted =
+          browser.pendingPath != null && _below(browser.pendingPath!, fullPath);
+      // A completed mutation may overlap an already-started navigation. Keep
+      // an unrelated latest intent alive; explicitly clear a deleted target.
+      if (browser.pendingPath == null || pendingWasDeleted) {
+        _navigationVersion++;
+      }
       _emit(
         browser.copyWith(
+          pendingPath: pendingWasDeleted ? null : browser.pendingPath,
           stack: survivors.isEmpty ? [_frame('/')] : survivors,
           activeDepth: browser.activeDepth.clamp(
             0,
