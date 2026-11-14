@@ -3,6 +3,7 @@ import 'dart:ui' show Tristate;
 
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -101,6 +102,21 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> backgroundMenu(WidgetTester tester, int column) async {
+    await tester.tapAt(
+      tester.getBottomRight(pane(column)) - const Offset(20, 20),
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pumpAndSettle();
+  }
+
+  Finder menuItem(String label) => find
+      .ancestor(
+        of: find.text(label),
+        matching: find.byWidgetPredicate((w) => w is PopupMenuItem),
+      )
+      .first;
+
   Map<String, Rect> geometry(WidgetTester tester) => {
     'dialog': tester.getRect(find.byKey(const Key('preset-browser-dialog'))),
     'toolbar': tester.getRect(find.byKey(const Key('preset-browser-toolbar'))),
@@ -123,14 +139,6 @@ void main() {
       'export': tester.getRect(find.widgetWithText(OutlinedButton, 'Export')),
     for (var i = 0; i < find.byType(DirectoryPanel).evaluate().length; i++)
       'column$i': tester.getRect(pane(i)),
-    for (final p in PanelPosition.values)
-      if (find
-          .byKey(ValueKey('browser-column-header-${p.name}'))
-          .evaluate()
-          .isNotEmpty)
-        'header${p.name}': tester.getRect(
-          find.byKey(ValueKey('browser-column-header-${p.name}')),
-        ),
   };
 
   testWidgets(
@@ -244,7 +252,7 @@ void main() {
       when(
         () => manager.requestDirectoryListing('/'),
       ).thenAnswer((_) async => DirectoryListing(entries: files['/']!));
-      await tester.tap(find.byTooltip('Retry'));
+      await tester.tap(find.widgetWithText(TextButton, 'Retry'));
       await tester.pumpAndSettle();
       expect(geometry(tester), rects);
       await tap(tester, 0, 'A');
@@ -388,23 +396,17 @@ void main() {
   );
 
   testWidgets(
-    'header focus and Alt-Left use shared ancestry; semantic header and selection are accessible',
+    'column focus and Alt-Left use shared ancestry; column paths and selection remain accessible without visible headers',
     (tester) async {
       final semantics = tester.ensureSemantics();
       try {
         await mount(tester);
         await tap(tester, 0, 'A');
         await tap(tester, 1, 'child');
-        final centerHeader = tester.getSemantics(
-          find.bySemanticsLabel('center pane: /A'),
+        expect(find.bySemanticsLabel('center pane: /A'), findsOneWidget);
+        await tester.tapAt(
+          tester.getBottomLeft(pane(0)) + const Offset(10, -10),
         );
-        expect(centerHeader.flagsCollection.isHeader, isTrue);
-        final refresh = tester.widget<IconButton>(
-          find.byWidgetPredicate(
-            (w) => w is IconButton && w.tooltip == 'Refresh left pane',
-          ),
-        );
-        refresh.focusNode!.requestFocus();
         await tester.pumpAndSettle();
         expect(
           tester
@@ -467,6 +469,9 @@ void main() {
           matching: find.byType(Scrollable),
         ),
       );
+      // ensureVisible updates the scroll position; render its final layout
+      // before locating the last row's tap coordinates.
+      await tester.pumpAndSettle();
       await tap(tester, 1, 'zChild');
       expect(find.text('000.json').hitTestable(), findsOneWidget);
       await tap(tester, 2, 'next');
@@ -619,6 +624,270 @@ void main() {
             .bottom,
         lessThanOrEqualTo(normal.bottom),
       );
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+  testWidgets(
+    'columns have no visible titles or refresh controls and unused columns remain blank',
+    (tester) async {
+      await mount(tester);
+      expect(find.byIcon(Icons.refresh), findsNothing);
+      expect(find.byTooltip('Retry'), findsNothing);
+      expect(find.text('/'), findsNothing);
+      expect(find.text('—'), findsNothing);
+      expect(find.text('Select a folder'), findsNothing);
+      expect(find.text('Empty'), findsNothing);
+      for (final position in PanelPosition.values) {
+        expect(
+          find.byKey(ValueKey('browser-column-header-${position.name}')),
+          findsNothing,
+        );
+      }
+      final bar = tester.getRect(
+        find.byKey(const Key('preset-browser-breadcrumbs')),
+      );
+      expect(tester.getRect(pane(0)).top, bar.bottom);
+      await backgroundMenu(tester, 1);
+      expect(find.text('Refresh'), findsNothing);
+      await tap(tester, 0, 'A');
+      await tap(tester, 1, 'child');
+      expect(find.text('/A'), findsNothing);
+      expect(find.text('/A/child'), findsNothing);
+      expect(find.byIcon(Icons.refresh), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+
+  testWidgets(
+    'blank column background and item context Refresh target their owning directory with contained menu placement',
+    (tester) async {
+      await mount(tester);
+      await tap(tester, 0, 'A');
+      await tap(tester, 1, 'child');
+      final rects = geometry(tester);
+      for (var column = 0; column < 3; column++) {
+        reads.clear();
+        await backgroundMenu(tester, column);
+        expect(find.text('Refresh'), findsOneWidget);
+        final menu = tester.getRect(menuItem('Refresh'));
+        expect(menu.left, greaterThanOrEqualTo(0));
+        expect(menu.right, lessThanOrEqualTo(1400));
+        expect(menu.bottom, lessThanOrEqualTo(950));
+        await tester.tap(find.text('Refresh'));
+        await tester.pumpAndSettle();
+        expect(
+          reads,
+          [
+            ['/'],
+            ['/A'],
+            ['/A/child'],
+          ][column],
+        );
+        expect(geometry(tester), rects);
+      }
+      // On a folder item Refresh means refresh the containing column; folder-specific actions still target the folder.
+      reads.clear();
+      await tester.tap(find.text('child').last, buttons: kSecondaryMouseButton);
+      await tester.pumpAndSettle();
+      expect(find.text('Refresh'), findsOneWidget);
+      expect(find.text('Rename'), findsOneWidget);
+      await tester.tap(find.text('Refresh'));
+      await tester.pumpAndSettle();
+      expect(reads, ['/A']);
+      expect(geometry(tester), rects);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+
+  testWidgets(
+    'refresh retains full-opacity contents until replacement with no Empty flash and blocks stale Load export and context mutations',
+    (tester) async {
+      await mount(tester);
+      await tap(tester, 0, 'A');
+      await tap(tester, 1, 'one.json');
+      final rects = geometry(tester);
+      final original = tester.element(find.text('one.json'));
+      final titleStyle = tester.widget<Text>(find.text('one.json')).style;
+      final response = Completer<DirectoryListing?>();
+      final started = Completer<void>();
+      when(() => manager.requestDirectoryListing('/A')).thenAnswer((_) {
+        started.complete();
+        return response.future;
+      });
+      final refresh = cubit.refreshDirectory('/A');
+      await started.future;
+      await tester.pump();
+      expect(tester.element(find.text('one.json')), same(original));
+      expect(tester.widget<Text>(find.text('one.json')).style, titleStyle);
+      expect(
+        tester
+            .widget<ListTile>(find.widgetWithText(ListTile, 'one.json'))
+            .enabled,
+        isTrue,
+      );
+      for (final opacity in tester.widgetList<Opacity>(
+        find.ancestor(
+          of: find.text('one.json'),
+          matching: find.byType(Opacity),
+        ),
+      )) {
+        expect(opacity.opacity, 1);
+      }
+      for (final fade in tester.widgetList<FadeTransition>(
+        find.ancestor(
+          of: find.text('one.json'),
+          matching: find.byType(FadeTransition),
+        ),
+      )) {
+        expect(fade.opacity.value, 1);
+      }
+      expect(find.textContaining('Empty'), findsNothing);
+      expect(find.byIcon(Icons.refresh), findsNothing);
+      expect(geometry(tester), rects);
+      expect(
+        tester
+            .widget<ElevatedButton>(find.widgetWithText(ElevatedButton, 'Load'))
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, 'Export'),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.text('one.json'), buttons: kSecondaryMouseButton);
+      await tester.pumpAndSettle();
+      for (final label in ['Delete', 'Rename', 'Download']) {
+        expect(tester.widget<PopupMenuItem>(menuItem(label)).enabled, isFalse);
+      }
+      expect(tester.widget<PopupMenuItem>(menuItem('Refresh')).enabled, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      response.completeError(StateError('Unavailable'));
+      await refresh;
+      await tester.pumpAndSettle();
+      expect(find.text('one.json'), findsOneWidget);
+      expect(find.textContaining('Empty'), findsNothing);
+      expect(cubit.canUseEntry('/A/one.json'), isFalse);
+      expect(geometry(tester), rects);
+      when(() => manager.requestDirectoryListing('/A')).thenAnswer(
+        (_) async => DirectoryListing(entries: [entry('replacement.json')]),
+      );
+      await cubit.refreshDirectory('/A');
+      await tester.pumpAndSettle();
+      expect(find.text('one.json'), findsNothing);
+      expect(find.text('replacement.json'), findsOneWidget);
+      expect(geometry(tester), rects);
+      when(
+        () => manager.requestDirectoryListing('/A'),
+      ).thenAnswer((_) async => DirectoryListing(entries: []));
+      await cubit.refreshDirectory('/A');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Empty'), findsNothing);
+      expect(geometry(tester), rects);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+
+  testWidgets(
+    'context action opened before a refresh cannot operate on retained uncertain entries',
+    (tester) async {
+      await mount(tester);
+      await tap(tester, 0, 'A');
+      await tester.tap(find.text('one.json'), buttons: kSecondaryMouseButton);
+      await tester.pumpAndSettle();
+      expect(tester.widget<PopupMenuItem>(menuItem('Delete')).enabled, isTrue);
+      final response = Completer<DirectoryListing?>();
+      when(
+        () => manager.requestDirectoryListing('/A'),
+      ).thenAnswer((_) => response.future);
+      final refresh = cubit.refreshDirectory('/A');
+      await tester.pump();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('This cannot be undone'), findsNothing);
+      verifyNever(() => manager.requestFileDelete(any()));
+      response.complete(DirectoryListing(entries: files['/A']!));
+      await refresh;
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+  testWidgets(
+    'mutation invalidation retains full-opacity listing until atomic verification rather than flashing empty',
+    (tester) async {
+      await mount(tester);
+      await tap(tester, 0, 'root.json');
+      final rects = geometry(tester);
+      final response = Completer<DirectoryListing?>();
+      final started = Completer<void>();
+      when(
+        () => manager.requestDirectoryCreate('/new'),
+      ).thenAnswer((_) async => SdCardStatus(success: true, message: ''));
+      when(() => manager.requestDirectoryListing('/')).thenAnswer((_) {
+        started.complete();
+        return response.future;
+      });
+      final create = cubit.createDirectory('/', 'new');
+      await started.future;
+      await tester.pump();
+      expect(find.text('root.json'), findsOneWidget);
+      expect(find.textContaining('Empty'), findsNothing);
+      expect(
+        tester
+            .widget<ListTile>(find.widgetWithText(ListTile, 'root.json'))
+            .enabled,
+        isTrue,
+      );
+      expect(cubit.getSelectedPath(), isEmpty);
+      expect(cubit.canUseEntry('/root.json'), isFalse);
+      expect(geometry(tester), rects);
+      response.complete(
+        DirectoryListing(entries: [...files['/']!, entry('new/', dir: true)]),
+      );
+      await create;
+      await tester.pumpAndSettle();
+      expect(find.text('new'), findsOneWidget);
+      expect(cubit.getSelectedPath(), '/root.json');
+      expect(geometry(tester), rects);
+      expect(tester.takeException(), isNull);
+    },
+    tags: ['regression'],
+  );
+
+  testWidgets(
+    'delete confirmation cannot submit while its parent is being revalidated',
+    (tester) async {
+      await mount(tester);
+      await tap(tester, 0, 'A');
+      await tester.tap(find.text('one.json'), buttons: kSecondaryMouseButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('This cannot be undone'), findsOneWidget);
+      final response = Completer<DirectoryListing?>();
+      final started = Completer<void>();
+      when(() => manager.requestDirectoryListing('/A')).thenAnswer((_) {
+        started.complete();
+        return response.future;
+      });
+      final refresh = cubit.refreshDirectory('/A');
+      await started.future;
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+      await tester.pumpAndSettle();
+      verifyNever(() => manager.requestFileDelete(any()));
+      response.complete(DirectoryListing(entries: files['/A']!));
+      await refresh;
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     },
     tags: ['regression'],

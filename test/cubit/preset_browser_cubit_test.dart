@@ -493,4 +493,38 @@ void main() {
       expect((await cubit.loadRecentPresets()).first, '/23.json');
     },
   );
+  test(
+    'ancestor refresh keeps descendant contents but disables descendant file actions until ancestry is confirmed',
+    () async {
+      await cubit.loadRootDirectory();
+      await cubit.navigateToAbsolutePath('/A/child');
+      await cubit.selectFile(files['/A/child']!.last, PanelPosition.right);
+      expect(cubit.getSelectedPath(), '/A/child/two.json');
+      final response = Completer<DirectoryListing?>();
+      final started = Completer<void>();
+      when(() => manager.requestDirectoryListing('/A')).thenAnswer((_) {
+        started.complete();
+        return response.future;
+      });
+      final refresh = cubit.refreshDirectory('/A');
+      await started.future;
+      expect(
+        view().items(PanelPosition.right).map((e) => e.name),
+        contains('two.json'),
+      );
+      expect(cubit.getSelectedPath(), isEmpty);
+      expect(cubit.canUseEntry('/A/child/two.json'), isFalse);
+      response.completeError(StateError('Unavailable'));
+      await refresh;
+      expect(cubit.getSelectedPath(), isEmpty);
+      expect(cubit.canUseEntry('/A/child/two.json'), isFalse);
+      when(
+        () => manager.requestDirectoryListing('/A'),
+      ).thenAnswer((_) async => DirectoryListing(entries: files['/A']!));
+      await cubit.refreshDirectory('/A');
+      expect(cubit.getSelectedPath(), '/A/child/two.json');
+      expect(cubit.canUseEntry('/A/child/two.json'), isTrue);
+    },
+    tags: ['regression'],
+  );
 }

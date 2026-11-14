@@ -203,6 +203,44 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     await _refresh(browser.stack[depth].path);
   }
 
+  /// Context menus capture a directory, never a shifting column index.
+  Future<void> refreshDirectory(String path) async {
+    if (_browser == null) {
+      if (path == '/') await loadRootDirectory();
+      return;
+    }
+    if (_browser!.stack.any((frame) => frame.path == path)) {
+      await _refresh(path);
+    }
+  }
+
+  bool isDirectoryReady(String path) {
+    final browser = _browser;
+    if (browser == null) return false;
+    final depth = browser.stack.indexWhere((frame) => frame.path == path);
+    // A descendant is uncertain too while an ancestor's existence is checked.
+    return depth >= 0 &&
+        browser.stack
+            .take(depth + 1)
+            .every(
+              (frame) =>
+                  _fetched.containsKey(frame.path) &&
+                  !browser.refreshing.contains(frame.path) &&
+                  !browser.errors.containsKey(frame.path) &&
+                  !browser.busyPaths.contains(frame.path.toLowerCase()),
+            );
+  }
+
+  bool canUseEntry(String path) {
+    final parent = p.posix.dirname(path);
+    return isDirectoryReady(parent) &&
+        !_activity.isBusy(path) &&
+        _browser!.listings[parent]?.any(
+              (entry) => _join(parent, entry.name) == path,
+            ) ==
+            true;
+  }
+
   Future<void> _refresh(String path) async {
     await _read(path);
   }
@@ -304,7 +342,9 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
   void _invalidate(
     Set<String> roots, {
     Set<String> subtrees = const {},
-    bool retainListings = false,
+    // Freshness is revoked independently of presentation: keep the last
+    // snapshot until a verified read can replace it, never flash an empty list.
+    bool retainListings = true,
   }) {
     final browser = _browser;
     final paths = {
@@ -461,9 +501,7 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     final browser = _browser;
     if (browser == null) return '';
     final path = browser.focused.path;
-    if (browser.refreshing.contains(path) || browser.errors.containsKey(path)) {
-      return '';
-    }
+    if (!isDirectoryReady(path)) return '';
     final selected = browser.selectedAt(browser.activeDepth);
     if (selected == null || selected.isDirectory) return '';
     final fullPath = _join(path, selected.name);
@@ -519,8 +557,10 @@ class PresetBrowserCubit extends Cubit<PresetBrowserState> {
     );
   }
 
-  Future<void> clearCache() async =>
-      _invalidate({...?_browser?.listings.keys, ..._pending.keys});
+  Future<void> clearCache() async => _invalidate({
+    ...?_browser?.listings.keys,
+    ..._pending.keys,
+  }, retainListings: false);
 
   Future<void> _afterMutation(
     String parent, {

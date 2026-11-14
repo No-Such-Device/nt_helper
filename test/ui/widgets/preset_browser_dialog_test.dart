@@ -38,6 +38,9 @@ void main() {
     mockDistingCubit = MockDistingCubit();
     when(() => mockCubit.focusPane(any())).thenAnswer((_) async {});
     when(() => mockCubit.refreshPane(any())).thenAnswer((_) async {});
+    when(() => mockCubit.refreshDirectory(any())).thenAnswer((_) async {});
+    when(() => mockCubit.canUseEntry(any())).thenReturn(true);
+    when(() => mockCubit.isDirectoryReady(any())).thenReturn(true);
     when(
       () => mockCubit.refreshVisiblePanes(onlyIfStale: true),
     ).thenAnswer((_) async {});
@@ -248,21 +251,25 @@ void main() {
       );
     });
 
-    testWidgets('displays loading indicator when loading', (tester) async {
-      when(
-        () => mockCubit.state,
-      ).thenReturn(const PresetBrowserState.loading());
-      when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
+    testWidgets(
+      'loading preserves blank three-column skeleton without refresh icons',
+      (tester) async {
+        when(
+          () => mockCubit.state,
+        ).thenReturn(const PresetBrowserState.loading());
+        when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
-      await tester.pumpWidget(
-        createTestWidget(
-          child: PresetBrowserDialog(distingCubit: mockDistingCubit),
-        ),
-      );
+        await tester.pumpWidget(
+          createTestWidget(
+            child: PresetBrowserDialog(distingCubit: mockDistingCubit),
+          ),
+        );
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      expect(find.byType(DirectoryPanel), findsNWidgets(3));
-    });
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+        expect(find.byType(DirectoryPanel), findsNWidgets(3));
+        expect(find.byIcon(Icons.refresh), findsNothing);
+      },
+    );
 
     testWidgets('displays error message when error state', (tester) async {
       when(() => mockCubit.state).thenReturn(

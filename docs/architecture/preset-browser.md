@@ -40,7 +40,7 @@ canonical hierarchy even when offscreen. No fourth column is ever inserted.
   reconstruct **every ancestor**, not just the clicked/remembered destination.
 - Keyboard Enter opens the focused folder and moves focus to its child column
   (or stays in the right column after a shift). Alt-Left anywhere in the browser
-  column/header uses the shared Back operation.
+  column uses the shared Back operation.
 - Column focus does not alter the hierarchy or remembered deepest directory.
   Context menus and drops use explicit column paths. Empty placeholders have no
   path, no drop target, no context-menu directory and no network request.
@@ -56,26 +56,34 @@ Content may change; action-driven geometry may not. User-driven window resizing
 and text-scale changes are separate responsive-layout inputs.
 
 - The dialog's content bounds derive only from available window size. The toolbar,
-  breadcrumb region, three column boundaries, per-column 48px headers, status
-  area, upload-progress strip and action row reserve space in every state.
+  breadcrumb region, three column boundaries, status area, upload-progress strip
+  and action row reserve space in every state. There is no column header row:
+  path ancestry is already visible in the fixed breadcrumb bar.
 - Back, folder creation, sort, Export and Load stay in place. Unavailable actions
   are disabled rather than inserted/removed. Placeholder columns keep their full
-  geometry, with disabled header controls.
+  geometry and stay blank without misleading paths or controls.
 - Loading/error/empty states render inside the same column skeleton. Root errors
   use the reserved status/retry area, not a replacement page that removes columns.
-  Refresh/verification feedback replaces content in a fixed status slot.
-- Pending file mutations retain disabled stale content when verification reads
-  back the directory. Upload progress uses its always-reserved strip.
+  Refresh lives in each real column's background and item context menu (always
+  targeting that column's directory), not in visible column/global icon buttons.
+  Errors use reserved status text; refreshing is exposed to assistive technology.
+- Refresh and mutation invalidation retain the previous listing at full opacity
+  until verified content replaces it atomically. Unused/unconfirmed/confirmed
+  empty columns stay blank, avoiding distracting empty-state flashes. Listing
+  rows are not faded; Load/export and unsafe context actions are disabled while
+  their directory or an ancestor is uncertain. Menu callbacks and delete/rename
+  confirmations recheck availability before dispatch. Upload progress uses its
+  always-reserved strip. Mobile retains pull-to-refresh without a separate icon.
 - Breadcrumbs occupy a fixed-height horizontal scrolling region even at root,
   including on mobile. Long path/filename text is clipped/ellipsized inside its
-  allocated region instead of changing row/header heights.
+  allocated region instead of changing row heights.
 - Keyboard/selected outlines paint in the foreground without adding padding or
   altering row sizes. Per-location scroll offsets/cursor names are shared by
   the column renderer, so a location moving between columns retains its UI
   position; a new location starts at the top. Back restores the parent offset.
 
 `test/ui/widgets/preset_browser_panes_test.dart` compares exact rectangles for
-dialog, toolbar, breadcrumb/status areas, headers, columns and action controls
+dialog, toolbar, breadcrumb/status areas, columns and action controls
 across root → child → grandchild → deeper shifts, sibling/file selections,
 Back/breadcrumbs, held root/refresh/rename/upload replies, empty/error/retry and
 mobile transitions. It also tests row geometry during keyboard focus/refresh.
