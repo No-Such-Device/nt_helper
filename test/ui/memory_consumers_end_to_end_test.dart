@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -255,7 +255,8 @@ void main() {
       expect(state.presetName, 'Unchanged preset');
       expect(state.slots, isEmpty);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 }
 
 Future<void> _pumpUntilMemoryRequests(

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show Tristate;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -268,12 +268,10 @@ void main() {
                 attenuverter(),
                 attenuverter(index: 9),
               ];
-              when(
-                () => mockCubit.state,
-              ).thenReturn(synchronizedWith(algorithms, offline: offline));
-              when(
-                () => mockCubit.stream,
-              ).thenAnswer((_) => const Stream.empty());
+              when(() => mockCubit.state)
+                  .thenReturn(synchronizedWith(algorithms, offline: offline));
+              when(() => mockCubit.stream)
+                  .thenAnswer((_) => const Stream.empty());
 
               await tester.pumpWidget(createTestWidget());
               await tester.pumpAndSettle();
@@ -298,61 +296,55 @@ void main() {
         );
       }
 
-      testWidgets(
-        '${mode.name} keeps refreshed choices unique and selected',
-        (tester) async {
-          SharedPreferences.setMockInitialValues({
-            'add_algorithm_view_mode': mode.index,
-          });
-          final states = StreamController<DistingState>.broadcast();
-          addTearDown(states.close);
-          var state = synchronizedWith([attenuverter(), mockFactoryAlgorithm]);
-          when(() => mockCubit.state).thenAnswer((_) => state);
-          when(() => mockCubit.stream).thenAnswer((_) => states.stream);
-          await tester.pumpWidget(createTestWidget());
-          await tester.pumpAndSettle();
-          await tester.tap(find.text('Attenuverter'));
-          await tester.pumpAndSettle();
-          final searchRect = tester.getRect(find.byType(TextField));
-          final countRect = tester.getRect(
-            find.text('Showing 2 of 2 algorithms'),
-          );
+      testWidgets('${mode.name} keeps refreshed choices unique and selected', (
+        tester,
+      ) async {
+        SharedPreferences.setMockInitialValues({
+          'add_algorithm_view_mode': mode.index,
+        });
+        final states = StreamController<DistingState>.broadcast();
+        addTearDown(states.close);
+        var state = synchronizedWith([attenuverter(), mockFactoryAlgorithm]);
+        when(() => mockCubit.state).thenAnswer((_) => state);
+        when(() => mockCubit.stream).thenAnswer((_) => states.stream);
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Attenuverter'));
+        await tester.pumpAndSettle();
+        final searchRect = tester.getRect(find.byType(TextField));
+        final countRect = tester.getRect(
+          find.text('Showing 2 of 2 algorithms'),
+        );
 
-          state = synchronizedWith([
-            mockFactoryAlgorithm,
-            attenuverter(channels: 4),
-            attenuverter(index: 9),
-          ]);
-          states.add(state);
-          await tester.pumpAndSettle();
+        state = synchronizedWith([
+          mockFactoryAlgorithm,
+          attenuverter(channels: 4),
+          attenuverter(index: 9),
+        ]);
+        states.add(state);
+        await tester.pumpAndSettle();
 
-          expect(find.text('Attenuverter'), findsOneWidget);
-          expect(find.text('Showing 2 of 2 algorithms'), findsOneWidget);
-          expect(tester.getRect(find.byType(TextField)), searchRect);
-          expect(
-            tester.getRect(find.text('Showing 2 of 2 algorithms')),
-            countRect,
-          );
-          expect(
-            find.widgetWithText(ElevatedButton, 'Add Algorithm'),
-            findsOneWidget,
-          );
-          await tester.tap(
-            find.widgetWithText(ElevatedButton, 'Add Algorithm'),
-          );
-          await tester.pumpAndSettle();
-          expect(
-            tester
-                .widget<TextFormField>(
-                  find.byKey(const ValueKey('attu_spec_0')),
-                )
-                .controller
-                ?.text,
-            '8',
-          );
-        },
-        tags: ['regression'],
-      );
+        expect(find.text('Attenuverter'), findsOneWidget);
+        expect(find.text('Showing 2 of 2 algorithms'), findsOneWidget);
+        expect(tester.getRect(find.byType(TextField)), searchRect);
+        expect(
+          tester.getRect(find.text('Showing 2 of 2 algorithms')),
+          countRect,
+        );
+        expect(
+          find.widgetWithText(ElevatedButton, 'Add Algorithm'),
+          findsOneWidget,
+        );
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Add Algorithm'));
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<TextFormField>(find.byKey(const ValueKey('attu_spec_0')))
+              .controller
+              ?.text,
+          '8',
+        );
+      }, tags: ['regression']);
     }
 
     testWidgets(
@@ -441,9 +433,8 @@ void main() {
         ),
       );
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
-      when(
-        () => mockCubit.loadPlugin('TestPlugin'),
-      ).thenAnswer((_) async => null);
+      when(() => mockCubit.loadPlugin('TestPlugin'))
+          .thenAnswer((_) async => null);
 
       // Act
       await tester.pumpWidget(createTestWidget());
@@ -597,9 +588,8 @@ void main() {
     testWidgets('shows specification dialog after Add Algorithm is pressed', (
       tester,
     ) async {
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockLoadedPlugin]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockLoadedPlugin]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(createTestWidget());
@@ -623,9 +613,8 @@ void main() {
       tester,
     ) async {
       Object? routeResult = 'not-set';
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockLoadedPlugin]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockLoadedPlugin]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(
@@ -654,9 +643,8 @@ void main() {
       tester,
     ) async {
       Object? routeResult;
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockLoadedPlugin]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockLoadedPlugin]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(
@@ -690,9 +678,8 @@ void main() {
       tester,
     ) async {
       Object? routeResult;
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockBooleanAlgorithm]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockBooleanAlgorithm]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(
@@ -722,9 +709,8 @@ void main() {
     });
 
     testWidgets('type 3 specification remains numeric', (tester) async {
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockTypeThreeAlgorithm]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockTypeThreeAlgorithm]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(createTestWidget());
@@ -741,9 +727,8 @@ void main() {
 
     testWidgets('invalid numeric input blocks Add', (tester) async {
       Object? routeResult = 'not-set';
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockLoadedPlugin]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockLoadedPlugin]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(
@@ -776,9 +761,8 @@ void main() {
       'offline mode allows cached specification values to be edited',
       (tester) async {
         Object? routeResult;
-        when(
-          () => mockCubit.state,
-        ).thenReturn(synchronizedWith([mockLoadedPlugin], offline: true));
+        when(() => mockCubit.state)
+            .thenReturn(synchronizedWith([mockLoadedPlugin], offline: true));
         when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
         await tester.pumpWidget(
@@ -821,9 +805,8 @@ void main() {
     ) async {
       final semantics = tester.ensureSemantics();
 
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockBooleanAlgorithm]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockBooleanAlgorithm]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(createTestWidget());
@@ -886,9 +869,8 @@ void main() {
         );
 
         // Mock successful plugin loading
-        when(
-          () => mockCubit.loadPlugin('TestPlugin'),
-        ).thenAnswer((_) async => mockLoadedPlugin);
+        when(() => mockCubit.loadPlugin('TestPlugin'))
+            .thenAnswer((_) async => mockLoadedPlugin);
 
         when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
@@ -933,9 +915,8 @@ void main() {
         );
 
         // Mock failed plugin loading
-        when(
-          () => mockCubit.loadPlugin('TestPlugin'),
-        ).thenAnswer((_) async => null);
+        when(() => mockCubit.loadPlugin('TestPlugin'))
+            .thenAnswer((_) async => null);
 
         when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
@@ -984,9 +965,8 @@ void main() {
 
         // Mock delayed plugin loading
         final completer = Completer<AlgorithmInfo?>();
-        when(
-          () => mockCubit.loadPlugin('TestPlugin'),
-        ).thenAnswer((_) => completer.future);
+        when(() => mockCubit.loadPlugin('TestPlugin'))
+            .thenAnswer((_) => completer.future);
 
         when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
@@ -1036,9 +1016,8 @@ void main() {
           ),
         );
         when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
-        when(
-          () => mockCubit.loadPlugin('TestPlugin'),
-        ).thenAnswer((_) async => null);
+        when(() => mockCubit.loadPlugin('TestPlugin'))
+            .thenAnswer((_) async => null);
 
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
@@ -1100,9 +1079,8 @@ void main() {
 
     testWidgets('Add Another button appears alongside Add Algorithm '
         'after a loaded algorithm is selected', (tester) async {
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockFactoryAlgorithm]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(createTestWidget());
@@ -1133,9 +1111,8 @@ void main() {
         addTearDown(() {
           if (!addCompleter.isCompleted) addCompleter.complete();
         });
-        when(
-          () => mockCubit.state,
-        ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
+        when(() => mockCubit.state)
+            .thenReturn(synchronizedWith([mockFactoryAlgorithm]));
         when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
         when(
           () => mockCubit.onAlgorithmSelected(
@@ -1196,9 +1173,8 @@ void main() {
     );
 
     testWidgets('bottom actions use a brief state transition', (tester) async {
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockFactoryAlgorithm]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(createTestWidget());
@@ -1224,9 +1200,8 @@ void main() {
       addTearDown(() {
         if (!addCompleter.isCompleted) addCompleter.complete();
       });
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockFactoryAlgorithm]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
       when(
         () => mockCubit.onAlgorithmSelected(
@@ -1265,9 +1240,8 @@ void main() {
       addTearDown(() async {
         await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
       });
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockFactoryAlgorithm]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(createTestWidget());
@@ -1308,9 +1282,8 @@ void main() {
         await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
       });
       Object? routeResult;
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockFactoryAlgorithm]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(
@@ -1339,9 +1312,8 @@ void main() {
 
     testWidgets('Add Another adds, clears selection, '
         'and stays open without a success SnackBar', (tester) async {
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockFactoryAlgorithm]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
       when(
         () => mockCubit.onAlgorithmSelected(
@@ -1389,9 +1361,8 @@ void main() {
     });
 
     testWidgets('Add Another with specs waits for dialog Add', (tester) async {
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockLoadedPlugin]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockLoadedPlugin]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
       when(
         () => mockCubit.onAlgorithmSelected(
@@ -1442,9 +1413,8 @@ void main() {
       addTearDown(() async {
         await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
       });
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockLoadedPlugin]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockLoadedPlugin]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
       when(
         () => mockCubit.onAlgorithmSelected(
@@ -1487,9 +1457,8 @@ void main() {
     testWidgets('Add Another shows generic error when add verification fails', (
       tester,
     ) async {
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockFactoryAlgorithm]));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
       when(
         () => mockCubit.onAlgorithmSelected(
@@ -1521,9 +1490,8 @@ void main() {
         addTearDown(() async {
           await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
         });
-        when(
-          () => mockCubit.state,
-        ).thenReturn(synchronizedWith([mockFactoryAlgorithm]));
+        when(() => mockCubit.state)
+            .thenReturn(synchronizedWith([mockFactoryAlgorithm]));
         when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
         when(
           () => mockCubit.onAlgorithmSelected(any(), any(), addBypassed: true),
@@ -1561,9 +1529,8 @@ void main() {
     testWidgets('Add Another button hidden when slot cap is reached', (
       tester,
     ) async {
-      when(
-        () => mockCubit.state,
-      ).thenReturn(synchronizedWith([mockFactoryAlgorithm], slotCount: 40));
+      when(() => mockCubit.state)
+          .thenReturn(synchronizedWith([mockFactoryAlgorithm], slotCount: 40));
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
       await tester.pumpWidget(createTestWidget());

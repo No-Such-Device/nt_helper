@@ -14,11 +14,8 @@ class UsbVideoManager {
   final Clock _clock = clock;
   final DebugService _debugService = DebugService();
 
-  UsbVideoManager({
-    UsbVideoChannel? channel,
-    Future<Uint8List?> Function()? takeScreenshot,
-  }) : _channel = channel ?? UsbVideoChannel(),
-       _takeScreenshot = takeScreenshot;
+  UsbVideoManager({UsbVideoChannel? channel, this._takeScreenshot})
+    : _channel = channel ?? UsbVideoChannel();
 
   final Future<Uint8List?> Function()? _takeScreenshot;
   StreamController<Uint8List>? _screenshotController;

@@ -1,7 +1,8 @@
 import '../../test_helpers/browser_fixture.dart';
+
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -42,9 +43,8 @@ void main() {
     when(() => mockCubit.refreshDirectory(any())).thenAnswer((_) async {});
     when(() => mockCubit.canUseEntry(any())).thenReturn(true);
     when(() => mockCubit.isDirectoryReady(any())).thenReturn(true);
-    when(
-      () => mockCubit.refreshVisiblePanes(onlyIfStale: true),
-    ).thenAnswer((_) async {});
+    when(() => mockCubit.refreshVisiblePanes(onlyIfStale: true))
+        .thenAnswer((_) async {});
     // Mock loadRootDirectory to return a Future<void>
     when(() => mockCubit.loadRootDirectory()).thenAnswer((_) async {});
     // Mock getSelectedPath to return empty string by default
@@ -107,9 +107,8 @@ void main() {
           ),
         );
         when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
-        when(
-          () => mockCubit.createDirectory(target, 'helper'),
-        ).thenAnswer((_) async {});
+        when(() => mockCubit.createDirectory(target, 'helper'))
+            .thenAnswer((_) async {});
         when(() => mockCubit.getEntryPath(folder, '/')).thenReturn('/programs');
         await tester.pumpWidget(
           createTestWidget(
@@ -183,12 +182,10 @@ void main() {
         ),
       );
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
-      when(
-        () => mockCubit.getEntryPath(entry, '/presets'),
-      ).thenReturn('/presets/Alpha.json');
-      when(
-        () => mockCubit.renameEntry('/presets/Alpha.json', 'Alpha #42.json'),
-      ).thenThrow(StateError('Destination exists'));
+      when(() => mockCubit.getEntryPath(entry, '/presets'))
+          .thenReturn('/presets/Alpha.json');
+      when(() => mockCubit.renameEntry('/presets/Alpha.json', 'Alpha #42.json'))
+          .thenThrow(StateError('Destination exists'));
       await tester.pumpWidget(
         createTestWidget(
           child: Scaffold(
@@ -252,9 +249,8 @@ void main() {
     testWidgets(
       'loading preserves blank three-column skeleton without refresh icons',
       (tester) async {
-        when(
-          () => mockCubit.state,
-        ).thenReturn(const PresetBrowserState.loading());
+        when(() => mockCubit.state)
+            .thenReturn(const PresetBrowserState.loading());
         when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
 
         await tester.pumpWidget(
@@ -346,9 +342,8 @@ void main() {
                 sortByDate: false,
               ),
             );
-            when(
-              () => mockCubit.stream,
-            ).thenAnswer((_) => const Stream.empty());
+            when(() => mockCubit.stream)
+                .thenAnswer((_) => const Stream.empty());
             await tester.pumpWidget(
               createTestWidget(
                 child: PresetBrowserDialog(
@@ -397,9 +392,8 @@ void main() {
         ),
       );
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
-      when(
-        () => mockCubit.selectDirectory(any(), any()),
-      ).thenAnswer((_) async {});
+      when(() => mockCubit.selectDirectory(any(), any()))
+          .thenAnswer((_) async {});
 
       await tester.pumpWidget(
         createTestWidget(
@@ -424,9 +418,8 @@ void main() {
       await tester.tap(find.text('TestFolder'));
       await tester.pumpAndSettle();
 
-      verify(
-        () => mockCubit.selectDirectory(testEntry, PanelPosition.left),
-      ).called(1);
+      verify(() => mockCubit.selectDirectory(testEntry, PanelPosition.left))
+          .called(1);
     });
 
     testWidgets('calls selectFile when file tapped', (tester) async {
@@ -452,9 +445,8 @@ void main() {
         ),
       );
       when(() => mockCubit.stream).thenAnswer((_) => const Stream.empty());
-      when(
-        () => mockCubit.getSelectedPath(),
-      ).thenReturn('/presets/preset.json');
+      when(() => mockCubit.getSelectedPath())
+          .thenReturn('/presets/preset.json');
       when(() => mockCubit.selectFile(any(), any())).thenAnswer((_) async {});
 
       await tester.pumpWidget(
@@ -480,9 +472,8 @@ void main() {
       await tester.tap(find.text('preset.json'));
       await tester.pumpAndSettle();
 
-      verify(
-        () => mockCubit.selectFile(testFile, PanelPosition.left),
-      ).called(1);
+      verify(() => mockCubit.selectFile(testFile, PanelPosition.left))
+          .called(1);
     });
 
     testWidgets('wires distinct drop directories to desktop panels', (

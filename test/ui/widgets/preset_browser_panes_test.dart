@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:ui' show Tristate;
 
 import 'package:clock/clock.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -74,9 +74,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(textScale)),
           child: child!,
         ),
         home: Scaffold(
@@ -249,9 +248,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('Failed to load root'), findsOneWidget);
       expect(geometry(tester), rects);
-      when(
-        () => manager.requestDirectoryListing('/'),
-      ).thenAnswer((_) async => DirectoryListing(entries: files['/']!));
+      when(() => manager.requestDirectoryListing('/'))
+          .thenAnswer((_) async => DirectoryListing(entries: files['/']!));
       await tester.tap(find.widgetWithText(TextButton, 'Retry'));
       await tester.pumpAndSettle();
       expect(geometry(tester), rects);
@@ -285,12 +283,11 @@ void main() {
       final rects = geometry(tester);
       final started = Completer<void>();
       final response = Completer<DirectoryListing?>();
-      when(
-        () => manager.requestFileRename('/A/one.json', '/A/new.json'),
-      ).thenAnswer((_) async {
-        files['/A']![1] = entry('new.json');
-        return SdCardStatus(success: true, message: '');
-      });
+      when(() => manager.requestFileRename('/A/one.json', '/A/new.json'))
+          .thenAnswer((_) async {
+            files['/A']![1] = entry('new.json');
+            return SdCardStatus(success: true, message: '');
+          });
       when(() => manager.requestDirectoryListing('/A')).thenAnswer((_) {
         started.complete();
         return response.future;
@@ -321,9 +318,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(cubit.getSelectedPath(), '/A/new.json');
       expect(geometry(tester), rects);
-      when(
-        () => manager.requestDirectoryListing('/A'),
-      ).thenAnswer((_) async => DirectoryListing(entries: files['/A']!));
+      when(() => manager.requestDirectoryListing('/A'))
+          .thenAnswer((_) async => DirectoryListing(entries: files['/A']!));
       final chunkStarted = Completer<void>();
       final ack = Completer<SdCardStatus?>();
       final chunks = <(int, int)>[];
@@ -369,18 +365,16 @@ void main() {
       final rects = geometry(tester);
       await cubit.navigateToAbsolutePath('/A/child/deep');
       await tester.pumpAndSettle();
-      when(() => manager.requestFileRename('/A/child', '/A/Live')).thenAnswer((
-        _,
-      ) async {
-        files['/A']![0] = entry('Live/', dir: true);
-        for (final key
-            in files.keys.where((p) => p.startsWith('/A/child')).toList()) {
-          files['/A/Live${key.substring('/A/child'.length)}'] = files.remove(
-            key,
-          )!;
-        }
-        return SdCardStatus(success: true, message: '');
-      });
+      when(() => manager.requestFileRename('/A/child', '/A/Live'))
+          .thenAnswer((_) async {
+            files['/A']![0] = entry('Live/', dir: true);
+            for (final key
+                in files.keys.where((p) => p.startsWith('/A/child')).toList()) {
+              files['/A/Live${key.substring('/A/child'.length)}'] = files
+                  .remove(key)!;
+            }
+            return SdCardStatus(success: true, message: '');
+          });
       await cubit.renameEntry('/A/child', 'Live');
       await tester.pumpAndSettle();
       expect(paths(tester), ['/A', '/A/Live', '/A/Live/deep']);
@@ -591,9 +585,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(geometry(tester), rects);
       expect(cubit.getSelectedPath(), isEmpty);
-      when(
-        () => manager.requestDirectoryListing('/'),
-      ).thenAnswer((_) async => DirectoryListing(entries: []));
+      when(() => manager.requestDirectoryListing('/'))
+          .thenAnswer((_) async => DirectoryListing(entries: []));
       await cubit.refreshPane();
       await tester.pumpAndSettle();
       expect(geometry(tester), rects);
@@ -784,9 +777,8 @@ void main() {
       expect(find.text('one.json'), findsNothing);
       expect(find.text('replacement.json'), findsOneWidget);
       expect(geometry(tester), rects);
-      when(
-        () => manager.requestDirectoryListing('/A'),
-      ).thenAnswer((_) async => DirectoryListing(entries: []));
+      when(() => manager.requestDirectoryListing('/A'))
+          .thenAnswer((_) async => DirectoryListing(entries: []));
       await cubit.refreshDirectory('/A');
       await tester.pumpAndSettle();
       expect(find.textContaining('Empty'), findsNothing);
@@ -805,9 +797,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.widget<PopupMenuItem>(menuItem('Delete')).enabled, isTrue);
       final response = Completer<DirectoryListing?>();
-      when(
-        () => manager.requestDirectoryListing('/A'),
-      ).thenAnswer((_) => response.future);
+      when(() => manager.requestDirectoryListing('/A'))
+          .thenAnswer((_) => response.future);
       final refresh = cubit.refreshDirectory('/A');
       await tester.pump();
       await tester.tap(find.text('Delete'));
@@ -829,9 +820,8 @@ void main() {
       final rects = geometry(tester);
       final response = Completer<DirectoryListing?>();
       final started = Completer<void>();
-      when(
-        () => manager.requestDirectoryCreate('/new'),
-      ).thenAnswer((_) async => SdCardStatus(success: true, message: ''));
+      when(() => manager.requestDirectoryCreate('/new'))
+          .thenAnswer((_) async => SdCardStatus(success: true, message: ''));
       when(() => manager.requestDirectoryListing('/')).thenAnswer((_) {
         started.complete();
         return response.future;
@@ -932,12 +922,11 @@ void main() {
       await mouseClick(tester, find.text('A'));
       await mouseClick(tester, find.text('InitA.json'));
       expect(outlinedRows(tester), isEmpty);
-      when(
-        () => manager.requestFileRename('/A/InitA.json', '/A/InitA1.json'),
-      ).thenAnswer((_) async {
-        files['/A']![1] = entry('InitA1.json');
-        return SdCardStatus(success: true, message: '');
-      });
+      when(() => manager.requestFileRename('/A/InitA.json', '/A/InitA1.json'))
+          .thenAnswer((_) async {
+            files['/A']![1] = entry('InitA1.json');
+            return SdCardStatus(success: true, message: '');
+          });
       await mouseClick(
         tester,
         find.text('InitA.json'),
@@ -991,12 +980,11 @@ void main() {
       );
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
-      when(
-        () => manager.requestFileRename('/A/middle.json', '/A/renamed.json'),
-      ).thenAnswer((_) async {
-        files['/A']![1] = entry('renamed.json');
-        return SdCardStatus(success: true, message: '');
-      });
+      when(() => manager.requestFileRename('/A/middle.json', '/A/renamed.json'))
+          .thenAnswer((_) async {
+            files['/A']![1] = entry('renamed.json');
+            return SdCardStatus(success: true, message: '');
+          });
       await cubit.renameEntry('/A/middle.json', 'renamed.json');
       await tester.pumpAndSettle();
       expect(cubit.getSelectedPath(), '/A/selected.json');
@@ -1088,12 +1076,11 @@ void main() {
       final prior = paths(tester);
       final started = Completer<void>();
       final response = Completer<DirectoryListing?>();
-      when(() => manager.requestDirectoryListing('/A/child/deep')).thenAnswer((
-        _,
-      ) {
-        started.complete();
-        return response.future;
-      });
+      when(() => manager.requestDirectoryListing('/A/child/deep'))
+          .thenAnswer((_) {
+            started.complete();
+            return response.future;
+          });
       final frames = <BrowserSnapshot>[];
       final subscription = cubit.stream.listen((state) {
         if (state.view != null) frames.add(state.view!);
@@ -1141,28 +1128,26 @@ void main() {
       );
       final response = Completer<DirectoryListing?>();
       final started = Completer<void>();
-      when(() => manager.requestFileRename('/A/child', '/A/Live')).thenAnswer((
-        _,
-      ) async {
-        files['/A']![0] = entry('Live/', dir: true);
-        for (final path
-            in files.keys
-                .where(
-                  (path) => path == '/A/child' || path.startsWith('/A/child/'),
-                )
-                .toList()) {
-          files['/A/Live${path.substring('/A/child'.length)}'] = files.remove(
-            path,
-          )!;
-        }
-        return SdCardStatus(success: true, message: '');
-      });
-      when(() => manager.requestDirectoryListing('/A/Live/deep')).thenAnswer((
-        _,
-      ) {
-        started.complete();
-        return response.future;
-      });
+      when(() => manager.requestFileRename('/A/child', '/A/Live'))
+          .thenAnswer((_) async {
+            files['/A']![0] = entry('Live/', dir: true);
+            for (final path
+                in files.keys
+                    .where(
+                      (path) =>
+                          path == '/A/child' || path.startsWith('/A/child/'),
+                    )
+                    .toList()) {
+              files['/A/Live${path.substring('/A/child'.length)}'] = files
+                  .remove(path)!;
+            }
+            return SdCardStatus(success: true, message: '');
+          });
+      when(() => manager.requestDirectoryListing('/A/Live/deep'))
+          .thenAnswer((_) {
+            started.complete();
+            return response.future;
+          });
       final frames = <BrowserSnapshot>[];
       final subscription = cubit.stream.listen((state) {
         if (state.view != null) frames.add(state.view!);
@@ -1213,14 +1198,13 @@ void main() {
         await tester.pumpAndSettle();
         final rects = geometry(tester);
         final created = <String>[];
-        when(() => manager.requestDirectoryCreate(any())).thenAnswer((
-          call,
-        ) async {
-          final path = call.positionalArguments.single as String;
-          created.add(path);
-          files[scenario.directory]!.add(entry('helper/', dir: true));
-          return SdCardStatus(success: true, message: '');
-        });
+        when(() => manager.requestDirectoryCreate(any()))
+            .thenAnswer((call) async {
+              final path = call.positionalArguments.single as String;
+              created.add(path);
+              files[scenario.directory]!.add(entry('helper/', dir: true));
+              return SdCardStatus(success: true, message: '');
+            });
         expect(cubit.getCurrentDirectory(), '/A/child/deep');
         if (scenario.item == null) {
           await backgroundMenu(tester, scenario.column);

@@ -9,8 +9,8 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_midi_command_windows
   pasteboard
   screen_retriever_windows
-  share_plus
   url_launcher_windows
+  share_plus
   window_manager
 )
 

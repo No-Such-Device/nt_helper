@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/ui/widgets/routing/movable_physical_io_node.dart';
 
@@ -96,8 +96,7 @@ class ES5Node extends StatelessWidget {
         connectedPorts?.where((id) => ports.any((p) => p.id == id)).length ?? 0;
     return Semantics(
       label: 'ES-5 Expander: ${ports.length} jacks, $connectedCount connected',
-      hint:
-          'ES-5 Eurorack expander jacks. Receives signals from algorithms and outputs to hardware.',
+      hint: 'ES-5 Eurorack expander jacks. Receives signals from algorithms and outputs to hardware.',
       container: true,
       child: MovablePhysicalIONode(
         ports: ports,

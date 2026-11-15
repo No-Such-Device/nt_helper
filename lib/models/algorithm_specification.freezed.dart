@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'algorithm_specification.dart';
@@ -9,15 +9,14 @@ part of 'algorithm_specification.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$AlgorithmSpecification {
 
- String get name; String? get unit;// Using dynamic for value fields as structure varies (min/max/default or just value)
- dynamic get value; String? get description; dynamic get min;// For older format
- dynamic get max;
+ String get name; String? get unit; dynamic get value; String? get description; dynamic get min; dynamic get max;
 /// Create a copy of AlgorithmSpecification
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +29,21 @@ $AlgorithmSpecificationCopyWith<AlgorithmSpecification> get copyWith => _$Algori
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmSpecification&&(identical(other.name, name) || other.name == name)&&(identical(other.unit, unit) || other.unit == unit)&&const DeepCollectionEquality().equals(other.value, value)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.min, min)&&const DeepCollectionEquality().equals(other.max, max));
+  final _this = this as AlgorithmSpecification;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmSpecification&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.unit, _this.unit) || other.unit == _this.unit)&&const DeepCollectionEquality().equals(other.value, _this.value)&&(identical(other.description, _this.description) || other.description == _this.description)&&const DeepCollectionEquality().equals(other.min, _this.min)&&const DeepCollectionEquality().equals(other.max, _this.max));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,unit,const DeepCollectionEquality().hash(value),description,const DeepCollectionEquality().hash(min),const DeepCollectionEquality().hash(max));
+int get hashCode {
+  final _this = this as AlgorithmSpecification;
+  return Object.hash(runtimeType,_this.name,_this.unit,const DeepCollectionEquality().hash(_this.value),_this.description,const DeepCollectionEquality().hash(_this.min),const DeepCollectionEquality().hash(_this.max));
+}
 
 @override
 String toString() {
-  return 'AlgorithmSpecification(name: $name, unit: $unit, value: $value, description: $description, min: $min, max: $max)';
+  final _this = this as AlgorithmSpecification;
+  return 'AlgorithmSpecification(name: ${_this.name}, unit: ${_this.unit}, value: ${_this.value}, description: ${_this.description}, min: ${_this.min}, max: ${_this.max})';
 }
 
 
@@ -68,7 +72,7 @@ class _$AlgorithmSpecificationCopyWithImpl<$Res>
 /// Create a copy of AlgorithmSpecification
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? unit = freezed,Object? value = freezed,Object? description = freezed,Object? min = freezed,Object? max = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(AlgorithmSpecification(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,unit: freezed == unit ? _self.unit : unit // ignore: cast_nullable_to_non_nullable
 as String?,value: freezed == value ? _self.value : value // ignore: cast_nullable_to_non_nullable
@@ -215,11 +219,9 @@ class _AlgorithmSpecification implements AlgorithmSpecification {
 
 @override final  String name;
 @override final  String? unit;
-// Using dynamic for value fields as structure varies (min/max/default or just value)
 @override final  dynamic value;
 @override final  String? description;
 @override final  dynamic min;
-// For older format
 @override final  dynamic max;
 
 /// Create a copy of AlgorithmSpecification
@@ -235,16 +237,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmSpecification&&(identical(other.name, name) || other.name == name)&&(identical(other.unit, unit) || other.unit == unit)&&const DeepCollectionEquality().equals(other.value, value)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.min, min)&&const DeepCollectionEquality().equals(other.max, max));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmSpecification&&(identical(other.name, name) || other.name == name)&&(identical(other.unit, unit) || other.unit == unit)&&const DeepCollectionEquality().equals(other.value, value)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.min, min)&&const DeepCollectionEquality().equals(other.max, max));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,unit,const DeepCollectionEquality().hash(value),description,const DeepCollectionEquality().hash(min),const DeepCollectionEquality().hash(max));
+int get hashCode {
+    return Object.hash(runtimeType,name,unit,const DeepCollectionEquality().hash(value),description,const DeepCollectionEquality().hash(min),const DeepCollectionEquality().hash(max));
+}
 
 @override
 String toString() {
-  return 'AlgorithmSpecification(name: $name, unit: $unit, value: $value, description: $description, min: $min, max: $max)';
+    return 'AlgorithmSpecification(name: $name, unit: $unit, value: $value, description: $description, min: $min, max: $max)';
 }
 
 

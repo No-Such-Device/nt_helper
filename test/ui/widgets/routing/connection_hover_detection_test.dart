@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
@@ -83,7 +83,6 @@ void main() {
 
         await gesture.removePointer();
       });
-
     });
 
     group('Hover State Persistence and Cleanup', () {
@@ -153,15 +152,12 @@ void main() {
       ) async {
         Widget buildWidget({String connectionId = 'hover-test-connection'}) {
           // Setup platform service for each rebuild
-          when(
-            mockPlatformService.supportsHoverInteractions(),
-          ).thenReturn(true);
-          when(
-            mockPlatformService.shouldUseTouchInteractions(),
-          ).thenReturn(false);
-          when(
-            mockPlatformService.getMinimumTouchTargetSize(),
-          ).thenReturn(24.0);
+          when(mockPlatformService.supportsHoverInteractions())
+              .thenReturn(true);
+          when(mockPlatformService.shouldUseTouchInteractions())
+              .thenReturn(false);
+          when(mockPlatformService.getMinimumTouchTargetSize())
+              .thenReturn(24.0);
 
           final connection = Connection(
             id: connectionId,
@@ -269,9 +265,8 @@ void main() {
       testWidgets(
         'disables hover interactions when platform service indicates mobile',
         (tester) async {
-          when(
-            mockPlatformService.supportsHoverInteractions(),
-          ).thenReturn(false);
+          when(mockPlatformService.supportsHoverInteractions())
+              .thenReturn(false);
 
           await tester.pumpWidget(createDesktopConnectionWidget());
 

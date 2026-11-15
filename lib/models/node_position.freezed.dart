@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'node_position.dart';
@@ -9,6 +9,7 @@ part of 'node_position.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -28,16 +29,21 @@ $NodePositionCopyWith<NodePosition> get copyWith => _$NodePositionCopyWithImpl<N
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NodePosition&&(identical(other.algorithmIndex, algorithmIndex) || other.algorithmIndex == algorithmIndex)&&(identical(other.x, x) || other.x == x)&&(identical(other.y, y) || other.y == y)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height));
+  final _this = this as NodePosition;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NodePosition&&(identical(other.algorithmIndex, _this.algorithmIndex) || other.algorithmIndex == _this.algorithmIndex)&&(identical(other.x, _this.x) || other.x == _this.x)&&(identical(other.y, _this.y) || other.y == _this.y)&&(identical(other.width, _this.width) || other.width == _this.width)&&(identical(other.height, _this.height) || other.height == _this.height));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,algorithmIndex,x,y,width,height);
+int get hashCode {
+  final _this = this as NodePosition;
+  return Object.hash(runtimeType,_this.algorithmIndex,_this.x,_this.y,_this.width,_this.height);
+}
 
 @override
 String toString() {
-  return 'NodePosition(algorithmIndex: $algorithmIndex, x: $x, y: $y, width: $width, height: $height)';
+  final _this = this as NodePosition;
+  return 'NodePosition(algorithmIndex: ${_this.algorithmIndex}, x: ${_this.x}, y: ${_this.y}, width: ${_this.width}, height: ${_this.height})';
 }
 
 
@@ -66,7 +72,7 @@ class _$NodePositionCopyWithImpl<$Res>
 /// Create a copy of NodePosition
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? algorithmIndex = null,Object? x = null,Object? y = null,Object? width = null,Object? height = null,}) {
-  return _then(_self.copyWith(
+  return _then(NodePosition(
 algorithmIndex: null == algorithmIndex ? _self.algorithmIndex : algorithmIndex // ignore: cast_nullable_to_non_nullable
 as int,x: null == x ? _self.x : x // ignore: cast_nullable_to_non_nullable
 as double,y: null == y ? _self.y : y // ignore: cast_nullable_to_non_nullable
@@ -229,16 +235,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NodePosition&&(identical(other.algorithmIndex, algorithmIndex) || other.algorithmIndex == algorithmIndex)&&(identical(other.x, x) || other.x == x)&&(identical(other.y, y) || other.y == y)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NodePosition&&(identical(other.algorithmIndex, algorithmIndex) || other.algorithmIndex == algorithmIndex)&&(identical(other.x, x) || other.x == x)&&(identical(other.y, y) || other.y == y)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,algorithmIndex,x,y,width,height);
+int get hashCode {
+    return Object.hash(runtimeType,algorithmIndex,x,y,width,height);
+}
 
 @override
 String toString() {
-  return 'NodePosition(algorithmIndex: $algorithmIndex, x: $x, y: $y, width: $width, height: $height)';
+    return 'NodePosition(algorithmIndex: $algorithmIndex, x: $x, y: $y, width: $width, height: $height)';
 }
 
 

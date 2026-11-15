@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'connection.dart';
@@ -9,15 +9,14 @@ part of 'connection.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$Connection {
 
- String get id; int get sourceAlgorithmIndex; String get sourcePortId; int get targetAlgorithmIndex; String get targetPortId; int get assignedBus;// Bus number (1-28)
- bool get replaceMode;// true = Replace, false = Add
- bool get isValid; String? get edgeLabel;
+ String get id; int get sourceAlgorithmIndex; String get sourcePortId; int get targetAlgorithmIndex; String get targetPortId; int get assignedBus; bool get replaceMode; bool get isValid; String? get edgeLabel;
 /// Create a copy of Connection
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +29,21 @@ $ConnectionCopyWith<Connection> get copyWith => _$ConnectionCopyWithImpl<Connect
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Connection&&(identical(other.id, id) || other.id == id)&&(identical(other.sourceAlgorithmIndex, sourceAlgorithmIndex) || other.sourceAlgorithmIndex == sourceAlgorithmIndex)&&(identical(other.sourcePortId, sourcePortId) || other.sourcePortId == sourcePortId)&&(identical(other.targetAlgorithmIndex, targetAlgorithmIndex) || other.targetAlgorithmIndex == targetAlgorithmIndex)&&(identical(other.targetPortId, targetPortId) || other.targetPortId == targetPortId)&&(identical(other.assignedBus, assignedBus) || other.assignedBus == assignedBus)&&(identical(other.replaceMode, replaceMode) || other.replaceMode == replaceMode)&&(identical(other.isValid, isValid) || other.isValid == isValid)&&(identical(other.edgeLabel, edgeLabel) || other.edgeLabel == edgeLabel));
+  final _this = this as Connection;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Connection&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.sourceAlgorithmIndex, _this.sourceAlgorithmIndex) || other.sourceAlgorithmIndex == _this.sourceAlgorithmIndex)&&(identical(other.sourcePortId, _this.sourcePortId) || other.sourcePortId == _this.sourcePortId)&&(identical(other.targetAlgorithmIndex, _this.targetAlgorithmIndex) || other.targetAlgorithmIndex == _this.targetAlgorithmIndex)&&(identical(other.targetPortId, _this.targetPortId) || other.targetPortId == _this.targetPortId)&&(identical(other.assignedBus, _this.assignedBus) || other.assignedBus == _this.assignedBus)&&(identical(other.replaceMode, _this.replaceMode) || other.replaceMode == _this.replaceMode)&&(identical(other.isValid, _this.isValid) || other.isValid == _this.isValid)&&(identical(other.edgeLabel, _this.edgeLabel) || other.edgeLabel == _this.edgeLabel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sourceAlgorithmIndex,sourcePortId,targetAlgorithmIndex,targetPortId,assignedBus,replaceMode,isValid,edgeLabel);
+int get hashCode {
+  final _this = this as Connection;
+  return Object.hash(runtimeType,_this.id,_this.sourceAlgorithmIndex,_this.sourcePortId,_this.targetAlgorithmIndex,_this.targetPortId,_this.assignedBus,_this.replaceMode,_this.isValid,_this.edgeLabel);
+}
 
 @override
 String toString() {
-  return 'Connection(id: $id, sourceAlgorithmIndex: $sourceAlgorithmIndex, sourcePortId: $sourcePortId, targetAlgorithmIndex: $targetAlgorithmIndex, targetPortId: $targetPortId, assignedBus: $assignedBus, replaceMode: $replaceMode, isValid: $isValid, edgeLabel: $edgeLabel)';
+  final _this = this as Connection;
+  return 'Connection(id: ${_this.id}, sourceAlgorithmIndex: ${_this.sourceAlgorithmIndex}, sourcePortId: ${_this.sourcePortId}, targetAlgorithmIndex: ${_this.targetAlgorithmIndex}, targetPortId: ${_this.targetPortId}, assignedBus: ${_this.assignedBus}, replaceMode: ${_this.replaceMode}, isValid: ${_this.isValid}, edgeLabel: ${_this.edgeLabel})';
 }
 
 
@@ -68,7 +72,7 @@ class _$ConnectionCopyWithImpl<$Res>
 /// Create a copy of Connection
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sourceAlgorithmIndex = null,Object? sourcePortId = null,Object? targetAlgorithmIndex = null,Object? targetPortId = null,Object? assignedBus = null,Object? replaceMode = null,Object? isValid = null,Object? edgeLabel = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(Connection(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sourceAlgorithmIndex: null == sourceAlgorithmIndex ? _self.sourceAlgorithmIndex : sourceAlgorithmIndex // ignore: cast_nullable_to_non_nullable
 as int,sourcePortId: null == sourcePortId ? _self.sourcePortId : sourcePortId // ignore: cast_nullable_to_non_nullable
@@ -222,9 +226,7 @@ class _Connection implements Connection {
 @override final  int targetAlgorithmIndex;
 @override final  String targetPortId;
 @override final  int assignedBus;
-// Bus number (1-28)
 @override final  bool replaceMode;
-// true = Replace, false = Add
 @override@JsonKey() final  bool isValid;
 @override final  String? edgeLabel;
 
@@ -241,16 +243,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Connection&&(identical(other.id, id) || other.id == id)&&(identical(other.sourceAlgorithmIndex, sourceAlgorithmIndex) || other.sourceAlgorithmIndex == sourceAlgorithmIndex)&&(identical(other.sourcePortId, sourcePortId) || other.sourcePortId == sourcePortId)&&(identical(other.targetAlgorithmIndex, targetAlgorithmIndex) || other.targetAlgorithmIndex == targetAlgorithmIndex)&&(identical(other.targetPortId, targetPortId) || other.targetPortId == targetPortId)&&(identical(other.assignedBus, assignedBus) || other.assignedBus == assignedBus)&&(identical(other.replaceMode, replaceMode) || other.replaceMode == replaceMode)&&(identical(other.isValid, isValid) || other.isValid == isValid)&&(identical(other.edgeLabel, edgeLabel) || other.edgeLabel == edgeLabel));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Connection&&(identical(other.id, id) || other.id == id)&&(identical(other.sourceAlgorithmIndex, sourceAlgorithmIndex) || other.sourceAlgorithmIndex == sourceAlgorithmIndex)&&(identical(other.sourcePortId, sourcePortId) || other.sourcePortId == sourcePortId)&&(identical(other.targetAlgorithmIndex, targetAlgorithmIndex) || other.targetAlgorithmIndex == targetAlgorithmIndex)&&(identical(other.targetPortId, targetPortId) || other.targetPortId == targetPortId)&&(identical(other.assignedBus, assignedBus) || other.assignedBus == assignedBus)&&(identical(other.replaceMode, replaceMode) || other.replaceMode == replaceMode)&&(identical(other.isValid, isValid) || other.isValid == isValid)&&(identical(other.edgeLabel, edgeLabel) || other.edgeLabel == edgeLabel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sourceAlgorithmIndex,sourcePortId,targetAlgorithmIndex,targetPortId,assignedBus,replaceMode,isValid,edgeLabel);
+int get hashCode {
+    return Object.hash(runtimeType,id,sourceAlgorithmIndex,sourcePortId,targetAlgorithmIndex,targetPortId,assignedBus,replaceMode,isValid,edgeLabel);
+}
 
 @override
 String toString() {
-  return 'Connection(id: $id, sourceAlgorithmIndex: $sourceAlgorithmIndex, sourcePortId: $sourcePortId, targetAlgorithmIndex: $targetAlgorithmIndex, targetPortId: $targetPortId, assignedBus: $assignedBus, replaceMode: $replaceMode, isValid: $isValid, edgeLabel: $edgeLabel)';
+    return 'Connection(id: $id, sourceAlgorithmIndex: $sourceAlgorithmIndex, sourcePortId: $sourcePortId, targetAlgorithmIndex: $targetAlgorithmIndex, targetPortId: $targetPortId, assignedBus: $assignedBus, replaceMode: $replaceMode, isValid: $isValid, edgeLabel: $edgeLabel)';
 }
 
 

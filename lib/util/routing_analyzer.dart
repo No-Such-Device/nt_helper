@@ -16,12 +16,10 @@ class RoutingAnalyzer {
 
   RoutingAnalyzer({
     required List<RoutingInformation> routing,
-    bool showSignals = true,
-    bool showMappings = false,
+    this._showSignals = true,
+    this._showMappings = false,
     this.deviceIoProfile = DeviceIoProfile.distingExtended,
   }) : _routing = routing,
-       _showSignals = showSignals,
-       _showMappings = showMappings,
        _slotCount = routing.length {
     _initializeAnalysis();
   }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 
 class DistingVersion extends StatelessWidget {

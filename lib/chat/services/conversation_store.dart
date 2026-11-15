@@ -18,7 +18,7 @@ abstract interface class ConversationStore {
 /// never resumes a task. Small sidecars let the picker list chats without loading
 /// every screenshot/attachment. Writes are serialized and replace via rename.
 class FileConversationStore implements ConversationStore {
-  FileConversationStore({Directory? directory}) : _directory = directory;
+  FileConversationStore({this._directory});
   Directory? _directory;
   Future<void> _tail = Future.value();
   Future<Directory>? _rootDirectory;

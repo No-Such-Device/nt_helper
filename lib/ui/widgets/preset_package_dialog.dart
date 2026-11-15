@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
+
+import 'package:material_ui/material_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:nt_helper/interfaces/preset_file_system.dart';
 import 'package:nt_helper/models/preset_dependencies.dart';
@@ -87,9 +88,8 @@ class _PresetPackageDialogState extends State<PresetPackageDialog> {
       _runEstimate();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error analyzing preset: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error analyzing preset: $e')));
       setState(() => isAnalyzing = false);
     }
   }
@@ -148,8 +148,7 @@ class _PresetPackageDialogState extends State<PresetPackageDialog> {
       final outputPath = await FilePicker.saveFile(
         dialogTitle: 'Save Preset Package',
         fileName: '${presetName}_package.zip',
-        type: FileType.custom,
-        allowedExtensions: ['zip'],
+        mimeType: 'application/zip',
         bytes: packageResult.zipBytes,
       );
 

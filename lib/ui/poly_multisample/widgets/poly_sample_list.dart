@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:nt_helper/poly_multisample/poly_multisample_models.dart';
 import 'package:nt_helper/poly_multisample/poly_multisample_parser.dart';
@@ -248,9 +248,8 @@ class _PolySampleListState extends State<PolySampleList> {
           onTap: () => widget.onSelect(region.path, _selectionMode()),
           child: Material(
             color: selected
-                ? Theme.of(
-                    context,
-                  ).colorScheme.secondaryContainer.withValues(alpha: 0.36)
+                ? Theme.of(context).colorScheme.secondaryContainer
+                      .withValues(alpha: 0.36)
                 : Colors.transparent,
             child: InkWell(
               excludeFromSemantics: true,

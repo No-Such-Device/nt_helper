@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -95,7 +95,8 @@ void main() {
       );
       expect(field.model.choices.map((choice) => choice.value), profile.buses);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets('hides algorithm style controls before firmware 1.18', (
     tester,
@@ -251,9 +252,8 @@ void main() {
     );
     when(() => cubit.stream).thenAnswer((_) => const Stream.empty());
     final syncCompleter = Completer<void>();
-    when(
-      () => cubit.setAlgorithmVisualStyle(any(), any()),
-    ).thenAnswer((_) => syncCompleter.future);
+    when(() => cubit.setAlgorithmVisualStyle(any(), any()))
+        .thenAnswer((_) => syncCompleter.future);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -669,17 +669,16 @@ DistingStateSynchronized _synchronizedState({
   bool demo = false,
 }) {
   return DistingState.synchronized(
-        disting: manager,
-        distingVersion: firmwareVersion,
-        firmwareVersion: FirmwareVersion(firmwareVersion),
-        presetName: 'Test',
-        algorithms: algorithms ?? const [],
-        slots: [slot],
-        unitStrings: const [],
-        offline: offline,
-        demo: demo,
-      )
-      as DistingStateSynchronized;
+    disting: manager,
+    distingVersion: firmwareVersion,
+    firmwareVersion: FirmwareVersion(firmwareVersion),
+    presetName: 'Test',
+    algorithms: algorithms ?? const [],
+    slots: [slot],
+    unitStrings: const [],
+    offline: offline,
+    demo: demo,
+  ) as DistingStateSynchronized;
 }
 
 AlgorithmInfo _respecificationMetadata({

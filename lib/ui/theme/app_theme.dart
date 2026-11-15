@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Central construction point for every nt_helper Material theme.
 abstract final class AppTheme {

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/core/routing/models/connection.dart';
 import 'package:nt_helper/services/settings_service.dart';
 
@@ -200,8 +200,7 @@ class _InvalidConnectionTooltipState extends State<InvalidConnectionTooltip>
   /// Build the actual tooltip content widget
   Widget _buildTooltipContent(ThemeData theme) {
     return Positioned(
-      top:
-          -120, // Position above the connection (taller for invalid connections)
+      top: -120, // Position above the connection (taller for invalid connections)
       left: 0,
       right: 0,
       child: IgnorePointer(

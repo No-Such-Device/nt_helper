@@ -93,3 +93,6 @@ node_modules/
 # Backup files
 docs/algorithms/*.bak 
 nt_helper.db
+
+# Android Gradle configuration/build reports
+/android/build/

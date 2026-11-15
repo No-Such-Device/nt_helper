@@ -1,7 +1,8 @@
 import 'dart:io';
+
 import 'package:nt_helper/algorithm_controller/sd_card_companion.dart';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:nt_helper/ui/patch_map/patch_map_editor.dart';
@@ -34,9 +35,8 @@ void main() {
               MaterialApp(
                 theme: theme,
                 builder: (context, child) => MediaQuery(
-                  data: MediaQuery.of(
-                    context,
-                  ).copyWith(textScaler: TextScaler.linear(scale)),
+                  data: MediaQuery.of(context)
+                      .copyWith(textScaler: TextScaler.linear(scale)),
                   child: child!,
                 ),
                 home: Scaffold(
@@ -45,9 +45,9 @@ void main() {
                     transport: device,
                     slotIndex: 0,
                     watchInterval: null,
-                    download: (_) async => File(
-                      'test/fixtures/patch_map/patch_helper.lua',
-                    ).readAsBytesSync(),
+                    download: (_) async =>
+                        File('test/fixtures/patch_map/patch_helper.lua')
+                            .readAsBytesSync(),
                   ),
                 ),
               ),

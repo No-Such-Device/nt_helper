@@ -311,25 +311,23 @@ void _expectNoAlgorithmMutationOrMemoryRequest(List<List<int>> packets) {
 
 final class _CatalogueHarness {
   _CatalogueHarness({
-    required List<int> countResponse,
-    required Map<int, List<int>> algorithmResponses,
-  }) : _countResponse = countResponse,
-       _algorithmResponses = algorithmResponses {
+    required this._countResponse,
+    required this._algorithmResponses,
+  }) {
     when(() => midi.onMidiPacketReceived).thenAnswer((_) => incoming.stream);
-    when(
-      () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
-    ).thenAnswer((invocation) {
-      final packet = Uint8List.fromList(
-        invocation.positionalArguments.single as Uint8List,
-      );
-      sentPackets.add(List<int>.unmodifiable(packet));
-      final response = _responseFor(packet);
-      if (response != null) {
-        scheduleMicrotask(() {
-          incoming.add(MidiPacket(Uint8List.fromList(response), 0, device));
+    when(() => midi.sendData(any(), deviceId: any(named: 'deviceId')))
+        .thenAnswer((invocation) {
+          final packet = Uint8List.fromList(
+            invocation.positionalArguments.single as Uint8List,
+          );
+          sentPackets.add(List<int>.unmodifiable(packet));
+          final response = _responseFor(packet);
+          if (response != null) {
+            scheduleMicrotask(() {
+              incoming.add(MidiPacket(Uint8List.fromList(response), 0, device));
+            });
+          }
         });
-      }
-    });
 
     manager = DistingMidiManager(
       midiCommand: midi,

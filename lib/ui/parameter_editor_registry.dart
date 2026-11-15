@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart' show Slot;
 import 'package:nt_helper/domain/disting_nt_sysex.dart' show ParameterInfo;
 import 'package:nt_helper/models/firmware_version.dart';

@@ -70,14 +70,11 @@ class ChatCubit extends Cubit<ChatState> {
   static const _compactionThresholdPercent = 85;
 
   ChatCubit({
-    required ToolRegistry toolRegistry,
-    required MemoryService memoryService,
-    @visibleForTesting LlmProviderFactory? providerFactory,
+    required this._toolRegistry,
+    required this._memoryService,
+    @visibleForTesting this._providerFactory,
     ConversationStore? conversationStore,
-  }) : _toolRegistry = toolRegistry,
-       _memoryService = memoryService,
-       _providerFactory = providerFactory,
-       _conversationStore = conversationStore,
+  }) : _conversationStore = conversationStore,
        super(ChatReady(isLoadingHistory: conversationStore != null)) {
     historyReady = conversationStore == null
         ? Future.value()

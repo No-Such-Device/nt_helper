@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
+
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,12 +29,10 @@ void main() {
     cubit = _Cubit();
     selected = null;
     conversations = [summary('first', 'Saved first', DateTime.now())];
-    when(
-      () => cubit.state,
-    ).thenReturn(const ChatReady(conversationId: 'first'));
-    when(
-      () => cubit.listConversations(),
-    ).thenAnswer((_) async => List.of(conversations));
+    when(() => cubit.state)
+        .thenReturn(const ChatReady(conversationId: 'first'));
+    when(() => cubit.listConversations())
+        .thenAnswer((_) async => List.of(conversations));
   });
   Future<void> open(
     WidgetTester tester, {
@@ -180,9 +179,8 @@ void main() {
   testWidgets('delete failure keeps the record and gives a recovery message', (
     tester,
   ) async {
-    when(
-      () => cubit.deleteConversation('first'),
-    ).thenAnswer((_) async => false);
+    when(() => cubit.deleteConversation('first'))
+        .thenAnswer((_) async => false);
     await open(tester);
     await requestDelete(tester);
     await tester.tap(find.text('Delete'));
@@ -210,7 +208,8 @@ void main() {
       expect(find.text('Saved first'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
   testWidgets('Escape cancels without selecting or deleting', (tester) async {
     await open(tester);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -260,8 +259,7 @@ void main() {
     (tester) async {
       for (final entry in {
         'Evidence': '/System/Library/Fonts/SFNS.ttf',
-        'MaterialIcons':
-            '/Users/nealsanche/fvm/default/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+        'MaterialIcons': '/Users/nealsanche/fvm/default/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
       }.entries) {
         final file = File(entry.value);
         if (file.existsSync()) {

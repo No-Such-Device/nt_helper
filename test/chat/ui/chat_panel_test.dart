@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -33,9 +33,8 @@ void main() {
     toolRegistry = _MockToolRegistry();
     memoryService = _MockMemoryService();
     when(() => toolRegistry.entries).thenReturn(const []);
-    when(
-      () => memoryService.saveSessionSnapshot(any()),
-    ).thenAnswer((_) async {});
+    when(() => memoryService.saveSessionSnapshot(any()))
+        .thenAnswer((_) async {});
     cubit = ChatCubit(toolRegistry: toolRegistry, memoryService: memoryService);
   });
 
@@ -77,9 +76,8 @@ void main() {
     when(() => mockCubit.state).thenReturn(
       ChatReady(messages: [ChatMessage.user('keep me until confirmed')]),
     );
-    when(
-      () => mockCubit.contextSummary,
-    ).thenReturn(const ChatContextSummary(messageCount: 1, userMessages: 1));
+    when(() => mockCubit.contextSummary)
+        .thenReturn(const ChatContextSummary(messageCount: 1, userMessages: 1));
     when(() => mockCubit.clearChat()).thenAnswer((_) async {});
 
     await tester.pumpWidget(
@@ -118,9 +116,8 @@ void main() {
       conversationTitle: 'Saved question',
     );
     whenListen(mockCubit, changes.stream, initialState: ready);
-    when(
-      () => mockCubit.contextSummary,
-    ).thenReturn(const ChatContextSummary(messageCount: 1, userMessages: 1));
+    when(() => mockCubit.contextSummary)
+        .thenReturn(const ChatContextSummary(messageCount: 1, userMessages: 1));
     when(() => mockCubit.newChat()).thenAnswer((_) async {});
     await tester.pumpWidget(
       MaterialApp(
@@ -165,9 +162,8 @@ void main() {
     final states = StreamController<ChatState>();
     addTearDown(states.close);
     whenListen(mockCubit, states.stream, initialState: thinkingState);
-    when(
-      () => mockCubit.contextSummary,
-    ).thenReturn(ChatContextSummary(messageCount: messages.length));
+    when(() => mockCubit.contextSummary)
+        .thenReturn(ChatContextSummary(messageCount: messages.length));
 
     await tester.pumpWidget(
       MaterialApp(

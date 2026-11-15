@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'firmware_update_state.dart';
@@ -9,6 +9,7 @@ part of 'firmware_update_state.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -20,7 +21,7 @@ mixin _$FirmwareUpdateState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateState);
 }
 
 
@@ -29,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'FirmwareUpdateState()';
+    return 'FirmwareUpdateState()';
 }
 
 
@@ -217,7 +218,7 @@ return error(_that.message,_that.errorType,_that.failedStage,_that.firmwarePath,
 
 
 class FirmwareUpdateStateInitial implements FirmwareUpdateState {
-  const FirmwareUpdateStateInitial({required this.currentVersion, final  List<FirmwareRelease>? availableVersions = null, this.isLoadingVersions = false, this.fetchError = null}): _availableVersions = availableVersions;
+  const FirmwareUpdateStateInitial({required this.currentVersion,  List<FirmwareRelease>? availableVersions = null, this.isLoadingVersions = false, this.fetchError = null}): _availableVersions = availableVersions;
 
 
 /// Currently installed firmware version string
@@ -248,16 +249,18 @@ $FirmwareUpdateStateInitialCopyWith<FirmwareUpdateStateInitial> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateInitial&&(identical(other.currentVersion, currentVersion) || other.currentVersion == currentVersion)&&const DeepCollectionEquality().equals(other._availableVersions, _availableVersions)&&(identical(other.isLoadingVersions, isLoadingVersions) || other.isLoadingVersions == isLoadingVersions)&&(identical(other.fetchError, fetchError) || other.fetchError == fetchError));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateInitial&&(identical(other.currentVersion, currentVersion) || other.currentVersion == currentVersion)&&const DeepCollectionEquality().equals(other.availableVersions, _availableVersions)&&(identical(other.isLoadingVersions, isLoadingVersions) || other.isLoadingVersions == isLoadingVersions)&&(identical(other.fetchError, fetchError) || other.fetchError == fetchError));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,currentVersion,const DeepCollectionEquality().hash(_availableVersions),isLoadingVersions,fetchError);
+int get hashCode {
+    return Object.hash(runtimeType,currentVersion,const DeepCollectionEquality().hash(_availableVersions),isLoadingVersions,fetchError);
+}
 
 @override
 String toString() {
-  return 'FirmwareUpdateState.initial(currentVersion: $currentVersion, availableVersions: $availableVersions, isLoadingVersions: $isLoadingVersions, fetchError: $fetchError)';
+    return 'FirmwareUpdateState.initial(currentVersion: $currentVersion, availableVersions: $availableVersions, isLoadingVersions: $isLoadingVersions, fetchError: $fetchError)';
 }
 
 
@@ -318,16 +321,18 @@ $FirmwareUpdateStateDownloadingCopyWith<FirmwareUpdateStateDownloading> get copy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateDownloading&&(identical(other.version, version) || other.version == version)&&(identical(other.progress, progress) || other.progress == progress));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateDownloading&&(identical(other.version, version) || other.version == version)&&(identical(other.progress, progress) || other.progress == progress));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,version,progress);
+int get hashCode {
+    return Object.hash(runtimeType,version,progress);
+}
 
 @override
 String toString() {
-  return 'FirmwareUpdateState.downloading(version: $version, progress: $progress)';
+    return 'FirmwareUpdateState.downloading(version: $version, progress: $progress)';
 }
 
 
@@ -368,7 +373,7 @@ as double,
 @override
 @pragma('vm:prefer-inline')
 $FirmwareReleaseCopyWith<$Res> get version {
-  
+
   return $FirmwareReleaseCopyWith<$Res>(_self.version, (value) {
     return _then(_self.copyWith(version: value));
   });
@@ -380,7 +385,7 @@ $FirmwareReleaseCopyWith<$Res> get version {
 
 class FirmwareUpdateStateWaitingForBootloader implements FirmwareUpdateState {
   const FirmwareUpdateStateWaitingForBootloader({required this.firmwarePath, required this.targetVersion, this.canAutoEnter = false});
-  
+
 
  final  String firmwarePath;
  final  String targetVersion;
@@ -397,16 +402,18 @@ $FirmwareUpdateStateWaitingForBootloaderCopyWith<FirmwareUpdateStateWaitingForBo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateWaitingForBootloader&&(identical(other.firmwarePath, firmwarePath) || other.firmwarePath == firmwarePath)&&(identical(other.targetVersion, targetVersion) || other.targetVersion == targetVersion)&&(identical(other.canAutoEnter, canAutoEnter) || other.canAutoEnter == canAutoEnter));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateWaitingForBootloader&&(identical(other.firmwarePath, firmwarePath) || other.firmwarePath == firmwarePath)&&(identical(other.targetVersion, targetVersion) || other.targetVersion == targetVersion)&&(identical(other.canAutoEnter, canAutoEnter) || other.canAutoEnter == canAutoEnter));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,firmwarePath,targetVersion,canAutoEnter);
+int get hashCode {
+    return Object.hash(runtimeType,firmwarePath,targetVersion,canAutoEnter);
+}
 
 @override
 String toString() {
-  return 'FirmwareUpdateState.waitingForBootloader(firmwarePath: $firmwarePath, targetVersion: $targetVersion, canAutoEnter: $canAutoEnter)';
+    return 'FirmwareUpdateState.waitingForBootloader(firmwarePath: $firmwarePath, targetVersion: $targetVersion, canAutoEnter: $canAutoEnter)';
 }
 
 
@@ -451,7 +458,7 @@ as bool,
 
 class FirmwareUpdateStateEnteringBootloader implements FirmwareUpdateState {
   const FirmwareUpdateStateEnteringBootloader({required this.firmwarePath, required this.targetVersion, this.progress = 0});
-  
+
 
  final  String firmwarePath;
  final  String targetVersion;
@@ -468,16 +475,18 @@ $FirmwareUpdateStateEnteringBootloaderCopyWith<FirmwareUpdateStateEnteringBootlo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateEnteringBootloader&&(identical(other.firmwarePath, firmwarePath) || other.firmwarePath == firmwarePath)&&(identical(other.targetVersion, targetVersion) || other.targetVersion == targetVersion)&&(identical(other.progress, progress) || other.progress == progress));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateEnteringBootloader&&(identical(other.firmwarePath, firmwarePath) || other.firmwarePath == firmwarePath)&&(identical(other.targetVersion, targetVersion) || other.targetVersion == targetVersion)&&(identical(other.progress, progress) || other.progress == progress));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,firmwarePath,targetVersion,progress);
+int get hashCode {
+    return Object.hash(runtimeType,firmwarePath,targetVersion,progress);
+}
 
 @override
 String toString() {
-  return 'FirmwareUpdateState.enteringBootloader(firmwarePath: $firmwarePath, targetVersion: $targetVersion, progress: $progress)';
+    return 'FirmwareUpdateState.enteringBootloader(firmwarePath: $firmwarePath, targetVersion: $targetVersion, progress: $progress)';
 }
 
 
@@ -522,7 +531,7 @@ as double,
 
 class FirmwareUpdateStateFlashing implements FirmwareUpdateState {
   const FirmwareUpdateStateFlashing({required this.targetVersion, required this.progress});
-  
+
 
  final  String targetVersion;
  final  FlashProgress progress;
@@ -537,16 +546,18 @@ $FirmwareUpdateStateFlashingCopyWith<FirmwareUpdateStateFlashing> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateFlashing&&(identical(other.targetVersion, targetVersion) || other.targetVersion == targetVersion)&&(identical(other.progress, progress) || other.progress == progress));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateFlashing&&(identical(other.targetVersion, targetVersion) || other.targetVersion == targetVersion)&&(identical(other.progress, progress) || other.progress == progress));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,targetVersion,progress);
+int get hashCode {
+    return Object.hash(runtimeType,targetVersion,progress);
+}
 
 @override
 String toString() {
-  return 'FirmwareUpdateState.flashing(targetVersion: $targetVersion, progress: $progress)';
+    return 'FirmwareUpdateState.flashing(targetVersion: $targetVersion, progress: $progress)';
 }
 
 
@@ -587,7 +598,7 @@ as FlashProgress,
 @override
 @pragma('vm:prefer-inline')
 $FlashProgressCopyWith<$Res> get progress {
-  
+
   return $FlashProgressCopyWith<$Res>(_self.progress, (value) {
     return _then(_self.copyWith(progress: value));
   });
@@ -616,16 +627,18 @@ $FirmwareUpdateStateVerifyingMidiCopyWith<FirmwareUpdateStateVerifyingMidi> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateVerifyingMidi&&(identical(other.newVersion, newVersion) || other.newVersion == newVersion)&&(identical(other.completedAttempts, completedAttempts) || other.completedAttempts == completedAttempts)&&(identical(other.totalAttempts, totalAttempts) || other.totalAttempts == totalAttempts)&&(identical(other.requiresVersion, requiresVersion) || other.requiresVersion == requiresVersion));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateVerifyingMidi&&(identical(other.newVersion, newVersion) || other.newVersion == newVersion)&&(identical(other.completedAttempts, completedAttempts) || other.completedAttempts == completedAttempts)&&(identical(other.totalAttempts, totalAttempts) || other.totalAttempts == totalAttempts)&&(identical(other.requiresVersion, requiresVersion) || other.requiresVersion == requiresVersion));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,newVersion,completedAttempts,totalAttempts,requiresVersion);
+int get hashCode {
+    return Object.hash(runtimeType,newVersion,completedAttempts,totalAttempts,requiresVersion);
+}
 
 @override
 String toString() {
-  return 'FirmwareUpdateState.verifyingMidi(newVersion: $newVersion, completedAttempts: $completedAttempts, totalAttempts: $totalAttempts, requiresVersion: $requiresVersion)';
+    return 'FirmwareUpdateState.verifyingMidi(newVersion: $newVersion, completedAttempts: $completedAttempts, totalAttempts: $totalAttempts, requiresVersion: $requiresVersion)';
 }
 
 
@@ -687,16 +700,18 @@ $FirmwareUpdateStateMidiRecoveryRequiredCopyWith<FirmwareUpdateStateMidiRecovery
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateMidiRecoveryRequired&&(identical(other.newVersion, newVersion) || other.newVersion == newVersion)&&(identical(other.isWindows, isWindows) || other.isWindows == isWindows)&&(identical(other.verificationMessage, verificationMessage) || other.verificationMessage == verificationMessage));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateMidiRecoveryRequired&&(identical(other.newVersion, newVersion) || other.newVersion == newVersion)&&(identical(other.isWindows, isWindows) || other.isWindows == isWindows)&&(identical(other.verificationMessage, verificationMessage) || other.verificationMessage == verificationMessage));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,newVersion,isWindows,verificationMessage);
+int get hashCode {
+    return Object.hash(runtimeType,newVersion,isWindows,verificationMessage);
+}
 
 @override
 String toString() {
-  return 'FirmwareUpdateState.midiRecoveryRequired(newVersion: $newVersion, isWindows: $isWindows, verificationMessage: $verificationMessage)';
+    return 'FirmwareUpdateState.midiRecoveryRequired(newVersion: $newVersion, isWindows: $isWindows, verificationMessage: $verificationMessage)';
 }
 
 
@@ -741,7 +756,7 @@ as String?,
 
 class FirmwareUpdateStateSuccess implements FirmwareUpdateState {
   const FirmwareUpdateStateSuccess({required this.newVersion});
-  
+
 
  final  String newVersion;
 
@@ -755,16 +770,18 @@ $FirmwareUpdateStateSuccessCopyWith<FirmwareUpdateStateSuccess> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateSuccess&&(identical(other.newVersion, newVersion) || other.newVersion == newVersion));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateSuccess&&(identical(other.newVersion, newVersion) || other.newVersion == newVersion));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,newVersion);
+int get hashCode {
+    return Object.hash(runtimeType,newVersion);
+}
 
 @override
 String toString() {
-  return 'FirmwareUpdateState.success(newVersion: $newVersion)';
+    return 'FirmwareUpdateState.success(newVersion: $newVersion)';
 }
 
 
@@ -807,7 +824,7 @@ as String,
 
 class FirmwareUpdateStateError implements FirmwareUpdateState {
   const FirmwareUpdateStateError({required this.message, this.errorType = FirmwareErrorType.general, this.failedStage = null, this.firmwarePath = null, this.targetVersion = null});
-  
+
 
  final  String message;
 /// Type of error that occurred
@@ -829,16 +846,18 @@ $FirmwareUpdateStateErrorCopyWith<FirmwareUpdateStateError> get copyWith => _$Fi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateError&&(identical(other.message, message) || other.message == message)&&(identical(other.errorType, errorType) || other.errorType == errorType)&&(identical(other.failedStage, failedStage) || other.failedStage == failedStage)&&(identical(other.firmwarePath, firmwarePath) || other.firmwarePath == firmwarePath)&&(identical(other.targetVersion, targetVersion) || other.targetVersion == targetVersion));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareUpdateStateError&&(identical(other.message, message) || other.message == message)&&(identical(other.errorType, errorType) || other.errorType == errorType)&&(identical(other.failedStage, failedStage) || other.failedStage == failedStage)&&(identical(other.firmwarePath, firmwarePath) || other.firmwarePath == firmwarePath)&&(identical(other.targetVersion, targetVersion) || other.targetVersion == targetVersion));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message,errorType,failedStage,firmwarePath,targetVersion);
+int get hashCode {
+    return Object.hash(runtimeType,message,errorType,failedStage,firmwarePath,targetVersion);
+}
 
 @override
 String toString() {
-  return 'FirmwareUpdateState.error(message: $message, errorType: $errorType, failedStage: $failedStage, firmwarePath: $firmwarePath, targetVersion: $targetVersion)';
+    return 'FirmwareUpdateState.error(message: $message, errorType: $errorType, failedStage: $failedStage, firmwarePath: $firmwarePath, targetVersion: $targetVersion)';
 }
 
 

@@ -218,12 +218,10 @@ class NativeNtx8cvMidiConnection implements Ntx8cvMidiConnection {
 /// device explicitly, so this transport cannot send to the disting NT target.
 class _Ntx8cvMidiCommandTransport implements Ntx8cvMidiTransport {
   _Ntx8cvMidiCommandTransport({
-    required MidiCommand midiCommand,
-    required MidiDevice inputDevice,
-    required MidiDevice outputDevice,
-  }) : _midiCommand = midiCommand,
-       _inputDevice = inputDevice,
-       _outputDevice = outputDevice;
+    required this._midiCommand,
+    required this._inputDevice,
+    required this._outputDevice,
+  });
 
   final MidiCommand _midiCommand;
   final MidiDevice _inputDevice;

@@ -58,11 +58,10 @@ class RoutingFactory {
   /// Creates a new RoutingFactory instance.
   ///
   /// Parameters:
-  /// - [validator]: Optional port compatibility validator to use for all created
+  /// - [_validator]: Optional port compatibility validator to use for all created
   ///   routing instances. If not provided, each routing instance will use its
   ///   default validator.
-  const RoutingFactory({PortCompatibilityValidator? validator})
-    : _validator = validator;
+  const RoutingFactory({this._validator});
 
   /// Creates an appropriate AlgorithmRouting instance based on the provided metadata.
   ///

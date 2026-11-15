@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:nt_helper/services/key_binding_service.dart';
@@ -405,9 +405,8 @@ class _NotesAlgorithmViewState extends State<NotesAlgorithmView> {
         // Instructions
         Text(
           'Enter text with up to $_maxLinesCount lines, $_maxLineLength characters per line. Press Enter to create line breaks.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 8),
 
@@ -433,12 +432,10 @@ class _NotesAlgorithmViewState extends State<NotesAlgorithmView> {
               style: Theme.of(context).textTheme.bodyLarge,
               decoration: InputDecoration(
                 border: const OutlineInputBorder(),
-                hintText:
-                    'Enter your notes here...\n\nPress Enter to create line breaks.\nLong lines will wrap automatically.',
+                hintText: 'Enter your notes here...\n\nPress Enter to create line breaks.\nLong lines will wrap automatically.',
                 hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant
+                      .withValues(alpha: 0.6),
                 ),
               ),
               inputFormatters: [
@@ -512,9 +509,8 @@ class _NotesAlgorithmViewState extends State<NotesAlgorithmView> {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.outline.withValues(alpha: 0.3),
+                          color: Theme.of(context).colorScheme.outline
+                              .withValues(alpha: 0.3),
                         ),
                         borderRadius: BorderRadius.circular(4),
                         color: Theme.of(context)
@@ -538,12 +534,12 @@ class _NotesAlgorithmViewState extends State<NotesAlgorithmView> {
                                               (i >= _maxLinesCount ||
                                                   lines[i].length >
                                                       _maxLineLength)
-                                              ? Theme.of(
-                                                  context,
-                                                ).colorScheme.error
-                                              : Theme.of(
-                                                  context,
-                                                ).colorScheme.onSurfaceVariant,
+                                              ? Theme.of(context)
+                                                    .colorScheme
+                                                    .error
+                                              : Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
                                         ),
                                   ),
                                 ),
@@ -552,9 +548,9 @@ class _NotesAlgorithmViewState extends State<NotesAlgorithmView> {
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color: lines[i].length > _maxLineLength
-                                            ? Theme.of(
-                                                context,
-                                              ).colorScheme.error
+                                            ? Theme.of(context)
+                                                  .colorScheme
+                                                  .error
                                             : Theme.of(context)
                                                   .colorScheme
                                                   .onSurfaceVariant

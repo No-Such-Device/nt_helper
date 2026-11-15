@@ -1,6 +1,6 @@
 import 'dart:ui' show PointerDeviceKind;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -158,7 +158,8 @@ void main() {
         semantics.dispose();
       }
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets('contextual help toggle preserves descendant state', (
     tester,

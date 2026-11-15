@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
@@ -13,7 +13,9 @@ import 'package:nt_helper/cubit/firmware_update_cubit.dart';
 import 'package:nt_helper/cubit/firmware_update_state.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
+
 import '../../test_helpers/ipad_firmware.dart';
+
 import 'package:nt_helper/db/daos/metadata_dao.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/models/firmware_release.dart';
@@ -74,25 +76,21 @@ class _PopCountingNavigatorObserver extends NavigatorObserver {
 class _FirmwareReturnHarness {
   _FirmwareReturnHarness() {
     when(() => database.metadataDao).thenReturn(metadataDao);
-    when(
-      () => metadataDao.hasCachedAlgorithms(),
-    ).thenAnswer((_) async => false);
+    when(() => metadataDao.hasCachedAlgorithms())
+        .thenAnswer((_) async => false);
     when(() => midiCommand.onMidiSetupChanged).thenReturn(null);
-    when(
-      () => firmwareVersionService.fetchAvailableVersions(),
-    ).thenAnswer((_) async => [release]);
+    when(() => firmwareVersionService.fetchAvailableVersions())
+        .thenAnswer((_) async => [release]);
     when(
       () => firmwareVersionService.downloadFirmware(
         release,
         onProgress: any(named: 'onProgress'),
       ),
     ).thenAnswer((_) async => '/tmp/firmware.zip');
-    when(
-      () => flashToolManager.getToolPath(),
-    ).thenAnswer((_) async => '/path/to/nt-flash');
-    when(
-      () => flashToolBridge.flash('/tmp/firmware.zip'),
-    ).thenAnswer((_) => flashProgress.stream);
+    when(() => flashToolManager.getToolPath())
+        .thenAnswer((_) async => '/path/to/nt-flash');
+    when(() => flashToolBridge.flash('/tmp/firmware.zip'))
+        .thenAnswer((_) => flashProgress.stream);
     when(() => flashToolBridge.cancel()).thenAnswer((_) async {});
     distingCubit = _TrackingDistingCubit(database, midiCommand: midiCommand);
   }
@@ -535,9 +533,8 @@ void main() {
         canWorkOffline: false,
       ),
     );
-    when(
-      () => distingCubit.onFirmwareUpdateComplete(),
-    ).thenAnswer((_) async {});
+    when(() => distingCubit.onFirmwareUpdateComplete())
+        .thenAnswer((_) async {});
 
     await tester.pumpWidget(
       MaterialApp(

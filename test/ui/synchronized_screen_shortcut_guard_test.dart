@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -94,14 +94,12 @@ void main() {
       'file-browser $entryPoint load failures are awaited and reported',
       (tester) async {
         when(() => mockCubit.disting()).thenReturn(mockMidiManager);
-        when(
-          () => mockMidiManager.requestDirectoryListing('/'),
-        ).thenAnswer((_) async => null);
-        when(
-          () => mockCubit.loadPreset('/presets/load.json', false),
-        ).thenAnswer((_) async {
-          throw StateError('load failed');
-        });
+        when(() => mockMidiManager.requestDirectoryListing('/'))
+            .thenAnswer((_) async => null);
+        when(() => mockCubit.loadPreset('/presets/load.json', false))
+            .thenAnswer((_) async {
+              throw StateError('load failed');
+            });
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
         switch (entryPoint) {
@@ -123,9 +121,8 @@ void main() {
           'action': PresetAction.load,
         });
         await tester.pumpAndSettle();
-        verify(
-          () => mockCubit.loadPreset('/presets/load.json', false),
-        ).called(1);
+        verify(() => mockCubit.loadPreset('/presets/load.json', false))
+            .called(1);
         expect(find.textContaining('Could not load preset:'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },

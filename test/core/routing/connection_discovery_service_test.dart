@@ -15,11 +15,10 @@ class _FakeRouting extends AlgorithmRouting {
   RoutingState _state = const RoutingState();
 
   _FakeRouting({
-    required String id,
+    required this._id,
     List<core.Port>? inputs,
     List<core.Port>? outputs,
-  }) : _id = id,
-       _inputs = inputs ?? const [],
+  }) : _inputs = inputs ?? const [],
        _outputs = outputs ?? const [] {
     algorithmUuid = _id;
   }
@@ -51,9 +50,8 @@ class _FakeRouting extends AlgorithmRouting {
 class _FakeUsbFromRouting extends UsbFromAlgorithmRouting {
   final List<core.Port> _outputs;
 
-  _FakeUsbFromRouting({required String id, required List<core.Port> outputs})
-    : _outputs = outputs,
-      super(properties: const {}, algorithmUuid: id);
+  _FakeUsbFromRouting({required String id, required this._outputs})
+    : super(properties: const {}, algorithmUuid: id);
 
   @override
   List<core.Port> get outputPorts => _outputs;
@@ -450,59 +448,56 @@ void main() {
     });
 
     group('backward-edge discovery', () {
-      test(
-        'Replace + backward: writer in higher slot produces single backward edge',
-        () {
-          // Reader in slot 0, writer in slot 1 on aux bus 25 (non-physical).
-          // Writer uses Replace mode. Bus values persist across audio frames,
-          // so the reader sees the writer's value one block later — this is
-          // a backward edge regardless of OutputMode.
-          final reader = _FakeRouting(
-            id: 'algo_reader',
-            inputs: [_inPort('reader_in_b25', 25)],
-          );
-          final writer = _FakeRouting(
-            id: 'algo_writer',
-            outputs: [
-              _outPort('writer_out_b25', 25, mode: core.OutputMode.replace),
-            ],
-          );
+      test('Replace + backward: writer in higher slot produces single backward edge', () {
+        // Reader in slot 0, writer in slot 1 on aux bus 25 (non-physical).
+        // Writer uses Replace mode. Bus values persist across audio frames,
+        // so the reader sees the writer's value one block later — this is
+        // a backward edge regardless of OutputMode.
+        final reader = _FakeRouting(
+          id: 'algo_reader',
+          inputs: [_inPort('reader_in_b25', 25)],
+        );
+        final writer = _FakeRouting(
+          id: 'algo_writer',
+          outputs: [
+            _outPort('writer_out_b25', 25, mode: core.OutputMode.replace),
+          ],
+        );
 
-          final conns = ConnectionDiscoveryService.discoverConnections([
-            reader,
-            writer,
-          ]);
+        final conns = ConnectionDiscoveryService.discoverConnections([
+          reader,
+          writer,
+        ]);
 
-          final backwardConns = conns
-              .where(
-                (c) =>
-                    c.connectionType == ConnectionType.algorithmToAlgorithm &&
-                    c.sourcePortId == 'writer_out_b25' &&
-                    c.destinationPortId == 'reader_in_b25',
-              )
-              .toList();
-
-          expect(backwardConns, hasLength(1));
-          final edge = backwardConns.single;
-          expect(edge.isBackwardEdge, isTrue);
-          expect(edge.isPartial, isFalse);
-          expect(edge.outputMode, core.OutputMode.replace);
-          expect(edge.busNumber, 25);
-
-          // No partial chip connections should exist for either port.
-          expect(
-            conns.any(
+        final backwardConns = conns
+            .where(
               (c) =>
-                  c.isPartial &&
-                  (c.sourcePortId == 'writer_out_b25' ||
-                      c.destinationPortId == 'writer_out_b25' ||
-                      c.sourcePortId == 'reader_in_b25' ||
-                      c.destinationPortId == 'reader_in_b25'),
-            ),
-            isFalse,
-          );
-        },
-      );
+                  c.connectionType == ConnectionType.algorithmToAlgorithm &&
+                  c.sourcePortId == 'writer_out_b25' &&
+                  c.destinationPortId == 'reader_in_b25',
+            )
+            .toList();
+
+        expect(backwardConns, hasLength(1));
+        final edge = backwardConns.single;
+        expect(edge.isBackwardEdge, isTrue);
+        expect(edge.isPartial, isFalse);
+        expect(edge.outputMode, core.OutputMode.replace);
+        expect(edge.busNumber, 25);
+
+        // No partial chip connections should exist for either port.
+        expect(
+          conns.any(
+            (c) =>
+                c.isPartial &&
+                (c.sourcePortId == 'writer_out_b25' ||
+                    c.destinationPortId == 'writer_out_b25' ||
+                    c.sourcePortId == 'reader_in_b25' ||
+                    c.destinationPortId == 'reader_in_b25'),
+          ),
+          isFalse,
+        );
+      });
 
       test(
         'Add + backward: writer in higher slot produces single backward edge',
@@ -540,7 +535,8 @@ void main() {
           expect(edge.isPartial, isFalse);
           expect(edge.outputMode, core.OutputMode.add);
         },
-      tags: ['regression']);
+        tags: ['regression'],
+      );
 
       test(
         'self-write: same-algorithm in/out on same bus is not connected',
@@ -568,7 +564,8 @@ void main() {
             isFalse,
           );
         },
-      tags: ['regression']);
+        tags: ['regression'],
+      );
 
       test('Replace + forward: writer in lower slot produces forward edge', () {
         // Routings list [writer, reader]: writer.algorithmIndex == 0,
@@ -606,56 +603,53 @@ void main() {
         expect(edge.outputMode, core.OutputMode.replace);
       }, tags: ['regression']);
 
-      test(
-        'multiple Replace writers in higher slots produce one backward edge per writer',
-        () {
-          // Reader in slot 0, two Replace writers in slots 1 and 2 on bus 25.
-          // Discovery is per (writer, reader) pair — matches dd7811d's
-          // original behavior. A future contribution-aware filter on the
-          // backward branch would be a deliberate, test-visible change.
-          final reader = _FakeRouting(
-            id: 'algo_reader',
-            inputs: [_inPort('reader_in_b25', 25)],
-          );
-          final writer1 = _FakeRouting(
-            id: 'algo_writer1',
-            outputs: [
-              _outPort('writer1_out_b25', 25, mode: core.OutputMode.replace),
-            ],
-          );
-          final writer2 = _FakeRouting(
-            id: 'algo_writer2',
-            outputs: [
-              _outPort('writer2_out_b25', 25, mode: core.OutputMode.replace),
-            ],
-          );
+      test('multiple Replace writers in higher slots produce one backward edge per writer', () {
+        // Reader in slot 0, two Replace writers in slots 1 and 2 on bus 25.
+        // Discovery is per (writer, reader) pair — matches dd7811d's
+        // original behavior. A future contribution-aware filter on the
+        // backward branch would be a deliberate, test-visible change.
+        final reader = _FakeRouting(
+          id: 'algo_reader',
+          inputs: [_inPort('reader_in_b25', 25)],
+        );
+        final writer1 = _FakeRouting(
+          id: 'algo_writer1',
+          outputs: [
+            _outPort('writer1_out_b25', 25, mode: core.OutputMode.replace),
+          ],
+        );
+        final writer2 = _FakeRouting(
+          id: 'algo_writer2',
+          outputs: [
+            _outPort('writer2_out_b25', 25, mode: core.OutputMode.replace),
+          ],
+        );
 
-          final conns = ConnectionDiscoveryService.discoverConnections([
-            reader,
-            writer1,
-            writer2,
-          ]);
+        final conns = ConnectionDiscoveryService.discoverConnections([
+          reader,
+          writer1,
+          writer2,
+        ]);
 
-          final backwardConns = conns
-              .where(
-                (c) =>
-                    c.connectionType == ConnectionType.algorithmToAlgorithm &&
-                    c.destinationPortId == 'reader_in_b25' &&
-                    c.isBackwardEdge,
-              )
-              .toList();
+        final backwardConns = conns
+            .where(
+              (c) =>
+                  c.connectionType == ConnectionType.algorithmToAlgorithm &&
+                  c.destinationPortId == 'reader_in_b25' &&
+                  c.isBackwardEdge,
+            )
+            .toList();
 
-          expect(backwardConns, hasLength(2));
-          for (final edge in backwardConns) {
-            expect(edge.isPartial, isFalse);
-            expect(edge.outputMode, core.OutputMode.replace);
-          }
-          expect(backwardConns.map((c) => c.sourcePortId).toSet(), {
-            'writer1_out_b25',
-            'writer2_out_b25',
-          });
-        },
-      );
+        expect(backwardConns, hasLength(2));
+        for (final edge in backwardConns) {
+          expect(edge.isPartial, isFalse);
+          expect(edge.outputMode, core.OutputMode.replace);
+        }
+        expect(backwardConns.map((c) => c.sourcePortId).toSet(), {
+          'writer1_out_b25',
+          'writer2_out_b25',
+        });
+      });
     });
   });
 }

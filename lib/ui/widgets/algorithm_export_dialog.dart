@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:nt_helper/services/algorithm_json_exporter.dart';
 import 'package:nt_helper/db/database.dart';
@@ -59,11 +59,10 @@ class _AlgorithmExportDialogState extends State<AlgorithmExportDialog> {
     try {
       final exporter = AlgorithmJsonExporter(widget.database);
       final result = await FilePicker.saveFile(
+        mimeType: 'application/json',
         dialogTitle: 'Save Algorithm Details Export',
         fileName:
             'nt_algorithm_details_${DateTime.now().millisecondsSinceEpoch ~/ 1000}.json',
-        type: FileType.custom,
-        allowedExtensions: ['json'],
         bytes: await exporter.buildAlgorithmDetailsBytes(),
       );
       if (result == null) {
@@ -126,9 +125,8 @@ class _AlgorithmExportDialogState extends State<AlgorithmExportDialog> {
                   children: [
                     Text(
                       'Export Preview:',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Text('• ${_previewData!['totalAlgorithms']} algorithms'),
@@ -143,9 +141,8 @@ class _AlgorithmExportDialogState extends State<AlgorithmExportDialog> {
                       const SizedBox(height: 8),
                       Text(
                         'Sample algorithms:',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(fontWeight: FontWeight.w500),
                       ),
                       for (final sample
                           in _previewData!['sampleAlgorithms'] as List<String>)
@@ -153,9 +150,9 @@ class _AlgorithmExportDialogState extends State<AlgorithmExportDialog> {
                           '  • $sample',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
                         ),
                     ],

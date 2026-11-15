@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'dart:async';
+
 import 'package:nt_helper/services/ipad_firmware_session.dart';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -336,8 +337,7 @@ class FirmwareUpdateAnnouncementListener extends StatelessWidget {
         } else if (state is FirmwareUpdateStateMidiRecoveryRequired) {
           SemanticsService.sendAnnouncement(
             View.of(context),
-            state.verificationMessage ??
-                'Firmware installation completed, but the Disting NT did not return to MIDI',
+            state.verificationMessage ?? 'Firmware installation completed, but the Disting NT did not return to MIDI',
             TextDirection.ltr,
           );
         }
@@ -533,9 +533,8 @@ class _InitialStateView extends StatelessWidget {
         // Scrollable content
         Expanded(
           child: ScrollConfiguration(
-            behavior: ScrollConfiguration.of(
-              context,
-            ).copyWith(scrollbars: false),
+            behavior: ScrollConfiguration.of(context)
+                .copyWith(scrollbars: false),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1098,8 +1097,7 @@ class _MidiRecoveryView extends StatelessWidget {
             ? 'Firmware Installed'
             : 'Version not verified',
         message: Text(
-          state.verificationMessage ??
-              'The firmware update completed successfully, but the Disting NT did not return to MIDI within one minute. Check the NT\'s USB connection and power, then power-cycle the NT. If it still does not appear, restart the computer.',
+          state.verificationMessage ?? 'The firmware update completed successfully, but the Disting NT did not return to MIDI within one minute. Check the NT\'s USB connection and power, then power-cycle the NT. If it still does not appear, restart the computer.',
           textAlign: TextAlign.center,
         ),
         value: 1,

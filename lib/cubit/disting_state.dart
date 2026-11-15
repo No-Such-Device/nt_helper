@@ -28,12 +28,12 @@ sealed class Slot with _$Slot {
 @freezed
 sealed class MappedParameter with _$MappedParameter {
   const factory MappedParameter({
-    required final ParameterInfo parameter,
-    required final ParameterValue value,
-    required final ParameterEnumStrings enums,
-    required final ParameterValueString valueString,
-    required final Mapping mapping,
-    required final Algorithm algorithm,
+    required ParameterInfo parameter,
+    required ParameterValue value,
+    required ParameterEnumStrings enums,
+    required ParameterValueString valueString,
+    required Mapping mapping,
+    required Algorithm algorithm,
   }) = _MappedParameter;
 }
 

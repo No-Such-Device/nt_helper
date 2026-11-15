@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Fixed recovery slots: Retry feedback never moves the title or controls.
 class GalleryRecoveryPanel extends StatelessWidget {

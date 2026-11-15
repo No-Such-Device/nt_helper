@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -32,8 +32,6 @@ void main() {
       mockDistingCubit = MockDistingCubit();
     });
 
-    
-
     testWidgets(
       'hides backward connections from canvas semantics when setting disabled',
       (tester) async {
@@ -45,9 +43,8 @@ void main() {
 
         final loadedState = _loadedStateWithBackwardConnection();
         when(mockRoutingCubit.state).thenReturn(loadedState);
-        when(
-          mockRoutingCubit.stream,
-        ).thenAnswer((_) => Stream.value(loadedState));
+        when(mockRoutingCubit.stream)
+            .thenAnswer((_) => Stream.value(loadedState));
 
         await tester.pumpWidget(
           MaterialApp(

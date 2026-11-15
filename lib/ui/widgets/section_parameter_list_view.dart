@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
@@ -444,9 +444,8 @@ class _SectionParameterListViewState extends State<SectionParameterListView> {
                 value: perfPageIndex,
                 isDense: true,
                 underline: const SizedBox.shrink(),
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(fontSize: 11),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(fontSize: 11),
                 hint: Text(_usePerfPageItems ? 'Index' : 'Page'),
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 onChanged: (newValue) {
@@ -489,9 +488,8 @@ class _SectionParameterListViewState extends State<SectionParameterListView> {
       initiallyExpanded: !isEmpty,
       title: Text(
         'Performance Parameters (${perfParams.length})',
-        style: Theme.of(
-          context,
-        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+        style: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.bold),
       ),
       children: isEmpty
           ? [
@@ -682,9 +680,8 @@ class _HeaderShadedExpansionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final inheritedListTileTheme = ListTileTheme.of(context);
     final headerListTileTheme = inheritedListTileTheme.copyWith(
-      tileColor: Theme.of(
-        context,
-      ).colorScheme.onSurface.withValues(alpha: 0.10),
+      tileColor: Theme.of(context).colorScheme.onSurface
+          .withValues(alpha: 0.10),
     );
 
     return ListTileTheme(

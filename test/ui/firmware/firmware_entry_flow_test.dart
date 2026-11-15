@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:archive/archive.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
@@ -12,7 +12,9 @@ import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/cubit/firmware_update_cubit.dart';
 import 'package:nt_helper/cubit/firmware_update_state.dart';
+
 import '../../test_helpers/ipad_firmware.dart';
+
 import 'package:nt_helper/db/daos/metadata_dao.dart';
 import 'package:nt_helper/db/daos/presets_dao.dart';
 import 'package:nt_helper/db/database.dart';
@@ -151,9 +153,8 @@ enum _FirmwareSource { downloaded, local }
 class _FirmwareEntryHarness {
   _FirmwareEntryHarness._() {
     when(() => database.metadataDao).thenReturn(metadataDao);
-    when(
-      () => metadataDao.hasCachedAlgorithms(),
-    ).thenAnswer((_) async => false);
+    when(() => metadataDao.hasCachedAlgorithms())
+        .thenAnswer((_) async => false);
     when(() => midiCommand.onMidiSetupChanged).thenReturn(null);
     when(() => midiCommand.devices).thenAnswer((_) async {
       midiSnapshots++;
@@ -161,21 +162,18 @@ class _FirmwareEntryHarness {
           ? [initialInput, initialOutput]
           : [returnedInput, returnedOutput];
     });
-    when(
-      () => firmwareVersionService.fetchAvailableVersions(),
-    ).thenAnswer((_) async => [release]);
+    when(() => firmwareVersionService.fetchAvailableVersions())
+        .thenAnswer((_) async => [release]);
     when(
       () => firmwareVersionService.downloadFirmware(
         release,
         onProgress: any(named: 'onProgress'),
       ),
     ).thenAnswer((_) async => downloadedFirmwarePath);
-    when(
-      () => flashToolManager.getToolPath(),
-    ).thenAnswer((_) async => '/path/to/nt-flash');
-    when(
-      () => flashToolBridge.flash(any()),
-    ).thenAnswer((_) => flashProgress.stream);
+    when(() => flashToolManager.getToolPath())
+        .thenAnswer((_) async => '/path/to/nt-flash');
+    when(() => flashToolBridge.flash(any()))
+        .thenAnswer((_) => flashProgress.stream);
     when(() => flashToolBridge.cancel()).thenAnswer((_) async {});
 
     distingCubit = _TrackingDistingCubit(database, midiCommand: midiCommand);
@@ -419,12 +417,10 @@ void main() {
       addTearDown(acquisition.dispose);
       final incoming = StreamController<MidiPacket>.broadcast();
       addTearDown(incoming.close);
-      when(
-        () => harness.midiCommand.onMidiPacketReceived,
-      ).thenAnswer((_) => incoming.stream);
-      when(
-        () => harness.midiCommand.connectToDevice(any()),
-      ).thenAnswer((_) async {});
+      when(() => harness.midiCommand.onMidiPacketReceived)
+          .thenAnswer((_) => incoming.stream);
+      when(() => harness.midiCommand.connectToDevice(any()))
+          .thenAnswer((_) async {});
       var versionRequests = 0, bootloaderRequests = 0;
       when(
         () => harness.midiCommand.sendData(
@@ -528,12 +524,10 @@ void main() {
       expect(states.whereType<FirmwareUpdateStateSuccess>(), hasLength(1));
       expect(find.byType(FirmwareUpdateScreen), findsNothing);
       expect(native.starts, 1);
-      verify(
-        () => harness.midiCommand.connectToDevice(harness.returnedInput),
-      ).called(1);
-      verify(
-        () => harness.midiCommand.connectToDevice(harness.returnedOutput),
-      ).called(1);
+      verify(() => harness.midiCommand.connectToDevice(harness.returnedInput))
+          .called(1);
+      verify(() => harness.midiCommand.connectToDevice(harness.returnedOutput))
+          .called(1);
       verifyNever(() => harness.flashToolBridge.flash(any()));
       await tester.pumpWidget(const SizedBox.shrink());
     },
@@ -743,9 +737,8 @@ void main() {
         final flashToolManager = _MockFlashToolManager();
         final flashToolBridge = _MockFlashToolBridge();
         whenListen(cubit, states.stream, initialState: state);
-        when(
-          () => firmwareVersionService.fetchAvailableVersions(),
-        ).thenAnswer((_) async => const []);
+        when(() => firmwareVersionService.fetchAvailableVersions())
+            .thenAnswer((_) async => const []);
         addTearDown(states.close);
 
         tester.view.devicePixelRatio = 1;

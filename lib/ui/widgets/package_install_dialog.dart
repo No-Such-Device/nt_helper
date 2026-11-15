@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/foundation.dart';
+
 import '../../models/package_analysis.dart';
 import '../../models/package_file.dart';
 import '../../services/file_conflict_detector.dart';

@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:nt_helper/core/routing/bus_color_palette.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
@@ -130,9 +130,8 @@ class _BusPickerDialogState extends State<BusPickerDialog> {
                       ),
                     ),
                     child: ScrollConfiguration(
-                      behavior: ScrollConfiguration.of(
-                        context,
-                      ).copyWith(scrollbars: false),
+                      behavior: ScrollConfiguration.of(context)
+                          .copyWith(scrollbars: false),
                       child: Scrollbar(
                         controller: _scrollController,
                         thickness: 6,

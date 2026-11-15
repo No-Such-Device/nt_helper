@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:haptic_feedback/haptic_feedback.dart';
@@ -345,9 +345,9 @@ class _AlgorithmListTileState extends State<_AlgorithmListTile>
                           builder: (context, child) {
                             final t = _fadeController.value;
                             final tileColor = algorithmBoxColor;
-                            final maskColor = Theme.of(
-                              context,
-                            ).colorScheme.onSurface;
+                            final maskColor = Theme.of(context)
+                                .colorScheme
+                                .onSurface;
                             return ShaderMask(
                               shaderCallback: (bounds) => LinearGradient(
                                 colors: [

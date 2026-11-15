@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'plugin_info.dart';
@@ -9,6 +9,7 @@ part of 'plugin_info.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -28,16 +29,21 @@ $PluginInfoCopyWith<PluginInfo> get copyWith => _$PluginInfoCopyWithImpl<PluginI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.type, type) || other.type == type)&&(identical(other.sizeBytes, sizeBytes) || other.sizeBytes == sizeBytes)&&(identical(other.description, description) || other.description == description)&&(identical(other.lastModified, lastModified) || other.lastModified == lastModified));
+  final _this = this as PluginInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginInfo&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.path, _this.path) || other.path == _this.path)&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.sizeBytes, _this.sizeBytes) || other.sizeBytes == _this.sizeBytes)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.lastModified, _this.lastModified) || other.lastModified == _this.lastModified));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,path,type,sizeBytes,description,lastModified);
+int get hashCode {
+  final _this = this as PluginInfo;
+  return Object.hash(runtimeType,_this.name,_this.path,_this.type,_this.sizeBytes,_this.description,_this.lastModified);
+}
 
 @override
 String toString() {
-  return 'PluginInfo(name: $name, path: $path, type: $type, sizeBytes: $sizeBytes, description: $description, lastModified: $lastModified)';
+  final _this = this as PluginInfo;
+  return 'PluginInfo(name: ${_this.name}, path: ${_this.path}, type: ${_this.type}, sizeBytes: ${_this.sizeBytes}, description: ${_this.description}, lastModified: ${_this.lastModified})';
 }
 
 
@@ -66,7 +72,7 @@ class _$PluginInfoCopyWithImpl<$Res>
 /// Create a copy of PluginInfo
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? path = null,Object? type = null,Object? sizeBytes = null,Object? description = freezed,Object? lastModified = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginInfo(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
@@ -231,16 +237,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.type, type) || other.type == type)&&(identical(other.sizeBytes, sizeBytes) || other.sizeBytes == sizeBytes)&&(identical(other.description, description) || other.description == description)&&(identical(other.lastModified, lastModified) || other.lastModified == lastModified));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.type, type) || other.type == type)&&(identical(other.sizeBytes, sizeBytes) || other.sizeBytes == sizeBytes)&&(identical(other.description, description) || other.description == description)&&(identical(other.lastModified, lastModified) || other.lastModified == lastModified));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,path,type,sizeBytes,description,lastModified);
+int get hashCode {
+    return Object.hash(runtimeType,name,path,type,sizeBytes,description,lastModified);
+}
 
 @override
 String toString() {
-  return 'PluginInfo(name: $name, path: $path, type: $type, sizeBytes: $sizeBytes, description: $description, lastModified: $lastModified)';
+    return 'PluginInfo(name: $name, path: $path, type: $type, sizeBytes: $sizeBytes, description: $description, lastModified: $lastModified)';
 }
 
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
+
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/chat/models/chat_settings.dart';
 import 'package:nt_helper/chat/services/model_catalog_service.dart';
@@ -65,9 +66,8 @@ void main() {
         builder: (context, child) => RepaintBoundary(
           key: boundary,
           child: MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(scale)),
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(scale)),
             child: child!,
           ),
         ),
@@ -232,7 +232,8 @@ void main() {
       expect(tester.getRect(find.widgetWithText(FilledButton, 'Save')), save);
       expect(settings.chatLlmProvider, LlmProviderType.gemini);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
   testWidgets(
     'late model discovery cannot contaminate another provider or move Save',
     (tester) async {
@@ -272,7 +273,8 @@ void main() {
       );
       expect(tester.getRect(find.widgetWithText(FilledButton, 'Save')), save);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
   testWidgets(
     'Claude subscription toggle does not turn Gemini into a Claude provider',
     (tester) async {
@@ -284,7 +286,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(settings.chatLlmProvider, LlmProviderType.gemini);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
   testWidgets(
     'Cancel never persists edited credentials or provider selection',
     (tester) async {
@@ -302,8 +305,8 @@ void main() {
         'router-key',
       );
     },
-  tags: ['regression']);
-  
+    tags: ['regression'],
+  );
 
   testWidgets(
     'compact enlarged settings have named controls and remain scrollable',

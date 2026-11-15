@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as dart_ui;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/core/routing/models/connection.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
@@ -202,8 +202,7 @@ void main() {
           expect(
             maxRun,
             greaterThan(0),
-            reason:
-                'expected to find warning-colour pixels on the rendered backward edge',
+            reason: 'expected to find warning-colour pixels on the rendered backward edge',
           );
           expect(
             maxRun,

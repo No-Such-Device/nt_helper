@@ -92,12 +92,10 @@ class ChatService {
   List<LlmMessage>? lastGoodHistory;
 
   ChatService({
-    required LlmProvider provider,
-    required ToolBridgeService toolBridge,
-    required String systemPrompt,
-  }) : _provider = provider,
-       _toolBridge = toolBridge,
-       _systemPrompt = systemPrompt;
+    required this._provider,
+    required this._toolBridge,
+    required this._systemPrompt,
+  });
 
   Future<void> cancel() async {
     _cancel.cancel('Chat stopped');

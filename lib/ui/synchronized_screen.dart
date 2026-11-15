@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -841,9 +841,9 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                                   },
                                   child: Container(
                                     width: 4,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainerHighest,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainerHighest,
                                   ),
                                 ),
                               ),
@@ -1071,9 +1071,8 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                       width: 4,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -1687,9 +1686,8 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
     }
 
     try {
-      final copied = await _algorithmClipboardService(
-        cubit,
-      ).copyFromDistingState(state, selected);
+      final copied = await _algorithmClipboardService(cubit)
+          .copyFromDistingState(state, selected);
       if (copied > 0) {
         // Clear the on-screen selection now that it has been snapshotted.
         _clipboardSelection.value = <int>{};
@@ -2348,9 +2346,8 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
       icon: const Icon(Icons.more_vert, semanticLabel: 'More options'),
       onSelected: (value) async {
         if (value == 'expanders') {
-          await Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const Ntx8cvScreen()));
+          await Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => const Ntx8cvScreen()));
         } else if (value == 'system') {
           await _showSystemSubmenu(context, cubit);
           if (mounted) {
@@ -2434,9 +2431,8 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                             TextButton(
                               child: const Text('Save First & New'),
                               onPressed: () {
-                                Navigator.of(
-                                  dialogContext,
-                                ).pop('save_first_new');
+                                Navigator.of(dialogContext)
+                                    .pop('save_first_new');
                               },
                             ),
                           ],
@@ -2691,8 +2687,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                         applicationName: "NT Helper",
                         applicationVersion:
                             "${info.version} (${info.buildNumber})",
-                        applicationLegalese:
-                            "Written by Neal Sanche (Thorinside), 2026, No Rights Reserved.",
+                        applicationLegalese: "Written by Neal Sanche (Thorinside), 2026, No Rights Reserved.",
                         children: [
                           Padding(
                             padding: const EdgeInsets.all(24.0),
@@ -2700,9 +2695,9 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                               children: [
                                 Text(
                                   "Disting Firmware: ${widget.distingVersion}",
-                                  style: Theme.of(
-                                    dialogCtx,
-                                  ).textTheme.bodySmall,
+                                  style: Theme.of(dialogCtx)
+                                      .textTheme
+                                      .bodySmall,
                                 ),
                                 if (Platform.isMacOS ||
                                     Platform.isLinux ||
@@ -2776,9 +2771,9 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                           style: Theme.of(context).textTheme.labelLarge
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
                         ),
                         Text(
@@ -2787,9 +2782,9 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                               : widget.presetName.trim(),
                           style: Theme.of(context).textTheme.labelLarge
                               ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
                         ),
                       ],

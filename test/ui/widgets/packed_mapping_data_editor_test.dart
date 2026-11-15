@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -159,7 +159,8 @@ void main() {
           isNot(contains('Channel pressure')),
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets(
       'unsupported expressive MIDI learn emits one warning and does not save',
@@ -245,7 +246,8 @@ void main() {
           equals(1),
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets(
       'unsupported expressive MIDI dropdown edit warns and preserves selection',
@@ -313,7 +315,8 @@ void main() {
           isTrue,
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets(
       'unsupported expressive MIDI control edit warns and preserves state',
@@ -381,7 +384,8 @@ void main() {
           isTrue,
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets('Pitch bend disables MIDI CC field and relative switch', (
       tester,
@@ -417,10 +421,6 @@ void main() {
       expect(switchFinder, findsOneWidget);
       expect(tester.widget<SwitchListTile>(switchFinder).onChanged, isNull);
     });
-
-    
-
-    
 
     testWidgets('MIDI Relative switch disabled for 14-bit CC low', (
       tester,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/ui/reset_outputs_dialog.dart';

@@ -19,8 +19,8 @@ class PresetCheckpoint {
     required this.presetName,
     required this.label,
     required this.createdAt,
-    required List<_SlotSnapshot> slots,
-  }) : _slots = slots;
+    required this._slots,
+  });
 
   int get slotCount => _slots.length;
 }

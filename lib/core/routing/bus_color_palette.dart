@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Deterministic colors for bus "wires" in the Bus Lanes view.

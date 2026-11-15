@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/core/routing/models/connection.dart';
 import 'package:nt_helper/ui/widgets/routing/invalid_connection_tooltip.dart';
@@ -114,12 +114,6 @@ void main() {
       expect(tooltipWidget.connection, equals(connection));
     });
 
-    
-
-    
-
-    
-
     testWidgets('should handle missing slot numbers', (
       WidgetTester tester,
     ) async {
@@ -156,8 +150,6 @@ void main() {
       expect(tooltipWidget.sourceSlot, isNull);
       expect(tooltipWidget.destinationSlot, isNull);
     });
-
-    
   });
 
   group('InvalidConnectionTooltip Animation Tests', () {

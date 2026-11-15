@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/cubit/ntx_8cv_settings_cubit.dart';
 import 'package:nt_helper/ui/ntx_8cv/ntx_8cv_screen.dart';
@@ -114,7 +114,8 @@ void main() {
       expect(geometry(), confirmedGeometry);
       semantics.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'disting NT Expander Settings toggles its independent audio channel row',
@@ -458,7 +459,8 @@ void main() {
       );
       expect(geometry(), confirmedGeometry);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'offers exactly three Mode choices while ES-5 remains available in each',

@@ -1,5 +1,5 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -141,7 +141,8 @@ void main() {
       expect(horizontal.pixels, 0);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets('trackpad pan still scrolls the table horizontally', (
     tester,

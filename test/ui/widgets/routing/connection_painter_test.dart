@@ -1,5 +1,6 @@
 import 'dart:ui';
-import 'package:flutter/material.dart';
+
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/core/routing/models/connection.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
@@ -229,8 +230,6 @@ void main() {
     });
 
     group('Hover Visual Feedback', () {
-      
-
       test('should not apply hover styling when not hovered', () {
         final painter = ConnectionPainter(
           connections: [mockConnectionData],
@@ -524,8 +523,6 @@ void main() {
         expect(painter.connections, isEmpty);
         expect(painter.theme, equals(theme));
       });
-
-      
     });
 
     group('Theme Integration', () {
@@ -558,8 +555,6 @@ void main() {
           );
         },
       );
-
-      
     });
 
     group('Performance', () {
@@ -864,8 +859,6 @@ void main() {
     });
 
     group('Obstacle Avoidance', () {
-      
-
       test(
         'should paint without error when obstacles are present (masking)',
         () {

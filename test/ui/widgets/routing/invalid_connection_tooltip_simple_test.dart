@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/core/routing/models/connection.dart';
 import 'package:nt_helper/ui/widgets/routing/invalid_connection_tooltip.dart';
@@ -175,10 +175,6 @@ void main() {
   });
 
   group('InvalidConnectionTooltip Tooltip Message Generation', () {
-    
-
-    
-
     test('should handle custom message', () {
       const customMessage = 'Custom tooltip message';
       final tooltip = InvalidConnectionTooltip(
@@ -196,7 +192,5 @@ void main() {
     });
   });
 
-  group('InvalidConnectionTooltip Animation Setup', () {
-    
-  });
+  group('InvalidConnectionTooltip Animation Setup', () {});
 }

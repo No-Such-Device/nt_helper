@@ -53,6 +53,27 @@ The Disting NT does not need to be connected for the app window to open. After t
 - **Algorithm Matching**: Added fuzzy category matching for better algorithm discovery
 - **Routing Improvements**: Enhanced real-time routing data queries from hardware
 
+## Development toolchain
+
+Use FVM **4.3.2** with the committed `.fvmrc`: **Flutter 3.50.0 stable**, which
+bundles **Dart 3.14.0**. CI and release builds use the same Flutter version; do
+not install or upgrade Dart separately.
+
+```bash
+fvm install
+fvm flutter pub get
+fvm dart run build_runner build
+fvm flutter analyze --no-pub
+fvm flutter test --no-pub
+fvm flutter build macos --release --no-pub
+```
+
+To make this SDK the shell default, run `fvm global 3.50.0` and ensure
+`$HOME/fvm/default/bin` precedes other Flutter/Dart SDK directories in `PATH`.
+Verify both `flutter --version` and `dart --version` resolve through that FVM
+installation. See [the upgrade review](docs/flutter-3.50-upgrade.md) for dependency
+migrations, intentionally held versions, and validation limits.
+
 ## Contributing
 
 Contributions, issues, and feature requests are welcome! Please feel free to check the [issues page](https://github.com/thorinside/nt_helper/issues).

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -43,7 +44,7 @@ class FlashToolManager {
     String? operatingSystemOverride,
     String? resolvedExecutableOverride,
     bool? isSandboxedOverride,
-    Directory? toolDirectoryOverride,
+    this._toolDirectoryOverride,
   }) : _httpClient = httpClient ?? http.Client(),
        _trustedClientFactory =
            trustedClientFactory ?? GitHubTlsSupport.createTrustedClient,
@@ -53,8 +54,7 @@ class FlashToolManager {
            resolvedExecutableOverride ?? Platform.resolvedExecutable,
        _isSandboxed =
            isSandboxedOverride ??
-           (Platform.isMacOS && SandboxUtils.isSandboxed),
-       _toolDirectoryOverride = toolDirectoryOverride;
+           (Platform.isMacOS && SandboxUtils.isSandboxed);
 
   /// Get the path to the nt-flash tool
   ///

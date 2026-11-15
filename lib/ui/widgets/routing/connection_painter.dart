@@ -1,15 +1,18 @@
 import 'dart:math' as math;
 import 'dart:ui' as dart_ui;
-import 'package:flutter/material.dart';
+
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/core/routing/models/connection.dart'
     show Connection, ConnectionType;
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:collection/collection.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
+
 import 'accessibility_colors.dart';
 import 'ghost_connection_tooltip.dart';
 import 'connection_theme.dart';
 import 'bus_label_formatter.dart';
+
 import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Represents connection data with bus and output mode information
@@ -22,8 +25,7 @@ class ConnectionData {
   final bool isSelected;
   final bool isHighlighted;
   final bool isPhysicalConnection; // True if this is a physical connection
-  final bool?
-  isInputConnection; // True if physical input connection, false if output, null if not physical
+  final bool? isInputConnection; // True if physical input connection, false if output, null if not physical
   final String? busLabel; // Bus label for partial connections
   final Function(bool isHovering)?
   onLabelHover; // Callback for label hover events

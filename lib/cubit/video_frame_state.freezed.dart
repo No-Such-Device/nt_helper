@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'video_frame_state.dart';
@@ -9,6 +9,7 @@ part of 'video_frame_state.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -20,7 +21,7 @@ mixin _$VideoFrameState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VideoFrameState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VideoFrameState);
 }
 
 
@@ -29,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'VideoFrameState()';
+    return 'VideoFrameState()';
 }
 
 
@@ -182,7 +183,7 @@ return initial();case _:
 
 class _VideoFrameState implements VideoFrameState {
   const _VideoFrameState({this.frameData, this.frameCounter = 0, this.lastFrameTime, this.fps = 0.0});
-  
+
 
  final  Uint8List? frameData;
 @JsonKey() final  int frameCounter;
@@ -199,16 +200,18 @@ _$VideoFrameStateCopyWith<_VideoFrameState> get copyWith => __$VideoFrameStateCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _VideoFrameState&&const DeepCollectionEquality().equals(other.frameData, frameData)&&(identical(other.frameCounter, frameCounter) || other.frameCounter == frameCounter)&&(identical(other.lastFrameTime, lastFrameTime) || other.lastFrameTime == lastFrameTime)&&(identical(other.fps, fps) || other.fps == fps));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _VideoFrameState&&const DeepCollectionEquality().equals(other.frameData, frameData)&&(identical(other.frameCounter, frameCounter) || other.frameCounter == frameCounter)&&(identical(other.lastFrameTime, lastFrameTime) || other.lastFrameTime == lastFrameTime)&&(identical(other.fps, fps) || other.fps == fps));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(frameData),frameCounter,lastFrameTime,fps);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(frameData),frameCounter,lastFrameTime,fps);
+}
 
 @override
 String toString() {
-  return 'VideoFrameState(frameData: $frameData, frameCounter: $frameCounter, lastFrameTime: $lastFrameTime, fps: $fps)';
+    return 'VideoFrameState(frameData: $frameData, frameCounter: $frameCounter, lastFrameTime: $lastFrameTime, fps: $fps)';
 }
 
 
@@ -254,7 +257,7 @@ as double,
 
 class _Initial implements VideoFrameState {
   const _Initial();
-  
+
 
 
 
@@ -263,7 +266,7 @@ class _Initial implements VideoFrameState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Initial);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Initial);
 }
 
 
@@ -272,7 +275,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'VideoFrameState.initial()';
+    return 'VideoFrameState.initial()';
 }
 
 

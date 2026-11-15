@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/poly_multisample/poly_audio_preview_service.dart';
@@ -290,35 +290,38 @@ class _MappingSection extends StatelessWidget {
                 child: const Text('Root'),
               ),
               Expanded(
-                child: Semantics(
-                  label: 'Root value',
-                  value: rootDisplay,
-                  button: true,
-                  child: PopupMenuButton<int>(
-                    key: const ValueKey('poly-mapping-root-menu'),
-                    tooltip: 'Choose root note',
-                    padding: EdgeInsets.zero,
-                    initialValue:
-                        rootSelection.mixed ||
-                            rootSelection.value == null ||
-                            rootSelection.value!.automatic
-                        ? null
-                        : rootSelection.value!.midi,
-                    itemBuilder: (context) => _rootNoteMenuEntries(),
-                    onSelected: (value) {
-                      cubit.updateSelectedRoot(value, manager: manager);
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            rootDisplay,
-                            overflow: TextOverflow.ellipsis,
+                child: MergeSemantics(
+                  key: const ValueKey('poly-mapping-root-semantics'),
+                  child: Semantics(
+                    label: 'Root value',
+                    value: rootDisplay,
+                    button: true,
+                    child: PopupMenuButton<int>(
+                      key: const ValueKey('poly-mapping-root-menu'),
+                      tooltip: 'Choose root note',
+                      padding: EdgeInsets.zero,
+                      initialValue:
+                          rootSelection.mixed ||
+                              rootSelection.value == null ||
+                              rootSelection.value!.automatic
+                          ? null
+                          : rootSelection.value!.midi,
+                      itemBuilder: (context) => _rootNoteMenuEntries(),
+                      onSelected: (value) {
+                        cubit.updateSelectedRoot(value, manager: manager);
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              rootDisplay,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                        const Icon(Icons.arrow_drop_down),
-                      ],
+                          const Icon(Icons.arrow_drop_down),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -686,8 +689,7 @@ class _WaveformSection extends StatelessWidget {
         Text('Editing $label', overflow: TextOverflow.ellipsis),
         const SizedBox(height: 8),
         Tooltip(
-          message:
-              'Click to set trim start/end. Command/Ctrl-click or right-click to set loop start/end.',
+          message: 'Click to set trim start/end. Command/Ctrl-click or right-click to set loop start/end.',
           child: PolyWaveformEditor(
             overview: overview,
             mode: PolyWaveformEditorMode.trim,
@@ -944,9 +946,8 @@ class _WaveformSection extends StatelessWidget {
                 final target = await FilePicker.saveFile(
                   dialogTitle: 'Save edited WAV as',
                   fileName: p.basename(region.path),
+                  mimeType: 'audio/wav',
                   initialDirectory: state.lastWavExportFolder,
-                  type: FileType.custom,
-                  allowedExtensions: const ['wav'],
                   bytes: bytes,
                 );
                 if (target == null) return;
@@ -1331,8 +1332,7 @@ Future<void> _revealFolder(BuildContext context, String path) async {
     }
   } catch (error) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Could not open folder: $error')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Could not open folder: $error')));
   }
 }

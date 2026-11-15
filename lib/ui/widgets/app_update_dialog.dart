@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:nt_helper/models/app_release.dart';
 import 'package:nt_helper/services/app_update_service.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -90,15 +90,23 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: Markdown(
-                data: widget.release.body.isNotEmpty
-                    ? widget.release.body
-                    : 'No release notes available.',
-                onTapLink: (text, href, title) {
-                  if (href != null) {
-                    launchUrl(Uri.parse(href));
-                  }
-                },
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: GptMarkdown(
+                  widget.release.body.isNotEmpty
+                      ? widget.release.body
+                      : 'No release notes available.',
+                  textDirection: Directionality.of(context),
+                  html: false,
+                  isStreaming: false,
+                  styleSheet: const GptMarkdownStyleSheet(
+                    codeBlock: CodeBlockStyle(
+                      showCopyButton: false,
+                      showLanguageLabel: false,
+                    ),
+                  ),
+                  onLinkTap: (url, title) => launchUrl(Uri.parse(url)),
+                ),
               ),
             ),
             if (_state == _UpdateState.downloading) ...[
@@ -128,9 +136,8 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                     _errorMessage.length > 200
                         ? '${_errorMessage.substring(0, 200)}...'
                         : _errorMessage,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: Theme.of(context).colorScheme.error),
                   ),
                 ),
               ),
@@ -139,9 +146,8 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               const SizedBox(height: 12),
               Text(
                 _doneMessage,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: Theme.of(context).colorScheme.primary),
               ),
             ],
           ],

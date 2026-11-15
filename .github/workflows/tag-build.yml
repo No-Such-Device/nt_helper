@@ -13,8 +13,11 @@ on:
         type: string
 
 env:
-  FLUTTER_VERSION: "3.44.9"
+  FLUTTER_VERSION: "3.50.0"
+  # Native UVC retains its AGP 8 toolchain; Flutter 3.50 uses NDK r28c.
   ANDROID_NDK_VERSION: "27.0.12077973"
+  FLUTTER_ANDROID_NDK_VERSION: "28.2.13676358"
+  UVCCAMERA_REF: "ca9e82ed151c3175498a4897cc6a05d81cd6246e"
 
 permissions:
   contents: write # Needed for creating/updating GitHub releases
@@ -43,8 +46,8 @@ jobs:
             TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           fi
           VERSION="${TAG#v}"
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Using tag: $TAG, version: $VERSION"
 
   create-release:
@@ -92,7 +95,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set Version
-        run: echo "VERSION=${{ needs.setup.outputs.version }}" >> $GITHUB_ENV
+        run: echo "VERSION=${{ needs.setup.outputs.version }}" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -112,7 +115,7 @@ jobs:
           SDKMANAGER="${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
 
           for attempt in 1 2 3; do
-            if yes | "$SDKMANAGER" --install "ndk;${ANDROID_NDK_VERSION}"; then
+            if yes | "$SDKMANAGER" --install "ndk;${ANDROID_NDK_VERSION}" "ndk;${FLUTTER_ANDROID_NDK_VERSION}"; then
               break
             fi
 
@@ -124,15 +127,15 @@ jobs:
           done
 
           test -d "${SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}"
+          test -d "${SDK_ROOT}/ndk/${FLUTTER_ANDROID_NDK_VERSION}"
 
       - name: Clone and Build UVCCamera Native Library
         run: |
           UVCCAMERA_DIR="$(mktemp -d "$RUNNER_TEMP/UVCCamera.XXXXXX")"
-          git clone \
-            --branch feature/16kb-page-size-compliance \
-            --single-branch \
-            https://github.com/DigifinityLtd/UVCCamera.git \
+          git clone --no-checkout \
+            https://github.com/thorinside/UVCCamera.git \
             "$UVCCAMERA_DIR"
+          git -C "$UVCCAMERA_DIR" checkout --detach "$UVCCAMERA_REF"
           cd "$UVCCAMERA_DIR"
           ./gradlew :lib:assembleRelease
           ./gradlew :lib:publishToMavenLocal
@@ -156,7 +159,7 @@ jobs:
         run: ls -R build/app/outputs/flutter-apk
 
       - name: Rename Android APK
-        run: mv ./build/app/outputs/flutter-apk/app-release.apk ./build/app/outputs/flutter-apk/nt_helper-${VERSION}.apk
+        run: mv ./build/app/outputs/flutter-apk/app-release.apk "./build/app/outputs/flutter-apk/nt_helper-${VERSION}.apk"
 
       - name: Upload Android Artifact to Release
         uses: ncipollo/release-action@v1
@@ -186,7 +189,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set Version
-        run: echo "VERSION=${{ needs.setup.outputs.version }}" >> $GITHUB_ENV
+        run: echo "VERSION=${{ needs.setup.outputs.version }}" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -206,7 +209,7 @@ jobs:
           SDKMANAGER="${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
 
           for attempt in 1 2 3; do
-            if yes | "$SDKMANAGER" --install "ndk;${ANDROID_NDK_VERSION}"; then
+            if yes | "$SDKMANAGER" --install "ndk;${ANDROID_NDK_VERSION}" "ndk;${FLUTTER_ANDROID_NDK_VERSION}"; then
               break
             fi
 
@@ -218,15 +221,15 @@ jobs:
           done
 
           test -d "${SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}"
+          test -d "${SDK_ROOT}/ndk/${FLUTTER_ANDROID_NDK_VERSION}"
 
       - name: Clone and Build UVCCamera Native Library
         run: |
           UVCCAMERA_DIR="$(mktemp -d "$RUNNER_TEMP/UVCCamera.XXXXXX")"
-          git clone \
-            --branch feature/16kb-page-size-compliance \
-            --single-branch \
-            https://github.com/DigifinityLtd/UVCCamera.git \
+          git clone --no-checkout \
+            https://github.com/thorinside/UVCCamera.git \
             "$UVCCAMERA_DIR"
+          git -C "$UVCCAMERA_DIR" checkout --detach "$UVCCAMERA_REF"
           cd "$UVCCAMERA_DIR"
           ./gradlew :lib:assembleRelease
           ./gradlew :lib:publishToMavenLocal
@@ -250,7 +253,7 @@ jobs:
         run: ls -R build/app/outputs/bundle/release
 
       - name: Rename Android AAB
-        run: mv ./build/app/outputs/bundle/release/app-release.aab ./build/app/outputs/bundle/release/nt_helper-${VERSION}.aab
+        run: mv ./build/app/outputs/bundle/release/app-release.aab "./build/app/outputs/bundle/release/nt_helper-${VERSION}.aab"
 
       - name: Save AAB as an artifact
         uses: actions/upload-artifact@v4
@@ -440,7 +443,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set Version
-        run: echo "VERSION=${{ needs.setup.outputs.version }}" >> $GITHUB_ENV
+        run: echo "VERSION=${{ needs.setup.outputs.version }}" >> "$GITHUB_ENV"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -482,7 +485,7 @@ jobs:
       - name: Zip Linux App
         run: |
           cd build/linux/x64/release/bundle
-          zip -r nt_helper-${VERSION}-linux.zip *
+          zip -r "nt_helper-${VERSION}-linux.zip" ./*
 
       - name: List build output (debug)
         run: ls -R build/linux/x64/release/bundle
@@ -515,7 +518,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set Version
-        run: echo "VERSION=${{ needs.setup.outputs.version }}" >> $GITHUB_ENV
+        run: echo "VERSION=${{ needs.setup.outputs.version }}" >> "$GITHUB_ENV"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -638,7 +641,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set Version
-        run: echo "VERSION=${{ needs.setup.outputs.version }}" >> $GITHUB_ENV
+        run: echo "VERSION=${{ needs.setup.outputs.version }}" >> "$GITHUB_ENV"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2

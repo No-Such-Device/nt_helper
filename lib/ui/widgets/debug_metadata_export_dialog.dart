@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:nt_helper/services/algorithm_json_exporter.dart';
 import 'package:nt_helper/db/database.dart';
@@ -68,10 +68,9 @@ class _DebugMetadataExportDialogState extends State<DebugMetadataExportDialog> {
     try {
       final exporter = AlgorithmJsonExporter(widget.database);
       final result = await FilePicker.saveFile(
+        mimeType: 'application/json',
         dialogTitle: 'Save Full Metadata Export (DEBUG)',
         fileName: 'full_metadata.json',
-        type: FileType.custom,
-        allowedExtensions: ['json'],
         bytes: await exporter.buildFullMetadataBytes(),
       );
       if (result == null) {
@@ -169,17 +168,15 @@ class _DebugMetadataExportDialogState extends State<DebugMetadataExportDialog> {
                   children: [
                     Text(
                       'Export Preview:',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     if (_previewData!['tableCounts'] != null) ...[
                       Text(
                         'Tables to export:',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 4),
                       ...(_previewData!['tableCounts'] as Map<String, dynamic>)
@@ -208,9 +205,8 @@ class _DebugMetadataExportDialogState extends State<DebugMetadataExportDialog> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                color: Theme.of(context).colorScheme.primaryContainer
+                    .withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -218,9 +214,8 @@ class _DebugMetadataExportDialogState extends State<DebugMetadataExportDialog> {
                 children: [
                   Text(
                     'After export:',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -230,10 +225,8 @@ class _DebugMetadataExportDialogState extends State<DebugMetadataExportDialog> {
                     '   assets:\n'
                     '     - assets/metadata/full_metadata.json\n'
                     '4. Rebuild app - metadata will auto-import on first launch',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                      fontSize: 11,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(fontFamily: 'monospace', fontSize: 11),
                   ),
                 ],
               ),

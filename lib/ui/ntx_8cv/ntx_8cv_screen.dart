@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/ntx_8cv_connection_cubit.dart';
 import 'package:nt_helper/cubit/ntx_8cv_settings_cubit.dart';
@@ -366,9 +366,8 @@ class _Ntx8cvSyncIndicatorState extends State<_Ntx8cvSyncIndicator> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: Theme.of(
-                  context,
-                ).colorScheme.outlineVariant.withValues(alpha: 0.7),
+                color: Theme.of(context).colorScheme.outlineVariant
+                    .withValues(alpha: 0.7),
               ),
             ),
             child: Padding(
@@ -733,9 +732,8 @@ class _StableMessageSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-      color: isError ? Theme.of(context).colorScheme.error : null,
-    );
+    final textStyle = Theme.of(context).textTheme.bodySmall
+        ?.copyWith(color: isError ? Theme.of(context).colorScheme.error : null);
     final messageText = message == null
         ? const SizedBox.shrink()
         : Tooltip(

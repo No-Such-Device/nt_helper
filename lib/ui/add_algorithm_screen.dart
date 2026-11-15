@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -633,9 +633,9 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
                                       ),
                                       tooltip: 'Show Favorites Only',
                                       color: _showFavoritesOnly
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.primary
+                                          ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
                                           : null,
                                       onPressed: _toggleShowFavoritesOnly,
                                       style: const ButtonStyle(
@@ -650,9 +650,9 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
                                       tooltip: 'Clear Filters',
                                       style: ButtonStyle(
                                         foregroundColor: WidgetStatePropertyAll(
-                                          Theme.of(
-                                            context,
-                                          ).colorScheme.secondary,
+                                          Theme.of(context)
+                                              .colorScheme
+                                              .secondary,
                                         ),
                                         visualDensity: VisualDensity.compact,
                                       ),
@@ -678,9 +678,9 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
                                   'Showing ${_filteredAlgorithms.length} of ${_allAlgorithms.length} algorithms',
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
                                       ),
                                 ),
                                 const Divider(),
@@ -1065,9 +1065,9 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
                             size: 16,
                             semanticLabel: 'Favorite',
                             color: isSelected
-                                ? Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimaryContainer
+                                ? Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer
                                 : Theme.of(context).colorScheme.primary,
                           ),
                         ],
@@ -1078,9 +1078,9 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
                             size: 14,
                             semanticLabel: 'Community plugin',
                             color: isSelected
-                                ? Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimaryContainer
+                                ? Theme.of(context)
+                                      .colorScheme
+                                      .onPrimaryContainer
                                 : Theme.of(context).colorScheme.secondary,
                           ),
                         ],
@@ -1096,9 +1096,9 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
                         }
                       }
                     },
-                    selectedColor: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer,
+                    selectedColor: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer,
                   ),
                 ),
               ),
@@ -1168,18 +1168,18 @@ class _AddAlgorithmScreenState extends State<AddAlgorithmScreen> {
                                       algo.name,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium,
                                     ),
                                   ),
                                   if (isCommunityPlugin)
                                     Icon(
                                       Icons.extension,
                                       size: 16,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.secondary,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .secondary,
                                     ),
                                 ],
                               ),

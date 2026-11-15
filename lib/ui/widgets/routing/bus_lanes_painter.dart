@@ -1,6 +1,6 @@
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Geometry for the Bus Lanes view: buses are vertical rails (lanes / "tubes"),
 /// algorithm blocks are stacked top→bottom in slot order. Within a block each

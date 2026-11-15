@@ -1,8 +1,9 @@
 import 'dart:async'; // For Timer
 import 'dart:math'; // For pow()
+
 import 'package:flutter/gestures.dart'; // For kDoubleTapTimeout
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:haptic_feedback/haptic_feedback.dart';
 import 'package:nt_helper/services/settings_service.dart'; // Required for Haptics and SettingsService

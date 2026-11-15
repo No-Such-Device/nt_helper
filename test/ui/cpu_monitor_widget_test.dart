@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -45,9 +45,8 @@ void main() {
 
     when(() => cubit.state).thenReturn(synchronizedState());
     when(() => cubit.stream).thenAnswer((_) => stateController.stream);
-    when(
-      () => cubit.cpuUsageStream,
-    ).thenAnswer((_) => cpuUsageController.stream);
+    when(() => cubit.cpuUsageStream)
+        .thenAnswer((_) => cpuUsageController.stream);
     when(() => cubit.resumeCpuMonitoring()).thenReturn(null);
     when(() => cubit.pauseCpuMonitoring()).thenReturn(null);
   });

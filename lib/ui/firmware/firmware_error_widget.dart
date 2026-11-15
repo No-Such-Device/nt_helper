@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/cubit/firmware_update_state.dart';
 import 'package:nt_helper/models/flash_stage.dart';
 import 'package:url_launcher/url_launcher.dart';

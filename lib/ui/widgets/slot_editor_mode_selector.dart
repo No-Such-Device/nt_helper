@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode.dart';
 
 class SlotEditorModeSelector extends StatelessWidget {

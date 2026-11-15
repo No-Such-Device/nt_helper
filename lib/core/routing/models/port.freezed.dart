@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'port.dart';
@@ -9,6 +9,7 @@ part of 'port.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -23,18 +24,15 @@ mixin _$Port {
  String? get description;/// Optional constraints for this port (e.g., voltage range, frequency)
  Map<String, dynamic>? get constraints;/// Whether this port is currently active/enabled
  bool get isActive;/// Optional output mode for output ports (add or replace)
- OutputMode? get outputMode;// Direct properties for polyphonic routing
-/// Whether this port represents a polyphonic voice
+ OutputMode? get outputMode;/// Whether this port represents a polyphonic voice
  bool get isPolyVoice;/// The voice number for polyphonic ports (1-based indexing)
  int? get voiceNumber;/// Whether this port is a virtual CV port
- bool get isVirtualCV;// Direct properties for multi-channel routing
-/// Whether this port is part of a multi-channel configuration
+ bool get isVirtualCV;/// Whether this port is part of a multi-channel configuration
  bool get isMultiChannel;/// The channel number for multi-channel ports (0-based indexing)
  int? get channelNumber;/// Whether this port is part of a stereo channel pair
  bool get isStereoChannel;/// The stereo side for stereo channel ports ('left' or 'right')
  String? get stereoSide;/// Whether this port represents the master mix output
- bool get isMasterMix;// Direct properties for bus and parameter routing
-/// The bus number this port is connected to (1-20)
+ bool get isMasterMix;/// The bus number this port is connected to (1-20)
  int? get busValue;/// The parameter name associated with this port's bus assignment
  String? get busParam;/// The parameter number associated with this port
  int? get parameterNumber;/// The mode parameter number for this port's output mode (Add/Replace)
@@ -57,16 +55,21 @@ $PortCopyWith<Port> get copyWith => _$PortCopyWithImpl<Port>(this as Port, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Port&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.direction, direction) || other.direction == direction)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.constraints, constraints)&&(identical(other.isActive, isActive) || other.isActive == isActive)&&(identical(other.outputMode, outputMode) || other.outputMode == outputMode)&&(identical(other.isPolyVoice, isPolyVoice) || other.isPolyVoice == isPolyVoice)&&(identical(other.voiceNumber, voiceNumber) || other.voiceNumber == voiceNumber)&&(identical(other.isVirtualCV, isVirtualCV) || other.isVirtualCV == isVirtualCV)&&(identical(other.isMultiChannel, isMultiChannel) || other.isMultiChannel == isMultiChannel)&&(identical(other.channelNumber, channelNumber) || other.channelNumber == channelNumber)&&(identical(other.isStereoChannel, isStereoChannel) || other.isStereoChannel == isStereoChannel)&&(identical(other.stereoSide, stereoSide) || other.stereoSide == stereoSide)&&(identical(other.isMasterMix, isMasterMix) || other.isMasterMix == isMasterMix)&&(identical(other.busValue, busValue) || other.busValue == busValue)&&(identical(other.busParam, busParam) || other.busParam == busParam)&&(identical(other.parameterNumber, parameterNumber) || other.parameterNumber == parameterNumber)&&(identical(other.modeParameterNumber, modeParameterNumber) || other.modeParameterNumber == modeParameterNumber)&&(identical(other.hardwareIndex, hardwareIndex) || other.hardwareIndex == hardwareIndex)&&(identical(other.nodeId, nodeId) || other.nodeId == nodeId)&&(identical(other.role, role) || other.role == role));
+  final _this = this as Port;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Port&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.direction, _this.direction) || other.direction == _this.direction)&&(identical(other.description, _this.description) || other.description == _this.description)&&const DeepCollectionEquality().equals(other.constraints, _this.constraints)&&(identical(other.isActive, _this.isActive) || other.isActive == _this.isActive)&&(identical(other.outputMode, _this.outputMode) || other.outputMode == _this.outputMode)&&(identical(other.isPolyVoice, _this.isPolyVoice) || other.isPolyVoice == _this.isPolyVoice)&&(identical(other.voiceNumber, _this.voiceNumber) || other.voiceNumber == _this.voiceNumber)&&(identical(other.isVirtualCV, _this.isVirtualCV) || other.isVirtualCV == _this.isVirtualCV)&&(identical(other.isMultiChannel, _this.isMultiChannel) || other.isMultiChannel == _this.isMultiChannel)&&(identical(other.channelNumber, _this.channelNumber) || other.channelNumber == _this.channelNumber)&&(identical(other.isStereoChannel, _this.isStereoChannel) || other.isStereoChannel == _this.isStereoChannel)&&(identical(other.stereoSide, _this.stereoSide) || other.stereoSide == _this.stereoSide)&&(identical(other.isMasterMix, _this.isMasterMix) || other.isMasterMix == _this.isMasterMix)&&(identical(other.busValue, _this.busValue) || other.busValue == _this.busValue)&&(identical(other.busParam, _this.busParam) || other.busParam == _this.busParam)&&(identical(other.parameterNumber, _this.parameterNumber) || other.parameterNumber == _this.parameterNumber)&&(identical(other.modeParameterNumber, _this.modeParameterNumber) || other.modeParameterNumber == _this.modeParameterNumber)&&(identical(other.hardwareIndex, _this.hardwareIndex) || other.hardwareIndex == _this.hardwareIndex)&&(identical(other.nodeId, _this.nodeId) || other.nodeId == _this.nodeId)&&(identical(other.role, _this.role) || other.role == _this.role));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,name,type,direction,description,const DeepCollectionEquality().hash(constraints),isActive,outputMode,isPolyVoice,voiceNumber,isVirtualCV,isMultiChannel,channelNumber,isStereoChannel,stereoSide,isMasterMix,busValue,busParam,parameterNumber,modeParameterNumber,hardwareIndex,nodeId,role]);
+int get hashCode {
+  final _this = this as Port;
+  return Object.hashAll([runtimeType,_this.id,_this.name,_this.type,_this.direction,_this.description,const DeepCollectionEquality().hash(_this.constraints),_this.isActive,_this.outputMode,_this.isPolyVoice,_this.voiceNumber,_this.isVirtualCV,_this.isMultiChannel,_this.channelNumber,_this.isStereoChannel,_this.stereoSide,_this.isMasterMix,_this.busValue,_this.busParam,_this.parameterNumber,_this.modeParameterNumber,_this.hardwareIndex,_this.nodeId,_this.role]);
+}
 
 @override
 String toString() {
-  return 'Port(id: $id, name: $name, type: $type, direction: $direction, description: $description, constraints: $constraints, isActive: $isActive, outputMode: $outputMode, isPolyVoice: $isPolyVoice, voiceNumber: $voiceNumber, isVirtualCV: $isVirtualCV, isMultiChannel: $isMultiChannel, channelNumber: $channelNumber, isStereoChannel: $isStereoChannel, stereoSide: $stereoSide, isMasterMix: $isMasterMix, busValue: $busValue, busParam: $busParam, parameterNumber: $parameterNumber, modeParameterNumber: $modeParameterNumber, hardwareIndex: $hardwareIndex, nodeId: $nodeId, role: $role)';
+  final _this = this as Port;
+  return 'Port(id: ${_this.id}, name: ${_this.name}, type: ${_this.type}, direction: ${_this.direction}, description: ${_this.description}, constraints: ${_this.constraints}, isActive: ${_this.isActive}, outputMode: ${_this.outputMode}, isPolyVoice: ${_this.isPolyVoice}, voiceNumber: ${_this.voiceNumber}, isVirtualCV: ${_this.isVirtualCV}, isMultiChannel: ${_this.isMultiChannel}, channelNumber: ${_this.channelNumber}, isStereoChannel: ${_this.isStereoChannel}, stereoSide: ${_this.stereoSide}, isMasterMix: ${_this.isMasterMix}, busValue: ${_this.busValue}, busParam: ${_this.busParam}, parameterNumber: ${_this.parameterNumber}, modeParameterNumber: ${_this.modeParameterNumber}, hardwareIndex: ${_this.hardwareIndex}, nodeId: ${_this.nodeId}, role: ${_this.role})';
 }
 
 
@@ -95,7 +98,7 @@ class _$PortCopyWithImpl<$Res>
 /// Create a copy of Port
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? type = null,Object? direction = null,Object? description = freezed,Object? constraints = freezed,Object? isActive = null,Object? outputMode = freezed,Object? isPolyVoice = null,Object? voiceNumber = freezed,Object? isVirtualCV = null,Object? isMultiChannel = null,Object? channelNumber = freezed,Object? isStereoChannel = null,Object? stereoSide = freezed,Object? isMasterMix = null,Object? busValue = freezed,Object? busParam = freezed,Object? parameterNumber = freezed,Object? modeParameterNumber = freezed,Object? hardwareIndex = freezed,Object? nodeId = freezed,Object? role = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(Port(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
@@ -254,7 +257,7 @@ return $default(_that.id,_that.name,_that.type,_that.direction,_that.description
 @JsonSerializable()
 
 class _Port extends Port {
-  const _Port({required this.id, required this.name, required this.type, required this.direction, this.description, final  Map<String, dynamic>? constraints, this.isActive = true, this.outputMode, this.isPolyVoice = false, this.voiceNumber, this.isVirtualCV = false, this.isMultiChannel = false, this.channelNumber, this.isStereoChannel = false, this.stereoSide, this.isMasterMix = false, this.busValue, this.busParam, this.parameterNumber, this.modeParameterNumber, this.hardwareIndex, this.nodeId, this.role}): _constraints = constraints,super._();
+  const _Port({required this.id, required this.name, required this.type, required this.direction, this.description,  Map<String, dynamic>? constraints, this.isActive = true, this.outputMode, this.isPolyVoice = false, this.voiceNumber, this.isVirtualCV = false, this.isMultiChannel = false, this.channelNumber, this.isStereoChannel = false, this.stereoSide, this.isMasterMix = false, this.busValue, this.busParam, this.parameterNumber, this.modeParameterNumber, this.hardwareIndex, this.nodeId, this.role}): _constraints = constraints,super._();
   factory _Port.fromJson(Map<String, dynamic> json) => _$PortFromJson(json);
 
 /// Unique identifier for this port
@@ -282,14 +285,12 @@ class _Port extends Port {
 @override@JsonKey() final  bool isActive;
 /// Optional output mode for output ports (add or replace)
 @override final  OutputMode? outputMode;
-// Direct properties for polyphonic routing
 /// Whether this port represents a polyphonic voice
 @override@JsonKey() final  bool isPolyVoice;
 /// The voice number for polyphonic ports (1-based indexing)
 @override final  int? voiceNumber;
 /// Whether this port is a virtual CV port
 @override@JsonKey() final  bool isVirtualCV;
-// Direct properties for multi-channel routing
 /// Whether this port is part of a multi-channel configuration
 @override@JsonKey() final  bool isMultiChannel;
 /// The channel number for multi-channel ports (0-based indexing)
@@ -300,7 +301,6 @@ class _Port extends Port {
 @override final  String? stereoSide;
 /// Whether this port represents the master mix output
 @override@JsonKey() final  bool isMasterMix;
-// Direct properties for bus and parameter routing
 /// The bus number this port is connected to (1-20)
 @override final  int? busValue;
 /// The parameter name associated with this port's bus assignment
@@ -332,16 +332,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Port&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.direction, direction) || other.direction == direction)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other._constraints, _constraints)&&(identical(other.isActive, isActive) || other.isActive == isActive)&&(identical(other.outputMode, outputMode) || other.outputMode == outputMode)&&(identical(other.isPolyVoice, isPolyVoice) || other.isPolyVoice == isPolyVoice)&&(identical(other.voiceNumber, voiceNumber) || other.voiceNumber == voiceNumber)&&(identical(other.isVirtualCV, isVirtualCV) || other.isVirtualCV == isVirtualCV)&&(identical(other.isMultiChannel, isMultiChannel) || other.isMultiChannel == isMultiChannel)&&(identical(other.channelNumber, channelNumber) || other.channelNumber == channelNumber)&&(identical(other.isStereoChannel, isStereoChannel) || other.isStereoChannel == isStereoChannel)&&(identical(other.stereoSide, stereoSide) || other.stereoSide == stereoSide)&&(identical(other.isMasterMix, isMasterMix) || other.isMasterMix == isMasterMix)&&(identical(other.busValue, busValue) || other.busValue == busValue)&&(identical(other.busParam, busParam) || other.busParam == busParam)&&(identical(other.parameterNumber, parameterNumber) || other.parameterNumber == parameterNumber)&&(identical(other.modeParameterNumber, modeParameterNumber) || other.modeParameterNumber == modeParameterNumber)&&(identical(other.hardwareIndex, hardwareIndex) || other.hardwareIndex == hardwareIndex)&&(identical(other.nodeId, nodeId) || other.nodeId == nodeId)&&(identical(other.role, role) || other.role == role));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Port&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.direction, direction) || other.direction == direction)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.constraints, _constraints)&&(identical(other.isActive, isActive) || other.isActive == isActive)&&(identical(other.outputMode, outputMode) || other.outputMode == outputMode)&&(identical(other.isPolyVoice, isPolyVoice) || other.isPolyVoice == isPolyVoice)&&(identical(other.voiceNumber, voiceNumber) || other.voiceNumber == voiceNumber)&&(identical(other.isVirtualCV, isVirtualCV) || other.isVirtualCV == isVirtualCV)&&(identical(other.isMultiChannel, isMultiChannel) || other.isMultiChannel == isMultiChannel)&&(identical(other.channelNumber, channelNumber) || other.channelNumber == channelNumber)&&(identical(other.isStereoChannel, isStereoChannel) || other.isStereoChannel == isStereoChannel)&&(identical(other.stereoSide, stereoSide) || other.stereoSide == stereoSide)&&(identical(other.isMasterMix, isMasterMix) || other.isMasterMix == isMasterMix)&&(identical(other.busValue, busValue) || other.busValue == busValue)&&(identical(other.busParam, busParam) || other.busParam == busParam)&&(identical(other.parameterNumber, parameterNumber) || other.parameterNumber == parameterNumber)&&(identical(other.modeParameterNumber, modeParameterNumber) || other.modeParameterNumber == modeParameterNumber)&&(identical(other.hardwareIndex, hardwareIndex) || other.hardwareIndex == hardwareIndex)&&(identical(other.nodeId, nodeId) || other.nodeId == nodeId)&&(identical(other.role, role) || other.role == role));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,name,type,direction,description,const DeepCollectionEquality().hash(_constraints),isActive,outputMode,isPolyVoice,voiceNumber,isVirtualCV,isMultiChannel,channelNumber,isStereoChannel,stereoSide,isMasterMix,busValue,busParam,parameterNumber,modeParameterNumber,hardwareIndex,nodeId,role]);
+int get hashCode {
+    return Object.hashAll([runtimeType,id,name,type,direction,description,const DeepCollectionEquality().hash(_constraints),isActive,outputMode,isPolyVoice,voiceNumber,isVirtualCV,isMultiChannel,channelNumber,isStereoChannel,stereoSide,isMasterMix,busValue,busParam,parameterNumber,modeParameterNumber,hardwareIndex,nodeId,role]);
+}
 
 @override
 String toString() {
-  return 'Port(id: $id, name: $name, type: $type, direction: $direction, description: $description, constraints: $constraints, isActive: $isActive, outputMode: $outputMode, isPolyVoice: $isPolyVoice, voiceNumber: $voiceNumber, isVirtualCV: $isVirtualCV, isMultiChannel: $isMultiChannel, channelNumber: $channelNumber, isStereoChannel: $isStereoChannel, stereoSide: $stereoSide, isMasterMix: $isMasterMix, busValue: $busValue, busParam: $busParam, parameterNumber: $parameterNumber, modeParameterNumber: $modeParameterNumber, hardwareIndex: $hardwareIndex, nodeId: $nodeId, role: $role)';
+    return 'Port(id: $id, name: $name, type: $type, direction: $direction, description: $description, constraints: $constraints, isActive: $isActive, outputMode: $outputMode, isPolyVoice: $isPolyVoice, voiceNumber: $voiceNumber, isVirtualCV: $isVirtualCV, isMultiChannel: $isMultiChannel, channelNumber: $channelNumber, isStereoChannel: $isStereoChannel, stereoSide: $stereoSide, isMasterMix: $isMasterMix, busValue: $busValue, busParam: $busParam, parameterNumber: $parameterNumber, modeParameterNumber: $modeParameterNumber, hardwareIndex: $hardwareIndex, nodeId: $nodeId, role: $role)';
 }
 
 

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -79,11 +79,10 @@ void main() {
           '!LABS Soft Pno - PedOn',
           'Blofeld_Drums_Samples',
         ]) {
-          when(
-            () => manager.requestDirectoryListing('/samples/$folder'),
-          ).thenAnswer(
-            (_) async => DirectoryListing(entries: [_file('sample.wav')]),
-          );
+          when(() => manager.requestDirectoryListing('/samples/$folder'))
+              .thenAnswer(
+                (_) async => DirectoryListing(entries: [_file('sample.wav')]),
+              );
         }
         final slot = _polySlot(
           guid: 'pymu',
@@ -133,9 +132,8 @@ void main() {
     testWidgets(
       'folder enumeration blocks a partial catalogue when a child listing fails',
       (tester) async {
-        when(
-          () => manager.requestDirectoryListing('/samples/Multisample'),
-        ).thenThrow(Exception('directory listing failed'));
+        when(() => manager.requestDirectoryListing('/samples/Multisample'))
+            .thenThrow(Exception('directory listing failed'));
         final slot = _polySlot(guid: 'pymu', folderMin: 0, folderValue: 0);
 
         await _pumpEditor(tester, cubit: cubit, slot: slot, parameterNumber: 0);
@@ -154,7 +152,8 @@ void main() {
           findsWidgets,
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets('plain Multisamples folder candidate is enumerated', (
       tester,
@@ -168,11 +167,10 @@ void main() {
           ],
         ),
       );
-      when(
-        () => manager.requestDirectoryListing('/samples/Multisamples'),
-      ).thenAnswer(
-        (_) async => DirectoryListing(entries: [_file('Playable.wav')]),
-      );
+      when(() => manager.requestDirectoryListing('/samples/Multisamples'))
+          .thenAnswer(
+            (_) async => DirectoryListing(entries: [_file('Playable.wav')]),
+          );
       final slot = _polySlot(
         guid: 'pymu',
         folderMin: 0,

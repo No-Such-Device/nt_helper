@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/services/ipad_local_network.dart';
 
 /// One opt-in switch. Endpoint/status space stays fixed while native network

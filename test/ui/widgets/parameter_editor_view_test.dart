@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
@@ -152,7 +152,8 @@ void main() {
         expect(parameterViewRow.displayString, isNull);
         expect(parameterViewRow.unit, isNull);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets('ES-5 Expander (unit 16) shows raw integer for value 6', (
       tester,

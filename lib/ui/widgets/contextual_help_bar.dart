@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A widget that displays contextual help text at the bottom of the screen.
 /// Shows help hints when users hover over interactive elements.

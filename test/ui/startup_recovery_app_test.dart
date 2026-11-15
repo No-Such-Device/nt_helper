@@ -4,7 +4,9 @@ import 'dart:io';
 
 import 'package:drift/drift.dart' show LazyDatabase;
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:file_picker_darwin/file_picker_darwin.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/db/database.dart';
@@ -169,6 +171,9 @@ void main() {
   testWidgets(
     'library chooser cancellation preserves failure and choosing a file uses the existing retry lifecycle',
     (tester) async {
+      final previousPicker = FilePickerPlatform.instance;
+      FilePickerDarwin.registerWith();
+      addTearDown(() => FilePickerPlatform.instance = previousPicker);
       final failure = const LibraryImportException('Choose a saved library');
       File? imported;
       var opens = 0;
@@ -235,12 +240,11 @@ void main() {
       (tester) async {
         final controller = keep(
           StartupController(
-            open:
-                ({
-                  bool selectLegacyDirectory = false,
-                  File? importSource,
-                  bool startFresh = false,
-                }) async => throw failure,
+            open: ({
+              bool selectLegacyDirectory = false,
+              File? importSource,
+              bool startFresh = false,
+            }) async => throw failure,
             libraryLocation: () => '/saved/library.sqlite',
           ),
         );
@@ -461,12 +465,11 @@ void main() {
     var later = 0;
     final controller = keep(
       StartupController(
-        open:
-            ({
-              bool selectLegacyDirectory = false,
-              File? importSource,
-              bool startFresh = false,
-            }) async => OpenedStartupLibrary(memory()),
+        open: ({
+          bool selectLegacyDirectory = false,
+          File? importSource,
+          bool startFresh = false,
+        }) async => OpenedStartupLibrary(memory()),
         activationSteps: [
           (_) async {
             entered.complete();
@@ -516,12 +519,11 @@ void main() {
               FakeAccessibilityFeatures(highContrast: highContrast);
           final controller = keep(
             StartupController(
-              open:
-                  ({
-                    bool selectLegacyDirectory = false,
-                    File? importSource,
-                    bool startFresh = false,
-                  }) async => throw const FileSystemException('denied'),
+              open: ({
+                bool selectLegacyDirectory = false,
+                File? importSource,
+                bool startFresh = false,
+              }) async => throw const FileSystemException('denied'),
             ),
           );
           await show(tester, controller);

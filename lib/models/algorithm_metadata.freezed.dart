@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'algorithm_metadata.dart';
@@ -9,14 +9,14 @@ part of 'algorithm_metadata.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$AlgorithmMetadata {
 
- String get guid; String get name; List<String> get categories; String get description;@JsonKey(name: 'short_description') String? get shortDescription;@JsonKey(name: 'gui_description') String? get guiDescription;@JsonKey(name: 'use_cases') List<String> get useCases; List<AlgorithmSpecification> get specifications;@JsonKey(fromJson: _parametersFromJson) List<AlgorithmParameter> get parameters; List<String> get features;// List of feature GUIDs
-@JsonKey(name: 'input_ports', fromJson: _portsFromJson) List<AlgorithmPort> get inputPorts;@JsonKey(name: 'output_ports', fromJson: _portsFromJson) List<AlgorithmPort> get outputPorts;
+ String get guid; String get name; List<String> get categories; String get description;@JsonKey(name: 'short_description') String? get shortDescription;@JsonKey(name: 'gui_description') String? get guiDescription;@JsonKey(name: 'use_cases') List<String> get useCases; List<AlgorithmSpecification> get specifications;@JsonKey(fromJson: _parametersFromJson) List<AlgorithmParameter> get parameters; List<String> get features;@JsonKey(name: 'input_ports', fromJson: _portsFromJson) List<AlgorithmPort> get inputPorts;@JsonKey(name: 'output_ports', fromJson: _portsFromJson) List<AlgorithmPort> get outputPorts;
 /// Create a copy of AlgorithmMetadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +29,21 @@ $AlgorithmMetadataCopyWith<AlgorithmMetadata> get copyWith => _$AlgorithmMetadat
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmMetadata&&(identical(other.guid, guid) || other.guid == guid)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.categories, categories)&&(identical(other.description, description) || other.description == description)&&(identical(other.shortDescription, shortDescription) || other.shortDescription == shortDescription)&&(identical(other.guiDescription, guiDescription) || other.guiDescription == guiDescription)&&const DeepCollectionEquality().equals(other.useCases, useCases)&&const DeepCollectionEquality().equals(other.specifications, specifications)&&const DeepCollectionEquality().equals(other.parameters, parameters)&&const DeepCollectionEquality().equals(other.features, features)&&const DeepCollectionEquality().equals(other.inputPorts, inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, outputPorts));
+  final _this = this as AlgorithmMetadata;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmMetadata&&(identical(other.guid, _this.guid) || other.guid == _this.guid)&&(identical(other.name, _this.name) || other.name == _this.name)&&const DeepCollectionEquality().equals(other.categories, _this.categories)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.shortDescription, _this.shortDescription) || other.shortDescription == _this.shortDescription)&&(identical(other.guiDescription, _this.guiDescription) || other.guiDescription == _this.guiDescription)&&const DeepCollectionEquality().equals(other.useCases, _this.useCases)&&const DeepCollectionEquality().equals(other.specifications, _this.specifications)&&const DeepCollectionEquality().equals(other.parameters, _this.parameters)&&const DeepCollectionEquality().equals(other.features, _this.features)&&const DeepCollectionEquality().equals(other.inputPorts, _this.inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, _this.outputPorts));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,guid,name,const DeepCollectionEquality().hash(categories),description,shortDescription,guiDescription,const DeepCollectionEquality().hash(useCases),const DeepCollectionEquality().hash(specifications),const DeepCollectionEquality().hash(parameters),const DeepCollectionEquality().hash(features),const DeepCollectionEquality().hash(inputPorts),const DeepCollectionEquality().hash(outputPorts));
+int get hashCode {
+  final _this = this as AlgorithmMetadata;
+  return Object.hash(runtimeType,_this.guid,_this.name,const DeepCollectionEquality().hash(_this.categories),_this.description,_this.shortDescription,_this.guiDescription,const DeepCollectionEquality().hash(_this.useCases),const DeepCollectionEquality().hash(_this.specifications),const DeepCollectionEquality().hash(_this.parameters),const DeepCollectionEquality().hash(_this.features),const DeepCollectionEquality().hash(_this.inputPorts),const DeepCollectionEquality().hash(_this.outputPorts));
+}
 
 @override
 String toString() {
-  return 'AlgorithmMetadata(guid: $guid, name: $name, categories: $categories, description: $description, shortDescription: $shortDescription, guiDescription: $guiDescription, useCases: $useCases, specifications: $specifications, parameters: $parameters, features: $features, inputPorts: $inputPorts, outputPorts: $outputPorts)';
+  final _this = this as AlgorithmMetadata;
+  return 'AlgorithmMetadata(guid: ${_this.guid}, name: ${_this.name}, categories: ${_this.categories}, description: ${_this.description}, shortDescription: ${_this.shortDescription}, guiDescription: ${_this.guiDescription}, useCases: ${_this.useCases}, specifications: ${_this.specifications}, parameters: ${_this.parameters}, features: ${_this.features}, inputPorts: ${_this.inputPorts}, outputPorts: ${_this.outputPorts})';
 }
 
 
@@ -67,7 +72,7 @@ class _$AlgorithmMetadataCopyWithImpl<$Res>
 /// Create a copy of AlgorithmMetadata
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? guid = null,Object? name = null,Object? categories = null,Object? description = null,Object? shortDescription = freezed,Object? guiDescription = freezed,Object? useCases = null,Object? specifications = null,Object? parameters = null,Object? features = null,Object? inputPorts = null,Object? outputPorts = null,}) {
-  return _then(_self.copyWith(
+  return _then(AlgorithmMetadata(
 guid: null == guid ? _self.guid : guid // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,categories: null == categories ? _self.categories : categories // ignore: cast_nullable_to_non_nullable
@@ -215,7 +220,7 @@ return $default(_that.guid,_that.name,_that.categories,_that.description,_that.s
 @JsonSerializable()
 
 class _AlgorithmMetadata implements AlgorithmMetadata {
-  const _AlgorithmMetadata({required this.guid, required this.name, required final  List<String> categories, required this.description, @JsonKey(name: 'short_description') this.shortDescription, @JsonKey(name: 'gui_description') this.guiDescription, @JsonKey(name: 'use_cases') final  List<String> useCases = const [], final  List<AlgorithmSpecification> specifications = const [], @JsonKey(fromJson: _parametersFromJson) final  List<AlgorithmParameter> parameters = const [], final  List<String> features = const [], @JsonKey(name: 'input_ports', fromJson: _portsFromJson) final  List<AlgorithmPort> inputPorts = const [], @JsonKey(name: 'output_ports', fromJson: _portsFromJson) final  List<AlgorithmPort> outputPorts = const []}): _categories = categories,_useCases = useCases,_specifications = specifications,_parameters = parameters,_features = features,_inputPorts = inputPorts,_outputPorts = outputPorts;
+  const _AlgorithmMetadata({required this.guid, required this.name, required  List<String> categories, required this.description, @JsonKey(name: 'short_description') this.shortDescription, @JsonKey(name: 'gui_description') this.guiDescription, @JsonKey(name: 'use_cases')  List<String> useCases = const [],  List<AlgorithmSpecification> specifications = const [], @JsonKey(fromJson: _parametersFromJson)  List<AlgorithmParameter> parameters = const [],  List<String> features = const [], @JsonKey(name: 'input_ports', fromJson: _portsFromJson)  List<AlgorithmPort> inputPorts = const [], @JsonKey(name: 'output_ports', fromJson: _portsFromJson)  List<AlgorithmPort> outputPorts = const []}): _categories = categories,_useCases = useCases,_specifications = specifications,_parameters = parameters,_features = features,_inputPorts = inputPorts,_outputPorts = outputPorts;
   factory _AlgorithmMetadata.fromJson(Map<String, dynamic> json) => _$AlgorithmMetadataFromJson(json);
 
 @override final  String guid;
@@ -258,9 +263,7 @@ class _AlgorithmMetadata implements AlgorithmMetadata {
   return EqualUnmodifiableListView(_features);
 }
 
-// List of feature GUIDs
  final  List<AlgorithmPort> _inputPorts;
-// List of feature GUIDs
 @override@JsonKey(name: 'input_ports', fromJson: _portsFromJson) List<AlgorithmPort> get inputPorts {
   if (_inputPorts is EqualUnmodifiableListView) return _inputPorts;
   // ignore: implicit_dynamic_type
@@ -288,16 +291,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmMetadata&&(identical(other.guid, guid) || other.guid == guid)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._categories, _categories)&&(identical(other.description, description) || other.description == description)&&(identical(other.shortDescription, shortDescription) || other.shortDescription == shortDescription)&&(identical(other.guiDescription, guiDescription) || other.guiDescription == guiDescription)&&const DeepCollectionEquality().equals(other._useCases, _useCases)&&const DeepCollectionEquality().equals(other._specifications, _specifications)&&const DeepCollectionEquality().equals(other._parameters, _parameters)&&const DeepCollectionEquality().equals(other._features, _features)&&const DeepCollectionEquality().equals(other._inputPorts, _inputPorts)&&const DeepCollectionEquality().equals(other._outputPorts, _outputPorts));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmMetadata&&(identical(other.guid, guid) || other.guid == guid)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.categories, _categories)&&(identical(other.description, description) || other.description == description)&&(identical(other.shortDescription, shortDescription) || other.shortDescription == shortDescription)&&(identical(other.guiDescription, guiDescription) || other.guiDescription == guiDescription)&&const DeepCollectionEquality().equals(other.useCases, _useCases)&&const DeepCollectionEquality().equals(other.specifications, _specifications)&&const DeepCollectionEquality().equals(other.parameters, _parameters)&&const DeepCollectionEquality().equals(other.features, _features)&&const DeepCollectionEquality().equals(other.inputPorts, _inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, _outputPorts));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,guid,name,const DeepCollectionEquality().hash(_categories),description,shortDescription,guiDescription,const DeepCollectionEquality().hash(_useCases),const DeepCollectionEquality().hash(_specifications),const DeepCollectionEquality().hash(_parameters),const DeepCollectionEquality().hash(_features),const DeepCollectionEquality().hash(_inputPorts),const DeepCollectionEquality().hash(_outputPorts));
+int get hashCode {
+    return Object.hash(runtimeType,guid,name,const DeepCollectionEquality().hash(_categories),description,shortDescription,guiDescription,const DeepCollectionEquality().hash(_useCases),const DeepCollectionEquality().hash(_specifications),const DeepCollectionEquality().hash(_parameters),const DeepCollectionEquality().hash(_features),const DeepCollectionEquality().hash(_inputPorts),const DeepCollectionEquality().hash(_outputPorts));
+}
 
 @override
 String toString() {
-  return 'AlgorithmMetadata(guid: $guid, name: $name, categories: $categories, description: $description, shortDescription: $shortDescription, guiDescription: $guiDescription, useCases: $useCases, specifications: $specifications, parameters: $parameters, features: $features, inputPorts: $inputPorts, outputPorts: $outputPorts)';
+    return 'AlgorithmMetadata(guid: $guid, name: $name, categories: $categories, description: $description, shortDescription: $shortDescription, guiDescription: $guiDescription, useCases: $useCases, specifications: $specifications, parameters: $parameters, features: $features, inputPorts: $inputPorts, outputPorts: $outputPorts)';
 }
 
 

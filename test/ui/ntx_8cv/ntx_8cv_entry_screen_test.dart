@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -125,7 +125,8 @@ void main() {
           );
         }
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets('uses one aggregate sync light that fades after confirmation', (
       tester,

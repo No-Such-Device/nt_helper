@@ -5,7 +5,7 @@ import 'package:cross_file/cross_file.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/semantics.dart';
 import 'package:nt_helper/db/daos/presets_dao.dart';
@@ -16,11 +16,10 @@ import 'package:nt_helper/ui/template_manager/create_template_from_preset_dialog
 import 'package:nt_helper/ui/template_manager/template_apply_dialog.dart';
 import 'package:nt_helper/ui/template_manager/template_slot_selection_list.dart';
 
-typedef TemplateDeviceApplyCallback =
-    Future<void> Function(
-      FullPresetDetails template,
-      List<int> selectedIndices,
-    );
+typedef TemplateDeviceApplyCallback = Future<void> Function(
+  FullPresetDetails template,
+  List<int> selectedIndices,
+);
 
 typedef CurrentPresetSourceLoader = Future<FullPresetDetails?> Function();
 
@@ -110,10 +109,9 @@ class _TemplateManagerScreenState extends State<TemplateManagerScreen> {
 
     final jsonText = TemplateShareService(_database).encodeTemplate(template);
     final path = await FilePicker.saveFile(
+      mimeType: 'application/json',
       dialogTitle: 'Export Template JSON',
       fileName: '${_safeFileName(template.preset.name)}.json',
-      type: FileType.custom,
-      allowedExtensions: ['json'],
       bytes: Uint8List.fromList(utf8.encode(jsonText)),
     );
     if (path == null) return;

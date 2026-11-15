@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'algorithm_routing_metadata.dart';
@@ -9,6 +9,7 @@ part of 'algorithm_routing_metadata.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -18,20 +19,17 @@ mixin _$AlgorithmRoutingMetadata {
 /// Unique identifier for the algorithm
  String get algorithmGuid;/// The type of routing this algorithm requires
  RoutingType get routingType;/// Human-readable name for debugging/logging
- String? get algorithmName;// === Polyphonic Algorithm Properties ===
-/// Number of polyphonic voices (relevant for polyphonic routing)
+ String? get algorithmName;/// Number of polyphonic voices (relevant for polyphonic routing)
 /// Default: 1 (monophonic)
  int get voiceCount;/// Whether the algorithm requires gate/trigger inputs for each voice
  bool get requiresGateInputs;/// Whether the algorithm uses virtual CV ports for modulation
  bool get usesVirtualCvPorts;/// Number of virtual CV ports per voice (when usesVirtualCvPorts is true)
- int get virtualCvPortsPerVoice;// === Multi-Channel Algorithm Properties ===
-/// Number of channels (relevant for multi-channel routing)
+ int get virtualCvPortsPerVoice;/// Number of channels (relevant for multi-channel routing)
 /// For normal algorithms: 1, for width-based algorithms: N
  int get channelCount;/// Whether the algorithm supports stereo channel pairing
  bool get supportsStereo;/// Whether channels can be independently routed
  bool get allowsIndependentChannels;/// Whether to create master mix outputs for multi-channel algorithms
- bool get createMasterMix;// === Common Properties ===
-/// Port types that this algorithm supports
+ bool get createMasterMix;/// Port types that this algorithm supports
  List<String> get supportedPortTypes;/// Base name prefix for generated ports
  String? get portNamePrefix;/// Additional algorithm-specific properties for extensibility
 ///
@@ -57,16 +55,21 @@ $AlgorithmRoutingMetadataCopyWith<AlgorithmRoutingMetadata> get copyWith => _$Al
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmRoutingMetadata&&(identical(other.algorithmGuid, algorithmGuid) || other.algorithmGuid == algorithmGuid)&&(identical(other.routingType, routingType) || other.routingType == routingType)&&(identical(other.algorithmName, algorithmName) || other.algorithmName == algorithmName)&&(identical(other.voiceCount, voiceCount) || other.voiceCount == voiceCount)&&(identical(other.requiresGateInputs, requiresGateInputs) || other.requiresGateInputs == requiresGateInputs)&&(identical(other.usesVirtualCvPorts, usesVirtualCvPorts) || other.usesVirtualCvPorts == usesVirtualCvPorts)&&(identical(other.virtualCvPortsPerVoice, virtualCvPortsPerVoice) || other.virtualCvPortsPerVoice == virtualCvPortsPerVoice)&&(identical(other.channelCount, channelCount) || other.channelCount == channelCount)&&(identical(other.supportsStereo, supportsStereo) || other.supportsStereo == supportsStereo)&&(identical(other.allowsIndependentChannels, allowsIndependentChannels) || other.allowsIndependentChannels == allowsIndependentChannels)&&(identical(other.createMasterMix, createMasterMix) || other.createMasterMix == createMasterMix)&&const DeepCollectionEquality().equals(other.supportedPortTypes, supportedPortTypes)&&(identical(other.portNamePrefix, portNamePrefix) || other.portNamePrefix == portNamePrefix)&&const DeepCollectionEquality().equals(other.customProperties, customProperties)&&const DeepCollectionEquality().equals(other.routingConstraints, routingConstraints));
+  final _this = this as AlgorithmRoutingMetadata;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmRoutingMetadata&&(identical(other.algorithmGuid, _this.algorithmGuid) || other.algorithmGuid == _this.algorithmGuid)&&(identical(other.routingType, _this.routingType) || other.routingType == _this.routingType)&&(identical(other.algorithmName, _this.algorithmName) || other.algorithmName == _this.algorithmName)&&(identical(other.voiceCount, _this.voiceCount) || other.voiceCount == _this.voiceCount)&&(identical(other.requiresGateInputs, _this.requiresGateInputs) || other.requiresGateInputs == _this.requiresGateInputs)&&(identical(other.usesVirtualCvPorts, _this.usesVirtualCvPorts) || other.usesVirtualCvPorts == _this.usesVirtualCvPorts)&&(identical(other.virtualCvPortsPerVoice, _this.virtualCvPortsPerVoice) || other.virtualCvPortsPerVoice == _this.virtualCvPortsPerVoice)&&(identical(other.channelCount, _this.channelCount) || other.channelCount == _this.channelCount)&&(identical(other.supportsStereo, _this.supportsStereo) || other.supportsStereo == _this.supportsStereo)&&(identical(other.allowsIndependentChannels, _this.allowsIndependentChannels) || other.allowsIndependentChannels == _this.allowsIndependentChannels)&&(identical(other.createMasterMix, _this.createMasterMix) || other.createMasterMix == _this.createMasterMix)&&const DeepCollectionEquality().equals(other.supportedPortTypes, _this.supportedPortTypes)&&(identical(other.portNamePrefix, _this.portNamePrefix) || other.portNamePrefix == _this.portNamePrefix)&&const DeepCollectionEquality().equals(other.customProperties, _this.customProperties)&&const DeepCollectionEquality().equals(other.routingConstraints, _this.routingConstraints));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,algorithmGuid,routingType,algorithmName,voiceCount,requiresGateInputs,usesVirtualCvPorts,virtualCvPortsPerVoice,channelCount,supportsStereo,allowsIndependentChannels,createMasterMix,const DeepCollectionEquality().hash(supportedPortTypes),portNamePrefix,const DeepCollectionEquality().hash(customProperties),const DeepCollectionEquality().hash(routingConstraints));
+int get hashCode {
+  final _this = this as AlgorithmRoutingMetadata;
+  return Object.hash(runtimeType,_this.algorithmGuid,_this.routingType,_this.algorithmName,_this.voiceCount,_this.requiresGateInputs,_this.usesVirtualCvPorts,_this.virtualCvPortsPerVoice,_this.channelCount,_this.supportsStereo,_this.allowsIndependentChannels,_this.createMasterMix,const DeepCollectionEquality().hash(_this.supportedPortTypes),_this.portNamePrefix,const DeepCollectionEquality().hash(_this.customProperties),const DeepCollectionEquality().hash(_this.routingConstraints));
+}
 
 @override
 String toString() {
-  return 'AlgorithmRoutingMetadata(algorithmGuid: $algorithmGuid, routingType: $routingType, algorithmName: $algorithmName, voiceCount: $voiceCount, requiresGateInputs: $requiresGateInputs, usesVirtualCvPorts: $usesVirtualCvPorts, virtualCvPortsPerVoice: $virtualCvPortsPerVoice, channelCount: $channelCount, supportsStereo: $supportsStereo, allowsIndependentChannels: $allowsIndependentChannels, createMasterMix: $createMasterMix, supportedPortTypes: $supportedPortTypes, portNamePrefix: $portNamePrefix, customProperties: $customProperties, routingConstraints: $routingConstraints)';
+  final _this = this as AlgorithmRoutingMetadata;
+  return 'AlgorithmRoutingMetadata(algorithmGuid: ${_this.algorithmGuid}, routingType: ${_this.routingType}, algorithmName: ${_this.algorithmName}, voiceCount: ${_this.voiceCount}, requiresGateInputs: ${_this.requiresGateInputs}, usesVirtualCvPorts: ${_this.usesVirtualCvPorts}, virtualCvPortsPerVoice: ${_this.virtualCvPortsPerVoice}, channelCount: ${_this.channelCount}, supportsStereo: ${_this.supportsStereo}, allowsIndependentChannels: ${_this.allowsIndependentChannels}, createMasterMix: ${_this.createMasterMix}, supportedPortTypes: ${_this.supportedPortTypes}, portNamePrefix: ${_this.portNamePrefix}, customProperties: ${_this.customProperties}, routingConstraints: ${_this.routingConstraints})';
 }
 
 
@@ -95,7 +98,7 @@ class _$AlgorithmRoutingMetadataCopyWithImpl<$Res>
 /// Create a copy of AlgorithmRoutingMetadata
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? algorithmGuid = null,Object? routingType = null,Object? algorithmName = freezed,Object? voiceCount = null,Object? requiresGateInputs = null,Object? usesVirtualCvPorts = null,Object? virtualCvPortsPerVoice = null,Object? channelCount = null,Object? supportsStereo = null,Object? allowsIndependentChannels = null,Object? createMasterMix = null,Object? supportedPortTypes = null,Object? portNamePrefix = freezed,Object? customProperties = null,Object? routingConstraints = null,}) {
-  return _then(_self.copyWith(
+  return _then(AlgorithmRoutingMetadata(
 algorithmGuid: null == algorithmGuid ? _self.algorithmGuid : algorithmGuid // ignore: cast_nullable_to_non_nullable
 as String,routingType: null == routingType ? _self.routingType : routingType // ignore: cast_nullable_to_non_nullable
 as RoutingType,algorithmName: freezed == algorithmName ? _self.algorithmName : algorithmName // ignore: cast_nullable_to_non_nullable
@@ -246,7 +249,7 @@ return $default(_that.algorithmGuid,_that.routingType,_that.algorithmName,_that.
 @JsonSerializable()
 
 class _AlgorithmRoutingMetadata implements AlgorithmRoutingMetadata {
-  const _AlgorithmRoutingMetadata({required this.algorithmGuid, required this.routingType, this.algorithmName, this.voiceCount = 1, this.requiresGateInputs = false, this.usesVirtualCvPorts = false, this.virtualCvPortsPerVoice = 2, this.channelCount = 1, this.supportsStereo = false, this.allowsIndependentChannels = true, this.createMasterMix = true, final  List<String> supportedPortTypes = const [], this.portNamePrefix, final  Map<String, dynamic> customProperties = const {}, final  Map<String, dynamic> routingConstraints = const {}}): _supportedPortTypes = supportedPortTypes,_customProperties = customProperties,_routingConstraints = routingConstraints;
+  const _AlgorithmRoutingMetadata({required this.algorithmGuid, required this.routingType, this.algorithmName, this.voiceCount = 1, this.requiresGateInputs = false, this.usesVirtualCvPorts = false, this.virtualCvPortsPerVoice = 2, this.channelCount = 1, this.supportsStereo = false, this.allowsIndependentChannels = true, this.createMasterMix = true,  List<String> supportedPortTypes = const [], this.portNamePrefix,  Map<String, dynamic> customProperties = const {},  Map<String, dynamic> routingConstraints = const {}}): _supportedPortTypes = supportedPortTypes,_customProperties = customProperties,_routingConstraints = routingConstraints;
   factory _AlgorithmRoutingMetadata.fromJson(Map<String, dynamic> json) => _$AlgorithmRoutingMetadataFromJson(json);
 
 /// Unique identifier for the algorithm
@@ -255,7 +258,6 @@ class _AlgorithmRoutingMetadata implements AlgorithmRoutingMetadata {
 @override final  RoutingType routingType;
 /// Human-readable name for debugging/logging
 @override final  String? algorithmName;
-// === Polyphonic Algorithm Properties ===
 /// Number of polyphonic voices (relevant for polyphonic routing)
 /// Default: 1 (monophonic)
 @override@JsonKey() final  int voiceCount;
@@ -265,7 +267,6 @@ class _AlgorithmRoutingMetadata implements AlgorithmRoutingMetadata {
 @override@JsonKey() final  bool usesVirtualCvPorts;
 /// Number of virtual CV ports per voice (when usesVirtualCvPorts is true)
 @override@JsonKey() final  int virtualCvPortsPerVoice;
-// === Multi-Channel Algorithm Properties ===
 /// Number of channels (relevant for multi-channel routing)
 /// For normal algorithms: 1, for width-based algorithms: N
 @override@JsonKey() final  int channelCount;
@@ -275,10 +276,8 @@ class _AlgorithmRoutingMetadata implements AlgorithmRoutingMetadata {
 @override@JsonKey() final  bool allowsIndependentChannels;
 /// Whether to create master mix outputs for multi-channel algorithms
 @override@JsonKey() final  bool createMasterMix;
-// === Common Properties ===
 /// Port types that this algorithm supports
  final  List<String> _supportedPortTypes;
-// === Common Properties ===
 /// Port types that this algorithm supports
 @override@JsonKey() List<String> get supportedPortTypes {
   if (_supportedPortTypes is EqualUnmodifiableListView) return _supportedPortTypes;
@@ -338,16 +337,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmRoutingMetadata&&(identical(other.algorithmGuid, algorithmGuid) || other.algorithmGuid == algorithmGuid)&&(identical(other.routingType, routingType) || other.routingType == routingType)&&(identical(other.algorithmName, algorithmName) || other.algorithmName == algorithmName)&&(identical(other.voiceCount, voiceCount) || other.voiceCount == voiceCount)&&(identical(other.requiresGateInputs, requiresGateInputs) || other.requiresGateInputs == requiresGateInputs)&&(identical(other.usesVirtualCvPorts, usesVirtualCvPorts) || other.usesVirtualCvPorts == usesVirtualCvPorts)&&(identical(other.virtualCvPortsPerVoice, virtualCvPortsPerVoice) || other.virtualCvPortsPerVoice == virtualCvPortsPerVoice)&&(identical(other.channelCount, channelCount) || other.channelCount == channelCount)&&(identical(other.supportsStereo, supportsStereo) || other.supportsStereo == supportsStereo)&&(identical(other.allowsIndependentChannels, allowsIndependentChannels) || other.allowsIndependentChannels == allowsIndependentChannels)&&(identical(other.createMasterMix, createMasterMix) || other.createMasterMix == createMasterMix)&&const DeepCollectionEquality().equals(other._supportedPortTypes, _supportedPortTypes)&&(identical(other.portNamePrefix, portNamePrefix) || other.portNamePrefix == portNamePrefix)&&const DeepCollectionEquality().equals(other._customProperties, _customProperties)&&const DeepCollectionEquality().equals(other._routingConstraints, _routingConstraints));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmRoutingMetadata&&(identical(other.algorithmGuid, algorithmGuid) || other.algorithmGuid == algorithmGuid)&&(identical(other.routingType, routingType) || other.routingType == routingType)&&(identical(other.algorithmName, algorithmName) || other.algorithmName == algorithmName)&&(identical(other.voiceCount, voiceCount) || other.voiceCount == voiceCount)&&(identical(other.requiresGateInputs, requiresGateInputs) || other.requiresGateInputs == requiresGateInputs)&&(identical(other.usesVirtualCvPorts, usesVirtualCvPorts) || other.usesVirtualCvPorts == usesVirtualCvPorts)&&(identical(other.virtualCvPortsPerVoice, virtualCvPortsPerVoice) || other.virtualCvPortsPerVoice == virtualCvPortsPerVoice)&&(identical(other.channelCount, channelCount) || other.channelCount == channelCount)&&(identical(other.supportsStereo, supportsStereo) || other.supportsStereo == supportsStereo)&&(identical(other.allowsIndependentChannels, allowsIndependentChannels) || other.allowsIndependentChannels == allowsIndependentChannels)&&(identical(other.createMasterMix, createMasterMix) || other.createMasterMix == createMasterMix)&&const DeepCollectionEquality().equals(other.supportedPortTypes, _supportedPortTypes)&&(identical(other.portNamePrefix, portNamePrefix) || other.portNamePrefix == portNamePrefix)&&const DeepCollectionEquality().equals(other.customProperties, _customProperties)&&const DeepCollectionEquality().equals(other.routingConstraints, _routingConstraints));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,algorithmGuid,routingType,algorithmName,voiceCount,requiresGateInputs,usesVirtualCvPorts,virtualCvPortsPerVoice,channelCount,supportsStereo,allowsIndependentChannels,createMasterMix,const DeepCollectionEquality().hash(_supportedPortTypes),portNamePrefix,const DeepCollectionEquality().hash(_customProperties),const DeepCollectionEquality().hash(_routingConstraints));
+int get hashCode {
+    return Object.hash(runtimeType,algorithmGuid,routingType,algorithmName,voiceCount,requiresGateInputs,usesVirtualCvPorts,virtualCvPortsPerVoice,channelCount,supportsStereo,allowsIndependentChannels,createMasterMix,const DeepCollectionEquality().hash(_supportedPortTypes),portNamePrefix,const DeepCollectionEquality().hash(_customProperties),const DeepCollectionEquality().hash(_routingConstraints));
+}
 
 @override
 String toString() {
-  return 'AlgorithmRoutingMetadata(algorithmGuid: $algorithmGuid, routingType: $routingType, algorithmName: $algorithmName, voiceCount: $voiceCount, requiresGateInputs: $requiresGateInputs, usesVirtualCvPorts: $usesVirtualCvPorts, virtualCvPortsPerVoice: $virtualCvPortsPerVoice, channelCount: $channelCount, supportsStereo: $supportsStereo, allowsIndependentChannels: $allowsIndependentChannels, createMasterMix: $createMasterMix, supportedPortTypes: $supportedPortTypes, portNamePrefix: $portNamePrefix, customProperties: $customProperties, routingConstraints: $routingConstraints)';
+    return 'AlgorithmRoutingMetadata(algorithmGuid: $algorithmGuid, routingType: $routingType, algorithmName: $algorithmName, voiceCount: $voiceCount, requiresGateInputs: $requiresGateInputs, usesVirtualCvPorts: $usesVirtualCvPorts, virtualCvPortsPerVoice: $virtualCvPortsPerVoice, channelCount: $channelCount, supportsStereo: $supportsStereo, allowsIndependentChannels: $allowsIndependentChannels, createMasterMix: $createMasterMix, supportedPortTypes: $supportedPortTypes, portNamePrefix: $portNamePrefix, customProperties: $customProperties, routingConstraints: $routingConstraints)';
 }
 
 

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'video_stream_state.dart';
@@ -9,6 +9,7 @@ part of 'video_stream_state.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -20,7 +21,7 @@ mixin _$VideoStreamState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VideoStreamState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VideoStreamState);
 }
 
 
@@ -29,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'VideoStreamState()';
+    return 'VideoStreamState()';
 }
 
 
@@ -194,7 +195,7 @@ return error(_that.message);case _:
 
 class _Disconnected implements VideoStreamState {
   const _Disconnected();
-  
+
 
 
 
@@ -203,7 +204,7 @@ class _Disconnected implements VideoStreamState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Disconnected);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Disconnected);
 }
 
 
@@ -212,7 +213,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'VideoStreamState.disconnected()';
+    return 'VideoStreamState.disconnected()';
 }
 
 
@@ -226,7 +227,7 @@ String toString() {
 
 class _Connecting implements VideoStreamState {
   const _Connecting();
-  
+
 
 
 
@@ -235,7 +236,7 @@ class _Connecting implements VideoStreamState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Connecting);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Connecting);
 }
 
 
@@ -244,7 +245,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'VideoStreamState.connecting()';
+    return 'VideoStreamState.connecting()';
 }
 
 
@@ -258,7 +259,7 @@ String toString() {
 
 class _Streaming implements VideoStreamState {
   const _Streaming({required this.videoStream, required this.width, required this.height, required this.fps});
-  
+
 
  final  Stream<dynamic> videoStream;
  final  int width;
@@ -275,16 +276,18 @@ _$StreamingCopyWith<_Streaming> get copyWith => __$StreamingCopyWithImpl<_Stream
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Streaming&&(identical(other.videoStream, videoStream) || other.videoStream == videoStream)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height)&&(identical(other.fps, fps) || other.fps == fps));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Streaming&&(identical(other.videoStream, videoStream) || other.videoStream == videoStream)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height)&&(identical(other.fps, fps) || other.fps == fps));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,videoStream,width,height,fps);
+int get hashCode {
+    return Object.hash(runtimeType,videoStream,width,height,fps);
+}
 
 @override
 String toString() {
-  return 'VideoStreamState.streaming(videoStream: $videoStream, width: $width, height: $height, fps: $fps)';
+    return 'VideoStreamState.streaming(videoStream: $videoStream, width: $width, height: $height, fps: $fps)';
 }
 
 
@@ -330,7 +333,7 @@ as double,
 
 class _Error implements VideoStreamState {
   const _Error(this.message);
-  
+
 
  final  String message;
 
@@ -344,16 +347,18 @@ _$ErrorCopyWith<_Error> get copyWith => __$ErrorCopyWithImpl<_Error>(this, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Error&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Error&&(identical(other.message, message) || other.message == message));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+    return Object.hash(runtimeType,message);
+}
 
 @override
 String toString() {
-  return 'VideoStreamState.error(message: $message)';
+    return 'VideoStreamState.error(message: $message)';
 }
 
 

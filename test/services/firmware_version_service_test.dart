@@ -1,6 +1,9 @@
 import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+
 import '../test_helpers/ipad_firmware.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/models/firmware_release.dart';
@@ -24,36 +27,33 @@ void main() {
         );
       });
     }
-    test(
-      'retains app-local immutable target bytes and hash independently of download',
-      () async {
-        final directory = await Directory.systemTemp.createTemp(
-          'nt-package-test',
-        );
-        addTearDown(() => directory.delete(recursive: true));
-        final file = File('${directory.path}/download.zip');
-        await file.writeAsBytes(ipadPackageBytes());
-        final service = FirmwareVersionService();
-        addTearDown(service.dispose);
-        final prepared = await service.prepareIpadPackage(
-          ipadRelease,
-          file.path,
-        );
-        addTearDown(
-          () => File(prepared.packagePath).parent.delete(recursive: true),
-        );
-        await file.writeAsBytes([0]);
-        expect(
-          File(prepared.packagePath).readAsBytesSync(),
-          ipadPackageBytes(),
-        );
-        expect(prepared.version, '1.19.0');
-        expect(prepared.sha256Hash, hasLength(64));
-        expect(prepared.loader, ipadImage());
-        expect(prepared.application, ipadImage(application: true));
-        expect(() => prepared.application[0] = 0, throwsUnsupportedError);
-      },
-    );
+    test('retains app-local immutable target bytes and hash independently of download', () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'nt-package-test',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/download.zip');
+      // Archive 4.7 records current timestamps. Compare with the actual input,
+      // not a newly encoded ZIP that may have different timestamp bytes.
+      final originalPackageBytes = ipadPackageBytes();
+      await file.writeAsBytes(originalPackageBytes);
+      final service = FirmwareVersionService();
+      addTearDown(service.dispose);
+      final prepared = await service.prepareIpadPackage(ipadRelease, file.path);
+      addTearDown(
+        () => File(prepared.packagePath).parent.delete(recursive: true),
+      );
+      await file.writeAsBytes([0]);
+      expect(
+        File(prepared.packagePath).readAsBytesSync(),
+        originalPackageBytes,
+      );
+      expect(prepared.version, '1.19.0');
+      expect(prepared.sha256Hash, hasLength(64));
+      expect(prepared.loader, ipadImage());
+      expect(prepared.application, ipadImage(application: true));
+      expect(() => prepared.application[0] = 0, throwsUnsupportedError);
+    });
     for (final reply in [
       '1.19.0',
       'v1.19.0',
@@ -93,25 +93,22 @@ void main() {
         isFalse,
       );
     });
-    test(
-      'build timestamp allowance still rejects malformed time and trailing text',
-      () {
-        for (final suffix in [
-          'Oct 30 2026 24:04:12',
-          'Oct 30 2026 14:64:12',
-          'Oct 30 2026 14:04:12 loader',
-          'Oct 30 2026\n14:04:12',
-        ]) {
-          expect(
-            FirmwareVersionService.matchesApplicationVersion(
-              'v1.20.0beta\n$suffix',
-              '1.20.0beta',
-            ),
-            isFalse,
-          );
-        }
-      },
-    );
+    test('build timestamp allowance still rejects malformed time and trailing text', () {
+      for (final suffix in [
+        'Oct 30 2026 24:04:12',
+        'Oct 30 2026 14:64:12',
+        'Oct 30 2026 14:04:12 loader',
+        'Oct 30 2026\n14:04:12',
+      ]) {
+        expect(
+          FirmwareVersionService.matchesApplicationVersion(
+            'v1.20.0beta\n$suffix',
+            '1.20.0beta',
+          ),
+          isFalse,
+        );
+      }
+    });
     for (final reply in <String?>[
       null,
       '',
@@ -265,9 +262,8 @@ void main() {
 
     test('clearCache clears cached data', () async {
       // First make a successful request
-      when(
-        () => mockClient.get(any(), headers: any(named: 'headers')),
-      ).thenAnswer((_) async => http.Response(_sampleHtml, 200));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response(_sampleHtml, 200));
 
       final result1 = await service.fetchAvailableVersions();
       expect(result1, isNotEmpty);
@@ -276,9 +272,8 @@ void main() {
       service.clearCache();
 
       // Next request should make a new HTTP call
-      when(
-        () => mockClient.get(any(), headers: any(named: 'headers')),
-      ).thenAnswer((_) async => http.Response(_sampleHtml, 200));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response(_sampleHtml, 200));
 
       await service.fetchAvailableVersions();
 
@@ -295,9 +290,8 @@ void main() {
     });
 
     test('fetchAvailableVersions caches results', () async {
-      when(
-        () => mockClient.get(any(), headers: any(named: 'headers')),
-      ).thenAnswer((_) async => http.Response(_sampleHtml, 200));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response(_sampleHtml, 200));
 
       // Make two calls
       await service.fetchAvailableVersions();
@@ -316,9 +310,8 @@ void main() {
     });
 
     test('fetchAvailableVersions handles HTTP errors', () async {
-      when(
-        () => mockClient.get(any(), headers: any(named: 'headers')),
-      ).thenAnswer((_) async => http.Response('Not Found', 404));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response('Not Found', 404));
 
       expect(
         () => service.fetchAvailableVersions(),
@@ -327,9 +320,8 @@ void main() {
     });
 
     test('fetchAvailableVersions parses HTML correctly', () async {
-      when(
-        () => mockClient.get(any(), headers: any(named: 'headers')),
-      ).thenAnswer((_) async => http.Response(_sampleHtml, 200));
+      when(() => mockClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) async => http.Response(_sampleHtml, 200));
 
       final versions = await service.fetchAvailableVersions();
 

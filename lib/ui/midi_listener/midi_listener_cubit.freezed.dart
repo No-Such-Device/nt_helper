@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'midi_listener_cubit.dart';
@@ -9,6 +9,7 @@ part of 'midi_listener_cubit.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -20,7 +21,7 @@ mixin _$MidiListenerState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MidiListenerState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MidiListenerState);
 }
 
 
@@ -29,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'MidiListenerState()';
+    return 'MidiListenerState()';
 }
 
 
@@ -176,7 +177,7 @@ return data(_that.devices,_that.selectedDevice,_that.isConnected,_that.lastDetec
 
 class Initial implements MidiListenerState {
   const Initial();
-  
+
 
 
 
@@ -185,7 +186,7 @@ class Initial implements MidiListenerState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Initial);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is Initial);
 }
 
 
@@ -194,7 +195,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'MidiListenerState.initial()';
+    return 'MidiListenerState.initial()';
 }
 
 
@@ -207,8 +208,8 @@ String toString() {
 
 
 class Data implements MidiListenerState {
-  const Data({final  List<MidiDevice> devices = const [], this.selectedDevice, this.isConnected = false, this.lastDetectedType, this.lastDetectedChannel, this.lastDetectedCc, this.lastDetectedNote, this.lastDetectedTime}): _devices = devices;
-  
+  const Data({ List<MidiDevice> devices = const [], this.selectedDevice, this.isConnected = false, this.lastDetectedType, this.lastDetectedChannel, this.lastDetectedCc, this.lastDetectedNote, this.lastDetectedTime}): _devices = devices;
+
 
  final  List<MidiDevice> _devices;
 @JsonKey() List<MidiDevice> get devices {
@@ -235,16 +236,18 @@ $DataCopyWith<Data> get copyWith => _$DataCopyWithImpl<Data>(this, _$identity);
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Data&&const DeepCollectionEquality().equals(other._devices, _devices)&&(identical(other.selectedDevice, selectedDevice) || other.selectedDevice == selectedDevice)&&(identical(other.isConnected, isConnected) || other.isConnected == isConnected)&&(identical(other.lastDetectedType, lastDetectedType) || other.lastDetectedType == lastDetectedType)&&(identical(other.lastDetectedChannel, lastDetectedChannel) || other.lastDetectedChannel == lastDetectedChannel)&&(identical(other.lastDetectedCc, lastDetectedCc) || other.lastDetectedCc == lastDetectedCc)&&(identical(other.lastDetectedNote, lastDetectedNote) || other.lastDetectedNote == lastDetectedNote)&&(identical(other.lastDetectedTime, lastDetectedTime) || other.lastDetectedTime == lastDetectedTime));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is Data&&const DeepCollectionEquality().equals(other.devices, _devices)&&(identical(other.selectedDevice, selectedDevice) || other.selectedDevice == selectedDevice)&&(identical(other.isConnected, isConnected) || other.isConnected == isConnected)&&(identical(other.lastDetectedType, lastDetectedType) || other.lastDetectedType == lastDetectedType)&&(identical(other.lastDetectedChannel, lastDetectedChannel) || other.lastDetectedChannel == lastDetectedChannel)&&(identical(other.lastDetectedCc, lastDetectedCc) || other.lastDetectedCc == lastDetectedCc)&&(identical(other.lastDetectedNote, lastDetectedNote) || other.lastDetectedNote == lastDetectedNote)&&(identical(other.lastDetectedTime, lastDetectedTime) || other.lastDetectedTime == lastDetectedTime));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_devices),selectedDevice,isConnected,lastDetectedType,lastDetectedChannel,lastDetectedCc,lastDetectedNote,lastDetectedTime);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_devices),selectedDevice,isConnected,lastDetectedType,lastDetectedChannel,lastDetectedCc,lastDetectedNote,lastDetectedTime);
+}
 
 @override
 String toString() {
-  return 'MidiListenerState.data(devices: $devices, selectedDevice: $selectedDevice, isConnected: $isConnected, lastDetectedType: $lastDetectedType, lastDetectedChannel: $lastDetectedChannel, lastDetectedCc: $lastDetectedCc, lastDetectedNote: $lastDetectedNote, lastDetectedTime: $lastDetectedTime)';
+    return 'MidiListenerState.data(devices: $devices, selectedDevice: $selectedDevice, isConnected: $isConnected, lastDetectedType: $lastDetectedType, lastDetectedChannel: $lastDetectedChannel, lastDetectedCc: $lastDetectedCc, lastDetectedNote: $lastDetectedNote, lastDetectedTime: $lastDetectedTime)';
 }
 
 

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/services/wave_cache_maintenance_service.dart';
@@ -77,9 +77,8 @@ void main() {
       failedCachePaths: {},
       remountRequested: true,
     );
-    when(
-      () => service.findForSampleFragment('Track 44'),
-    ).thenAnswer((_) async => plan);
+    when(() => service.findForSampleFragment('Track 44'))
+        .thenAnswer((_) async => plan);
     when(() => service.deleteAndRemount(plan)).thenAnswer((_) async => result);
     await pumpDialog(tester);
 

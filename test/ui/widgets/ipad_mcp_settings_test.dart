@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show SemanticsAction, SemanticsActionEvent, Tristate;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/services/ipad_local_network.dart';
 import 'package:nt_helper/ui/widgets/ipad_mcp_settings.dart';

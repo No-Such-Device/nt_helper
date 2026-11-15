@@ -1,10 +1,15 @@
 import 'dart:io';
+
 import 'package:nt_helper/algorithm_controller/sd_card_companion.dart';
+
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nt_helper/services/settings_service.dart';
+
 import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
+
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +19,7 @@ import 'package:nt_helper/ui/patch_map/patch_map_editor_cubit.dart';
 import 'package:nt_helper/domain/patch_map/patch_map.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/patch_map/patch_map_editor.dart';
+
 import '../../support/patch_map_device.dart';
 
 Future<void> settleCompanion(WidgetTester tester) async {
@@ -49,9 +55,8 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1280, 820));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final device = PatchMapDevice();
-      var source = File(
-        'test/fixtures/patch_map/patch_helper.lua',
-      ).readAsStringSync();
+      var source = File('test/fixtures/patch_map/patch_helper.lua')
+          .readAsStringSync();
       Widget editor(String key) => MaterialApp(
         home: Scaffold(
           body: PatchMapEditor(
@@ -135,7 +140,8 @@ void main() {
       semantics.dispose();
       await tester.pumpWidget(const SizedBox());
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'AUX picker, editing, deletion and compact selection preserve the physical table',
@@ -148,7 +154,8 @@ void main() {
         loader.addFont(
           Future.value(ByteData.sublistView(font.readAsBytesSync())),
         );
-        await loader.load();
+        await tester.runAsync(loader.load);
+        await tester.pump();
       }
       final iconFont = File(
         '/Users/nealsanche/fvm/default/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
@@ -158,7 +165,8 @@ void main() {
         loader.addFont(
           Future.value(ByteData.sublistView(iconFont.readAsBytesSync())),
         );
-        await loader.load();
+        await tester.runAsync(loader.load);
+        await tester.pump();
       }
       final device = PatchMapDevice();
       for (var i = 0; i < 8; i++) {
@@ -184,9 +192,9 @@ void main() {
                 transport: device,
                 slotIndex: 0,
                 watchInterval: null,
-                download: (_) async => File(
-                  'test/fixtures/patch_map/patch_helper.lua',
-                ).readAsBytesSync(),
+                download: (_) async =>
+                    File('test/fixtures/patch_map/patch_helper.lua')
+                        .readAsBytesSync(),
               ),
             ),
           ),
@@ -233,15 +241,27 @@ void main() {
       await settleCompanion(tester);
       expect(device.map.aux.single.description, 'Stereo effect return L');
       expect(device.map.aux.single.group, 'Effects');
-      await tester.ensureVisible(find.byTooltip('Remove AUX 44'));
+      await tester.ensureVisible(
+        find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message == 'Remove AUX 44',
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.bySemanticsLabel(RegExp('Remove AUX 44')), findsOneWidget);
-      await tester.tap(find.byTooltip('Remove AUX 44'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message == 'Remove AUX 44',
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(device.map.aux.single.description, 'Stereo effect return L');
-      await tester.tap(find.byTooltip('Remove AUX 44'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message == 'Remove AUX 44',
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, 'Remove'));
       await settleCompanion(tester);
@@ -280,9 +300,8 @@ void main() {
                       as RenderRepaintBoundary)
                   .toImage();
           final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-          File(
-            'docs/evidence/patch-helper/aux-desktop.png',
-          ).writeAsBytesSync(bytes!.buffer.asUint8List());
+          File('docs/evidence/patch-helper/aux-desktop.png')
+              .writeAsBytesSync(bytes!.buffer.asUint8List());
           image.dispose();
         });
       }
@@ -316,9 +335,8 @@ void main() {
                       as RenderRepaintBoundary)
                   .toImage();
           final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-          File(
-            'docs/evidence/patch-helper/aux-compact.png',
-          ).writeAsBytesSync(bytes!.buffer.asUint8List());
+          File('docs/evidence/patch-helper/aux-compact.png')
+              .writeAsBytesSync(bytes!.buffer.asUint8List());
           image.dispose();
         });
       }
@@ -336,9 +354,8 @@ void main() {
       var downloads = 0;
       Future<Uint8List?> download(String _) async {
         downloads++;
-        return File(
-          'test/fixtures/patch_map/patch_helper.lua',
-        ).readAsBytesSync();
+        return File('test/fixtures/patch_map/patch_helper.lua')
+            .readAsBytesSync();
       }
 
       Widget editor(String name) => MaterialApp(
@@ -380,7 +397,8 @@ void main() {
       expect(find.text('Patch Helper'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'overlong text is rejected without shifting or desynchronizing rows',
@@ -395,9 +413,9 @@ void main() {
               evaluationRunner: evaluateCompanionDocument,
               transport: device,
               slotIndex: 0,
-              download: (_) async => File(
-                'test/fixtures/patch_map/patch_helper.lua',
-              ).readAsBytesSync(),
+              download: (_) async =>
+                  File('test/fixtures/patch_map/patch_helper.lua')
+                      .readAsBytesSync(),
             ),
           ),
         ),
@@ -424,7 +442,8 @@ void main() {
       );
       await tester.pumpWidget(const SizedBox());
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
   testWidgets(
     'Lua action dialog adds each model, cancels without writes and keeps layout stable',
     (tester) async {
@@ -436,7 +455,8 @@ void main() {
         loader.addFont(
           Future.value(ByteData.sublistView(font.readAsBytesSync())),
         );
-        await loader.load();
+        await tester.runAsync(loader.load);
+        await tester.pump();
       }
       final iconFont = File(
         '/Users/nealsanche/fvm/default/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
@@ -446,7 +466,8 @@ void main() {
         loader.addFont(
           Future.value(ByteData.sublistView(iconFont.readAsBytesSync())),
         );
-        await loader.load();
+        await tester.runAsync(loader.load);
+        await tester.pump();
       }
       final device = PatchMapDevice();
       final boundary = GlobalKey();
@@ -468,9 +489,9 @@ void main() {
               evaluationRunner: evaluateCompanionDocument,
               transport: device,
               slotIndex: 0,
-              download: (_) async => File(
-                'test/fixtures/patch_map/patch_helper.lua',
-              ).readAsBytesSync(),
+              download: (_) async =>
+                  File('test/fixtures/patch_map/patch_helper.lua')
+                      .readAsBytesSync(),
             ),
           ),
         ),
@@ -479,10 +500,21 @@ void main() {
       final semantics = tester.ensureSemantics();
       await tester.pump();
       expect(find.bySemanticsLabel('Add expander'), findsOneWidget);
-      final action = find.byTooltip('Add expander');
+      final action = find.byWidgetPredicate(
+        (widget) => widget is Tooltip && widget.message == 'Add expander',
+      );
       final header = tester.getRect(find.text('Socket'));
       expect(tester.getRect(action).right, greaterThan(1200));
-      expect(tester.getRect(find.byTooltip('Up to date')).left, lessThan(60));
+      expect(
+        tester
+            .getRect(
+              find.byWidgetPredicate(
+                (widget) => widget is Tooltip && widget.message == 'Up to date',
+              ),
+            )
+            .left,
+        lessThan(60),
+      );
       for (final model in PatchMap.expanderTypes) {
         expect(find.text(model), findsNothing);
       }
@@ -503,9 +535,8 @@ void main() {
                       as RenderRepaintBoundary)
                   .toImage();
           final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-          File(
-            'docs/evidence/patch-helper/expander-dialog.png',
-          ).writeAsBytesSync(bytes!.buffer.asUint8List());
+          File('docs/evidence/patch-helper/expander-dialog.png')
+              .writeAsBytesSync(bytes!.buffer.asUint8List());
           image.dispose();
         });
       }
@@ -562,9 +593,9 @@ void main() {
               evaluationRunner: evaluateCompanionDocument,
               transport: device,
               slotIndex: 0,
-              download: (_) async => File(
-                'test/fixtures/patch_map/patch_helper.lua',
-              ).readAsBytesSync(),
+              download: (_) async =>
+                  File('test/fixtures/patch_map/patch_helper.lua')
+                      .readAsBytesSync(),
             ),
           ),
         ),
@@ -616,7 +647,8 @@ void main() {
         loader.addFont(
           Future.value(ByteData.sublistView(font.readAsBytesSync())),
         );
-        await loader.load();
+        await tester.runAsync(loader.load);
+        await tester.pump();
       }
       final device = PatchMapDevice();
       device.map = device.map
@@ -661,7 +693,8 @@ void main() {
         loader.addFont(
           Future.value(ByteData.sublistView(iconFont.readAsBytesSync())),
         );
-        await loader.load();
+        await tester.runAsync(loader.load);
+        await tester.pump();
       }
       final boundary = GlobalKey();
       final rootBoundary = GlobalKey();
@@ -691,9 +724,9 @@ void main() {
                   transport: device,
                   watchInterval: const Duration(seconds: 1),
                   slotIndex: 0,
-                  download: (_) async => File(
-                    'test/fixtures/patch_map/patch_helper.lua',
-                  ).readAsBytesSync(),
+                  download: (_) async =>
+                      File('test/fixtures/patch_map/patch_helper.lua')
+                          .readAsBytesSync(),
                 ),
               ),
             ),
@@ -706,7 +739,12 @@ void main() {
       expect(find.text('Patch title'), findsNothing);
       expect(find.text('Reload companion & map'), findsNothing);
       expect(find.textContaining('Save the preset'), findsNothing);
-      expect(find.byTooltip('Up to date'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message == 'Up to date',
+        ),
+        findsOneWidget,
+      );
       final semantics = tester.ensureSemantics();
       await tester.pump();
       expect(find.bySemanticsLabel('Up to date'), findsOneWidget);
@@ -753,12 +791,22 @@ void main() {
       );
       await tester.enterText(destination, 'Rings odd');
       await tester.pump();
-      expect(find.byTooltip('Syncing'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message == 'Syncing',
+        ),
+        findsOneWidget,
+      );
       expect(tester.getRect(find.text('Socket')), stableHeader);
       expect(device.map.connections.first.destination, 'Plaits out');
       await settleCompanion(tester);
       expect(device.map.connections.first.destination, 'Rings odd');
-      expect(find.byTooltip('Syncing'), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message == 'Syncing',
+        ),
+        findsNothing,
+      );
       final nextRow = find.byType(PatchMapRow).at(1);
       final stableRow = tester.getRect(nextRow);
       await tester.enterText(find.byKey(const ValueKey('tag-0')), '13');
@@ -818,9 +866,8 @@ void main() {
                       as RenderRepaintBoundary)
                   .toImage();
           final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-          File(
-            'docs/evidence/patch-helper/editor-compact.png',
-          ).writeAsBytesSync(bytes!.buffer.asUint8List());
+          File('docs/evidence/patch-helper/editor-compact.png')
+              .writeAsBytesSync(bytes!.buffer.asUint8List());
           image.dispose();
         });
       }
@@ -854,7 +901,11 @@ void main() {
       await settleCompanion(tester);
       await tester.binding.setSurfaceSize(const Size(1280, 820));
       await tester.pumpAndSettle();
-      final rename = find.byTooltip('Rename Expander 1 · NTX-8CV');
+      final rename = find.byWidgetPredicate(
+        (widget) =>
+            widget is Tooltip &&
+            widget.message == 'Rename Expander 1 · NTX-8CV',
+      );
       await tester.ensureVisible(rename);
       await tester.tap(rename);
       await tester.pumpAndSettle();

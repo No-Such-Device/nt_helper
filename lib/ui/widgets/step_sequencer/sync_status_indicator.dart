@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 
 /// Sync status states for parameter synchronization

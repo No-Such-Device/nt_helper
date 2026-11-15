@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'routing_editor_state.dart';
@@ -9,6 +9,7 @@ part of 'routing_editor_state.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -25,16 +26,21 @@ $RoutingBusCopyWith<RoutingBus> get copyWith => _$RoutingBusCopyWithImpl<Routing
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingBus&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.connectionIds, connectionIds)&&(identical(other.defaultOutputMode, defaultOutputMode) || other.defaultOutputMode == defaultOutputMode)&&(identical(other.masterGain, masterGain) || other.masterGain == masterGain)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.modifiedAt, modifiedAt) || other.modifiedAt == modifiedAt));
+  final _this = this as RoutingBus;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingBus&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.status, _this.status) || other.status == _this.status)&&const DeepCollectionEquality().equals(other.connectionIds, _this.connectionIds)&&(identical(other.defaultOutputMode, _this.defaultOutputMode) || other.defaultOutputMode == _this.defaultOutputMode)&&(identical(other.masterGain, _this.masterGain) || other.masterGain == _this.masterGain)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.modifiedAt, _this.modifiedAt) || other.modifiedAt == _this.modifiedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,status,const DeepCollectionEquality().hash(connectionIds),defaultOutputMode,masterGain,createdAt,modifiedAt);
+int get hashCode {
+  final _this = this as RoutingBus;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.status,const DeepCollectionEquality().hash(_this.connectionIds),_this.defaultOutputMode,_this.masterGain,_this.createdAt,_this.modifiedAt);
+}
 
 @override
 String toString() {
-  return 'RoutingBus(id: $id, name: $name, status: $status, connectionIds: $connectionIds, defaultOutputMode: $defaultOutputMode, masterGain: $masterGain, createdAt: $createdAt, modifiedAt: $modifiedAt)';
+  final _this = this as RoutingBus;
+  return 'RoutingBus(id: ${_this.id}, name: ${_this.name}, status: ${_this.status}, connectionIds: ${_this.connectionIds}, defaultOutputMode: ${_this.defaultOutputMode}, masterGain: ${_this.masterGain}, createdAt: ${_this.createdAt}, modifiedAt: ${_this.modifiedAt})';
 }
 
 
@@ -63,7 +69,7 @@ class _$RoutingBusCopyWithImpl<$Res>
 /// Create a copy of RoutingBus
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? status = null,Object? connectionIds = null,Object? defaultOutputMode = null,Object? masterGain = null,Object? createdAt = freezed,Object? modifiedAt = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(RoutingBus(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
@@ -207,8 +213,8 @@ return $default(_that.id,_that.name,_that.status,_that.connectionIds,_that.defau
 
 
 class _RoutingBus implements RoutingBus {
-  const _RoutingBus({required this.id, required this.name, required this.status, final  List<String> connectionIds = const [], this.defaultOutputMode = OutputMode.replace, this.masterGain = 1.0, this.createdAt, this.modifiedAt}): _connectionIds = connectionIds;
-  
+  const _RoutingBus({required this.id, required this.name, required this.status,  List<String> connectionIds = const [], this.defaultOutputMode = OutputMode.replace, this.masterGain = 1.0, this.createdAt, this.modifiedAt}): _connectionIds = connectionIds;
+
 
 @override final  String id;
 @override final  String name;
@@ -235,16 +241,18 @@ _$RoutingBusCopyWith<_RoutingBus> get copyWith => __$RoutingBusCopyWithImpl<_Rou
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoutingBus&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._connectionIds, _connectionIds)&&(identical(other.defaultOutputMode, defaultOutputMode) || other.defaultOutputMode == defaultOutputMode)&&(identical(other.masterGain, masterGain) || other.masterGain == masterGain)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.modifiedAt, modifiedAt) || other.modifiedAt == modifiedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoutingBus&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.connectionIds, _connectionIds)&&(identical(other.defaultOutputMode, defaultOutputMode) || other.defaultOutputMode == defaultOutputMode)&&(identical(other.masterGain, masterGain) || other.masterGain == masterGain)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.modifiedAt, modifiedAt) || other.modifiedAt == modifiedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,name,status,const DeepCollectionEquality().hash(_connectionIds),defaultOutputMode,masterGain,createdAt,modifiedAt);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,status,const DeepCollectionEquality().hash(_connectionIds),defaultOutputMode,masterGain,createdAt,modifiedAt);
+}
 
 @override
 String toString() {
-  return 'RoutingBus(id: $id, name: $name, status: $status, connectionIds: $connectionIds, defaultOutputMode: $defaultOutputMode, masterGain: $masterGain, createdAt: $createdAt, modifiedAt: $modifiedAt)';
+    return 'RoutingBus(id: $id, name: $name, status: $status, connectionIds: $connectionIds, defaultOutputMode: $defaultOutputMode, masterGain: $masterGain, createdAt: $createdAt, modifiedAt: $modifiedAt)';
 }
 
 
@@ -308,16 +316,21 @@ $RoutingAlgorithmCopyWith<RoutingAlgorithm> get copyWith => _$RoutingAlgorithmCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingAlgorithm&&(identical(other.id, id) || other.id == id)&&(identical(other.index, index) || other.index == index)&&(identical(other.algorithm, algorithm) || other.algorithm == algorithm)&&const DeepCollectionEquality().equals(other.inputPorts, inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, outputPorts));
+  final _this = this as RoutingAlgorithm;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingAlgorithm&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.index, _this.index) || other.index == _this.index)&&(identical(other.algorithm, _this.algorithm) || other.algorithm == _this.algorithm)&&const DeepCollectionEquality().equals(other.inputPorts, _this.inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, _this.outputPorts));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,index,algorithm,const DeepCollectionEquality().hash(inputPorts),const DeepCollectionEquality().hash(outputPorts));
+int get hashCode {
+  final _this = this as RoutingAlgorithm;
+  return Object.hash(runtimeType,_this.id,_this.index,_this.algorithm,const DeepCollectionEquality().hash(_this.inputPorts),const DeepCollectionEquality().hash(_this.outputPorts));
+}
 
 @override
 String toString() {
-  return 'RoutingAlgorithm(id: $id, index: $index, algorithm: $algorithm, inputPorts: $inputPorts, outputPorts: $outputPorts)';
+  final _this = this as RoutingAlgorithm;
+  return 'RoutingAlgorithm(id: ${_this.id}, index: ${_this.index}, algorithm: ${_this.algorithm}, inputPorts: ${_this.inputPorts}, outputPorts: ${_this.outputPorts})';
 }
 
 
@@ -346,7 +359,7 @@ class _$RoutingAlgorithmCopyWithImpl<$Res>
 /// Create a copy of RoutingAlgorithm
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? index = null,Object? algorithm = null,Object? inputPorts = null,Object? outputPorts = null,}) {
-  return _then(_self.copyWith(
+  return _then(RoutingAlgorithm(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,index: null == index ? _self.index : index // ignore: cast_nullable_to_non_nullable
 as int,algorithm: null == algorithm ? _self.algorithm : algorithm // ignore: cast_nullable_to_non_nullable
@@ -487,8 +500,8 @@ return $default(_that.id,_that.index,_that.algorithm,_that.inputPorts,_that.outp
 
 
 class _RoutingAlgorithm implements RoutingAlgorithm {
-  const _RoutingAlgorithm({required this.id, required this.index, required this.algorithm, required final  List<Port> inputPorts, required final  List<Port> outputPorts}): _inputPorts = inputPorts,_outputPorts = outputPorts;
-  
+  const _RoutingAlgorithm({required this.id, required this.index, required this.algorithm, required  List<Port> inputPorts, required  List<Port> outputPorts}): _inputPorts = inputPorts,_outputPorts = outputPorts;
+
 
 /// Stable unique identifier for this algorithm instance
 @override final  String id;
@@ -525,16 +538,18 @@ _$RoutingAlgorithmCopyWith<_RoutingAlgorithm> get copyWith => __$RoutingAlgorith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoutingAlgorithm&&(identical(other.id, id) || other.id == id)&&(identical(other.index, index) || other.index == index)&&(identical(other.algorithm, algorithm) || other.algorithm == algorithm)&&const DeepCollectionEquality().equals(other._inputPorts, _inputPorts)&&const DeepCollectionEquality().equals(other._outputPorts, _outputPorts));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoutingAlgorithm&&(identical(other.id, id) || other.id == id)&&(identical(other.index, index) || other.index == index)&&(identical(other.algorithm, algorithm) || other.algorithm == algorithm)&&const DeepCollectionEquality().equals(other.inputPorts, _inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, _outputPorts));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,index,algorithm,const DeepCollectionEquality().hash(_inputPorts),const DeepCollectionEquality().hash(_outputPorts));
+int get hashCode {
+    return Object.hash(runtimeType,id,index,algorithm,const DeepCollectionEquality().hash(_inputPorts),const DeepCollectionEquality().hash(_outputPorts));
+}
 
 @override
 String toString() {
-  return 'RoutingAlgorithm(id: $id, index: $index, algorithm: $algorithm, inputPorts: $inputPorts, outputPorts: $outputPorts)';
+    return 'RoutingAlgorithm(id: $id, index: $index, algorithm: $algorithm, inputPorts: $inputPorts, outputPorts: $outputPorts)';
 }
 
 
@@ -585,7 +600,7 @@ mixin _$RoutingEditorState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingEditorState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingEditorState);
 }
 
 
@@ -594,7 +609,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'RoutingEditorState()';
+    return 'RoutingEditorState()';
 }
 
 
@@ -747,7 +762,7 @@ return loaded(_that.deviceIoProfile,_that.physicalInputs,_that.physicalOutputs,_
 
 class RoutingEditorStateInitial implements RoutingEditorState {
   const RoutingEditorStateInitial();
-  
+
 
 
 
@@ -756,7 +771,7 @@ class RoutingEditorStateInitial implements RoutingEditorState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingEditorStateInitial);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingEditorStateInitial);
 }
 
 
@@ -765,7 +780,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'RoutingEditorState.initial()';
+    return 'RoutingEditorState.initial()';
 }
 
 
@@ -779,7 +794,7 @@ String toString() {
 
 class RoutingEditorStateDisconnected implements RoutingEditorState {
   const RoutingEditorStateDisconnected();
-  
+
 
 
 
@@ -788,7 +803,7 @@ class RoutingEditorStateDisconnected implements RoutingEditorState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingEditorStateDisconnected);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingEditorStateDisconnected);
 }
 
 
@@ -797,7 +812,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'RoutingEditorState.disconnected()';
+    return 'RoutingEditorState.disconnected()';
 }
 
 
@@ -810,8 +825,8 @@ String toString() {
 
 
 class RoutingEditorStateLoaded implements RoutingEditorState {
-  const RoutingEditorStateLoaded({this.deviceIoProfile = DeviceIoProfile.distingExtended, required final  List<Port> physicalInputs, required final  List<Port> physicalOutputs, final  List<Port> es5Inputs = const [], required final  List<RoutingAlgorithm> algorithms, required final  List<Connection> connections, final  List<RoutingBus> buses = const [], final  Map<String, OutputMode> portOutputModes = const {}, final  Map<String, NodePosition> nodePositions = const {}, this.zoomLevel = 1.0, this.panOffset = Offset.zero, this.isHardwareSynced = false, this.isPersistenceEnabled = false, this.lastSyncTime, this.lastPersistTime, this.lastError, this.subState = SubState.idle, final  Set<String> focusedAlgorithmIds = const {}, this.cascadeScrollTarget, final  Map<int, AuxBusUsageInfo> auxBusUsage = const {}, this.hasExtendedAuxBuses = false}): _physicalInputs = physicalInputs,_physicalOutputs = physicalOutputs,_es5Inputs = es5Inputs,_algorithms = algorithms,_connections = connections,_buses = buses,_portOutputModes = portOutputModes,_nodePositions = nodePositions,_focusedAlgorithmIds = focusedAlgorithmIds,_auxBusUsage = auxBusUsage;
-  
+  const RoutingEditorStateLoaded({this.deviceIoProfile = DeviceIoProfile.distingExtended, required  List<Port> physicalInputs, required  List<Port> physicalOutputs,  List<Port> es5Inputs = const [], required  List<RoutingAlgorithm> algorithms, required  List<Connection> connections,  List<RoutingBus> buses = const [],  Map<String, OutputMode> portOutputModes = const {},  Map<String, NodePosition> nodePositions = const {}, this.zoomLevel = 1.0, this.panOffset = Offset.zero, this.isHardwareSynced = false, this.isPersistenceEnabled = false, this.lastSyncTime, this.lastPersistTime, this.lastError, this.subState = SubState.idle,  Set<String> focusedAlgorithmIds = const {}, this.cascadeScrollTarget,  Map<int, AuxBusUsageInfo> auxBusUsage = const {}, this.hasExtendedAuxBuses = false}): _physicalInputs = physicalInputs,_physicalOutputs = physicalOutputs,_es5Inputs = es5Inputs,_algorithms = algorithms,_connections = connections,_buses = buses,_portOutputModes = portOutputModes,_nodePositions = nodePositions,_focusedAlgorithmIds = focusedAlgorithmIds,_auxBusUsage = auxBusUsage;
+
 
 @JsonKey() final  DeviceIoProfile deviceIoProfile;
  final  List<Port> _physicalInputs;
@@ -821,106 +836,78 @@ class RoutingEditorStateLoaded implements RoutingEditorState {
   return EqualUnmodifiableListView(_physicalInputs);
 }
 
-// 12 physical input ports
  final  List<Port> _physicalOutputs;
-// 12 physical input ports
  List<Port> get physicalOutputs {
   if (_physicalOutputs is EqualUnmodifiableListView) return _physicalOutputs;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_physicalOutputs);
 }
 
-// 8 physical output ports
  final  List<Port> _es5Inputs;
-// 8 physical output ports
 @JsonKey() List<Port> get es5Inputs {
   if (_es5Inputs is EqualUnmodifiableListView) return _es5Inputs;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_es5Inputs);
 }
 
-// ES-5 expander input ports (conditional)
  final  List<RoutingAlgorithm> _algorithms;
-// ES-5 expander input ports (conditional)
  List<RoutingAlgorithm> get algorithms {
   if (_algorithms is EqualUnmodifiableListView) return _algorithms;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_algorithms);
 }
 
-// Algorithms with their ports
  final  List<Connection> _connections;
-// Algorithms with their ports
  List<Connection> get connections {
   if (_connections is EqualUnmodifiableListView) return _connections;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_connections);
 }
 
-// All routing connections
  final  List<RoutingBus> _buses;
-// All routing connections
 @JsonKey() List<RoutingBus> get buses {
   if (_buses is EqualUnmodifiableListView) return _buses;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_buses);
 }
 
-// Available routing buses
  final  Map<String, OutputMode> _portOutputModes;
-// Available routing buses
 @JsonKey() Map<String, OutputMode> get portOutputModes {
   if (_portOutputModes is EqualUnmodifiableMapView) return _portOutputModes;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_portOutputModes);
 }
 
-// Output modes per port
  final  Map<String, NodePosition> _nodePositions;
-// Output modes per port
 @JsonKey() Map<String, NodePosition> get nodePositions {
   if (_nodePositions is EqualUnmodifiableMapView) return _nodePositions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_nodePositions);
 }
 
-// Node positions for layout
 @JsonKey() final  double zoomLevel;
-// Current zoom level (1.0 = 100%)
 @JsonKey() final  Offset panOffset;
-// Current pan offset
 @JsonKey() final  bool isHardwareSynced;
-// Hardware sync status
 @JsonKey() final  bool isPersistenceEnabled;
-// State persistence status
  final  DateTime? lastSyncTime;
-// Last hardware sync timestamp
  final  DateTime? lastPersistTime;
-// Last persistence save timestamp
  final  String? lastError;
-// Last error message
 @JsonKey() final  SubState subState;
-// Current sub-state
  final  Set<String> _focusedAlgorithmIds;
-// Current sub-state
 @JsonKey() Set<String> get focusedAlgorithmIds {
   if (_focusedAlgorithmIds is EqualUnmodifiableSetView) return _focusedAlgorithmIds;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableSetView(_focusedAlgorithmIds);
 }
 
-// IDs of algorithms in focus mode
  final  Offset? cascadeScrollTarget;
-// Target position to scroll to after cascade layout
  final  Map<int, AuxBusUsageInfo> _auxBusUsage;
-// Target position to scroll to after cascade layout
 @JsonKey() Map<int, AuxBusUsageInfo> get auxBusUsage {
   if (_auxBusUsage is EqualUnmodifiableMapView) return _auxBusUsage;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_auxBusUsage);
 }
 
-// Per-AUX-bus usage info
 @JsonKey() final  bool hasExtendedAuxBuses;
 
 /// Create a copy of RoutingEditorState
@@ -933,16 +920,18 @@ $RoutingEditorStateLoadedCopyWith<RoutingEditorStateLoaded> get copyWith => _$Ro
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingEditorStateLoaded&&(identical(other.deviceIoProfile, deviceIoProfile) || other.deviceIoProfile == deviceIoProfile)&&const DeepCollectionEquality().equals(other._physicalInputs, _physicalInputs)&&const DeepCollectionEquality().equals(other._physicalOutputs, _physicalOutputs)&&const DeepCollectionEquality().equals(other._es5Inputs, _es5Inputs)&&const DeepCollectionEquality().equals(other._algorithms, _algorithms)&&const DeepCollectionEquality().equals(other._connections, _connections)&&const DeepCollectionEquality().equals(other._buses, _buses)&&const DeepCollectionEquality().equals(other._portOutputModes, _portOutputModes)&&const DeepCollectionEquality().equals(other._nodePositions, _nodePositions)&&(identical(other.zoomLevel, zoomLevel) || other.zoomLevel == zoomLevel)&&(identical(other.panOffset, panOffset) || other.panOffset == panOffset)&&(identical(other.isHardwareSynced, isHardwareSynced) || other.isHardwareSynced == isHardwareSynced)&&(identical(other.isPersistenceEnabled, isPersistenceEnabled) || other.isPersistenceEnabled == isPersistenceEnabled)&&(identical(other.lastSyncTime, lastSyncTime) || other.lastSyncTime == lastSyncTime)&&(identical(other.lastPersistTime, lastPersistTime) || other.lastPersistTime == lastPersistTime)&&(identical(other.lastError, lastError) || other.lastError == lastError)&&(identical(other.subState, subState) || other.subState == subState)&&const DeepCollectionEquality().equals(other._focusedAlgorithmIds, _focusedAlgorithmIds)&&(identical(other.cascadeScrollTarget, cascadeScrollTarget) || other.cascadeScrollTarget == cascadeScrollTarget)&&const DeepCollectionEquality().equals(other._auxBusUsage, _auxBusUsage)&&(identical(other.hasExtendedAuxBuses, hasExtendedAuxBuses) || other.hasExtendedAuxBuses == hasExtendedAuxBuses));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingEditorStateLoaded&&(identical(other.deviceIoProfile, deviceIoProfile) || other.deviceIoProfile == deviceIoProfile)&&const DeepCollectionEquality().equals(other.physicalInputs, _physicalInputs)&&const DeepCollectionEquality().equals(other.physicalOutputs, _physicalOutputs)&&const DeepCollectionEquality().equals(other.es5Inputs, _es5Inputs)&&const DeepCollectionEquality().equals(other.algorithms, _algorithms)&&const DeepCollectionEquality().equals(other.connections, _connections)&&const DeepCollectionEquality().equals(other.buses, _buses)&&const DeepCollectionEquality().equals(other.portOutputModes, _portOutputModes)&&const DeepCollectionEquality().equals(other.nodePositions, _nodePositions)&&(identical(other.zoomLevel, zoomLevel) || other.zoomLevel == zoomLevel)&&(identical(other.panOffset, panOffset) || other.panOffset == panOffset)&&(identical(other.isHardwareSynced, isHardwareSynced) || other.isHardwareSynced == isHardwareSynced)&&(identical(other.isPersistenceEnabled, isPersistenceEnabled) || other.isPersistenceEnabled == isPersistenceEnabled)&&(identical(other.lastSyncTime, lastSyncTime) || other.lastSyncTime == lastSyncTime)&&(identical(other.lastPersistTime, lastPersistTime) || other.lastPersistTime == lastPersistTime)&&(identical(other.lastError, lastError) || other.lastError == lastError)&&(identical(other.subState, subState) || other.subState == subState)&&const DeepCollectionEquality().equals(other.focusedAlgorithmIds, _focusedAlgorithmIds)&&(identical(other.cascadeScrollTarget, cascadeScrollTarget) || other.cascadeScrollTarget == cascadeScrollTarget)&&const DeepCollectionEquality().equals(other.auxBusUsage, _auxBusUsage)&&(identical(other.hasExtendedAuxBuses, hasExtendedAuxBuses) || other.hasExtendedAuxBuses == hasExtendedAuxBuses));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,deviceIoProfile,const DeepCollectionEquality().hash(_physicalInputs),const DeepCollectionEquality().hash(_physicalOutputs),const DeepCollectionEquality().hash(_es5Inputs),const DeepCollectionEquality().hash(_algorithms),const DeepCollectionEquality().hash(_connections),const DeepCollectionEquality().hash(_buses),const DeepCollectionEquality().hash(_portOutputModes),const DeepCollectionEquality().hash(_nodePositions),zoomLevel,panOffset,isHardwareSynced,isPersistenceEnabled,lastSyncTime,lastPersistTime,lastError,subState,const DeepCollectionEquality().hash(_focusedAlgorithmIds),cascadeScrollTarget,const DeepCollectionEquality().hash(_auxBusUsage),hasExtendedAuxBuses]);
+int get hashCode {
+    return Object.hashAll([runtimeType,deviceIoProfile,const DeepCollectionEquality().hash(_physicalInputs),const DeepCollectionEquality().hash(_physicalOutputs),const DeepCollectionEquality().hash(_es5Inputs),const DeepCollectionEquality().hash(_algorithms),const DeepCollectionEquality().hash(_connections),const DeepCollectionEquality().hash(_buses),const DeepCollectionEquality().hash(_portOutputModes),const DeepCollectionEquality().hash(_nodePositions),zoomLevel,panOffset,isHardwareSynced,isPersistenceEnabled,lastSyncTime,lastPersistTime,lastError,subState,const DeepCollectionEquality().hash(_focusedAlgorithmIds),cascadeScrollTarget,const DeepCollectionEquality().hash(_auxBusUsage),hasExtendedAuxBuses]);
+}
 
 @override
 String toString() {
-  return 'RoutingEditorState.loaded(deviceIoProfile: $deviceIoProfile, physicalInputs: $physicalInputs, physicalOutputs: $physicalOutputs, es5Inputs: $es5Inputs, algorithms: $algorithms, connections: $connections, buses: $buses, portOutputModes: $portOutputModes, nodePositions: $nodePositions, zoomLevel: $zoomLevel, panOffset: $panOffset, isHardwareSynced: $isHardwareSynced, isPersistenceEnabled: $isPersistenceEnabled, lastSyncTime: $lastSyncTime, lastPersistTime: $lastPersistTime, lastError: $lastError, subState: $subState, focusedAlgorithmIds: $focusedAlgorithmIds, cascadeScrollTarget: $cascadeScrollTarget, auxBusUsage: $auxBusUsage, hasExtendedAuxBuses: $hasExtendedAuxBuses)';
+    return 'RoutingEditorState.loaded(deviceIoProfile: $deviceIoProfile, physicalInputs: $physicalInputs, physicalOutputs: $physicalOutputs, es5Inputs: $es5Inputs, algorithms: $algorithms, connections: $connections, buses: $buses, portOutputModes: $portOutputModes, nodePositions: $nodePositions, zoomLevel: $zoomLevel, panOffset: $panOffset, isHardwareSynced: $isHardwareSynced, isPersistenceEnabled: $isPersistenceEnabled, lastSyncTime: $lastSyncTime, lastPersistTime: $lastPersistTime, lastError: $lastError, subState: $subState, focusedAlgorithmIds: $focusedAlgorithmIds, cascadeScrollTarget: $cascadeScrollTarget, auxBusUsage: $auxBusUsage, hasExtendedAuxBuses: $hasExtendedAuxBuses)';
 }
 
 

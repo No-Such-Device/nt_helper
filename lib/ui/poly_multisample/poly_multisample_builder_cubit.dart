@@ -216,7 +216,7 @@ class PolyMultisampleBuilderCubit extends Cubit<PolyMultisampleBuilderState> {
     PolySampleApplyService? applyService,
     PolyWavService? wavService,
     PolyAudioPreviewService? previewService,
-    PolySamplePreferencesService? preferencesService,
+    this._preferencesService,
     PolySampleUploadService? uploadService,
     PolySampleMappingResolver? mappingResolver,
     FutureOr<Uint8List> Function(Uint8List bytes, double pitchRatio)?
@@ -227,7 +227,6 @@ class PolyMultisampleBuilderCubit extends Cubit<PolyMultisampleBuilderState> {
        _applyService = applyService ?? const PolySampleApplyService(),
        _wavService = wavService ?? const PolyWavService(),
        _previewService = previewService ?? PolyAudioPreviewService(),
-       _preferencesService = preferencesService,
        _uploadService = uploadService ?? const PolySampleUploadService(),
        _mappingResolver = mappingResolver ?? const PolySampleMappingResolver(),
        _notePreviewRenderer =
@@ -1010,8 +1009,7 @@ class PolyMultisampleBuilderCubit extends Cubit<PolyMultisampleBuilderState> {
       emit(
         state.copyWith(
           activeOperation: PolyMultisampleActiveOperation.none,
-          error:
-              'Save or discard waveform edits before uploading this sample set.',
+          error: 'Save or discard waveform edits before uploading this sample set.',
         ),
       );
       return;
@@ -1097,8 +1095,7 @@ class PolyMultisampleBuilderCubit extends Cubit<PolyMultisampleBuilderState> {
       emit(
         state.copyWith(
           activeOperation: PolyMultisampleActiveOperation.none,
-          error:
-              'Save or discard waveform edits before uploading this sample set.',
+          error: 'Save or discard waveform edits before uploading this sample set.',
         ),
       );
       return;
@@ -1664,7 +1661,7 @@ class PolyMultisampleBuilderCubit extends Cubit<PolyMultisampleBuilderState> {
         await _destructiveWavOptions(path),
         overwriteConfirmed: overwriteConfirmed,
       );
-      await completeDestructiveWavSave(path, targetPath);
+      await completeDestructiveWavSave(path, Uri.file(targetPath));
     } catch (error) {
       _reportDestructiveWavError(error);
     }
@@ -1700,18 +1697,25 @@ class PolyMultisampleBuilderCubit extends Cubit<PolyMultisampleBuilderState> {
     );
   }
 
-  Future<void> completeDestructiveWavSave(
-    String path,
-    String targetPath,
-  ) async {
+  Future<void> completeDestructiveWavSave(String path, Uri destination) async {
     try {
-      final wavExportFolder = p.dirname(targetPath);
-      unawaited(
-        _prefs().then(
-          (service) => service.setLastWavExportFolder(wavExportFolder),
-        ),
-      );
-      final savedInPlace = p.normalize(path) == p.normalize(targetPath);
+      // Android's document picker may save to content: rather than a file path.
+      // Only local destinations can update the folder or overwrite the source.
+      final targetPath = destination.scheme == 'file'
+          ? destination.toFilePath()
+          : null;
+      final wavExportFolder = targetPath == null
+          ? state.lastWavExportFolder
+          : p.dirname(targetPath);
+      if (targetPath != null) {
+        unawaited(
+          _prefs().then(
+            (service) => service.setLastWavExportFolder(wavExportFolder!),
+          ),
+        );
+      }
+      final savedInPlace =
+          targetPath != null && p.normalize(path) == p.normalize(targetPath);
       emit(
         state.copyWith(
           lastWavExportFolder: wavExportFolder,
@@ -1795,8 +1799,7 @@ class PolyMultisampleBuilderCubit extends Cubit<PolyMultisampleBuilderState> {
       if (_hasDirectHardwareWavPreviewCandidate(clampedMidi)) {
         emit(
           state.copyWith(
-            error:
-                'Keyboard note preview is only available for local or mounted WAV files.',
+            error: 'Keyboard note preview is only available for local or mounted WAV files.',
           ),
         );
         return;
@@ -2806,9 +2809,8 @@ class PolyMultisampleBuilderCubit extends Cubit<PolyMultisampleBuilderState> {
       );
     }
     await Directory(outputFolder).create(recursive: true);
-    await File(
-      p.join(outputFolder, 'poly_multisample_build_report.txt'),
-    ).writeAsString(buffer.toString(), flush: true);
+    await File(p.join(outputFolder, 'poly_multisample_build_report.txt'))
+        .writeAsString(buffer.toString(), flush: true);
   }
 }
 

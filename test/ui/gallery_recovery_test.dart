@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -218,9 +218,8 @@ void main() {
         }
         expect(announcements.toString(), isNot(contains('Gallery cache')));
         final settings = _Settings();
-        when(
-          () => settings.graphqlEndpoint,
-        ).thenReturn('https://example.invalid/graphql');
+        when(() => settings.graphqlEndpoint)
+            .thenReturn('https://example.invalid/graphql');
         final service = GalleryService(
           settingsService: settings,
           database: controller.database,
@@ -283,9 +282,8 @@ void main() {
           },
         );
         final settings = _Settings();
-        when(
-          () => settings.graphqlEndpoint,
-        ).thenReturn('https://example.invalid/graphql');
+        when(() => settings.graphqlEndpoint)
+            .thenReturn('https://example.invalid/graphql');
         final service = GalleryService(
           settingsService: settings,
           database: database,
@@ -349,9 +347,8 @@ void main() {
             .element(find.text('Gallery temporarily unavailable'))
             .read<GalleryCubit>();
         fail = false;
-        Focus.of(
-          tester.element(find.text('Retry gallery transfer')),
-        ).requestFocus();
+        Focus.of(tester.element(find.text('Retry gallery transfer')))
+            .requestFocus();
         await tester.pump();
         await tester.runAsync(() async {
           entered = Completer<void>();

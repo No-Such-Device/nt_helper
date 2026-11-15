@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -376,9 +376,8 @@ class _AlgorithmControllerDocumentBody extends StatelessWidget {
     final expansionController = sectionController.controllerFor(path);
     final inheritedListTileTheme = ListTileTheme.of(context);
     final headerListTileTheme = inheritedListTileTheme.copyWith(
-      tileColor: Theme.of(
-        context,
-      ).colorScheme.onSurface.withValues(alpha: 0.10),
+      tileColor: Theme.of(context).colorScheme.onSurface
+          .withValues(alpha: 0.10),
     );
 
     return Card(
@@ -1098,8 +1097,10 @@ class _AlgorithmControllerDocumentBody extends StatelessWidget {
   }
 }
 
-typedef _AlgorithmControllerXYValueChanged =
-    void Function(int value, bool changing);
+typedef _AlgorithmControllerXYValueChanged = void Function(
+  int value,
+  bool changing,
+);
 
 final class _AlgorithmControllerXYPadView extends StatefulWidget {
   const _AlgorithmControllerXYPadView({

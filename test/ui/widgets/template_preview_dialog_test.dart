@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/db/database.dart';
@@ -326,12 +326,10 @@ void main() {
 
       final injection = Completer<void>();
       // Keep injection pending until loading assertions finish.
-      when(
-        () => mockCubit.injectTemplateToDevice(any(), any()),
-      ).thenAnswer((_) => injection.future);
-      when(
-        () => mockCubit.state,
-      ).thenReturn(const MetadataSyncState.loadingPreset());
+      when(() => mockCubit.injectTemplateToDevice(any(), any()))
+          .thenAnswer((_) => injection.future);
+      when(() => mockCubit.state)
+          .thenReturn(const MetadataSyncState.loadingPreset());
 
       await tester.pumpWidget(
         createTestWidget(template: template, currentSlotCount: 5),
@@ -354,12 +352,10 @@ void main() {
       final template = createTestTemplate(name: 'Test Template', slotCount: 3);
       final injection = Completer<void>();
 
-      when(
-        () => mockCubit.injectTemplateToDevice(any(), any()),
-      ).thenAnswer((_) => injection.future);
-      when(
-        () => mockCubit.state,
-      ).thenReturn(const MetadataSyncState.loadingPreset());
+      when(() => mockCubit.injectTemplateToDevice(any(), any()))
+          .thenAnswer((_) => injection.future);
+      when(() => mockCubit.state)
+          .thenReturn(const MetadataSyncState.loadingPreset());
 
       await tester.pumpWidget(
         createTestWidget(template: template, currentSlotCount: 5),

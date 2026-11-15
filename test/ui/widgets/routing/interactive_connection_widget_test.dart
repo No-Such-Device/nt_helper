@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
@@ -54,9 +54,8 @@ void main() {
     group('Desktop platform behavior', () {
       setUp(() {
         when(mockPlatformService.supportsHoverInteractions()).thenReturn(true);
-        when(
-          mockPlatformService.shouldUseTouchInteractions(),
-        ).thenReturn(false);
+        when(mockPlatformService.shouldUseTouchInteractions())
+            .thenReturn(false);
         when(mockPlatformService.getMinimumTouchTargetSize()).thenReturn(44.0);
       });
 
@@ -98,9 +97,8 @@ void main() {
       testWidgets('deletes connection when confirmed in dialog', (
         tester,
       ) async {
-        when(
-          mockCubit.deleteConnectionWithSmartBusLogic(any),
-        ).thenAnswer((_) async {});
+        when(mockCubit.deleteConnectionWithSmartBusLogic(any))
+            .thenAnswer((_) async {});
 
         await tester.pumpWidget(createWidget());
 
@@ -112,9 +110,8 @@ void main() {
         await tester.tap(find.text('Delete'));
         await tester.pumpAndSettle();
 
-        verify(
-          mockCubit.deleteConnectionWithSmartBusLogic('test-connection'),
-        ).called(1);
+        verify(mockCubit.deleteConnectionWithSmartBusLogic('test-connection'))
+            .called(1);
       });
 
       testWidgets('does not delete when cancelled in dialog', (tester) async {

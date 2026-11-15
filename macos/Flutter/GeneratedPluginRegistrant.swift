@@ -8,7 +8,7 @@ import Foundation
 import audioplayers_darwin
 import desktop_drop
 import desktop_multi_window
-import file_picker
+import file_picker_darwin
 import flutter_midi_command_darwin
 import package_info_plus
 import pasteboard

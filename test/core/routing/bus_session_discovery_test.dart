@@ -14,11 +14,10 @@ class _FakeRouting extends AlgorithmRouting {
   RoutingState _state = const RoutingState();
 
   _FakeRouting({
-    required String id,
+    required this._id,
     List<core.Port>? inputs,
     List<core.Port>? outputs,
-  }) : _id = id,
-       _inputs = inputs ?? const [],
+  }) : _inputs = inputs ?? const [],
        _outputs = outputs ?? const [] {
     algorithmUuid = _id;
   }

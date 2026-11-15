@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -94,18 +94,16 @@ class _Harness {
     bool offline = false,
     bool synchronized = true,
   }) {
-    when(
-      () => midi.onMidiPacketReceived,
-    ).thenAnswer((_) => const Stream<MidiPacket>.empty());
-    when(
-      () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
-    ).thenAnswer((invocation) {
-      packets.add(
-        List<int>.from(invocation.positionalArguments.single as Uint8List),
-      );
-      destinations.add(invocation.namedArguments[#deviceId] as String?);
-      ownership.add('request');
-    });
+    when(() => midi.onMidiPacketReceived)
+        .thenAnswer((_) => const Stream<MidiPacket>.empty());
+    when(() => midi.sendData(any(), deviceId: any(named: 'deviceId')))
+        .thenAnswer((invocation) {
+          packets.add(
+            List<int>.from(invocation.positionalArguments.single as Uint8List),
+          );
+          destinations.add(invocation.namedArguments[#deviceId] as String?);
+          ownership.add('request');
+        });
     manager = DistingMidiManager(
       midiCommand: midi,
       inputDevice: input,
@@ -128,16 +126,14 @@ class _Harness {
           )
         : const DistingState.initial();
     when(() => cubit.state).thenAnswer((_) => current);
-    when(
-      () => cubit.stream,
-    ).thenAnswer((_) => const Stream<DistingState>.empty());
-    when(
-      () => cubit.disposeFirmwareMidiManager(manager, input, output),
-    ).thenAnswer((_) {
-      ownership.add('release');
-      manager.dispose();
-      current = const DistingState.initial();
-    });
+    when(() => cubit.stream)
+        .thenAnswer((_) => const Stream<DistingState>.empty());
+    when(() => cubit.disposeFirmwareMidiManager(manager, input, output))
+        .thenAnswer((_) {
+          ownership.add('release');
+          manager.dispose();
+          current = const DistingState.initial();
+        });
   }
 
   Future<void> pump(WidgetTester tester) async {

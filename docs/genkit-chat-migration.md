@@ -153,9 +153,10 @@ A temporary copy of nt_helper's complete pubspec and lockfile successfully ran
 reported; no dependency edits were made in the real checkout. This check covered
 the core package, not every provider plugin or all release targets.
 
-Genkit 1.0.0 requires Dart ^3.12.0. The local SDK is 3.12.2; release CI currently
-pins Flutter 3.44.9. nt_helper's declared SDK floor is still >=3.8.1 and should be
-raised to >=3.12.0 when adopting Genkit, rather than implying older SDKs work.
+Genkit 1.0.0 requires Dart ^3.12.0. This feasibility check used Dart 3.12.2
+and Flutter 3.44.9; the project's old declared Dart floor (>=3.8.1) did not
+reflect that requirement. The [current toolchain](flutter-3.50-upgrade.md) now
+pins Flutter 3.50.0 / Dart 3.14.0 and declares matching SDK minimums.
 
 ### Native, local runtime probe
 
