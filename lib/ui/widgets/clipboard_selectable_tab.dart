@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Wraps a slot tab (top TabBar) and renders a tertiary-coloured single-line
 /// box around it when the corresponding slot is in the algorithm-clipboard

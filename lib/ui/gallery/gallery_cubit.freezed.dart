@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'gallery_cubit.dart';
@@ -9,6 +9,7 @@ part of 'gallery_cubit.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -20,7 +21,7 @@ mixin _$GalleryState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryState);
 }
 
 
@@ -29,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'GalleryState()';
+    return 'GalleryState()';
 }
 
 
@@ -200,7 +201,7 @@ return error(_that.message);case _:
 
 class GalleryInitial implements GalleryState {
   const GalleryInitial();
-  
+
 
 
 
@@ -209,7 +210,7 @@ class GalleryInitial implements GalleryState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryInitial);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryInitial);
 }
 
 
@@ -218,7 +219,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'GalleryState.initial()';
+    return 'GalleryState.initial()';
 }
 
 
@@ -232,7 +233,7 @@ String toString() {
 
 class GalleryLoading implements GalleryState {
   const GalleryLoading();
-  
+
 
 
 
@@ -241,7 +242,7 @@ class GalleryLoading implements GalleryState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryLoading);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryLoading);
 }
 
 
@@ -250,7 +251,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'GalleryState.loading()';
+    return 'GalleryState.loading()';
 }
 
 
@@ -263,8 +264,8 @@ String toString() {
 
 
 class GalleryLoaded implements GalleryState {
-  const GalleryLoaded({required this.gallery, required final  List<GalleryPlugin> filteredPlugins, required this.searchQuery, this.selectedCategory, this.selectedType, required this.showFeaturedOnly, required this.showVerifiedOnly, final  Map<String, PluginUpdateInfo> updateInfo = const {}, this.isRefreshing = false, final  Map<String, PluginInstallStatus> installStatuses = const {}, final  Map<String, CollectionExpansion> expandedCollections = const {}}): _filteredPlugins = filteredPlugins,_updateInfo = updateInfo,_installStatuses = installStatuses,_expandedCollections = expandedCollections;
-  
+  const GalleryLoaded({required this.gallery, required  List<GalleryPlugin> filteredPlugins, required this.searchQuery, this.selectedCategory, this.selectedType, required this.showFeaturedOnly, required this.showVerifiedOnly,  Map<String, PluginUpdateInfo> updateInfo = const {}, this.isRefreshing = false,  Map<String, PluginInstallStatus> installStatuses = const {},  Map<String, CollectionExpansion> expandedCollections = const {}}): _filteredPlugins = filteredPlugins,_updateInfo = updateInfo,_installStatuses = installStatuses,_expandedCollections = expandedCollections;
+
 
  final  Gallery gallery;
  final  List<GalleryPlugin> _filteredPlugins;
@@ -312,16 +313,18 @@ $GalleryLoadedCopyWith<GalleryLoaded> get copyWith => _$GalleryLoadedCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryLoaded&&(identical(other.gallery, gallery) || other.gallery == gallery)&&const DeepCollectionEquality().equals(other._filteredPlugins, _filteredPlugins)&&(identical(other.searchQuery, searchQuery) || other.searchQuery == searchQuery)&&(identical(other.selectedCategory, selectedCategory) || other.selectedCategory == selectedCategory)&&(identical(other.selectedType, selectedType) || other.selectedType == selectedType)&&(identical(other.showFeaturedOnly, showFeaturedOnly) || other.showFeaturedOnly == showFeaturedOnly)&&(identical(other.showVerifiedOnly, showVerifiedOnly) || other.showVerifiedOnly == showVerifiedOnly)&&const DeepCollectionEquality().equals(other._updateInfo, _updateInfo)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other._installStatuses, _installStatuses)&&const DeepCollectionEquality().equals(other._expandedCollections, _expandedCollections));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryLoaded&&(identical(other.gallery, gallery) || other.gallery == gallery)&&const DeepCollectionEquality().equals(other.filteredPlugins, _filteredPlugins)&&(identical(other.searchQuery, searchQuery) || other.searchQuery == searchQuery)&&(identical(other.selectedCategory, selectedCategory) || other.selectedCategory == selectedCategory)&&(identical(other.selectedType, selectedType) || other.selectedType == selectedType)&&(identical(other.showFeaturedOnly, showFeaturedOnly) || other.showFeaturedOnly == showFeaturedOnly)&&(identical(other.showVerifiedOnly, showVerifiedOnly) || other.showVerifiedOnly == showVerifiedOnly)&&const DeepCollectionEquality().equals(other.updateInfo, _updateInfo)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other.installStatuses, _installStatuses)&&const DeepCollectionEquality().equals(other.expandedCollections, _expandedCollections));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,gallery,const DeepCollectionEquality().hash(_filteredPlugins),searchQuery,selectedCategory,selectedType,showFeaturedOnly,showVerifiedOnly,const DeepCollectionEquality().hash(_updateInfo),isRefreshing,const DeepCollectionEquality().hash(_installStatuses),const DeepCollectionEquality().hash(_expandedCollections));
+int get hashCode {
+    return Object.hash(runtimeType,gallery,const DeepCollectionEquality().hash(_filteredPlugins),searchQuery,selectedCategory,selectedType,showFeaturedOnly,showVerifiedOnly,const DeepCollectionEquality().hash(_updateInfo),isRefreshing,const DeepCollectionEquality().hash(_installStatuses),const DeepCollectionEquality().hash(_expandedCollections));
+}
 
 @override
 String toString() {
-  return 'GalleryState.loaded(gallery: $gallery, filteredPlugins: $filteredPlugins, searchQuery: $searchQuery, selectedCategory: $selectedCategory, selectedType: $selectedType, showFeaturedOnly: $showFeaturedOnly, showVerifiedOnly: $showVerifiedOnly, updateInfo: $updateInfo, isRefreshing: $isRefreshing, installStatuses: $installStatuses, expandedCollections: $expandedCollections)';
+    return 'GalleryState.loaded(gallery: $gallery, filteredPlugins: $filteredPlugins, searchQuery: $searchQuery, selectedCategory: $selectedCategory, selectedType: $selectedType, showFeaturedOnly: $showFeaturedOnly, showVerifiedOnly: $showVerifiedOnly, updateInfo: $updateInfo, isRefreshing: $isRefreshing, installStatuses: $installStatuses, expandedCollections: $expandedCollections)';
 }
 
 
@@ -371,7 +374,7 @@ as Map<String, CollectionExpansion>,
 @override
 @pragma('vm:prefer-inline')
 $GalleryCopyWith<$Res> get gallery {
-  
+
   return $GalleryCopyWith<$Res>(_self.gallery, (value) {
     return _then(_self.copyWith(gallery: value));
   });
@@ -398,16 +401,18 @@ $GalleryUnavailableCopyWith<GalleryUnavailable> get copyWith => _$GalleryUnavail
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryUnavailable&&(identical(other.message, message) || other.message == message)&&(identical(other.retrying, retrying) || other.retrying == retrying));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryUnavailable&&(identical(other.message, message) || other.message == message)&&(identical(other.retrying, retrying) || other.retrying == retrying));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message,retrying);
+int get hashCode {
+    return Object.hash(runtimeType,message,retrying);
+}
 
 @override
 String toString() {
-  return 'GalleryState.unavailable(message: $message, retrying: $retrying)';
+    return 'GalleryState.unavailable(message: $message, retrying: $retrying)';
 }
 
 
@@ -451,7 +456,7 @@ as bool,
 
 class GalleryError implements GalleryState {
   const GalleryError(this.message);
-  
+
 
  final  String message;
 
@@ -465,16 +470,18 @@ $GalleryErrorCopyWith<GalleryError> get copyWith => _$GalleryErrorCopyWithImpl<G
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryError&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryError&&(identical(other.message, message) || other.message == message));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+    return Object.hash(runtimeType,message);
+}
 
 @override
 String toString() {
-  return 'GalleryState.error(message: $message)';
+    return 'GalleryState.error(message: $message)';
 }
 
 

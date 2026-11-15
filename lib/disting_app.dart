@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show AppExitResponse;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -649,8 +649,7 @@ class _DeviceSelectionView extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Semantics(
-                  hint:
-                      'Try the app with simulated algorithms, no hardware needed',
+                  hint: 'Try the app with simulated algorithms, no hardware needed',
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.play_arrow),
                     onPressed: onDemoPressed,

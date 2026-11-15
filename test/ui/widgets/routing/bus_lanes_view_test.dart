@@ -1,7 +1,7 @@
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -430,9 +430,8 @@ void main() {
     'bus picker opened from plus lane shows current and used lower buses',
     (tester) async {
       when(cubit.state).thenReturn(loadedWith([dualOutputsOnAdjacentBuses()]));
-      when(
-        cubit.busParameterRange(algorithmIndex: 0, parameterNumber: 4),
-      ).thenReturn((min: 0, max: 64));
+      when(cubit.busParameterRange(algorithmIndex: 0, parameterNumber: 4))
+          .thenReturn((min: 0, max: 64));
 
       await tester.pumpWidget(host());
       await tester.pump();
@@ -697,9 +696,8 @@ void main() {
     tester,
   ) async {
     when(cubit.state).thenReturn(loadedWith([oscWithOutput()]));
-    when(
-      cubit.togglePortOutputMode(portId: anyNamed('portId')),
-    ).thenAnswer((_) async {});
+    when(cubit.togglePortOutputMode(portId: anyNamed('portId')))
+        .thenAnswer((_) async {});
 
     await tester.pumpWidget(host());
     await tester.pump();
@@ -794,9 +792,8 @@ void main() {
   testWidgets('dragging an in-place output bead assigns another bus', (
     tester,
   ) async {
-    when(
-      cubit.state,
-    ).thenReturn(loadedWith([inPlaceOutputOnInputBus(), oscWithOutput()]));
+    when(cubit.state)
+        .thenReturn(loadedWith([inPlaceOutputOnInputBus(), oscWithOutput()]));
     when(
       cubit.assignBusAndSolve(
         algorithmIndex: anyNamed('algorithmIndex'),

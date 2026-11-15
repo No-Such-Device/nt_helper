@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'algorithm_port.dart';
@@ -9,6 +9,7 @@ part of 'algorithm_port.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -28,16 +29,21 @@ $AlgorithmPortCopyWith<AlgorithmPort> get copyWith => _$AlgorithmPortCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmPort&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.busIdRef, busIdRef) || other.busIdRef == busIdRef)&&(identical(other.channelCountRef, channelCountRef) || other.channelCountRef == channelCountRef)&&(identical(other.isPerChannel, isPerChannel) || other.isPerChannel == isPerChannel));
+  final _this = this as AlgorithmPort;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmPort&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.busIdRef, _this.busIdRef) || other.busIdRef == _this.busIdRef)&&(identical(other.channelCountRef, _this.channelCountRef) || other.channelCountRef == _this.channelCountRef)&&(identical(other.isPerChannel, _this.isPerChannel) || other.isPerChannel == _this.isPerChannel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,description,busIdRef,channelCountRef,isPerChannel);
+int get hashCode {
+  final _this = this as AlgorithmPort;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.description,_this.busIdRef,_this.channelCountRef,_this.isPerChannel);
+}
 
 @override
 String toString() {
-  return 'AlgorithmPort(id: $id, name: $name, description: $description, busIdRef: $busIdRef, channelCountRef: $channelCountRef, isPerChannel: $isPerChannel)';
+  final _this = this as AlgorithmPort;
+  return 'AlgorithmPort(id: ${_this.id}, name: ${_this.name}, description: ${_this.description}, busIdRef: ${_this.busIdRef}, channelCountRef: ${_this.channelCountRef}, isPerChannel: ${_this.isPerChannel})';
 }
 
 
@@ -66,7 +72,7 @@ class _$AlgorithmPortCopyWithImpl<$Res>
 /// Create a copy of AlgorithmPort
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? name = null,Object? description = freezed,Object? busIdRef = freezed,Object? channelCountRef = freezed,Object? isPerChannel = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(AlgorithmPort(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
@@ -231,16 +237,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmPort&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.busIdRef, busIdRef) || other.busIdRef == busIdRef)&&(identical(other.channelCountRef, channelCountRef) || other.channelCountRef == channelCountRef)&&(identical(other.isPerChannel, isPerChannel) || other.isPerChannel == isPerChannel));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmPort&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.busIdRef, busIdRef) || other.busIdRef == busIdRef)&&(identical(other.channelCountRef, channelCountRef) || other.channelCountRef == channelCountRef)&&(identical(other.isPerChannel, isPerChannel) || other.isPerChannel == isPerChannel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,description,busIdRef,channelCountRef,isPerChannel);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,description,busIdRef,channelCountRef,isPerChannel);
+}
 
 @override
 String toString() {
-  return 'AlgorithmPort(id: $id, name: $name, description: $description, busIdRef: $busIdRef, channelCountRef: $channelCountRef, isPerChannel: $isPerChannel)';
+    return 'AlgorithmPort(id: $id, name: $name, description: $description, busIdRef: $busIdRef, channelCountRef: $channelCountRef, isPerChannel: $isPerChannel)';
 }
 
 

@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:math' as math;
+
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:nt_helper/domain/disting_midi_manager.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:nt_helper/algorithm_controller/companion_table.dart';
@@ -11,7 +12,9 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/patch_map/patch_map.dart';
 import 'package:nt_helper/domain/patch_map/patch_map_client.dart';
 import 'package:nt_helper/services/key_binding_service.dart';
+
 import 'patch_map_editor_cubit.dart';
+
 import 'package:nt_helper/algorithm_controller/sd_card_companion.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 
@@ -156,9 +159,8 @@ class _PatchMapEditorState extends State<PatchMapEditor>
     listener: (context, state) {
       if (state.error != null && state.error != _lastError) {
         _lastError = state.error;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(state.error!)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(state.error!)));
       } else if (!state.busy && state.error == null) {
         _lastError = null;
       }
@@ -601,9 +603,9 @@ class _PatchMapEditorState extends State<PatchMapEditor>
                               color:
                                   _focusedColumn == _widthKey(table, column.key)
                                   ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(
-                                      context,
-                                    ).colorScheme.outlineVariant,
+                                  : Theme.of(context)
+                                        .colorScheme
+                                        .outlineVariant,
                             ),
                           ),
                         ),
@@ -660,9 +662,9 @@ class _PatchMapEditorState extends State<PatchMapEditor>
                         for (final section in document.groups) ...[
                           Container(
                             width: double.infinity,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainer,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainer,
                             padding: const EdgeInsets.all(8),
                             child: Row(
                               children: [
@@ -1232,9 +1234,8 @@ class _PatchMapRowState extends State<PatchMapRow> {
           selection: TextSelection.collapsed(offset: previous.length),
         );
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -1437,9 +1438,8 @@ class _CompanionRecordRowState extends State<CompanionRecordRow> {
       widget.onEdit(field.key, value);
     } on FormatException catch (error) {
       _update();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 

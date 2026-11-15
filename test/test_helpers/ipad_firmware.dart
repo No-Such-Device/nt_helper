@@ -69,7 +69,28 @@ List<int> ipadPackageBytes({
   for (final entry in members.entries) {
     archive.addFile(ArchiveFile(entry.key, entry.value.length, entry.value));
   }
-  return ZipEncoder().encode(archive);
+  final encoded = ZipEncoder().encode(archive);
+  if (extra != null && extra.contains('\\')) {
+    // Archive 4.7 sanitizes backslashes while encoding. Restore the raw local
+    // and central directory names so this still tests an unsafe input package.
+    final normalized = utf8.encode(extra.replaceAll('\\', '/'));
+    final original = utf8.encode(extra);
+    for (
+      var offset = 0;
+      offset <= encoded.length - normalized.length;
+      offset++
+    ) {
+      var matches = true;
+      for (var i = 0; i < normalized.length; i++) {
+        if (encoded[offset + i] != normalized[i]) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches) encoded.setRange(offset, offset + original.length, original);
+    }
+  }
+  return encoded;
 }
 
 /// Acquisition is controlled; preflight remains the production validator.

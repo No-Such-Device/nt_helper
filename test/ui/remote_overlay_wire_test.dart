@@ -7,7 +7,7 @@ import 'dart:ui'
         Tristate;
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
@@ -307,7 +307,8 @@ void main() {
       ]);
       await close(tester);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'each pot is silent at midpoint, retains adjustments and clamps without wrapping',
@@ -369,7 +370,8 @@ void main() {
       expect(cubit.remoteControlState.potValues, [32, 32, 32]);
       await close(tester);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'both encoders retain fractional drag remainder and split signed movement totals',
@@ -425,7 +427,8 @@ void main() {
       }
       await close(tester);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'keyboard holds, arrows, duplicate events and pointer capture/focus cleanup',
@@ -550,7 +553,8 @@ void main() {
       await close(tester);
       semantics.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'fold, hide, view focus loss and close clean holds without resetting local pots',
@@ -654,7 +658,8 @@ void main() {
       expect(payloads().length, closeStart + 1);
       await close(tester);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   for (final closeOverlay in [false, true]) {
     testWidgets(
@@ -737,9 +742,8 @@ void main() {
           announcements.where((message) => message.toString().contains(error)),
           hasLength(1),
         );
-        ScaffoldMessenger.of(
-          tester.element(find.byType(SynchronizedScreen)),
-        ).hideCurrentSnackBar();
+        ScaffoldMessenger.of(tester.element(find.byType(SynchronizedScreen)))
+            .hideCurrentSnackBar();
         await tester.pump(const Duration(milliseconds: 300));
         await tester.pump(const Duration(milliseconds: 300));
         expect(find.text(error), findsNothing);
@@ -751,7 +755,8 @@ void main() {
         }
         semantics.dispose();
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
   }
 
   testWidgets(
@@ -820,7 +825,8 @@ void main() {
       }
       await close(tester);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'overlay open-host firmware and connection matrix is explanatory and silent when gated',
@@ -944,9 +950,8 @@ void main() {
           await failure;
           stable();
           wire.failRemoteSend = false;
-          ScaffoldMessenger.of(
-            tester.element(find.byType(SynchronizedScreen)),
-          ).removeCurrentSnackBar();
+          ScaffoldMessenger.of(tester.element(find.byType(SynchronizedScreen)))
+              .removeCurrentSnackBar();
           cubit.emit(live.copyWith(offline: true));
           await flush(tester);
           stable();
@@ -959,7 +964,8 @@ void main() {
       }
       await close(tester);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   for (final popupResult in ['success', 'throw', 'unsupported']) {
     testWidgets(
@@ -1140,5 +1146,6 @@ void main() {
       await close(tester);
       semantics.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 }

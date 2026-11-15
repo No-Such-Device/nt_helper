@@ -12,6 +12,14 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(':app')
+    // Mixed-generation plugins: docman still applies KGP, while the current
+    // MIDI/clipboard/haptics plugins expect AGP's built-in Kotlin. Until all
+    // plugins support it, use the same host-managed compiler for each library.
+    plugins.withId('com.android.library') {
+        if (!plugins.hasPlugin('org.jetbrains.kotlin.android')) {
+            apply plugin: 'org.jetbrains.kotlin.android'
+        }
+    }
 }
 
 tasks.register("clean", Delete) {

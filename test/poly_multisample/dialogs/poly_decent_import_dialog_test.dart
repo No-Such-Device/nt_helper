@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/poly_multisample/decent_sampler_converter.dart';
@@ -274,9 +274,8 @@ void main() {
     final semantics = tester.ensureSemantics();
     final cubit = _TestPolyDecentImportCubit()
       ..setTestState(
-        _readyState(
-          sourcePath: '/tmp/Layered.dslibrary',
-        ).copyWith(groupHandling: DecentSamplerGroupHandling.velocityLayers),
+        _readyState(sourcePath: '/tmp/Layered.dslibrary')
+            .copyWith(groupHandling: DecentSamplerGroupHandling.velocityLayers),
       );
     addTearDown(cubit.close);
     final previewCubit = PolyMultisampleBuilderCubit(

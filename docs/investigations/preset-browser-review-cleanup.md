@@ -74,7 +74,7 @@ one explicit read-back even if it is not the active pane.
 
 ## Verification commands
 
-Use the repository-pinned Flutter 3.44.9 toolchain. New regressions are in:
+Use the repository-pinned Flutter 3.50.0 / Dart 3.14.0 toolchain. New regressions are in:
 
 - `test/domain/sd_card_transport_safety_test.dart` (real scheduler/manager with
   controlled MIDI packets and virtual timeout/recovery time).

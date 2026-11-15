@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'firmware_release.dart';
@@ -9,6 +9,7 @@ part of 'firmware_release.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -32,16 +33,21 @@ $FirmwareReleaseCopyWith<FirmwareRelease> get copyWith => _$FirmwareReleaseCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareRelease&&(identical(other.version, version) || other.version == version)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate)&&const DeepCollectionEquality().equals(other.changelog, changelog)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl));
+  final _this = this as FirmwareRelease;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FirmwareRelease&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.releaseDate, _this.releaseDate) || other.releaseDate == _this.releaseDate)&&const DeepCollectionEquality().equals(other.changelog, _this.changelog)&&(identical(other.downloadUrl, _this.downloadUrl) || other.downloadUrl == _this.downloadUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version,releaseDate,const DeepCollectionEquality().hash(changelog),downloadUrl);
+int get hashCode {
+  final _this = this as FirmwareRelease;
+  return Object.hash(runtimeType,_this.version,_this.releaseDate,const DeepCollectionEquality().hash(_this.changelog),_this.downloadUrl);
+}
 
 @override
 String toString() {
-  return 'FirmwareRelease(version: $version, releaseDate: $releaseDate, changelog: $changelog, downloadUrl: $downloadUrl)';
+  final _this = this as FirmwareRelease;
+  return 'FirmwareRelease(version: ${_this.version}, releaseDate: ${_this.releaseDate}, changelog: ${_this.changelog}, downloadUrl: ${_this.downloadUrl})';
 }
 
 
@@ -70,7 +76,7 @@ class _$FirmwareReleaseCopyWithImpl<$Res>
 /// Create a copy of FirmwareRelease
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? version = null,Object? releaseDate = null,Object? changelog = null,Object? downloadUrl = null,}) {
-  return _then(_self.copyWith(
+  return _then(FirmwareRelease(
 version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as String,releaseDate: null == releaseDate ? _self.releaseDate : releaseDate // ignore: cast_nullable_to_non_nullable
 as DateTime,changelog: null == changelog ? _self.changelog : changelog // ignore: cast_nullable_to_non_nullable
@@ -210,7 +216,7 @@ return $default(_that.version,_that.releaseDate,_that.changelog,_that.downloadUr
 @JsonSerializable()
 
 class _FirmwareRelease implements FirmwareRelease {
-  const _FirmwareRelease({required this.version, required this.releaseDate, required final  List<String> changelog, required this.downloadUrl}): _changelog = changelog;
+  const _FirmwareRelease({required this.version, required this.releaseDate, required  List<String> changelog, required this.downloadUrl}): _changelog = changelog;
   factory _FirmwareRelease.fromJson(Map<String, dynamic> json) => _$FirmwareReleaseFromJson(json);
 
 /// Version string (e.g., "1.12.0")
@@ -242,16 +248,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FirmwareRelease&&(identical(other.version, version) || other.version == version)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate)&&const DeepCollectionEquality().equals(other._changelog, _changelog)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _FirmwareRelease&&(identical(other.version, version) || other.version == version)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate)&&const DeepCollectionEquality().equals(other.changelog, _changelog)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version,releaseDate,const DeepCollectionEquality().hash(_changelog),downloadUrl);
+int get hashCode {
+    return Object.hash(runtimeType,version,releaseDate,const DeepCollectionEquality().hash(_changelog),downloadUrl);
+}
 
 @override
 String toString() {
-  return 'FirmwareRelease(version: $version, releaseDate: $releaseDate, changelog: $changelog, downloadUrl: $downloadUrl)';
+    return 'FirmwareRelease(version: $version, releaseDate: $releaseDate, changelog: $changelog, downloadUrl: $downloadUrl)';
 }
 
 

@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -108,38 +109,36 @@ class _StepSequencerViewState extends State<StepSequencerView> {
         builder: (context, state) {
           // Determine if we're offline
           final isOffline = state.maybeWhen(
-            connected:
-                (
-                  disting,
-                  inputDevice,
-                  outputDevice,
-                  offline,
-                  loading,
-                  syncStatus,
-                  syncProgress,
-                ) => offline,
-            synchronized:
-                (
-                  disting,
-                  distingVersion,
-                  firmwareVersion,
-                  deviceIoProfile,
-                  presetName,
-                  algorithms,
-                  slots,
-                  unitStrings,
-                  inputDevice,
-                  outputDevice,
-                  loading,
-                  offline,
-                  screenshot,
-                  demo,
-                  videoStream,
-                  availableFirmwareUpdate,
-                  perfPageItems,
-                  isDirty,
-                  renameConfirmationName,
-                ) => offline,
+            connected: (
+              disting,
+              inputDevice,
+              outputDevice,
+              offline,
+              loading,
+              syncStatus,
+              syncProgress,
+            ) => offline,
+            synchronized: (
+              disting,
+              distingVersion,
+              firmwareVersion,
+              deviceIoProfile,
+              presetName,
+              algorithms,
+              slots,
+              unitStrings,
+              inputDevice,
+              outputDevice,
+              loading,
+              offline,
+              screenshot,
+              demo,
+              videoStream,
+              availableFirmwareUpdate,
+              perfPageItems,
+              isDirty,
+              renameConfirmationName,
+            ) => offline,
             orElse: () => false,
           );
 
@@ -262,9 +261,9 @@ class _StepSequencerViewState extends State<StepSequencerView> {
                           ? Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerLow,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerLow,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: QuantizeControls(

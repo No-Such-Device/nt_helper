@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mocktail/mocktail.dart';
@@ -25,15 +25,12 @@ void main() {
       mockRoutingEditorCubit = MockRoutingEditorCubit();
 
       // Set up default mock behaviors
-      when(
-        () => mockDistingCubit.stream,
-      ).thenAnswer((_) => const Stream.empty());
-      when(
-        () => mockDistingCubit.state,
-      ).thenReturn(const DistingState.initial());
-      when(
-        () => mockRoutingEditorCubit.stream,
-      ).thenAnswer((_) => const Stream.empty());
+      when(() => mockDistingCubit.stream)
+          .thenAnswer((_) => const Stream.empty());
+      when(() => mockDistingCubit.state)
+          .thenReturn(const DistingState.initial());
+      when(() => mockRoutingEditorCubit.stream)
+          .thenAnswer((_) => const Stream.empty());
     });
 
     Widget createTestWidget({required RoutingEditorState state}) {
@@ -103,9 +100,8 @@ void main() {
         connections: const [],
       );
 
-      when(
-        () => mockRoutingEditorCubit.applyLayoutAlgorithm(),
-      ).thenAnswer((_) async {});
+      when(() => mockRoutingEditorCubit.applyLayoutAlgorithm())
+          .thenAnswer((_) async {});
 
       await tester.pumpWidget(createTestWidget(state: loadedState));
 

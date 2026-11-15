@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'routing_state.dart';
@@ -9,6 +9,7 @@ part of 'routing_state.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -38,16 +39,21 @@ $RoutingStateCopyWith<RoutingState> get copyWith => _$RoutingStateCopyWithImpl<R
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingState&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.inputPorts, inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, outputPorts)&&const DeepCollectionEquality().equals(other.connections, connections)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lastUpdated, lastUpdated) || other.lastUpdated == lastUpdated)&&(identical(other.isReadOnly, isReadOnly) || other.isReadOnly == isReadOnly)&&const DeepCollectionEquality().equals(other.configuration, configuration)&&const DeepCollectionEquality().equals(other.metadata, metadata));
+  final _this = this as RoutingState;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingState&&(identical(other.status, _this.status) || other.status == _this.status)&&const DeepCollectionEquality().equals(other.inputPorts, _this.inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, _this.outputPorts)&&const DeepCollectionEquality().equals(other.connections, _this.connections)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.lastUpdated, _this.lastUpdated) || other.lastUpdated == _this.lastUpdated)&&(identical(other.isReadOnly, _this.isReadOnly) || other.isReadOnly == _this.isReadOnly)&&const DeepCollectionEquality().equals(other.configuration, _this.configuration)&&const DeepCollectionEquality().equals(other.metadata, _this.metadata));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,const DeepCollectionEquality().hash(inputPorts),const DeepCollectionEquality().hash(outputPorts),const DeepCollectionEquality().hash(connections),errorMessage,createdAt,lastUpdated,isReadOnly,const DeepCollectionEquality().hash(configuration),const DeepCollectionEquality().hash(metadata));
+int get hashCode {
+  final _this = this as RoutingState;
+  return Object.hash(runtimeType,_this.status,const DeepCollectionEquality().hash(_this.inputPorts),const DeepCollectionEquality().hash(_this.outputPorts),const DeepCollectionEquality().hash(_this.connections),_this.errorMessage,_this.createdAt,_this.lastUpdated,_this.isReadOnly,const DeepCollectionEquality().hash(_this.configuration),const DeepCollectionEquality().hash(_this.metadata));
+}
 
 @override
 String toString() {
-  return 'RoutingState(status: $status, inputPorts: $inputPorts, outputPorts: $outputPorts, connections: $connections, errorMessage: $errorMessage, createdAt: $createdAt, lastUpdated: $lastUpdated, isReadOnly: $isReadOnly, configuration: $configuration, metadata: $metadata)';
+  final _this = this as RoutingState;
+  return 'RoutingState(status: ${_this.status}, inputPorts: ${_this.inputPorts}, outputPorts: ${_this.outputPorts}, connections: ${_this.connections}, errorMessage: ${_this.errorMessage}, createdAt: ${_this.createdAt}, lastUpdated: ${_this.lastUpdated}, isReadOnly: ${_this.isReadOnly}, configuration: ${_this.configuration}, metadata: ${_this.metadata})';
 }
 
 
@@ -76,7 +82,7 @@ class _$RoutingStateCopyWithImpl<$Res>
 /// Create a copy of RoutingState
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? inputPorts = null,Object? outputPorts = null,Object? connections = null,Object? errorMessage = freezed,Object? createdAt = freezed,Object? lastUpdated = freezed,Object? isReadOnly = null,Object? configuration = freezed,Object? metadata = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(RoutingState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as RoutingSystemStatus,inputPorts: null == inputPorts ? _self.inputPorts : inputPorts // ignore: cast_nullable_to_non_nullable
 as List<Port>,outputPorts: null == outputPorts ? _self.outputPorts : outputPorts // ignore: cast_nullable_to_non_nullable
@@ -222,7 +228,7 @@ return $default(_that.status,_that.inputPorts,_that.outputPorts,_that.connection
 @JsonSerializable()
 
 class _RoutingState extends RoutingState {
-  const _RoutingState({this.status = RoutingSystemStatus.uninitialized, final  List<Port> inputPorts = const [], final  List<Port> outputPorts = const [], final  List<Connection> connections = const [], this.errorMessage, this.createdAt, this.lastUpdated, this.isReadOnly = false, final  Map<String, dynamic>? configuration, final  Map<String, dynamic>? metadata}): _inputPorts = inputPorts,_outputPorts = outputPorts,_connections = connections,_configuration = configuration,_metadata = metadata,super._();
+  const _RoutingState({this.status = RoutingSystemStatus.uninitialized,  List<Port> inputPorts = const [],  List<Port> outputPorts = const [],  List<Connection> connections = const [], this.errorMessage, this.createdAt, this.lastUpdated, this.isReadOnly = false,  Map<String, dynamic>? configuration,  Map<String, dynamic>? metadata}): _inputPorts = inputPorts,_outputPorts = outputPorts,_connections = connections,_configuration = configuration,_metadata = metadata,super._();
   factory _RoutingState.fromJson(Map<String, dynamic> json) => _$RoutingStateFromJson(json);
 
 /// Current status of the routing system
@@ -298,16 +304,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoutingState&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._inputPorts, _inputPorts)&&const DeepCollectionEquality().equals(other._outputPorts, _outputPorts)&&const DeepCollectionEquality().equals(other._connections, _connections)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lastUpdated, lastUpdated) || other.lastUpdated == lastUpdated)&&(identical(other.isReadOnly, isReadOnly) || other.isReadOnly == isReadOnly)&&const DeepCollectionEquality().equals(other._configuration, _configuration)&&const DeepCollectionEquality().equals(other._metadata, _metadata));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoutingState&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.inputPorts, _inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, _outputPorts)&&const DeepCollectionEquality().equals(other.connections, _connections)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.lastUpdated, lastUpdated) || other.lastUpdated == lastUpdated)&&(identical(other.isReadOnly, isReadOnly) || other.isReadOnly == isReadOnly)&&const DeepCollectionEquality().equals(other.configuration, _configuration)&&const DeepCollectionEquality().equals(other.metadata, _metadata));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,const DeepCollectionEquality().hash(_inputPorts),const DeepCollectionEquality().hash(_outputPorts),const DeepCollectionEquality().hash(_connections),errorMessage,createdAt,lastUpdated,isReadOnly,const DeepCollectionEquality().hash(_configuration),const DeepCollectionEquality().hash(_metadata));
+int get hashCode {
+    return Object.hash(runtimeType,status,const DeepCollectionEquality().hash(_inputPorts),const DeepCollectionEquality().hash(_outputPorts),const DeepCollectionEquality().hash(_connections),errorMessage,createdAt,lastUpdated,isReadOnly,const DeepCollectionEquality().hash(_configuration),const DeepCollectionEquality().hash(_metadata));
+}
 
 @override
 String toString() {
-  return 'RoutingState(status: $status, inputPorts: $inputPorts, outputPorts: $outputPorts, connections: $connections, errorMessage: $errorMessage, createdAt: $createdAt, lastUpdated: $lastUpdated, isReadOnly: $isReadOnly, configuration: $configuration, metadata: $metadata)';
+    return 'RoutingState(status: $status, inputPorts: $inputPorts, outputPorts: $outputPorts, connections: $connections, errorMessage: $errorMessage, createdAt: $createdAt, lastUpdated: $lastUpdated, isReadOnly: $isReadOnly, configuration: $configuration, metadata: $metadata)';
 }
 
 

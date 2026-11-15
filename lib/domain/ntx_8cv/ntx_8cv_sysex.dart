@@ -229,12 +229,11 @@ class Ntx8cvTransportException implements Exception {
 /// for a matching value.
 class Ntx8cvSession {
   Ntx8cvSession({
-    required Ntx8cvMidiTransport transport,
+    required this._transport,
     required this.deviceId,
-    Ntx8cvSysExCodec codec = const Ntx8cvSysExCodec(),
+    this._codec = const Ntx8cvSysExCodec(),
     this.timeout = const Duration(seconds: 1),
-  }) : _transport = transport,
-       _codec = codec {
+  }) {
     _validateDeviceId(deviceId);
     if (timeout < Duration.zero) {
       throw ArgumentError.value(timeout, 'timeout', 'must not be negative');

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'algorithm_connection.dart';
@@ -9,6 +9,7 @@ part of 'algorithm_connection.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -39,16 +40,21 @@ $AlgorithmConnectionCopyWith<AlgorithmConnection> get copyWith => _$AlgorithmCon
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmConnection&&(identical(other.id, id) || other.id == id)&&(identical(other.sourceAlgorithmIndex, sourceAlgorithmIndex) || other.sourceAlgorithmIndex == sourceAlgorithmIndex)&&(identical(other.sourcePortId, sourcePortId) || other.sourcePortId == sourcePortId)&&(identical(other.targetAlgorithmIndex, targetAlgorithmIndex) || other.targetAlgorithmIndex == targetAlgorithmIndex)&&(identical(other.targetPortId, targetPortId) || other.targetPortId == targetPortId)&&(identical(other.busNumber, busNumber) || other.busNumber == busNumber)&&(identical(other.connectionType, connectionType) || other.connectionType == connectionType)&&(identical(other.isValid, isValid) || other.isValid == isValid)&&(identical(other.validationMessage, validationMessage) || other.validationMessage == validationMessage)&&(identical(other.edgeLabel, edgeLabel) || other.edgeLabel == edgeLabel));
+  final _this = this as AlgorithmConnection;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmConnection&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.sourceAlgorithmIndex, _this.sourceAlgorithmIndex) || other.sourceAlgorithmIndex == _this.sourceAlgorithmIndex)&&(identical(other.sourcePortId, _this.sourcePortId) || other.sourcePortId == _this.sourcePortId)&&(identical(other.targetAlgorithmIndex, _this.targetAlgorithmIndex) || other.targetAlgorithmIndex == _this.targetAlgorithmIndex)&&(identical(other.targetPortId, _this.targetPortId) || other.targetPortId == _this.targetPortId)&&(identical(other.busNumber, _this.busNumber) || other.busNumber == _this.busNumber)&&(identical(other.connectionType, _this.connectionType) || other.connectionType == _this.connectionType)&&(identical(other.isValid, _this.isValid) || other.isValid == _this.isValid)&&(identical(other.validationMessage, _this.validationMessage) || other.validationMessage == _this.validationMessage)&&(identical(other.edgeLabel, _this.edgeLabel) || other.edgeLabel == _this.edgeLabel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sourceAlgorithmIndex,sourcePortId,targetAlgorithmIndex,targetPortId,busNumber,connectionType,isValid,validationMessage,edgeLabel);
+int get hashCode {
+  final _this = this as AlgorithmConnection;
+  return Object.hash(runtimeType,_this.id,_this.sourceAlgorithmIndex,_this.sourcePortId,_this.targetAlgorithmIndex,_this.targetPortId,_this.busNumber,_this.connectionType,_this.isValid,_this.validationMessage,_this.edgeLabel);
+}
 
 @override
 String toString() {
-  return 'AlgorithmConnection(id: $id, sourceAlgorithmIndex: $sourceAlgorithmIndex, sourcePortId: $sourcePortId, targetAlgorithmIndex: $targetAlgorithmIndex, targetPortId: $targetPortId, busNumber: $busNumber, connectionType: $connectionType, isValid: $isValid, validationMessage: $validationMessage, edgeLabel: $edgeLabel)';
+  final _this = this as AlgorithmConnection;
+  return 'AlgorithmConnection(id: ${_this.id}, sourceAlgorithmIndex: ${_this.sourceAlgorithmIndex}, sourcePortId: ${_this.sourcePortId}, targetAlgorithmIndex: ${_this.targetAlgorithmIndex}, targetPortId: ${_this.targetPortId}, busNumber: ${_this.busNumber}, connectionType: ${_this.connectionType}, isValid: ${_this.isValid}, validationMessage: ${_this.validationMessage}, edgeLabel: ${_this.edgeLabel})';
 }
 
 
@@ -77,7 +83,7 @@ class _$AlgorithmConnectionCopyWithImpl<$Res>
 /// Create a copy of AlgorithmConnection
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sourceAlgorithmIndex = null,Object? sourcePortId = null,Object? targetAlgorithmIndex = null,Object? targetPortId = null,Object? busNumber = null,Object? connectionType = null,Object? isValid = null,Object? validationMessage = freezed,Object? edgeLabel = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(AlgorithmConnection(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sourceAlgorithmIndex: null == sourceAlgorithmIndex ? _self.sourceAlgorithmIndex : sourceAlgorithmIndex // ignore: cast_nullable_to_non_nullable
 as int,sourcePortId: null == sourcePortId ? _self.sourcePortId : sourcePortId // ignore: cast_nullable_to_non_nullable
@@ -261,16 +267,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmConnection&&(identical(other.id, id) || other.id == id)&&(identical(other.sourceAlgorithmIndex, sourceAlgorithmIndex) || other.sourceAlgorithmIndex == sourceAlgorithmIndex)&&(identical(other.sourcePortId, sourcePortId) || other.sourcePortId == sourcePortId)&&(identical(other.targetAlgorithmIndex, targetAlgorithmIndex) || other.targetAlgorithmIndex == targetAlgorithmIndex)&&(identical(other.targetPortId, targetPortId) || other.targetPortId == targetPortId)&&(identical(other.busNumber, busNumber) || other.busNumber == busNumber)&&(identical(other.connectionType, connectionType) || other.connectionType == connectionType)&&(identical(other.isValid, isValid) || other.isValid == isValid)&&(identical(other.validationMessage, validationMessage) || other.validationMessage == validationMessage)&&(identical(other.edgeLabel, edgeLabel) || other.edgeLabel == edgeLabel));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmConnection&&(identical(other.id, id) || other.id == id)&&(identical(other.sourceAlgorithmIndex, sourceAlgorithmIndex) || other.sourceAlgorithmIndex == sourceAlgorithmIndex)&&(identical(other.sourcePortId, sourcePortId) || other.sourcePortId == sourcePortId)&&(identical(other.targetAlgorithmIndex, targetAlgorithmIndex) || other.targetAlgorithmIndex == targetAlgorithmIndex)&&(identical(other.targetPortId, targetPortId) || other.targetPortId == targetPortId)&&(identical(other.busNumber, busNumber) || other.busNumber == busNumber)&&(identical(other.connectionType, connectionType) || other.connectionType == connectionType)&&(identical(other.isValid, isValid) || other.isValid == isValid)&&(identical(other.validationMessage, validationMessage) || other.validationMessage == validationMessage)&&(identical(other.edgeLabel, edgeLabel) || other.edgeLabel == edgeLabel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sourceAlgorithmIndex,sourcePortId,targetAlgorithmIndex,targetPortId,busNumber,connectionType,isValid,validationMessage,edgeLabel);
+int get hashCode {
+    return Object.hash(runtimeType,id,sourceAlgorithmIndex,sourcePortId,targetAlgorithmIndex,targetPortId,busNumber,connectionType,isValid,validationMessage,edgeLabel);
+}
 
 @override
 String toString() {
-  return 'AlgorithmConnection(id: $id, sourceAlgorithmIndex: $sourceAlgorithmIndex, sourcePortId: $sourcePortId, targetAlgorithmIndex: $targetAlgorithmIndex, targetPortId: $targetPortId, busNumber: $busNumber, connectionType: $connectionType, isValid: $isValid, validationMessage: $validationMessage, edgeLabel: $edgeLabel)';
+    return 'AlgorithmConnection(id: $id, sourceAlgorithmIndex: $sourceAlgorithmIndex, sourcePortId: $sourcePortId, targetAlgorithmIndex: $targetAlgorithmIndex, targetPortId: $targetPortId, busNumber: $busNumber, connectionType: $connectionType, isValid: $isValid, validationMessage: $validationMessage, edgeLabel: $edgeLabel)';
 }
 
 

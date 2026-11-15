@@ -5,14 +5,14 @@ import 'package:cross_file/cross_file.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:path/path.dart' as p;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/cubit/preset_browser_cubit.dart';
 import 'package:nt_helper/interfaces/impl/preset_file_system_impl.dart';
@@ -424,9 +424,8 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
       listener: (context, state) {
         final warning = state.view?.warning;
         if (warning != null) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(warning)));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(warning)));
         }
       },
       child: content,
@@ -1051,7 +1050,21 @@ class _PresetBrowserDialogState extends State<PresetBrowserDialog>
             width: MediaQuery.of(context).size.width * 0.6,
             height: MediaQuery.of(context).size.height * 0.5,
             child: isMarkdown
-                ? Markdown(data: text)
+                ? SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: GptMarkdown(
+                      text,
+                      textDirection: Directionality.of(context),
+                      html: false,
+                      isStreaming: false,
+                      styleSheet: const GptMarkdownStyleSheet(
+                        codeBlock: CodeBlockStyle(
+                          showCopyButton: false,
+                          showLanguageLabel: false,
+                        ),
+                      ),
+                    ),
+                  )
                 : SingleChildScrollView(
                     child: SelectableText(
                       text,
@@ -1915,9 +1928,8 @@ class _DirectoryPanelState extends State<DirectoryPanel> {
           liveRegion: true,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.08),
+              color: Theme.of(context).colorScheme.primary
+                  .withValues(alpha: 0.08),
               border: Border.all(
                 color: Theme.of(context).colorScheme.primary,
                 width: 2,

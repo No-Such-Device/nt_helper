@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show PointerDeviceKind;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -192,9 +192,8 @@ class _SystemStatusHarness {
     when(() => cubit.resumeCpuMonitoring()).thenReturn(null);
     when(() => cubit.pauseCpuMonitoring()).thenReturn(null);
     when(() => cubit.displayMemoryState).thenAnswer((_) => currentMemory);
-    when(
-      () => cubit.displayMemoryStateStream,
-    ).thenAnswer((_) => memoryController.stream);
+    when(() => cubit.displayMemoryStateStream)
+        .thenAnswer((_) => memoryController.stream);
     when(() => cubit.refreshDisplayMemory()).thenAnswer((_) async {});
     when(() => cubit.supportsMemoryUsage).thenAnswer((_) {
       final state = currentState;
@@ -250,9 +249,8 @@ class _SystemStatusHarness {
 
     return MaterialApp(
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(
-          context,
-        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
         child: child!,
       ),
       home: BlocProvider<DistingCubit>.value(
@@ -400,7 +398,8 @@ void main() {
       await tester.pump(const Duration(seconds: 11));
       expect(cpuQueryCount, 4);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets('System CPU consumer retains polling failure backoff', (
     tester,
@@ -564,7 +563,8 @@ void main() {
       await harness.openSystem(tester);
       verify(() => harness.cubit.refreshDisplayMemory()).called(1);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'System retains a sample through refresh and timeout but clears it for another device',
@@ -682,7 +682,8 @@ void main() {
       }
       verify(() => harness.cubit.refreshDisplayMemory()).called(4);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'System keeps CPU stream behavior and original action order and handlers',
@@ -811,7 +812,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(WaveCacheTroubleshootingDialog), findsNothing);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'large text System scrolls to every action without layout errors',
@@ -851,7 +853,8 @@ void main() {
       await tester.pumpAndSettle();
       verify(() => harness.cubit.refreshAlgorithms()).called(1);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets('System remains disabled while loading or offline', (
     tester,

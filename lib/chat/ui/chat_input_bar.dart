@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:cross_file/cross_file.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:nt_helper/chat/models/chat_message.dart';
@@ -132,12 +132,18 @@ class _ChatInputBarState extends State<ChatInputBar> {
 
   Future<void> _attachFiles() async {
     final result = await FilePicker.pickFiles();
-    if (result == null || !mounted) return;
-    for (final file in result.files) {
+    if (!mounted) return;
+    for (final file in result) {
       if (!_canAddAttachment()) break;
       final mimeType = _mimeTypeForName(file.name);
+      final size = file.lengthSync() ?? await file.length();
+      if (!mounted) return;
+      if (size == null) {
+        _showAttachmentError('Could not determine the size of ${file.name}.');
+        continue;
+      }
       if (mimeType.startsWith('image/')) {
-        if (file.size > _maxImageBytes) {
+        if (size > _maxImageBytes) {
           _showAttachmentError('${file.name} is larger than 10 MB.');
           continue;
         }
@@ -153,7 +159,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
         continue;
       }
       final maxBytes = _maxBytesForMime(mimeType);
-      if (file.size > maxBytes) {
+      if (size > maxBytes) {
         _showAttachmentError(
           '${file.name} is larger than ${_formatBytes(maxBytes)}.',
         );

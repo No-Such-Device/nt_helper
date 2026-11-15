@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
+
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart'; // Import for Clipboard
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/ui/widgets/draggable_resizable_overlay.dart';
@@ -108,8 +109,7 @@ class _FloatingScreenshotContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
               child: screenshot != null
                   ? Semantics(
-                      label:
-                          'Disting NT screen capture. Long press to copy to clipboard.',
+                      label: 'Disting NT screen capture. Long press to copy to clipboard.',
                       image: true,
                       child: GestureDetector(
                         onLongPress: onCopyToClipboard,

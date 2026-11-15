@@ -1,5 +1,5 @@
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,9 +56,8 @@ void main() {
         AlgorithmEntry(guid: 'G3', name: 'Gamma', numSpecifications: 0),
       ]);
       when(() => mockCubit.checkpoints).thenReturn([]);
-      when(
-        () => mockCubit.cpuUsageStream,
-      ).thenAnswer((_) => const Stream.empty());
+      when(() => mockCubit.cpuUsageStream)
+          .thenAnswer((_) => const Stream.empty());
       when(() => mockCubit.database).thenReturn(database);
       when(() => mockPlatformService.isMobilePlatform()).thenReturn(false);
       McpServerService.initialize(distingCubit: mockCubit);
@@ -313,9 +312,8 @@ void main() {
         AlgorithmEntry(guid: 'G3', name: 'Gamma', numSpecifications: 0),
       ]);
       when(() => mockCubit.checkpoints).thenReturn([]);
-      when(
-        () => mockCubit.cpuUsageStream,
-      ).thenAnswer((_) => const Stream.empty());
+      when(() => mockCubit.cpuUsageStream)
+          .thenAnswer((_) => const Stream.empty());
       when(() => mockCubit.database).thenReturn(database);
       when(() => mockPlatformService.isMobilePlatform()).thenReturn(false);
       McpServerService.initialize(distingCubit: mockCubit);

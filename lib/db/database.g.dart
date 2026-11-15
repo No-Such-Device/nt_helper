@@ -6939,22 +6939,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ]);
 }
 
-typedef $$AlgorithmsTableCreateCompanionBuilder =
-    AlgorithmsCompanion Function({
-      required String guid,
-      required String name,
-      required int numSpecifications,
-      Value<String?> pluginFilePath,
-      Value<int> rowid,
-    });
-typedef $$AlgorithmsTableUpdateCompanionBuilder =
-    AlgorithmsCompanion Function({
-      Value<String> guid,
-      Value<String> name,
-      Value<int> numSpecifications,
-      Value<String?> pluginFilePath,
-      Value<int> rowid,
-    });
+typedef $$AlgorithmsTableCreateCompanionBuilder = AlgorithmsCompanion Function({
+  required String guid,
+  required String name,
+  required int numSpecifications,
+  Value<String?> pluginFilePath,
+  Value<int> rowid,
+});
+typedef $$AlgorithmsTableUpdateCompanionBuilder = AlgorithmsCompanion Function({
+  Value<String> guid,
+  Value<String> name,
+  Value<int> numSpecifications,
+  Value<String?> pluginFilePath,
+  Value<int> rowid,
+});
 
 final class $$AlgorithmsTableReferences
     extends BaseReferences<_$AppDatabase, $AlgorithmsTable, AlgorithmEntry> {
@@ -7547,7 +7545,7 @@ class $$AlgorithmsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$AlgorithmsTable, AlgorithmEntry>(table),
                   $$AlgorithmsTableReferences(db, table, e),
                 ),
               )
@@ -7576,10 +7574,11 @@ class $$AlgorithmsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (algorithmRepeatGrammarsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AlgorithmEntry,
                           $AlgorithmsTable,
-                          AlgorithmRepeatGrammarEntry
+                          AlgorithmRepeatGrammarEntry,
+                          $AlgorithmRepeatGrammarsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AlgorithmsTableReferences
@@ -7590,17 +7589,16 @@ class $$AlgorithmsTableTableManager
                                 table,
                                 p0,
                               ).algorithmRepeatGrammarsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.algorithmGuid == item.guid,
-                              ),
+                          currentColumn: 'guid',
+                          referencedColumn: 'algorithm_guid',
                           typedResults: items,
                         ),
                       if (specificationsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AlgorithmEntry,
                           $AlgorithmsTable,
-                          SpecificationEntry
+                          SpecificationEntry,
+                          $SpecificationsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AlgorithmsTableReferences
@@ -7611,17 +7609,16 @@ class $$AlgorithmsTableTableManager
                                 table,
                                 p0,
                               ).specificationsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.algorithmGuid == item.guid,
-                              ),
+                          currentColumn: 'guid',
+                          referencedColumn: 'algorithm_guid',
                           typedResults: items,
                         ),
                       if (parametersRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AlgorithmEntry,
                           $AlgorithmsTable,
-                          ParameterEntry
+                          ParameterEntry,
+                          $ParametersTable
                         >(
                           currentTable: table,
                           referencedTable: $$AlgorithmsTableReferences
@@ -7632,17 +7629,16 @@ class $$AlgorithmsTableTableManager
                                 table,
                                 p0,
                               ).parametersRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.algorithmGuid == item.guid,
-                              ),
+                          currentColumn: 'guid',
+                          referencedColumn: 'algorithm_guid',
                           typedResults: items,
                         ),
                       if (parameterPagesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AlgorithmEntry,
                           $AlgorithmsTable,
-                          ParameterPageEntry
+                          ParameterPageEntry,
+                          $ParameterPagesTable
                         >(
                           currentTable: table,
                           referencedTable: $$AlgorithmsTableReferences
@@ -7653,17 +7649,16 @@ class $$AlgorithmsTableTableManager
                                 table,
                                 p0,
                               ).parameterPagesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.algorithmGuid == item.guid,
-                              ),
+                          currentColumn: 'guid',
+                          referencedColumn: 'algorithm_guid',
                           typedResults: items,
                         ),
                       if (parameterOutputModeUsageRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AlgorithmEntry,
                           $AlgorithmsTable,
-                          ParameterOutputModeUsageEntry
+                          ParameterOutputModeUsageEntry,
+                          $ParameterOutputModeUsageTable
                         >(
                           currentTable: table,
                           referencedTable: $$AlgorithmsTableReferences
@@ -7674,17 +7669,16 @@ class $$AlgorithmsTableTableManager
                                 table,
                                 p0,
                               ).parameterOutputModeUsageRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.algorithmGuid == item.guid,
-                              ),
+                          currentColumn: 'guid',
+                          referencedColumn: 'algorithm_guid',
                           typedResults: items,
                         ),
                       if (presetSlotsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           AlgorithmEntry,
                           $AlgorithmsTable,
-                          PresetSlotEntry
+                          PresetSlotEntry,
+                          $PresetSlotsTable
                         >(
                           currentTable: table,
                           referencedTable: $$AlgorithmsTableReferences
@@ -7695,10 +7689,8 @@ class $$AlgorithmsTableTableManager
                                 table,
                                 p0,
                               ).presetSlotsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.algorithmGuid == item.guid,
-                              ),
+                          currentColumn: 'guid',
+                          referencedColumn: 'algorithm_guid',
                           typedResults: items,
                         ),
                     ];
@@ -7974,7 +7966,10 @@ class $$AlgorithmRepeatGrammarsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<
+                    $AlgorithmRepeatGrammarsTable,
+                    AlgorithmRepeatGrammarEntry
+                  >(table),
                   $$AlgorithmRepeatGrammarsTableReferences(db, table, e),
                 ),
               )
@@ -8000,19 +7995,17 @@ class $$AlgorithmRepeatGrammarsTableTableManager
                     >
                   >(state) {
                     if (algorithmGuid) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.algorithmGuid,
-                                referencedTable:
-                                    $$AlgorithmRepeatGrammarsTableReferences
-                                        ._algorithmGuidTable(db),
-                                referencedColumn:
-                                    $$AlgorithmRepeatGrammarsTableReferences
-                                        ._algorithmGuidTable(db)
-                                        .guid,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.algorithmGuid,
+                        referencedTable:
+                            $$AlgorithmRepeatGrammarsTableReferences
+                                ._algorithmGuidTable(db),
+                        referencedColumn:
+                            $$AlgorithmRepeatGrammarsTableReferences
+                                ._algorithmGuidTable(db)
+                                .guid,
+                      ) as T;
                     }
 
                     return state;
@@ -8344,7 +8337,7 @@ class $$SpecificationsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$SpecificationsTable, SpecificationEntry>(table),
                   $$SpecificationsTableReferences(db, table, e),
                 ),
               )
@@ -8370,18 +8363,15 @@ class $$SpecificationsTableTableManager
                     >
                   >(state) {
                     if (algorithmGuid) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.algorithmGuid,
-                                referencedTable: $$SpecificationsTableReferences
-                                    ._algorithmGuidTable(db),
-                                referencedColumn:
-                                    $$SpecificationsTableReferences
-                                        ._algorithmGuidTable(db)
-                                        .guid,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.algorithmGuid,
+                        referencedTable: $$SpecificationsTableReferences
+                            ._algorithmGuidTable(db),
+                        referencedColumn: $$SpecificationsTableReferences
+                            ._algorithmGuidTable(db)
+                            .guid,
+                      ) as T;
                     }
 
                     return state;
@@ -8409,10 +8399,14 @@ typedef $$SpecificationsTableProcessedTableManager =
       SpecificationEntry,
       PrefetchHooks Function({bool algorithmGuid})
     >;
-typedef $$UnitsTableCreateCompanionBuilder =
-    UnitsCompanion Function({Value<int> id, required String unitString});
-typedef $$UnitsTableUpdateCompanionBuilder =
-    UnitsCompanion Function({Value<int> id, Value<String> unitString});
+typedef $$UnitsTableCreateCompanionBuilder = UnitsCompanion Function({
+  Value<int> id,
+  required String unitString,
+});
+typedef $$UnitsTableUpdateCompanionBuilder = UnitsCompanion Function({
+  Value<int> id,
+  Value<String> unitString,
+});
 
 final class $$UnitsTableReferences
     extends BaseReferences<_$AppDatabase, $UnitsTable, UnitEntry> {
@@ -8570,20 +8564,20 @@ class $$UnitsTableTableManager
               $$UnitsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$UnitsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> unitString = const Value.absent(),
-              }) => UnitsCompanion(id: id, unitString: unitString),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required String unitString,
-              }) => UnitsCompanion.insert(id: id, unitString: unitString),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> unitString = const Value.absent(),
+          }) => UnitsCompanion(id: id, unitString: unitString),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String unitString,
+          }) => UnitsCompanion.insert(id: id, unitString: unitString),
           withReferenceMapper: (p0) => p0
               .map(
-                (e) =>
-                    (e.readTable(table), $$UnitsTableReferences(db, table, e)),
+                (e) => (
+                  e.readTable<$UnitsTable, UnitEntry>(table),
+                  $$UnitsTableReferences(db, table, e),
+                ),
               )
               .toList(),
           prefetchHooksCallback: ({parametersRefs = false}) {
@@ -8594,18 +8588,19 @@ class $$UnitsTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (parametersRefs)
-                    await $_getPrefetchedData<
+                    await $_getPrefetchedDataByColumns<
                       UnitEntry,
                       $UnitsTable,
-                      ParameterEntry
+                      ParameterEntry,
+                      $ParametersTable
                     >(
                       currentTable: table,
                       referencedTable: $$UnitsTableReferences
                           ._parametersRefsTable(db),
                       managerFromTypedResult: (p0) =>
                           $$UnitsTableReferences(db, table, p0).parametersRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.unitId == item.id),
+                      currentColumn: 'id',
+                      referencedColumn: 'unit_id',
                       typedResults: items,
                     ),
                 ];
@@ -8630,34 +8625,32 @@ typedef $$UnitsTableProcessedTableManager =
       UnitEntry,
       PrefetchHooks Function({bool parametersRefs})
     >;
-typedef $$ParametersTableCreateCompanionBuilder =
-    ParametersCompanion Function({
-      required String algorithmGuid,
-      required int parameterNumber,
-      required String name,
-      Value<int?> minValue,
-      Value<int?> maxValue,
-      Value<int?> defaultValue,
-      Value<int?> unitId,
-      Value<int?> powerOfTen,
-      Value<int?> ioFlags,
-      Value<int?> rawUnitIndex,
-      Value<int> rowid,
-    });
-typedef $$ParametersTableUpdateCompanionBuilder =
-    ParametersCompanion Function({
-      Value<String> algorithmGuid,
-      Value<int> parameterNumber,
-      Value<String> name,
-      Value<int?> minValue,
-      Value<int?> maxValue,
-      Value<int?> defaultValue,
-      Value<int?> unitId,
-      Value<int?> powerOfTen,
-      Value<int?> ioFlags,
-      Value<int?> rawUnitIndex,
-      Value<int> rowid,
-    });
+typedef $$ParametersTableCreateCompanionBuilder = ParametersCompanion Function({
+  required String algorithmGuid,
+  required int parameterNumber,
+  required String name,
+  Value<int?> minValue,
+  Value<int?> maxValue,
+  Value<int?> defaultValue,
+  Value<int?> unitId,
+  Value<int?> powerOfTen,
+  Value<int?> ioFlags,
+  Value<int?> rawUnitIndex,
+  Value<int> rowid,
+});
+typedef $$ParametersTableUpdateCompanionBuilder = ParametersCompanion Function({
+  Value<String> algorithmGuid,
+  Value<int> parameterNumber,
+  Value<String> name,
+  Value<int?> minValue,
+  Value<int?> maxValue,
+  Value<int?> defaultValue,
+  Value<int?> unitId,
+  Value<int?> powerOfTen,
+  Value<int?> ioFlags,
+  Value<int?> rawUnitIndex,
+  Value<int> rowid,
+});
 
 final class $$ParametersTableReferences
     extends BaseReferences<_$AppDatabase, $ParametersTable, ParameterEntry> {
@@ -9059,7 +9052,7 @@ class $$ParametersTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ParametersTable, ParameterEntry>(table),
                   $$ParametersTableReferences(db, table, e),
                 ),
               )
@@ -9085,30 +9078,26 @@ class $$ParametersTableTableManager
                     >
                   >(state) {
                     if (algorithmGuid) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.algorithmGuid,
-                                referencedTable: $$ParametersTableReferences
-                                    ._algorithmGuidTable(db),
-                                referencedColumn: $$ParametersTableReferences
-                                    ._algorithmGuidTable(db)
-                                    .guid,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.algorithmGuid,
+                        referencedTable: $$ParametersTableReferences
+                            ._algorithmGuidTable(db),
+                        referencedColumn: $$ParametersTableReferences
+                            ._algorithmGuidTable(db)
+                            .guid,
+                      ) as T;
                     }
                     if (unitId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.unitId,
-                                referencedTable: $$ParametersTableReferences
-                                    ._unitIdTable(db),
-                                referencedColumn: $$ParametersTableReferences
-                                    ._unitIdTable(db)
-                                    .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.unitId,
+                        referencedTable: $$ParametersTableReferences
+                            ._unitIdTable(db),
+                        referencedColumn: $$ParametersTableReferences
+                            ._unitIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -9305,7 +9294,16 @@ class $$ParameterEnumsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$ParameterEnumsTable, ParameterEnumEntry>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ParameterEnumsTable,
+                    ParameterEnumEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -9555,7 +9553,7 @@ class $$ParameterPagesTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ParameterPagesTable, ParameterPageEntry>(table),
                   $$ParameterPagesTableReferences(db, table, e),
                 ),
               )
@@ -9581,18 +9579,15 @@ class $$ParameterPagesTableTableManager
                     >
                   >(state) {
                     if (algorithmGuid) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.algorithmGuid,
-                                referencedTable: $$ParameterPagesTableReferences
-                                    ._algorithmGuidTable(db),
-                                referencedColumn:
-                                    $$ParameterPagesTableReferences
-                                        ._algorithmGuidTable(db)
-                                        .guid,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.algorithmGuid,
+                        referencedTable: $$ParameterPagesTableReferences
+                            ._algorithmGuidTable(db),
+                        referencedColumn: $$ParameterPagesTableReferences
+                            ._algorithmGuidTable(db)
+                            .guid,
+                      ) as T;
                     }
 
                     return state;
@@ -9771,7 +9766,18 @@ class $$ParameterPageItemsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$ParameterPageItemsTable, ParameterPageItemEntry>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ParameterPageItemsTable,
+                    ParameterPageItemEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -10045,7 +10051,10 @@ class $$ParameterOutputModeUsageTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<
+                    $ParameterOutputModeUsageTable,
+                    ParameterOutputModeUsageEntry
+                  >(table),
                   $$ParameterOutputModeUsageTableReferences(db, table, e),
                 ),
               )
@@ -10071,19 +10080,17 @@ class $$ParameterOutputModeUsageTableTableManager
                     >
                   >(state) {
                     if (algorithmGuid) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.algorithmGuid,
-                                referencedTable:
-                                    $$ParameterOutputModeUsageTableReferences
-                                        ._algorithmGuidTable(db),
-                                referencedColumn:
-                                    $$ParameterOutputModeUsageTableReferences
-                                        ._algorithmGuidTable(db)
-                                        .guid,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.algorithmGuid,
+                        referencedTable:
+                            $$ParameterOutputModeUsageTableReferences
+                                ._algorithmGuidTable(db),
+                        referencedColumn:
+                            $$ParameterOutputModeUsageTableReferences
+                                ._algorithmGuidTable(db)
+                                .guid,
+                      ) as T;
                     }
 
                     return state;
@@ -10114,24 +10121,22 @@ typedef $$ParameterOutputModeUsageTableProcessedTableManager =
       ParameterOutputModeUsageEntry,
       PrefetchHooks Function({bool algorithmGuid})
     >;
-typedef $$PresetsTableCreateCompanionBuilder =
-    PresetsCompanion Function({
-      Value<int> id,
-      required String name,
-      Value<DateTime> lastModified,
-      Value<bool> isTemplate,
-      Value<String?> category,
-      Value<String?> templateMetadata,
-    });
-typedef $$PresetsTableUpdateCompanionBuilder =
-    PresetsCompanion Function({
-      Value<int> id,
-      Value<String> name,
-      Value<DateTime> lastModified,
-      Value<bool> isTemplate,
-      Value<String?> category,
-      Value<String?> templateMetadata,
-    });
+typedef $$PresetsTableCreateCompanionBuilder = PresetsCompanion Function({
+  Value<int> id,
+  required String name,
+  Value<DateTime> lastModified,
+  Value<bool> isTemplate,
+  Value<String?> category,
+  Value<String?> templateMetadata,
+});
+typedef $$PresetsTableUpdateCompanionBuilder = PresetsCompanion Function({
+  Value<int> id,
+  Value<String> name,
+  Value<DateTime> lastModified,
+  Value<bool> isTemplate,
+  Value<String?> category,
+  Value<String?> templateMetadata,
+});
 
 final class $$PresetsTableReferences
     extends BaseReferences<_$AppDatabase, $PresetsTable, PresetEntry> {
@@ -10381,7 +10386,7 @@ class $$PresetsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$PresetsTable, PresetEntry>(table),
                   $$PresetsTableReferences(db, table, e),
                 ),
               )
@@ -10394,10 +10399,11 @@ class $$PresetsTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (presetSlotsRefs)
-                    await $_getPrefetchedData<
+                    await $_getPrefetchedDataByColumns<
                       PresetEntry,
                       $PresetsTable,
-                      PresetSlotEntry
+                      PresetSlotEntry,
+                      $PresetSlotsTable
                     >(
                       currentTable: table,
                       referencedTable: $$PresetsTableReferences
@@ -10407,8 +10413,8 @@ class $$PresetsTableTableManager
                         table,
                         p0,
                       ).presetSlotsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.presetId == item.id),
+                      currentColumn: 'id',
+                      referencedColumn: 'preset_id',
                       typedResults: items,
                     ),
                 ];
@@ -11140,7 +11146,7 @@ class $$PresetSlotsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$PresetSlotsTable, PresetSlotEntry>(table),
                   $$PresetSlotsTableReferences(db, table, e),
                 ),
               )
@@ -11183,34 +11189,26 @@ class $$PresetSlotsTableTableManager
                         >
                       >(state) {
                         if (presetId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.presetId,
-                                    referencedTable:
-                                        $$PresetSlotsTableReferences
-                                            ._presetIdTable(db),
-                                    referencedColumn:
-                                        $$PresetSlotsTableReferences
-                                            ._presetIdTable(db)
-                                            .id,
-                                  )
-                                  as T;
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.presetId,
+                            referencedTable: $$PresetSlotsTableReferences
+                                ._presetIdTable(db),
+                            referencedColumn: $$PresetSlotsTableReferences
+                                ._presetIdTable(db)
+                                .id,
+                          ) as T;
                         }
                         if (algorithmGuid) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.algorithmGuid,
-                                    referencedTable:
-                                        $$PresetSlotsTableReferences
-                                            ._algorithmGuidTable(db),
-                                    referencedColumn:
-                                        $$PresetSlotsTableReferences
-                                            ._algorithmGuidTable(db)
-                                            .guid,
-                                  )
-                                  as T;
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.algorithmGuid,
+                            referencedTable: $$PresetSlotsTableReferences
+                                ._algorithmGuidTable(db),
+                            referencedColumn: $$PresetSlotsTableReferences
+                                ._algorithmGuidTable(db)
+                                .guid,
+                          ) as T;
                         }
 
                         return state;
@@ -11218,10 +11216,11 @@ class $$PresetSlotsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (presetSpecificationValuesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           PresetSlotEntry,
                           $PresetSlotsTable,
-                          PresetSpecificationValueEntry
+                          PresetSpecificationValueEntry,
+                          $PresetSpecificationValuesTable
                         >(
                           currentTable: table,
                           referencedTable: $$PresetSlotsTableReferences
@@ -11232,17 +11231,16 @@ class $$PresetSlotsTableTableManager
                                 table,
                                 p0,
                               ).presetSpecificationValuesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.presetSlotId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'preset_slot_id',
                           typedResults: items,
                         ),
                       if (presetParameterValuesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           PresetSlotEntry,
                           $PresetSlotsTable,
-                          PresetParameterValueEntry
+                          PresetParameterValueEntry,
+                          $PresetParameterValuesTable
                         >(
                           currentTable: table,
                           referencedTable: $$PresetSlotsTableReferences
@@ -11253,17 +11251,16 @@ class $$PresetSlotsTableTableManager
                                 table,
                                 p0,
                               ).presetParameterValuesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.presetSlotId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'preset_slot_id',
                           typedResults: items,
                         ),
                       if (presetParameterStringValuesRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           PresetSlotEntry,
                           $PresetSlotsTable,
-                          PresetParameterStringValueEntry
+                          PresetParameterStringValueEntry,
+                          $PresetParameterStringValuesTable
                         >(
                           currentTable: table,
                           referencedTable: $$PresetSlotsTableReferences
@@ -11274,17 +11271,16 @@ class $$PresetSlotsTableTableManager
                                 table,
                                 p0,
                               ).presetParameterStringValuesRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.presetSlotId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'preset_slot_id',
                           typedResults: items,
                         ),
                       if (presetMappingsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           PresetSlotEntry,
                           $PresetSlotsTable,
-                          PresetMappingEntry
+                          PresetMappingEntry,
+                          $PresetMappingsTable
                         >(
                           currentTable: table,
                           referencedTable: $$PresetSlotsTableReferences
@@ -11295,17 +11291,16 @@ class $$PresetSlotsTableTableManager
                                 table,
                                 p0,
                               ).presetMappingsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.presetSlotId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'preset_slot_id',
                           typedResults: items,
                         ),
                       if (presetRoutingsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           PresetSlotEntry,
                           $PresetSlotsTable,
-                          PresetRoutingEntry
+                          PresetRoutingEntry,
+                          $PresetRoutingsTable
                         >(
                           currentTable: table,
                           referencedTable: $$PresetSlotsTableReferences
@@ -11316,10 +11311,8 @@ class $$PresetSlotsTableTableManager
                                 table,
                                 p0,
                               ).presetRoutingsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.presetSlotId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'preset_slot_id',
                           typedResults: items,
                         ),
                     ];
@@ -11594,7 +11587,10 @@ class $$PresetSpecificationValuesTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<
+                    $PresetSpecificationValuesTable,
+                    PresetSpecificationValueEntry
+                  >(table),
                   $$PresetSpecificationValuesTableReferences(db, table, e),
                 ),
               )
@@ -11620,19 +11616,17 @@ class $$PresetSpecificationValuesTableTableManager
                     >
                   >(state) {
                     if (presetSlotId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.presetSlotId,
-                                referencedTable:
-                                    $$PresetSpecificationValuesTableReferences
-                                        ._presetSlotIdTable(db),
-                                referencedColumn:
-                                    $$PresetSpecificationValuesTableReferences
-                                        ._presetSlotIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.presetSlotId,
+                        referencedTable:
+                            $$PresetSpecificationValuesTableReferences
+                                ._presetSlotIdTable(db),
+                        referencedColumn:
+                            $$PresetSpecificationValuesTableReferences
+                                ._presetSlotIdTable(db)
+                                .id,
+                      ) as T;
                     }
 
                     return state;
@@ -11914,7 +11908,10 @@ class $$PresetParameterValuesTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<
+                    $PresetParameterValuesTable,
+                    PresetParameterValueEntry
+                  >(table),
                   $$PresetParameterValuesTableReferences(db, table, e),
                 ),
               )
@@ -11940,19 +11937,15 @@ class $$PresetParameterValuesTableTableManager
                     >
                   >(state) {
                     if (presetSlotId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.presetSlotId,
-                                referencedTable:
-                                    $$PresetParameterValuesTableReferences
-                                        ._presetSlotIdTable(db),
-                                referencedColumn:
-                                    $$PresetParameterValuesTableReferences
-                                        ._presetSlotIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.presetSlotId,
+                        referencedTable: $$PresetParameterValuesTableReferences
+                            ._presetSlotIdTable(db),
+                        referencedColumn: $$PresetParameterValuesTableReferences
+                            ._presetSlotIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -12224,7 +12217,10 @@ class $$PresetParameterStringValuesTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<
+                    $PresetParameterStringValuesTable,
+                    PresetParameterStringValueEntry
+                  >(table),
                   $$PresetParameterStringValuesTableReferences(db, table, e),
                 ),
               )
@@ -12250,19 +12246,17 @@ class $$PresetParameterStringValuesTableTableManager
                     >
                   >(state) {
                     if (presetSlotId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.presetSlotId,
-                                referencedTable:
-                                    $$PresetParameterStringValuesTableReferences
-                                        ._presetSlotIdTable(db),
-                                referencedColumn:
-                                    $$PresetParameterStringValuesTableReferences
-                                        ._presetSlotIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.presetSlotId,
+                        referencedTable:
+                            $$PresetParameterStringValuesTableReferences
+                                ._presetSlotIdTable(db),
+                        referencedColumn:
+                            $$PresetParameterStringValuesTableReferences
+                                ._presetSlotIdTable(db)
+                                .id,
+                      ) as T;
                     }
 
                     return state;
@@ -12551,7 +12545,7 @@ class $$PresetMappingsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$PresetMappingsTable, PresetMappingEntry>(table),
                   $$PresetMappingsTableReferences(db, table, e),
                 ),
               )
@@ -12577,18 +12571,15 @@ class $$PresetMappingsTableTableManager
                     >
                   >(state) {
                     if (presetSlotId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.presetSlotId,
-                                referencedTable: $$PresetMappingsTableReferences
-                                    ._presetSlotIdTable(db),
-                                referencedColumn:
-                                    $$PresetMappingsTableReferences
-                                        ._presetSlotIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.presetSlotId,
+                        referencedTable: $$PresetMappingsTableReferences
+                            ._presetSlotIdTable(db),
+                        referencedColumn: $$PresetMappingsTableReferences
+                            ._presetSlotIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -12822,7 +12813,7 @@ class $$PresetRoutingsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$PresetRoutingsTable, PresetRoutingEntry>(table),
                   $$PresetRoutingsTableReferences(db, table, e),
                 ),
               )
@@ -12848,18 +12839,15 @@ class $$PresetRoutingsTableTableManager
                     >
                   >(state) {
                     if (presetSlotId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.presetSlotId,
-                                referencedTable: $$PresetRoutingsTableReferences
-                                    ._presetSlotIdTable(db),
-                                referencedColumn:
-                                    $$PresetRoutingsTableReferences
-                                        ._presetSlotIdTable(db)
-                                        .id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.presetSlotId,
+                        referencedTable: $$PresetRoutingsTableReferences
+                            ._presetSlotIdTable(db),
+                        referencedColumn: $$PresetRoutingsTableReferences
+                            ._presetSlotIdTable(db)
+                            .id,
+                      ) as T;
                     }
 
                     return state;
@@ -13012,7 +13000,16 @@ class $$MetadataCacheTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$MetadataCacheTable, MetadataCacheEntry>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $MetadataCacheTable,
+                    MetadataCacheEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -13537,7 +13534,19 @@ class $$PluginInstallationsTableTableManager
                 lastChecked: lastChecked,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<
+                    $PluginInstallationsTable,
+                    PluginInstallationEntry
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $PluginInstallationsTable,
+                    PluginInstallationEntry
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),

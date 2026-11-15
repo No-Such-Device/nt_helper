@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'disting_cubit.dart';
@@ -9,6 +9,7 @@ part of 'disting_cubit.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -29,23 +30,29 @@ $SlotCopyWith<Slot> get copyWith => _$SlotCopyWithImpl<Slot>(this as Slot, _$ide
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+  final _this = this as Slot;
   properties
     ..add(DiagnosticsProperty('type', 'Slot'))
-    ..add(DiagnosticsProperty('algorithm', algorithm))..add(DiagnosticsProperty('routing', routing))..add(DiagnosticsProperty('pages', pages))..add(DiagnosticsProperty('parameters', parameters))..add(DiagnosticsProperty('values', values))..add(DiagnosticsProperty('enums', enums))..add(DiagnosticsProperty('mappings', mappings))..add(DiagnosticsProperty('valueStrings', valueStrings))..add(DiagnosticsProperty('parameterCountFromDevice', parameterCountFromDevice))..add(DiagnosticsProperty('parameterPagesFromDevice', parameterPagesFromDevice))..add(DiagnosticsProperty('parameterValuesFromDevice', parameterValuesFromDevice))..add(DiagnosticsProperty('outputModeMap', outputModeMap));
+    ..add(DiagnosticsProperty('algorithm', _this.algorithm))..add(DiagnosticsProperty('routing', _this.routing))..add(DiagnosticsProperty('pages', _this.pages))..add(DiagnosticsProperty('parameters', _this.parameters))..add(DiagnosticsProperty('values', _this.values))..add(DiagnosticsProperty('enums', _this.enums))..add(DiagnosticsProperty('mappings', _this.mappings))..add(DiagnosticsProperty('valueStrings', _this.valueStrings))..add(DiagnosticsProperty('parameterCountFromDevice', _this.parameterCountFromDevice))..add(DiagnosticsProperty('parameterPagesFromDevice', _this.parameterPagesFromDevice))..add(DiagnosticsProperty('parameterValuesFromDevice', _this.parameterValuesFromDevice))..add(DiagnosticsProperty('outputModeMap', _this.outputModeMap));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Slot&&(identical(other.algorithm, algorithm) || other.algorithm == algorithm)&&(identical(other.routing, routing) || other.routing == routing)&&(identical(other.pages, pages) || other.pages == pages)&&const DeepCollectionEquality().equals(other.parameters, parameters)&&const DeepCollectionEquality().equals(other.values, values)&&const DeepCollectionEquality().equals(other.enums, enums)&&const DeepCollectionEquality().equals(other.mappings, mappings)&&const DeepCollectionEquality().equals(other.valueStrings, valueStrings)&&(identical(other.parameterCountFromDevice, parameterCountFromDevice) || other.parameterCountFromDevice == parameterCountFromDevice)&&(identical(other.parameterPagesFromDevice, parameterPagesFromDevice) || other.parameterPagesFromDevice == parameterPagesFromDevice)&&(identical(other.parameterValuesFromDevice, parameterValuesFromDevice) || other.parameterValuesFromDevice == parameterValuesFromDevice)&&const DeepCollectionEquality().equals(other.outputModeMap, outputModeMap));
+  final _this = this as Slot;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Slot&&(identical(other.algorithm, _this.algorithm) || other.algorithm == _this.algorithm)&&(identical(other.routing, _this.routing) || other.routing == _this.routing)&&(identical(other.pages, _this.pages) || other.pages == _this.pages)&&const DeepCollectionEquality().equals(other.parameters, _this.parameters)&&const DeepCollectionEquality().equals(other.values, _this.values)&&const DeepCollectionEquality().equals(other.enums, _this.enums)&&const DeepCollectionEquality().equals(other.mappings, _this.mappings)&&const DeepCollectionEquality().equals(other.valueStrings, _this.valueStrings)&&(identical(other.parameterCountFromDevice, _this.parameterCountFromDevice) || other.parameterCountFromDevice == _this.parameterCountFromDevice)&&(identical(other.parameterPagesFromDevice, _this.parameterPagesFromDevice) || other.parameterPagesFromDevice == _this.parameterPagesFromDevice)&&(identical(other.parameterValuesFromDevice, _this.parameterValuesFromDevice) || other.parameterValuesFromDevice == _this.parameterValuesFromDevice)&&const DeepCollectionEquality().equals(other.outputModeMap, _this.outputModeMap));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,algorithm,routing,pages,const DeepCollectionEquality().hash(parameters),const DeepCollectionEquality().hash(values),const DeepCollectionEquality().hash(enums),const DeepCollectionEquality().hash(mappings),const DeepCollectionEquality().hash(valueStrings),parameterCountFromDevice,parameterPagesFromDevice,parameterValuesFromDevice,const DeepCollectionEquality().hash(outputModeMap));
+int get hashCode {
+  final _this = this as Slot;
+  return Object.hash(runtimeType,_this.algorithm,_this.routing,_this.pages,const DeepCollectionEquality().hash(_this.parameters),const DeepCollectionEquality().hash(_this.values),const DeepCollectionEquality().hash(_this.enums),const DeepCollectionEquality().hash(_this.mappings),const DeepCollectionEquality().hash(_this.valueStrings),_this.parameterCountFromDevice,_this.parameterPagesFromDevice,_this.parameterValuesFromDevice,const DeepCollectionEquality().hash(_this.outputModeMap));
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'Slot(algorithm: $algorithm, routing: $routing, pages: $pages, parameters: $parameters, values: $values, enums: $enums, mappings: $mappings, valueStrings: $valueStrings, parameterCountFromDevice: $parameterCountFromDevice, parameterPagesFromDevice: $parameterPagesFromDevice, parameterValuesFromDevice: $parameterValuesFromDevice, outputModeMap: $outputModeMap)';
+  final _this = this as Slot;
+  return 'Slot(algorithm: ${_this.algorithm}, routing: ${_this.routing}, pages: ${_this.pages}, parameters: ${_this.parameters}, values: ${_this.values}, enums: ${_this.enums}, mappings: ${_this.mappings}, valueStrings: ${_this.valueStrings}, parameterCountFromDevice: ${_this.parameterCountFromDevice}, parameterPagesFromDevice: ${_this.parameterPagesFromDevice}, parameterValuesFromDevice: ${_this.parameterValuesFromDevice}, outputModeMap: ${_this.outputModeMap})';
 }
 
 
@@ -74,7 +81,7 @@ class _$SlotCopyWithImpl<$Res>
 /// Create a copy of Slot
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? algorithm = null,Object? routing = null,Object? pages = null,Object? parameters = null,Object? values = null,Object? enums = null,Object? mappings = null,Object? valueStrings = null,Object? parameterCountFromDevice = null,Object? parameterPagesFromDevice = null,Object? parameterValuesFromDevice = null,Object? outputModeMap = null,}) {
-  return _then(_self.copyWith(
+  return _then(Slot(
 algorithm: null == algorithm ? _self.algorithm : algorithm // ignore: cast_nullable_to_non_nullable
 as Algorithm,routing: null == routing ? _self.routing : routing // ignore: cast_nullable_to_non_nullable
 as RoutingInfo,pages: null == pages ? _self.pages : pages // ignore: cast_nullable_to_non_nullable
@@ -222,8 +229,8 @@ return $default(_that.algorithm,_that.routing,_that.pages,_that.parameters,_that
 
 
 class _Slot with DiagnosticableTreeMixin implements Slot {
-  const _Slot({required this.algorithm, required this.routing, required this.pages, required final  List<ParameterInfo> parameters, required final  List<ParameterValue> values, required final  List<ParameterEnumStrings> enums, required final  List<Mapping> mappings, required final  List<ParameterValueString> valueStrings, this.parameterCountFromDevice = false, this.parameterPagesFromDevice = false, this.parameterValuesFromDevice = false, final  Map<int, List<int>> outputModeMap = const {}}): _parameters = parameters,_values = values,_enums = enums,_mappings = mappings,_valueStrings = valueStrings,_outputModeMap = outputModeMap;
-  
+  const _Slot({required this.algorithm, required this.routing, required this.pages, required  List<ParameterInfo> parameters, required  List<ParameterValue> values, required  List<ParameterEnumStrings> enums, required  List<Mapping> mappings, required  List<ParameterValueString> valueStrings, this.parameterCountFromDevice = false, this.parameterPagesFromDevice = false, this.parameterValuesFromDevice = false,  Map<int, List<int>> outputModeMap = const {}}): _parameters = parameters,_values = values,_enums = enums,_mappings = mappings,_valueStrings = valueStrings,_outputModeMap = outputModeMap;
+
 
 @override final  Algorithm algorithm;
 @override final  RoutingInfo routing;
@@ -290,23 +297,25 @@ _$SlotCopyWith<_Slot> get copyWith => __$SlotCopyWithImpl<_Slot>(this, _$identit
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'Slot'))
     ..add(DiagnosticsProperty('algorithm', algorithm))..add(DiagnosticsProperty('routing', routing))..add(DiagnosticsProperty('pages', pages))..add(DiagnosticsProperty('parameters', parameters))..add(DiagnosticsProperty('values', values))..add(DiagnosticsProperty('enums', enums))..add(DiagnosticsProperty('mappings', mappings))..add(DiagnosticsProperty('valueStrings', valueStrings))..add(DiagnosticsProperty('parameterCountFromDevice', parameterCountFromDevice))..add(DiagnosticsProperty('parameterPagesFromDevice', parameterPagesFromDevice))..add(DiagnosticsProperty('parameterValuesFromDevice', parameterValuesFromDevice))..add(DiagnosticsProperty('outputModeMap', outputModeMap));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Slot&&(identical(other.algorithm, algorithm) || other.algorithm == algorithm)&&(identical(other.routing, routing) || other.routing == routing)&&(identical(other.pages, pages) || other.pages == pages)&&const DeepCollectionEquality().equals(other._parameters, _parameters)&&const DeepCollectionEquality().equals(other._values, _values)&&const DeepCollectionEquality().equals(other._enums, _enums)&&const DeepCollectionEquality().equals(other._mappings, _mappings)&&const DeepCollectionEquality().equals(other._valueStrings, _valueStrings)&&(identical(other.parameterCountFromDevice, parameterCountFromDevice) || other.parameterCountFromDevice == parameterCountFromDevice)&&(identical(other.parameterPagesFromDevice, parameterPagesFromDevice) || other.parameterPagesFromDevice == parameterPagesFromDevice)&&(identical(other.parameterValuesFromDevice, parameterValuesFromDevice) || other.parameterValuesFromDevice == parameterValuesFromDevice)&&const DeepCollectionEquality().equals(other._outputModeMap, _outputModeMap));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Slot&&(identical(other.algorithm, algorithm) || other.algorithm == algorithm)&&(identical(other.routing, routing) || other.routing == routing)&&(identical(other.pages, pages) || other.pages == pages)&&const DeepCollectionEquality().equals(other.parameters, _parameters)&&const DeepCollectionEquality().equals(other.values, _values)&&const DeepCollectionEquality().equals(other.enums, _enums)&&const DeepCollectionEquality().equals(other.mappings, _mappings)&&const DeepCollectionEquality().equals(other.valueStrings, _valueStrings)&&(identical(other.parameterCountFromDevice, parameterCountFromDevice) || other.parameterCountFromDevice == parameterCountFromDevice)&&(identical(other.parameterPagesFromDevice, parameterPagesFromDevice) || other.parameterPagesFromDevice == parameterPagesFromDevice)&&(identical(other.parameterValuesFromDevice, parameterValuesFromDevice) || other.parameterValuesFromDevice == parameterValuesFromDevice)&&const DeepCollectionEquality().equals(other.outputModeMap, _outputModeMap));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,algorithm,routing,pages,const DeepCollectionEquality().hash(_parameters),const DeepCollectionEquality().hash(_values),const DeepCollectionEquality().hash(_enums),const DeepCollectionEquality().hash(_mappings),const DeepCollectionEquality().hash(_valueStrings),parameterCountFromDevice,parameterPagesFromDevice,parameterValuesFromDevice,const DeepCollectionEquality().hash(_outputModeMap));
+int get hashCode {
+    return Object.hash(runtimeType,algorithm,routing,pages,const DeepCollectionEquality().hash(_parameters),const DeepCollectionEquality().hash(_values),const DeepCollectionEquality().hash(_enums),const DeepCollectionEquality().hash(_mappings),const DeepCollectionEquality().hash(_valueStrings),parameterCountFromDevice,parameterPagesFromDevice,parameterValuesFromDevice,const DeepCollectionEquality().hash(_outputModeMap));
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'Slot(algorithm: $algorithm, routing: $routing, pages: $pages, parameters: $parameters, values: $values, enums: $enums, mappings: $mappings, valueStrings: $valueStrings, parameterCountFromDevice: $parameterCountFromDevice, parameterPagesFromDevice: $parameterPagesFromDevice, parameterValuesFromDevice: $parameterValuesFromDevice, outputModeMap: $outputModeMap)';
+    return 'Slot(algorithm: $algorithm, routing: $routing, pages: $pages, parameters: $parameters, values: $values, enums: $enums, mappings: $mappings, valueStrings: $valueStrings, parameterCountFromDevice: $parameterCountFromDevice, parameterPagesFromDevice: $parameterPagesFromDevice, parameterValuesFromDevice: $parameterValuesFromDevice, outputModeMap: $outputModeMap)';
 }
 
 
@@ -368,23 +377,29 @@ $MappedParameterCopyWith<MappedParameter> get copyWith => _$MappedParameterCopyW
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+  final _this = this as MappedParameter;
   properties
     ..add(DiagnosticsProperty('type', 'MappedParameter'))
-    ..add(DiagnosticsProperty('parameter', parameter))..add(DiagnosticsProperty('value', value))..add(DiagnosticsProperty('enums', enums))..add(DiagnosticsProperty('valueString', valueString))..add(DiagnosticsProperty('mapping', mapping))..add(DiagnosticsProperty('algorithm', algorithm));
+    ..add(DiagnosticsProperty('parameter', _this.parameter))..add(DiagnosticsProperty('value', _this.value))..add(DiagnosticsProperty('enums', _this.enums))..add(DiagnosticsProperty('valueString', _this.valueString))..add(DiagnosticsProperty('mapping', _this.mapping))..add(DiagnosticsProperty('algorithm', _this.algorithm));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MappedParameter&&(identical(other.parameter, parameter) || other.parameter == parameter)&&(identical(other.value, value) || other.value == value)&&(identical(other.enums, enums) || other.enums == enums)&&(identical(other.valueString, valueString) || other.valueString == valueString)&&(identical(other.mapping, mapping) || other.mapping == mapping)&&(identical(other.algorithm, algorithm) || other.algorithm == algorithm));
+  final _this = this as MappedParameter;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MappedParameter&&(identical(other.parameter, _this.parameter) || other.parameter == _this.parameter)&&(identical(other.value, _this.value) || other.value == _this.value)&&(identical(other.enums, _this.enums) || other.enums == _this.enums)&&(identical(other.valueString, _this.valueString) || other.valueString == _this.valueString)&&(identical(other.mapping, _this.mapping) || other.mapping == _this.mapping)&&(identical(other.algorithm, _this.algorithm) || other.algorithm == _this.algorithm));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,parameter,value,enums,valueString,mapping,algorithm);
+int get hashCode {
+  final _this = this as MappedParameter;
+  return Object.hash(runtimeType,_this.parameter,_this.value,_this.enums,_this.valueString,_this.mapping,_this.algorithm);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MappedParameter(parameter: $parameter, value: $value, enums: $enums, valueString: $valueString, mapping: $mapping, algorithm: $algorithm)';
+  final _this = this as MappedParameter;
+  return 'MappedParameter(parameter: ${_this.parameter}, value: ${_this.value}, enums: ${_this.enums}, valueString: ${_this.valueString}, mapping: ${_this.mapping}, algorithm: ${_this.algorithm})';
 }
 
 
@@ -413,7 +428,7 @@ class _$MappedParameterCopyWithImpl<$Res>
 /// Create a copy of MappedParameter
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? parameter = null,Object? value = null,Object? enums = null,Object? valueString = null,Object? mapping = null,Object? algorithm = null,}) {
-  return _then(_self.copyWith(
+  return _then(MappedParameter(
 parameter: null == parameter ? _self.parameter : parameter // ignore: cast_nullable_to_non_nullable
 as ParameterInfo,value: null == value ? _self.value : value // ignore: cast_nullable_to_non_nullable
 as ParameterValue,enums: null == enums ? _self.enums : enums // ignore: cast_nullable_to_non_nullable
@@ -556,7 +571,7 @@ return $default(_that.parameter,_that.value,_that.enums,_that.valueString,_that.
 
 class _MappedParameter with DiagnosticableTreeMixin implements MappedParameter {
   const _MappedParameter({required this.parameter, required this.value, required this.enums, required this.valueString, required this.mapping, required this.algorithm});
-  
+
 
 @override final  ParameterInfo parameter;
 @override final  ParameterValue value;
@@ -574,23 +589,25 @@ _$MappedParameterCopyWith<_MappedParameter> get copyWith => __$MappedParameterCo
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MappedParameter'))
     ..add(DiagnosticsProperty('parameter', parameter))..add(DiagnosticsProperty('value', value))..add(DiagnosticsProperty('enums', enums))..add(DiagnosticsProperty('valueString', valueString))..add(DiagnosticsProperty('mapping', mapping))..add(DiagnosticsProperty('algorithm', algorithm));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MappedParameter&&(identical(other.parameter, parameter) || other.parameter == parameter)&&(identical(other.value, value) || other.value == value)&&(identical(other.enums, enums) || other.enums == enums)&&(identical(other.valueString, valueString) || other.valueString == valueString)&&(identical(other.mapping, mapping) || other.mapping == mapping)&&(identical(other.algorithm, algorithm) || other.algorithm == algorithm));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _MappedParameter&&(identical(other.parameter, parameter) || other.parameter == parameter)&&(identical(other.value, value) || other.value == value)&&(identical(other.enums, enums) || other.enums == enums)&&(identical(other.valueString, valueString) || other.valueString == valueString)&&(identical(other.mapping, mapping) || other.mapping == mapping)&&(identical(other.algorithm, algorithm) || other.algorithm == algorithm));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,parameter,value,enums,valueString,mapping,algorithm);
+int get hashCode {
+    return Object.hash(runtimeType,parameter,value,enums,valueString,mapping,algorithm);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MappedParameter(parameter: $parameter, value: $value, enums: $enums, valueString: $valueString, mapping: $mapping, algorithm: $algorithm)';
+    return 'MappedParameter(parameter: $parameter, value: $value, enums: $enums, valueString: $valueString, mapping: $mapping, algorithm: $algorithm)';
 }
 
 
@@ -641,14 +658,14 @@ mixin _$DistingState implements DiagnosticableTreeMixin {
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'DistingState'))
     ;
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingState);
 }
 
 
@@ -657,7 +674,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'DistingState()';
+    return 'DistingState()';
 }
 
 
@@ -816,7 +833,7 @@ return synchronized(_that.disting,_that.distingVersion,_that.firmwareVersion,_th
 
 class DistingStateInitial with DiagnosticableTreeMixin implements DistingState {
   const DistingStateInitial();
-  
+
 
 
 
@@ -824,14 +841,14 @@ class DistingStateInitial with DiagnosticableTreeMixin implements DistingState {
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'DistingState.initial'))
     ;
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingStateInitial);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingStateInitial);
 }
 
 
@@ -840,7 +857,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'DistingState.initial()';
+    return 'DistingState.initial()';
 }
 
 
@@ -853,8 +870,8 @@ String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
 
 
 class DistingStateSelectDevice with DiagnosticableTreeMixin implements DistingState {
-  const DistingStateSelectDevice({required final  List<MidiDevice> inputDevices, required final  List<MidiDevice> outputDevices, required this.canWorkOffline, this.selectedInputDevice = null, this.selectedOutputDevice = null, this.selectedSysExId = 0}): _inputDevices = inputDevices,_outputDevices = outputDevices;
-  
+  const DistingStateSelectDevice({required  List<MidiDevice> inputDevices, required  List<MidiDevice> outputDevices, required this.canWorkOffline, this.selectedInputDevice = null, this.selectedOutputDevice = null, this.selectedSysExId = 0}): _inputDevices = inputDevices,_outputDevices = outputDevices;
+
 
  final  List<MidiDevice> _inputDevices;
  List<MidiDevice> get inputDevices {
@@ -884,23 +901,25 @@ $DistingStateSelectDeviceCopyWith<DistingStateSelectDevice> get copyWith => _$Di
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'DistingState.selectDevice'))
     ..add(DiagnosticsProperty('inputDevices', inputDevices))..add(DiagnosticsProperty('outputDevices', outputDevices))..add(DiagnosticsProperty('canWorkOffline', canWorkOffline))..add(DiagnosticsProperty('selectedInputDevice', selectedInputDevice))..add(DiagnosticsProperty('selectedOutputDevice', selectedOutputDevice))..add(DiagnosticsProperty('selectedSysExId', selectedSysExId));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingStateSelectDevice&&const DeepCollectionEquality().equals(other._inputDevices, _inputDevices)&&const DeepCollectionEquality().equals(other._outputDevices, _outputDevices)&&(identical(other.canWorkOffline, canWorkOffline) || other.canWorkOffline == canWorkOffline)&&(identical(other.selectedInputDevice, selectedInputDevice) || other.selectedInputDevice == selectedInputDevice)&&(identical(other.selectedOutputDevice, selectedOutputDevice) || other.selectedOutputDevice == selectedOutputDevice)&&(identical(other.selectedSysExId, selectedSysExId) || other.selectedSysExId == selectedSysExId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingStateSelectDevice&&const DeepCollectionEquality().equals(other.inputDevices, _inputDevices)&&const DeepCollectionEquality().equals(other.outputDevices, _outputDevices)&&(identical(other.canWorkOffline, canWorkOffline) || other.canWorkOffline == canWorkOffline)&&(identical(other.selectedInputDevice, selectedInputDevice) || other.selectedInputDevice == selectedInputDevice)&&(identical(other.selectedOutputDevice, selectedOutputDevice) || other.selectedOutputDevice == selectedOutputDevice)&&(identical(other.selectedSysExId, selectedSysExId) || other.selectedSysExId == selectedSysExId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_inputDevices),const DeepCollectionEquality().hash(_outputDevices),canWorkOffline,selectedInputDevice,selectedOutputDevice,selectedSysExId);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_inputDevices),const DeepCollectionEquality().hash(_outputDevices),canWorkOffline,selectedInputDevice,selectedOutputDevice,selectedSysExId);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'DistingState.selectDevice(inputDevices: $inputDevices, outputDevices: $outputDevices, canWorkOffline: $canWorkOffline, selectedInputDevice: $selectedInputDevice, selectedOutputDevice: $selectedOutputDevice, selectedSysExId: $selectedSysExId)';
+    return 'DistingState.selectDevice(inputDevices: $inputDevices, outputDevices: $outputDevices, canWorkOffline: $canWorkOffline, selectedInputDevice: $selectedInputDevice, selectedOutputDevice: $selectedOutputDevice, selectedSysExId: $selectedSysExId)';
 }
 
 
@@ -948,7 +967,7 @@ as int,
 
 class DistingStateConnected with DiagnosticableTreeMixin implements DistingState {
   const DistingStateConnected({required this.disting, this.inputDevice, this.outputDevice, this.offline = false, this.loading = false, this.syncStatus = null, this.syncProgress = null});
-  
+
 
  final  IDistingMidiManager disting;
  final  MidiDevice? inputDevice;
@@ -967,23 +986,25 @@ $DistingStateConnectedCopyWith<DistingStateConnected> get copyWith => _$DistingS
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'DistingState.connected'))
     ..add(DiagnosticsProperty('disting', disting))..add(DiagnosticsProperty('inputDevice', inputDevice))..add(DiagnosticsProperty('outputDevice', outputDevice))..add(DiagnosticsProperty('offline', offline))..add(DiagnosticsProperty('loading', loading))..add(DiagnosticsProperty('syncStatus', syncStatus))..add(DiagnosticsProperty('syncProgress', syncProgress));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingStateConnected&&(identical(other.disting, disting) || other.disting == disting)&&(identical(other.inputDevice, inputDevice) || other.inputDevice == inputDevice)&&(identical(other.outputDevice, outputDevice) || other.outputDevice == outputDevice)&&(identical(other.offline, offline) || other.offline == offline)&&(identical(other.loading, loading) || other.loading == loading)&&(identical(other.syncStatus, syncStatus) || other.syncStatus == syncStatus)&&(identical(other.syncProgress, syncProgress) || other.syncProgress == syncProgress));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingStateConnected&&(identical(other.disting, disting) || other.disting == disting)&&(identical(other.inputDevice, inputDevice) || other.inputDevice == inputDevice)&&(identical(other.outputDevice, outputDevice) || other.outputDevice == outputDevice)&&(identical(other.offline, offline) || other.offline == offline)&&(identical(other.loading, loading) || other.loading == loading)&&(identical(other.syncStatus, syncStatus) || other.syncStatus == syncStatus)&&(identical(other.syncProgress, syncProgress) || other.syncProgress == syncProgress));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,disting,inputDevice,outputDevice,offline,loading,syncStatus,syncProgress);
+int get hashCode {
+    return Object.hash(runtimeType,disting,inputDevice,outputDevice,offline,loading,syncStatus,syncProgress);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'DistingState.connected(disting: $disting, inputDevice: $inputDevice, outputDevice: $outputDevice, offline: $offline, loading: $loading, syncStatus: $syncStatus, syncProgress: $syncProgress)';
+    return 'DistingState.connected(disting: $disting, inputDevice: $inputDevice, outputDevice: $outputDevice, offline: $offline, loading: $loading, syncStatus: $syncStatus, syncProgress: $syncProgress)';
 }
 
 
@@ -1031,8 +1052,8 @@ as double?,
 
 
 class DistingStateSynchronized with DiagnosticableTreeMixin implements DistingState {
-  const DistingStateSynchronized({required this.disting, required this.distingVersion, required this.firmwareVersion, this.deviceIoProfile = DeviceIoProfile.distingExtended, required this.presetName, required final  List<AlgorithmInfo> algorithms, required final  List<Slot> slots, required final  List<String> unitStrings, this.inputDevice = null, this.outputDevice = null, this.loading = false, this.offline = false, this.screenshot = null, this.demo = false, this.videoStream = null, this.availableFirmwareUpdate = null, final  List<PerformancePageItem> perfPageItems = const [], this.isDirty = false, this.renameConfirmationName = null}): _algorithms = algorithms,_slots = slots,_unitStrings = unitStrings,_perfPageItems = perfPageItems;
-  
+  const DistingStateSynchronized({required this.disting, required this.distingVersion, required this.firmwareVersion, this.deviceIoProfile = DeviceIoProfile.distingExtended, required this.presetName, required  List<AlgorithmInfo> algorithms, required  List<Slot> slots, required  List<String> unitStrings, this.inputDevice = null, this.outputDevice = null, this.loading = false, this.offline = false, this.screenshot = null, this.demo = false, this.videoStream = null, this.availableFirmwareUpdate = null,  List<PerformancePageItem> perfPageItems = const [], this.isDirty = false, this.renameConfirmationName = null}): _algorithms = algorithms,_slots = slots,_unitStrings = unitStrings,_perfPageItems = perfPageItems;
+
 
  final  IDistingMidiManager disting;
  final  String distingVersion;
@@ -1093,23 +1114,25 @@ $DistingStateSynchronizedCopyWith<DistingStateSynchronized> get copyWith => _$Di
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'DistingState.synchronized'))
     ..add(DiagnosticsProperty('disting', disting))..add(DiagnosticsProperty('distingVersion', distingVersion))..add(DiagnosticsProperty('firmwareVersion', firmwareVersion))..add(DiagnosticsProperty('deviceIoProfile', deviceIoProfile))..add(DiagnosticsProperty('presetName', presetName))..add(DiagnosticsProperty('algorithms', algorithms))..add(DiagnosticsProperty('slots', slots))..add(DiagnosticsProperty('unitStrings', unitStrings))..add(DiagnosticsProperty('inputDevice', inputDevice))..add(DiagnosticsProperty('outputDevice', outputDevice))..add(DiagnosticsProperty('loading', loading))..add(DiagnosticsProperty('offline', offline))..add(DiagnosticsProperty('screenshot', screenshot))..add(DiagnosticsProperty('demo', demo))..add(DiagnosticsProperty('videoStream', videoStream))..add(DiagnosticsProperty('availableFirmwareUpdate', availableFirmwareUpdate))..add(DiagnosticsProperty('perfPageItems', perfPageItems))..add(DiagnosticsProperty('isDirty', isDirty))..add(DiagnosticsProperty('renameConfirmationName', renameConfirmationName));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingStateSynchronized&&(identical(other.disting, disting) || other.disting == disting)&&(identical(other.distingVersion, distingVersion) || other.distingVersion == distingVersion)&&(identical(other.firmwareVersion, firmwareVersion) || other.firmwareVersion == firmwareVersion)&&(identical(other.deviceIoProfile, deviceIoProfile) || other.deviceIoProfile == deviceIoProfile)&&(identical(other.presetName, presetName) || other.presetName == presetName)&&const DeepCollectionEquality().equals(other._algorithms, _algorithms)&&const DeepCollectionEquality().equals(other._slots, _slots)&&const DeepCollectionEquality().equals(other._unitStrings, _unitStrings)&&(identical(other.inputDevice, inputDevice) || other.inputDevice == inputDevice)&&(identical(other.outputDevice, outputDevice) || other.outputDevice == outputDevice)&&(identical(other.loading, loading) || other.loading == loading)&&(identical(other.offline, offline) || other.offline == offline)&&const DeepCollectionEquality().equals(other.screenshot, screenshot)&&(identical(other.demo, demo) || other.demo == demo)&&(identical(other.videoStream, videoStream) || other.videoStream == videoStream)&&(identical(other.availableFirmwareUpdate, availableFirmwareUpdate) || other.availableFirmwareUpdate == availableFirmwareUpdate)&&const DeepCollectionEquality().equals(other._perfPageItems, _perfPageItems)&&(identical(other.isDirty, isDirty) || other.isDirty == isDirty)&&(identical(other.renameConfirmationName, renameConfirmationName) || other.renameConfirmationName == renameConfirmationName));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DistingStateSynchronized&&(identical(other.disting, disting) || other.disting == disting)&&(identical(other.distingVersion, distingVersion) || other.distingVersion == distingVersion)&&(identical(other.firmwareVersion, firmwareVersion) || other.firmwareVersion == firmwareVersion)&&(identical(other.deviceIoProfile, deviceIoProfile) || other.deviceIoProfile == deviceIoProfile)&&(identical(other.presetName, presetName) || other.presetName == presetName)&&const DeepCollectionEquality().equals(other.algorithms, _algorithms)&&const DeepCollectionEquality().equals(other.slots, _slots)&&const DeepCollectionEquality().equals(other.unitStrings, _unitStrings)&&(identical(other.inputDevice, inputDevice) || other.inputDevice == inputDevice)&&(identical(other.outputDevice, outputDevice) || other.outputDevice == outputDevice)&&(identical(other.loading, loading) || other.loading == loading)&&(identical(other.offline, offline) || other.offline == offline)&&const DeepCollectionEquality().equals(other.screenshot, screenshot)&&(identical(other.demo, demo) || other.demo == demo)&&(identical(other.videoStream, videoStream) || other.videoStream == videoStream)&&(identical(other.availableFirmwareUpdate, availableFirmwareUpdate) || other.availableFirmwareUpdate == availableFirmwareUpdate)&&const DeepCollectionEquality().equals(other.perfPageItems, _perfPageItems)&&(identical(other.isDirty, isDirty) || other.isDirty == isDirty)&&(identical(other.renameConfirmationName, renameConfirmationName) || other.renameConfirmationName == renameConfirmationName));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,disting,distingVersion,firmwareVersion,deviceIoProfile,presetName,const DeepCollectionEquality().hash(_algorithms),const DeepCollectionEquality().hash(_slots),const DeepCollectionEquality().hash(_unitStrings),inputDevice,outputDevice,loading,offline,const DeepCollectionEquality().hash(screenshot),demo,videoStream,availableFirmwareUpdate,const DeepCollectionEquality().hash(_perfPageItems),isDirty,renameConfirmationName]);
+int get hashCode {
+    return Object.hashAll([runtimeType,disting,distingVersion,firmwareVersion,deviceIoProfile,presetName,const DeepCollectionEquality().hash(_algorithms),const DeepCollectionEquality().hash(_slots),const DeepCollectionEquality().hash(_unitStrings),inputDevice,outputDevice,loading,offline,const DeepCollectionEquality().hash(screenshot),demo,videoStream,availableFirmwareUpdate,const DeepCollectionEquality().hash(_perfPageItems),isDirty,renameConfirmationName]);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'DistingState.synchronized(disting: $disting, distingVersion: $distingVersion, firmwareVersion: $firmwareVersion, deviceIoProfile: $deviceIoProfile, presetName: $presetName, algorithms: $algorithms, slots: $slots, unitStrings: $unitStrings, inputDevice: $inputDevice, outputDevice: $outputDevice, loading: $loading, offline: $offline, screenshot: $screenshot, demo: $demo, videoStream: $videoStream, availableFirmwareUpdate: $availableFirmwareUpdate, perfPageItems: $perfPageItems, isDirty: $isDirty, renameConfirmationName: $renameConfirmationName)';
+    return 'DistingState.synchronized(disting: $disting, distingVersion: $distingVersion, firmwareVersion: $firmwareVersion, deviceIoProfile: $deviceIoProfile, presetName: $presetName, algorithms: $algorithms, slots: $slots, unitStrings: $unitStrings, inputDevice: $inputDevice, outputDevice: $outputDevice, loading: $loading, offline: $offline, screenshot: $screenshot, demo: $demo, videoStream: $videoStream, availableFirmwareUpdate: $availableFirmwareUpdate, perfPageItems: $perfPageItems, isDirty: $isDirty, renameConfirmationName: $renameConfirmationName)';
 }
 
 

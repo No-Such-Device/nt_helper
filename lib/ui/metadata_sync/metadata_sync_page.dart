@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -139,24 +139,25 @@ class MetadataSyncPage extends StatelessWidget {
                   child: Scaffold(
                     appBar: AppBar(
                       title: Text('Offline Data'),
-                      leading: BlocBuilder<MetadataSyncCubit, MetadataSyncState>(
-                        builder: (context, metaState) {
-                          return BackButton(
-                            onPressed: () {
-                              // Cancel sync if in progress, otherwise just navigate back
-                              if (metaState is SyncingMetadata ||
-                                  metaState is SavingPreset ||
-                                  metaState is DeletingPreset) {
-                                context
-                                    .read<MetadataSyncCubit>()
-                                    .cancelMetadataSync();
-                              } else {
-                                Navigator.maybePop(context);
-                              }
+                      leading:
+                          BlocBuilder<MetadataSyncCubit, MetadataSyncState>(
+                            builder: (context, metaState) {
+                              return BackButton(
+                                onPressed: () {
+                                  // Cancel sync if in progress, otherwise just navigate back
+                                  if (metaState is SyncingMetadata ||
+                                      metaState is SavingPreset ||
+                                      metaState is DeletingPreset) {
+                                    context
+                                        .read<MetadataSyncCubit>()
+                                        .cancelMetadataSync();
+                                  } else {
+                                    Navigator.maybePop(context);
+                                  }
+                                },
+                              );
                             },
-                          );
-                        },
-                      ),
+                          ),
                       actions: [
                         // --- Offline Mode Toggle --- (Interacts with DistingCubit)
                         BlocBuilder<MetadataSyncCubit, MetadataSyncState>(
@@ -436,9 +437,9 @@ class MetadataSyncPage extends StatelessWidget {
                                   children: [
                                     Icon(
                                       Icons.error_outline,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.error,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .error,
                                       size: 48,
                                     ),
                                     const SizedBox(height: 16),
@@ -594,9 +595,8 @@ class MetadataSyncPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.shadow.withValues(alpha: 0.1),
+                      color: Theme.of(context).colorScheme.shadow
+                          .withValues(alpha: 0.1),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -605,9 +605,9 @@ class MetadataSyncPage extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: progressValue,
                   minHeight: 12,
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest,
+                  backgroundColor: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     Theme.of(context).colorScheme.primary,
                   ),
@@ -619,9 +619,8 @@ class MetadataSyncPage extends StatelessWidget {
               // Main message
               Text(
                 mainMessage,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                style: Theme.of(context).textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -666,9 +665,9 @@ class MetadataSyncPage extends StatelessWidget {
                         width: 200,
                         child: LinearProgressIndicator(
                           minHeight: 4,
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
                           valueColor: AlwaysStoppedAnimation<Color>(
                             Theme.of(context).colorScheme.primary,
                           ),
@@ -981,9 +980,8 @@ class _PresetListView extends StatelessWidget {
         return ListTile(
           key: ValueKey(preset.id),
           selected: isCurrentlyLoadedOffline,
-          selectedTileColor: Theme.of(
-            context,
-          ).colorScheme.primaryContainer.withValues(alpha: 0.3),
+          selectedTileColor: Theme.of(context).colorScheme.primaryContainer
+              .withValues(alpha: 0.3),
           title: Text(preset.name.trim()),
           subtitle: Text("Saved: $formattedDate"),
           trailing: Row(
@@ -1361,9 +1359,10 @@ class _TemplateListView extends StatelessWidget {
                   return ListTile(
                     key: ValueKey(preset.id),
                     selected: isCurrentlyLoadedOffline,
-                    selectedTileColor: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    selectedTileColor: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer
+                        .withValues(alpha: 0.3),
                     leading: Icon(
                       Icons.star,
                       color: Theme.of(context).colorScheme.tertiary,
@@ -2026,9 +2025,9 @@ class _AlgorithmExpansionTileState extends State<_AlgorithmExpansionTile> {
                                 "Range: ${param.minValue ?? '-'} to ${param.maxValue ?? '-'} (Def: ${param.defaultValue ?? '-'}), Unit: ${paramWithUnit.unitString ?? '-'}",
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
                                     ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'preset_browser_state.dart';
@@ -9,6 +9,7 @@ part of 'preset_browser_state.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -25,16 +26,21 @@ $BrowserFrameCopyWith<BrowserFrame> get copyWith => _$BrowserFrameCopyWithImpl<B
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BrowserFrame&&(identical(other.path, path) || other.path == path)&&(identical(other.selectedName, selectedName) || other.selectedName == selectedName));
+  final _this = this as BrowserFrame;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BrowserFrame&&(identical(other.path, _this.path) || other.path == _this.path)&&(identical(other.selectedName, _this.selectedName) || other.selectedName == _this.selectedName));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,path,selectedName);
+int get hashCode {
+  final _this = this as BrowserFrame;
+  return Object.hash(runtimeType,_this.path,_this.selectedName);
+}
 
 @override
 String toString() {
-  return 'BrowserFrame(path: $path, selectedName: $selectedName)';
+  final _this = this as BrowserFrame;
+  return 'BrowserFrame(path: ${_this.path}, selectedName: ${_this.selectedName})';
 }
 
 
@@ -63,7 +69,7 @@ class _$BrowserFrameCopyWithImpl<$Res>
 /// Create a copy of BrowserFrame
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? selectedName = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(BrowserFrame(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,selectedName: freezed == selectedName ? _self.selectedName : selectedName // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -223,16 +229,18 @@ _$BrowserFrameCopyWith<_BrowserFrame> get copyWith => __$BrowserFrameCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BrowserFrame&&(identical(other.path, path) || other.path == path)&&(identical(other.selectedName, selectedName) || other.selectedName == selectedName));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BrowserFrame&&(identical(other.path, path) || other.path == path)&&(identical(other.selectedName, selectedName) || other.selectedName == selectedName));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,path,selectedName);
+int get hashCode {
+    return Object.hash(runtimeType,path,selectedName);
+}
 
 @override
 String toString() {
-  return 'BrowserFrame(path: $path, selectedName: $selectedName)';
+    return 'BrowserFrame(path: $path, selectedName: $selectedName)';
 }
 
 
@@ -285,16 +293,21 @@ $BrowserSnapshotCopyWith<BrowserSnapshot> get copyWith => _$BrowserSnapshotCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BrowserSnapshot&&const DeepCollectionEquality().equals(other.stack, stack)&&(identical(other.activeDepth, activeDepth) || other.activeDepth == activeDepth)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other.listings, listings)&&const DeepCollectionEquality().equals(other.refreshing, refreshing)&&const DeepCollectionEquality().equals(other.errors, errors)&&const DeepCollectionEquality().equals(other.busyPaths, busyPaths)&&(identical(other.warning, warning) || other.warning == warning)&&(identical(other.pendingPath, pendingPath) || other.pendingPath == pendingPath)&&const DeepCollectionEquality().equals(other.renamedPaths, renamedPaths));
+  final _this = this as BrowserSnapshot;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BrowserSnapshot&&const DeepCollectionEquality().equals(other.stack, _this.stack)&&(identical(other.activeDepth, _this.activeDepth) || other.activeDepth == _this.activeDepth)&&(identical(other.sortByDate, _this.sortByDate) || other.sortByDate == _this.sortByDate)&&const DeepCollectionEquality().equals(other.listings, _this.listings)&&const DeepCollectionEquality().equals(other.refreshing, _this.refreshing)&&const DeepCollectionEquality().equals(other.errors, _this.errors)&&const DeepCollectionEquality().equals(other.busyPaths, _this.busyPaths)&&(identical(other.warning, _this.warning) || other.warning == _this.warning)&&(identical(other.pendingPath, _this.pendingPath) || other.pendingPath == _this.pendingPath)&&const DeepCollectionEquality().equals(other.renamedPaths, _this.renamedPaths));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(stack),activeDepth,sortByDate,const DeepCollectionEquality().hash(listings),const DeepCollectionEquality().hash(refreshing),const DeepCollectionEquality().hash(errors),const DeepCollectionEquality().hash(busyPaths),warning,pendingPath,const DeepCollectionEquality().hash(renamedPaths));
+int get hashCode {
+  final _this = this as BrowserSnapshot;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.stack),_this.activeDepth,_this.sortByDate,const DeepCollectionEquality().hash(_this.listings),const DeepCollectionEquality().hash(_this.refreshing),const DeepCollectionEquality().hash(_this.errors),const DeepCollectionEquality().hash(_this.busyPaths),_this.warning,_this.pendingPath,const DeepCollectionEquality().hash(_this.renamedPaths));
+}
 
 @override
 String toString() {
-  return 'BrowserSnapshot(stack: $stack, activeDepth: $activeDepth, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning, pendingPath: $pendingPath, renamedPaths: $renamedPaths)';
+  final _this = this as BrowserSnapshot;
+  return 'BrowserSnapshot(stack: ${_this.stack}, activeDepth: ${_this.activeDepth}, sortByDate: ${_this.sortByDate}, listings: ${_this.listings}, refreshing: ${_this.refreshing}, errors: ${_this.errors}, busyPaths: ${_this.busyPaths}, warning: ${_this.warning}, pendingPath: ${_this.pendingPath}, renamedPaths: ${_this.renamedPaths})';
 }
 
 
@@ -323,7 +336,7 @@ class _$BrowserSnapshotCopyWithImpl<$Res>
 /// Create a copy of BrowserSnapshot
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? stack = null,Object? activeDepth = null,Object? sortByDate = null,Object? listings = null,Object? refreshing = null,Object? errors = null,Object? busyPaths = null,Object? warning = freezed,Object? pendingPath = freezed,Object? renamedPaths = null,}) {
-  return _then(_self.copyWith(
+  return _then(BrowserSnapshot(
 stack: null == stack ? _self.stack : stack // ignore: cast_nullable_to_non_nullable
 as List<BrowserFrame>,activeDepth: null == activeDepth ? _self.activeDepth : activeDepth // ignore: cast_nullable_to_non_nullable
 as int,sortByDate: null == sortByDate ? _self.sortByDate : sortByDate // ignore: cast_nullable_to_non_nullable
@@ -475,7 +488,7 @@ return $default(_that.stack,_that.activeDepth,_that.sortByDate,_that.listings,_t
 
 
 class _BrowserSnapshot extends BrowserSnapshot {
-  const _BrowserSnapshot({required final  List<BrowserFrame> stack, this.activeDepth = 0, this.sortByDate = false, final  Map<String, List<DirectoryEntry>> listings = const {}, final  Set<String> refreshing = const {}, final  Map<String, String> errors = const {}, final  Set<String> busyPaths = const {}, this.warning, this.pendingPath, final  Map<String, String> renamedPaths = const {}}): _stack = stack,_listings = listings,_refreshing = refreshing,_errors = errors,_busyPaths = busyPaths,_renamedPaths = renamedPaths,super._();
+  const _BrowserSnapshot({required  List<BrowserFrame> stack, this.activeDepth = 0, this.sortByDate = false,  Map<String, List<DirectoryEntry>> listings = const {},  Set<String> refreshing = const {},  Map<String, String> errors = const {},  Set<String> busyPaths = const {}, this.warning, this.pendingPath,  Map<String, String> renamedPaths = const {}}): _stack = stack,_listings = listings,_refreshing = refreshing,_errors = errors,_busyPaths = busyPaths,_renamedPaths = renamedPaths,super._();
 
 
  final  List<BrowserFrame> _stack;
@@ -535,16 +548,18 @@ _$BrowserSnapshotCopyWith<_BrowserSnapshot> get copyWith => __$BrowserSnapshotCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BrowserSnapshot&&const DeepCollectionEquality().equals(other._stack, _stack)&&(identical(other.activeDepth, activeDepth) || other.activeDepth == activeDepth)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other._listings, _listings)&&const DeepCollectionEquality().equals(other._refreshing, _refreshing)&&const DeepCollectionEquality().equals(other._errors, _errors)&&const DeepCollectionEquality().equals(other._busyPaths, _busyPaths)&&(identical(other.warning, warning) || other.warning == warning)&&(identical(other.pendingPath, pendingPath) || other.pendingPath == pendingPath)&&const DeepCollectionEquality().equals(other._renamedPaths, _renamedPaths));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BrowserSnapshot&&const DeepCollectionEquality().equals(other.stack, _stack)&&(identical(other.activeDepth, activeDepth) || other.activeDepth == activeDepth)&&(identical(other.sortByDate, sortByDate) || other.sortByDate == sortByDate)&&const DeepCollectionEquality().equals(other.listings, _listings)&&const DeepCollectionEquality().equals(other.refreshing, _refreshing)&&const DeepCollectionEquality().equals(other.errors, _errors)&&const DeepCollectionEquality().equals(other.busyPaths, _busyPaths)&&(identical(other.warning, warning) || other.warning == warning)&&(identical(other.pendingPath, pendingPath) || other.pendingPath == pendingPath)&&const DeepCollectionEquality().equals(other.renamedPaths, _renamedPaths));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_stack),activeDepth,sortByDate,const DeepCollectionEquality().hash(_listings),const DeepCollectionEquality().hash(_refreshing),const DeepCollectionEquality().hash(_errors),const DeepCollectionEquality().hash(_busyPaths),warning,pendingPath,const DeepCollectionEquality().hash(_renamedPaths));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_stack),activeDepth,sortByDate,const DeepCollectionEquality().hash(_listings),const DeepCollectionEquality().hash(_refreshing),const DeepCollectionEquality().hash(_errors),const DeepCollectionEquality().hash(_busyPaths),warning,pendingPath,const DeepCollectionEquality().hash(_renamedPaths));
+}
 
 @override
 String toString() {
-  return 'BrowserSnapshot(stack: $stack, activeDepth: $activeDepth, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning, pendingPath: $pendingPath, renamedPaths: $renamedPaths)';
+    return 'BrowserSnapshot(stack: $stack, activeDepth: $activeDepth, sortByDate: $sortByDate, listings: $listings, refreshing: $refreshing, errors: $errors, busyPaths: $busyPaths, warning: $warning, pendingPath: $pendingPath, renamedPaths: $renamedPaths)';
 }
 
 
@@ -600,7 +615,7 @@ mixin _$PresetBrowserState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetBrowserState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetBrowserState);
 }
 
 
@@ -609,7 +624,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PresetBrowserState()';
+    return 'PresetBrowserState()';
 }
 
 
@@ -777,7 +792,7 @@ class _Initial extends PresetBrowserState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Initial);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Initial);
 }
 
 
@@ -786,7 +801,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PresetBrowserState.initial()';
+    return 'PresetBrowserState.initial()';
 }
 
 
@@ -809,7 +824,7 @@ class _Loading extends PresetBrowserState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Loading);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Loading);
 }
 
 
@@ -818,7 +833,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PresetBrowserState.loading()';
+    return 'PresetBrowserState.loading()';
 }
 
 
@@ -846,16 +861,18 @@ _$LoadedCopyWith<_Loaded> get copyWith => __$LoadedCopyWithImpl<_Loaded>(this, _
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Loaded&&(identical(other.browser, browser) || other.browser == browser));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Loaded&&(identical(other.browser, browser) || other.browser == browser));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,browser);
+int get hashCode {
+    return Object.hash(runtimeType,browser);
+}
 
 @override
 String toString() {
-  return 'PresetBrowserState.loaded(browser: $browser)';
+    return 'PresetBrowserState.loaded(browser: $browser)';
 }
 
 
@@ -922,16 +939,18 @@ _$ErrorCopyWith<_Error> get copyWith => __$ErrorCopyWithImpl<_Error>(this, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Error&&(identical(other.message, message) || other.message == message)&&(identical(other.lastPath, lastPath) || other.lastPath == lastPath));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Error&&(identical(other.message, message) || other.message == message)&&(identical(other.lastPath, lastPath) || other.lastPath == lastPath));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message,lastPath);
+int get hashCode {
+    return Object.hash(runtimeType,message,lastPath);
+}
 
 @override
 String toString() {
-  return 'PresetBrowserState.error(message: $message, lastPath: $lastPath)';
+    return 'PresetBrowserState.error(message: $message, lastPath: $lastPath)';
 }
 
 

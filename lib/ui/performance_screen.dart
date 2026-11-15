@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
@@ -483,9 +483,8 @@ class _ParameterListItem extends StatelessWidget {
               child: Text(
                 indexLabel,
                 style: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).appColors.categoricalOnColor(pageColor),
+                  color: Theme.of(context).appColors
+                      .categoricalOnColor(pageColor),
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -496,9 +495,8 @@ class _ParameterListItem extends StatelessWidget {
         title: Text(item.parameter.name),
         subtitle: Text(
           item.algorithm.name,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         trailing: trailing,
       ),
@@ -770,9 +768,8 @@ class _PerfPageItemListTileState extends State<_PerfPageItemListTile> {
               child: Text(
                 '${widget.item.itemIndex + 1}',
                 style: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).appColors.categoricalOnColor(widget.pageColor),
+                  color: Theme.of(context).appColors
+                      .categoricalOnColor(widget.pageColor),
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -796,9 +793,8 @@ class _PerfPageItemListTileState extends State<_PerfPageItemListTile> {
                 Text(
                   'Slot ${_item.slotIndex + 1}, Param ${_item.parameterNumber}  '
                   'Range: ${_item.min}..${_item.max}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: Theme.of(context).colorScheme.outline),
                 ),
               ],
             ),

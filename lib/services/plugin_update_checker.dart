@@ -1,5 +1,6 @@
 // lib/services/plugin_update_checker.dart
 import 'dart:async';
+
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/db/daos/plugin_installations_dao.dart';
 import 'package:nt_helper/models/gallery_models.dart';
@@ -17,14 +18,11 @@ class PluginUpdateChecker {
   bool _isCheckingUpdates = false;
 
   PluginUpdateChecker({
-    required AppDatabase database,
-    required GalleryService galleryService,
+    required this._database,
+    required this._galleryService,
     Duration? cacheExpiryDuration,
-    int maxConcurrentChecks = 5,
-  }) : _database = database,
-       _galleryService = galleryService,
-       _cacheExpiryDuration = cacheExpiryDuration ?? const Duration(hours: 1),
-       _maxConcurrentChecks = maxConcurrentChecks;
+    this._maxConcurrentChecks = 5,
+  }) : _cacheExpiryDuration = cacheExpiryDuration ?? const Duration(hours: 1);
 
   /// Check for updates for all installed plugins
   Future<UpdateCheckResult> checkAllPluginUpdates({

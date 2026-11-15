@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
@@ -45,9 +45,8 @@ void main() {
         selectedOutputDevice: output,
       ),
     );
-    when(
-      () => cubit.connectToDevices(input, output, 0),
-    ).thenAnswer((_) async {});
+    when(() => cubit.connectToDevices(input, output, 0))
+        .thenAnswer((_) async {});
   });
 
   Future<void> showPage(WidgetTester tester) async {
@@ -70,9 +69,8 @@ void main() {
     'update discovery before synchronization preserves connection controls, keyboard access and live semantics',
     (tester) async {
       final pending = Completer<AppRelease?>();
-      when(
-        () => service.checkForUpdate(forceRefresh: false),
-      ).thenAnswer((_) => pending.future);
+      when(() => service.checkForUpdate(forceRefresh: false))
+          .thenAnswer((_) => pending.future);
       await showPage(tester);
       final semantics = tester.ensureSemantics();
       final inputRect = tester.getRect(
@@ -80,9 +78,19 @@ void main() {
       );
       final connect = find.widgetWithText(FilledButton, 'Connect');
       final connectRect = tester.getRect(connect);
-      final settingsRect = tester.getRect(find.byTooltip('Settings'));
+      final settingsRect = tester.getRect(
+        find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message == 'Settings',
+        ),
+      );
       final actionRect = tester.getRect(find.byType(AppUpdateAction));
-      expect(find.byTooltip('Checking for app updates'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Tooltip && widget.message == 'Checking for app updates',
+        ),
+        findsOneWidget,
+      );
       expect(
         tester
             .widget<IconButton>(find.widgetWithIcon(IconButton, Icons.settings))
@@ -94,7 +102,10 @@ void main() {
       verify(() => cubit.connectToDevices(input, output, 0)).called(1);
       pending.complete(release);
       await tester.pumpAndSettle();
-      final update = find.byTooltip('Update NT Helper to 3.0.0');
+      final update = find.byWidgetPredicate(
+        (widget) =>
+            widget is Tooltip && widget.message == 'Update NT Helper to 3.0.0',
+      );
       expect(update, findsOneWidget);
       expect(
         tester.getSemantics(find.byType(AppUpdateAction)).label,
@@ -116,7 +127,14 @@ void main() {
         inputRect,
       );
       expect(tester.getRect(connect), connectRect);
-      expect(tester.getRect(find.byTooltip('Settings')), settingsRect);
+      expect(
+        tester.getRect(
+          find.byWidgetPredicate(
+            (widget) => widget is Tooltip && widget.message == 'Settings',
+          ),
+        ),
+        settingsRect,
+      );
       Focus.of(tester.element(find.byType(Badge))).requestFocus();
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -137,9 +155,8 @@ void main() {
           canWorkOffline: false,
         ),
       );
-      when(
-        () => service.checkForUpdate(forceRefresh: false),
-      ).thenAnswer((_) async => release);
+      when(() => service.checkForUpdate(forceRefresh: false))
+          .thenAnswer((_) async => release);
       final download = Completer<String>();
       when(
         () => service.downloadUpdate(
@@ -164,7 +181,13 @@ void main() {
             .onPressed,
         isNull,
       );
-      await tester.tap(find.byTooltip('Update NT Helper to 3.0.0'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Tooltip &&
+              widget.message == 'Update NT Helper to 3.0.0',
+        ),
+      );
       await tester.pumpAndSettle();
       final dialog = tester.widget<AppUpdateDialog>(
         find.byType(AppUpdateDialog),
@@ -195,20 +218,30 @@ void main() {
   testWidgets(
     'manual connection-screen check forces refresh after no update was found',
     (tester) async {
-      when(
-        () => service.checkForUpdate(forceRefresh: false),
-      ).thenAnswer((_) async => null);
-      when(
-        () => service.checkForUpdate(forceRefresh: true),
-      ).thenAnswer((_) async => release);
+      when(() => service.checkForUpdate(forceRefresh: false))
+          .thenAnswer((_) async => null);
+      when(() => service.checkForUpdate(forceRefresh: true))
+          .thenAnswer((_) async => release);
       await showPage(tester);
       await tester.pumpAndSettle();
       expect(tester.widget<Badge>(find.byType(Badge)).isLabelVisible, isFalse);
-      await tester.tap(find.byTooltip('Check for app updates'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Tooltip && widget.message == 'Check for app updates',
+        ),
+      );
       await tester.pumpAndSettle();
       verify(() => service.checkForUpdate(forceRefresh: false)).called(1);
       verify(() => service.checkForUpdate(forceRefresh: true)).called(1);
-      expect(find.byTooltip('Update NT Helper to 3.0.0'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Tooltip &&
+              widget.message == 'Update NT Helper to 3.0.0',
+        ),
+        findsOneWidget,
+      );
       expect(find.byType(AppUpdateDialog), findsNothing);
     },
     tags: ['regression'],
@@ -220,8 +253,20 @@ void main() {
       when(() => service.isSupported).thenReturn(false);
       await showPage(tester);
       await tester.pumpAndSettle();
-      expect(find.byTooltip('Check for app updates'), findsNothing);
-      expect(find.byTooltip('Checking for app updates'), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Tooltip && widget.message == 'Check for app updates',
+        ),
+        findsNothing,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Tooltip && widget.message == 'Checking for app updates',
+        ),
+        findsNothing,
+      );
       verifyNever(
         () => service.checkForUpdate(forceRefresh: any(named: 'forceRefresh')),
       );
@@ -232,12 +277,10 @@ void main() {
   testWidgets(
     'update check errors allow retry without disabling MIDI connection',
     (tester) async {
-      when(
-        () => service.checkForUpdate(forceRefresh: false),
-      ).thenThrow(StateError('check failed'));
-      when(
-        () => service.checkForUpdate(forceRefresh: true),
-      ).thenAnswer((_) async => release);
+      when(() => service.checkForUpdate(forceRefresh: false))
+          .thenThrow(StateError('check failed'));
+      when(() => service.checkForUpdate(forceRefresh: true))
+          .thenAnswer((_) async => release);
       await showPage(tester);
       await tester.pumpAndSettle();
       expect(
@@ -250,9 +293,21 @@ void main() {
             .onPressed,
         isNotNull,
       );
-      await tester.tap(find.byTooltip('Check for app updates'));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Tooltip && widget.message == 'Check for app updates',
+        ),
+      );
       await tester.pumpAndSettle();
-      expect(find.byTooltip('Update NT Helper to 3.0.0'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Tooltip &&
+              widget.message == 'Update NT Helper to 3.0.0',
+        ),
+        findsOneWidget,
+      );
     },
     tags: ['regression'],
   );
@@ -261,9 +316,8 @@ void main() {
     'late update result after leaving connection screen is ignored without closing the borrowed service',
     (tester) async {
       final pending = Completer<AppRelease?>();
-      when(
-        () => service.checkForUpdate(forceRefresh: false),
-      ).thenAnswer((_) => pending.future);
+      when(() => service.checkForUpdate(forceRefresh: false))
+          .thenAnswer((_) => pending.future);
       await showPage(tester);
       await tester.pumpWidget(const SizedBox.shrink());
       pending.complete(release);

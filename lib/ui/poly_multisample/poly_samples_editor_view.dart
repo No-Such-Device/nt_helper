@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/poly_multisample/poly_multisample_models.dart';
@@ -210,9 +210,9 @@ class _Toolbar extends StatelessWidget {
                                         child: const Text('Cancel'),
                                       ),
                                       FilledButton(
-                                        onPressed: () => Navigator.of(
-                                          dialogContext,
-                                        ).pop(true),
+                                        onPressed: () =>
+                                            Navigator.of(dialogContext)
+                                                .pop(true),
                                         child: const Text('Discard all'),
                                       ),
                                     ],

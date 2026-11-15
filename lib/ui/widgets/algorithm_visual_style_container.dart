@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 
 /// Lays out and draws the firmware 1.18 algorithm-overview style around [child].

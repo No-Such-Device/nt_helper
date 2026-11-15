@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/ui/widgets/routing/mini_map_widget.dart';
 
@@ -143,8 +143,6 @@ void main() {
           equals(verticalController),
         );
       });
-
-      
     });
 
     group('Scale Factor Calculation', () {
@@ -291,8 +289,6 @@ void main() {
 
     group('MiniMapPainter', () {
       group('Coordinate Scaling Calculations', () {
-        
-
         test('should correctly calculate viewport rectangle dimensions', () {
           const scaleFactor = 0.03; // min(200/5000, 150/5000)
 
@@ -485,11 +481,7 @@ void main() {
     });
 
     group('Tap-to-Navigate Interaction', () {
-      group('Coordinate Transformation', () {
-        
-
-        
-      });
+      group('Coordinate Transformation', () {});
 
       group('Tap Detection and Response', () {
         testWidgets('should detect tap on mini-map widget', (tester) async {

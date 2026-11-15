@@ -1,5 +1,5 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/cubit/routing_editor_cubit.dart';
@@ -92,9 +92,8 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       return Center(
         child: Text(
           'No algorithms loaded.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       );
     }
@@ -271,9 +270,8 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       ),
     );
 
-    final scrollBehavior = ScrollConfiguration.of(
-      context,
-    ).copyWith(overscroll: false);
+    final scrollBehavior = ScrollConfiguration.of(context)
+        .copyWith(overscroll: false);
     return ScrollConfiguration(
       behavior: scrollBehavior,
       child: SingleChildScrollView(

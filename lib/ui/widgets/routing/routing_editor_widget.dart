@@ -5,7 +5,7 @@ import 'dart:convert' as convert;
 
 import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -1239,9 +1239,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                               miniMapWidth = 120.0;
                               miniMapHeight = 90.0;
                             } else {
-                              final screenWidth = MediaQuery.of(
-                                context,
-                              ).size.width;
+                              final screenWidth = MediaQuery.of(context)
+                                  .size
+                                  .width;
                               if (screenWidth < 900) {
                                 miniMapWidth = 160.0;
                                 miniMapHeight = 120.0;
@@ -1771,17 +1771,15 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
           Icon(
             Icons.device_hub,
             size: 64,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.5),
+            color: Theme.of(context).colorScheme.onSurface
+                .withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
             message,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.7),
+              color: Theme.of(context).colorScheme.onSurface
+                  .withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -1876,8 +1874,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     return Semantics(
       label:
           'Routing canvas with ${algorithms.length} algorithm nodes and ${visibleConnections.length} connections',
-      hint:
-          'Interactive routing canvas. Pan and zoom to navigate. Drag between ports to create connections.',
+      hint: 'Interactive routing canvas. Pan and zoom to navigate. Drag between ports to create connections.',
       container: true,
       child: SingleChildScrollView(
         controller: _horizontalScrollController,
@@ -1969,17 +1966,18 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                             onPanStart: _handleCanvasPanStart,
                             onPanUpdate: _handleCanvasPanUpdate,
                             onPanEnd: _handleCanvasPanEnd,
-                            behavior: HitTestBehavior
-                                .translucent, // Allow events to pass through to child widgets
+                            behavior: HitTestBehavior.translucent, // Allow events to pass through to child widgets
                             child: ExcludeSemantics(
                               child: CustomPaint(
                                 painter: _CanvasGridPainter(
-                                  minorGridColor: Theme.of(
-                                    context,
-                                  ).colorScheme.outline.withValues(alpha: 0.1),
-                                  majorGridColor: Theme.of(
-                                    context,
-                                  ).colorScheme.outline.withValues(alpha: 0.2),
+                                  minorGridColor: Theme.of(context)
+                                      .colorScheme
+                                      .outline
+                                      .withValues(alpha: 0.1),
+                                  majorGridColor: Theme.of(context)
+                                      .colorScheme
+                                      .outline
+                                      .withValues(alpha: 0.2),
                                   gridSize: 50.0,
                                   majorEvery: 5,
                                 ),
@@ -2771,9 +2769,8 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       // or "ES-5 Expander" for single-channel algorithms like Clock Multiplier)
       for (final param in slot.parameters) {
         // Try multi-channel format first (e.g., "1:ES-5 Expander")
-        final multiChannelMatch = RegExp(
-          r'^(\d+):ES-5 Expander$',
-        ).firstMatch(param.name);
+        final multiChannelMatch = RegExp(r'^(\d+):ES-5 Expander$')
+            .firstMatch(param.name);
         if (multiChannelMatch != null) {
           final channel = int.parse(multiChannelMatch.group(1)!);
 

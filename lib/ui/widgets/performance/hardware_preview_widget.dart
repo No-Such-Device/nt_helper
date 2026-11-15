@@ -1,16 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/models/performance_page_item.dart';
 
 enum PerformanceLayoutMode { condensed, asIndexed }
 
-typedef ParameterChangedCallback =
-    void Function(
-      int slotIndex,
-      int parameterNumber,
-      int value,
-      bool userIsChanging,
-    );
+typedef ParameterChangedCallback = void Function(
+  int slotIndex,
+  int parameterNumber,
+  int value,
+  bool userIsChanging,
+);
 
 class HardwarePreviewWidget extends StatelessWidget {
   const HardwarePreviewWidget({
@@ -299,9 +298,8 @@ class _PageCard extends StatelessWidget {
           children: [
             Text(
               'Page $pageNumber',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 8),
             Row(
@@ -492,10 +490,8 @@ class _KnobSlotState extends State<_KnobSlot> {
         children: [
           Text(
             'Pot ${widget.potLabel}',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontSize: 10,
-            ),
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: colorScheme.onSurfaceVariant, fontSize: 10),
           ),
           const SizedBox(height: 4),
           Text(
@@ -514,10 +510,8 @@ class _KnobSlotState extends State<_KnobSlot> {
             const SizedBox(height: 2),
             Text(
               knob.algorithmName,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontSize: 9,
-              ),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: colorScheme.onSurfaceVariant, fontSize: 9),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,

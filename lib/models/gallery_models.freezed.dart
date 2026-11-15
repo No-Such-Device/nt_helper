@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'gallery_models.dart';
@@ -9,6 +9,7 @@ part of 'gallery_models.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -28,16 +29,21 @@ $GalleryMetadataCopyWith<GalleryMetadata> get copyWith => _$GalleryMetadataCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryMetadata&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.maintainer, maintainer) || other.maintainer == maintainer));
+  final _this = this as GalleryMetadata;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryMetadata&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.maintainer, _this.maintainer) || other.maintainer == _this.maintainer));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,maintainer);
+int get hashCode {
+  final _this = this as GalleryMetadata;
+  return Object.hash(runtimeType,_this.name,_this.description,_this.maintainer);
+}
 
 @override
 String toString() {
-  return 'GalleryMetadata(name: $name, description: $description, maintainer: $maintainer)';
+  final _this = this as GalleryMetadata;
+  return 'GalleryMetadata(name: ${_this.name}, description: ${_this.description}, maintainer: ${_this.maintainer})';
 }
 
 
@@ -66,7 +72,7 @@ class _$GalleryMetadataCopyWithImpl<$Res>
 /// Create a copy of GalleryMetadata
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? description = null,Object? maintainer = null,}) {
-  return _then(_self.copyWith(
+  return _then(GalleryMetadata(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,maintainer: null == maintainer ? _self.maintainer : maintainer // ignore: cast_nullable_to_non_nullable
@@ -78,7 +84,7 @@ as GalleryMaintainer,
 @override
 @pragma('vm:prefer-inline')
 $GalleryMaintainerCopyWith<$Res> get maintainer {
-  
+
   return $GalleryMaintainerCopyWith<$Res>(_self.maintainer, (value) {
     return _then(_self.copyWith(maintainer: value));
   });
@@ -234,16 +240,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GalleryMetadata&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.maintainer, maintainer) || other.maintainer == maintainer));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GalleryMetadata&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.maintainer, maintainer) || other.maintainer == maintainer));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,maintainer);
+int get hashCode {
+    return Object.hash(runtimeType,name,description,maintainer);
+}
 
 @override
 String toString() {
-  return 'GalleryMetadata(name: $name, description: $description, maintainer: $maintainer)';
+    return 'GalleryMetadata(name: $name, description: $description, maintainer: $maintainer)';
 }
 
 
@@ -285,7 +293,7 @@ as GalleryMaintainer,
 @override
 @pragma('vm:prefer-inline')
 $GalleryMaintainerCopyWith<$Res> get maintainer {
-  
+
   return $GalleryMaintainerCopyWith<$Res>(_self.maintainer, (value) {
     return _then(_self.copyWith(maintainer: value));
   });
@@ -309,16 +317,21 @@ $GalleryMaintainerCopyWith<GalleryMaintainer> get copyWith => _$GalleryMaintaine
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryMaintainer&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.url, url) || other.url == url));
+  final _this = this as GalleryMaintainer;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryMaintainer&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.email, _this.email) || other.email == _this.email)&&(identical(other.url, _this.url) || other.url == _this.url));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,email,url);
+int get hashCode {
+  final _this = this as GalleryMaintainer;
+  return Object.hash(runtimeType,_this.name,_this.email,_this.url);
+}
 
 @override
 String toString() {
-  return 'GalleryMaintainer(name: $name, email: $email, url: $url)';
+  final _this = this as GalleryMaintainer;
+  return 'GalleryMaintainer(name: ${_this.name}, email: ${_this.email}, url: ${_this.url})';
 }
 
 
@@ -347,7 +360,7 @@ class _$GalleryMaintainerCopyWithImpl<$Res>
 /// Create a copy of GalleryMaintainer
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? email = freezed,Object? url = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(GalleryMaintainer(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String?,url: freezed == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
@@ -506,16 +519,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GalleryMaintainer&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.url, url) || other.url == url));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GalleryMaintainer&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.url, url) || other.url == url));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,email,url);
+int get hashCode {
+    return Object.hash(runtimeType,name,email,url);
+}
 
 @override
 String toString() {
-  return 'GalleryMaintainer(name: $name, email: $email, url: $url)';
+    return 'GalleryMaintainer(name: $name, email: $email, url: $url)';
 }
 
 
@@ -572,16 +587,21 @@ $PluginCategoryCopyWith<PluginCategory> get copyWith => _$PluginCategoryCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCategory&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.icon, icon) || other.icon == icon));
+  final _this = this as PluginCategory;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCategory&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.icon, _this.icon) || other.icon == _this.icon));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,description,icon);
+int get hashCode {
+  final _this = this as PluginCategory;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.description,_this.icon);
+}
 
 @override
 String toString() {
-  return 'PluginCategory(id: $id, name: $name, description: $description, icon: $icon)';
+  final _this = this as PluginCategory;
+  return 'PluginCategory(id: ${_this.id}, name: ${_this.name}, description: ${_this.description}, icon: ${_this.icon})';
 }
 
 
@@ -610,7 +630,7 @@ class _$PluginCategoryCopyWithImpl<$Res>
 /// Create a copy of PluginCategory
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? description = freezed,Object? icon = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginCategory(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
@@ -771,16 +791,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginCategory&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.icon, icon) || other.icon == icon));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginCategory&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.icon, icon) || other.icon == icon));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,description,icon);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,description,icon);
+}
 
 @override
 String toString() {
-  return 'PluginCategory(id: $id, name: $name, description: $description, icon: $icon)';
+    return 'PluginCategory(id: $id, name: $name, description: $description, icon: $icon)';
 }
 
 
@@ -838,16 +860,21 @@ $PluginAuthorCopyWith<PluginAuthor> get copyWith => _$PluginAuthorCopyWithImpl<P
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthor&&(identical(other.name, name) || other.name == name)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.website, website) || other.website == website)&&(identical(other.avatar, avatar) || other.avatar == avatar)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.socialLinks, socialLinks) || other.socialLinks == socialLinks));
+  final _this = this as PluginAuthor;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthor&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.bio, _this.bio) || other.bio == _this.bio)&&(identical(other.website, _this.website) || other.website == _this.website)&&(identical(other.avatar, _this.avatar) || other.avatar == _this.avatar)&&(identical(other.verified, _this.verified) || other.verified == _this.verified)&&(identical(other.socialLinks, _this.socialLinks) || other.socialLinks == _this.socialLinks));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,bio,website,avatar,verified,socialLinks);
+int get hashCode {
+  final _this = this as PluginAuthor;
+  return Object.hash(runtimeType,_this.name,_this.bio,_this.website,_this.avatar,_this.verified,_this.socialLinks);
+}
 
 @override
 String toString() {
-  return 'PluginAuthor(name: $name, bio: $bio, website: $website, avatar: $avatar, verified: $verified, socialLinks: $socialLinks)';
+  final _this = this as PluginAuthor;
+  return 'PluginAuthor(name: ${_this.name}, bio: ${_this.bio}, website: ${_this.website}, avatar: ${_this.avatar}, verified: ${_this.verified}, socialLinks: ${_this.socialLinks})';
 }
 
 
@@ -876,7 +903,7 @@ class _$PluginAuthorCopyWithImpl<$Res>
 /// Create a copy of PluginAuthor
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? bio = freezed,Object? website = freezed,Object? avatar = freezed,Object? verified = null,Object? socialLinks = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginAuthor(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,bio: freezed == bio ? _self.bio : bio // ignore: cast_nullable_to_non_nullable
 as String?,website: freezed == website ? _self.website : website // ignore: cast_nullable_to_non_nullable
@@ -1053,16 +1080,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAuthor&&(identical(other.name, name) || other.name == name)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.website, website) || other.website == website)&&(identical(other.avatar, avatar) || other.avatar == avatar)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.socialLinks, socialLinks) || other.socialLinks == socialLinks));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAuthor&&(identical(other.name, name) || other.name == name)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.website, website) || other.website == website)&&(identical(other.avatar, avatar) || other.avatar == avatar)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.socialLinks, socialLinks) || other.socialLinks == socialLinks));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,bio,website,avatar,verified,socialLinks);
+int get hashCode {
+    return Object.hash(runtimeType,name,bio,website,avatar,verified,socialLinks);
+}
 
 @override
 String toString() {
-  return 'PluginAuthor(name: $name, bio: $bio, website: $website, avatar: $avatar, verified: $verified, socialLinks: $socialLinks)';
+    return 'PluginAuthor(name: $name, bio: $bio, website: $website, avatar: $avatar, verified: $verified, socialLinks: $socialLinks)';
 }
 
 
@@ -1134,16 +1163,21 @@ $PluginAuthorSocialLinksCopyWith<PluginAuthorSocialLinks> get copyWith => _$Plug
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthorSocialLinks&&(identical(other.github, github) || other.github == github)&&(identical(other.twitter, twitter) || other.twitter == twitter)&&(identical(other.discord, discord) || other.discord == discord));
+  final _this = this as PluginAuthorSocialLinks;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthorSocialLinks&&(identical(other.github, _this.github) || other.github == _this.github)&&(identical(other.twitter, _this.twitter) || other.twitter == _this.twitter)&&(identical(other.discord, _this.discord) || other.discord == _this.discord));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,github,twitter,discord);
+int get hashCode {
+  final _this = this as PluginAuthorSocialLinks;
+  return Object.hash(runtimeType,_this.github,_this.twitter,_this.discord);
+}
 
 @override
 String toString() {
-  return 'PluginAuthorSocialLinks(github: $github, twitter: $twitter, discord: $discord)';
+  final _this = this as PluginAuthorSocialLinks;
+  return 'PluginAuthorSocialLinks(github: ${_this.github}, twitter: ${_this.twitter}, discord: ${_this.discord})';
 }
 
 
@@ -1172,7 +1206,7 @@ class _$PluginAuthorSocialLinksCopyWithImpl<$Res>
 /// Create a copy of PluginAuthorSocialLinks
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? github = freezed,Object? twitter = freezed,Object? discord = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginAuthorSocialLinks(
 github: freezed == github ? _self.github : github // ignore: cast_nullable_to_non_nullable
 as String?,twitter: freezed == twitter ? _self.twitter : twitter // ignore: cast_nullable_to_non_nullable
 as String?,discord: freezed == discord ? _self.discord : discord // ignore: cast_nullable_to_non_nullable
@@ -1331,16 +1365,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAuthorSocialLinks&&(identical(other.github, github) || other.github == github)&&(identical(other.twitter, twitter) || other.twitter == twitter)&&(identical(other.discord, discord) || other.discord == discord));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAuthorSocialLinks&&(identical(other.github, github) || other.github == github)&&(identical(other.twitter, twitter) || other.twitter == twitter)&&(identical(other.discord, discord) || other.discord == discord));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,github,twitter,discord);
+int get hashCode {
+    return Object.hash(runtimeType,github,twitter,discord);
+}
 
 @override
 String toString() {
-  return 'PluginAuthorSocialLinks(github: $github, twitter: $twitter, discord: $discord)';
+    return 'PluginAuthorSocialLinks(github: $github, twitter: $twitter, discord: $discord)';
 }
 
 
@@ -1397,16 +1433,21 @@ $PluginRepositoryCopyWith<PluginRepository> get copyWith => _$PluginRepositoryCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginRepository&&(identical(other.owner, owner) || other.owner == owner)&&(identical(other.name, name) || other.name == name)&&(identical(other.url, url) || other.url == url)&&(identical(other.branch, branch) || other.branch == branch));
+  final _this = this as PluginRepository;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginRepository&&(identical(other.owner, _this.owner) || other.owner == _this.owner)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.url, _this.url) || other.url == _this.url)&&(identical(other.branch, _this.branch) || other.branch == _this.branch));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,owner,name,url,branch);
+int get hashCode {
+  final _this = this as PluginRepository;
+  return Object.hash(runtimeType,_this.owner,_this.name,_this.url,_this.branch);
+}
 
 @override
 String toString() {
-  return 'PluginRepository(owner: $owner, name: $name, url: $url, branch: $branch)';
+  final _this = this as PluginRepository;
+  return 'PluginRepository(owner: ${_this.owner}, name: ${_this.name}, url: ${_this.url}, branch: ${_this.branch})';
 }
 
 
@@ -1435,7 +1476,7 @@ class _$PluginRepositoryCopyWithImpl<$Res>
 /// Create a copy of PluginRepository
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? owner = null,Object? name = null,Object? url = null,Object? branch = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginRepository(
 owner: null == owner ? _self.owner : owner // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
@@ -1596,16 +1637,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginRepository&&(identical(other.owner, owner) || other.owner == owner)&&(identical(other.name, name) || other.name == name)&&(identical(other.url, url) || other.url == url)&&(identical(other.branch, branch) || other.branch == branch));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginRepository&&(identical(other.owner, owner) || other.owner == owner)&&(identical(other.name, name) || other.name == name)&&(identical(other.url, url) || other.url == url)&&(identical(other.branch, branch) || other.branch == branch));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,owner,name,url,branch);
+int get hashCode {
+    return Object.hash(runtimeType,owner,name,url,branch);
+}
 
 @override
 String toString() {
-  return 'PluginRepository(owner: $owner, name: $name, url: $url, branch: $branch)';
+    return 'PluginRepository(owner: $owner, name: $name, url: $url, branch: $branch)';
 }
 
 
@@ -1663,16 +1706,21 @@ $PluginReleasesCopyWith<PluginReleases> get copyWith => _$PluginReleasesCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginReleases&&(identical(other.latest, latest) || other.latest == latest)&&(identical(other.stable, stable) || other.stable == stable)&&(identical(other.beta, beta) || other.beta == beta));
+  final _this = this as PluginReleases;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginReleases&&(identical(other.latest, _this.latest) || other.latest == _this.latest)&&(identical(other.stable, _this.stable) || other.stable == _this.stable)&&(identical(other.beta, _this.beta) || other.beta == _this.beta));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,latest,stable,beta);
+int get hashCode {
+  final _this = this as PluginReleases;
+  return Object.hash(runtimeType,_this.latest,_this.stable,_this.beta);
+}
 
 @override
 String toString() {
-  return 'PluginReleases(latest: $latest, stable: $stable, beta: $beta)';
+  final _this = this as PluginReleases;
+  return 'PluginReleases(latest: ${_this.latest}, stable: ${_this.stable}, beta: ${_this.beta})';
 }
 
 
@@ -1701,7 +1749,7 @@ class _$PluginReleasesCopyWithImpl<$Res>
 /// Create a copy of PluginReleases
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? latest = null,Object? stable = freezed,Object? beta = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginReleases(
 latest: null == latest ? _self.latest : latest // ignore: cast_nullable_to_non_nullable
 as String,stable: freezed == stable ? _self.stable : stable // ignore: cast_nullable_to_non_nullable
 as String?,beta: freezed == beta ? _self.beta : beta // ignore: cast_nullable_to_non_nullable
@@ -1860,16 +1908,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginReleases&&(identical(other.latest, latest) || other.latest == latest)&&(identical(other.stable, stable) || other.stable == stable)&&(identical(other.beta, beta) || other.beta == beta));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginReleases&&(identical(other.latest, latest) || other.latest == latest)&&(identical(other.stable, stable) || other.stable == stable)&&(identical(other.beta, beta) || other.beta == beta));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,latest,stable,beta);
+int get hashCode {
+    return Object.hash(runtimeType,latest,stable,beta);
+}
 
 @override
 String toString() {
-  return 'PluginReleases(latest: $latest, stable: $stable, beta: $beta)';
+    return 'PluginReleases(latest: $latest, stable: $stable, beta: $beta)';
 }
 
 
@@ -1913,8 +1963,7 @@ as String?,
 /// @nodoc
 mixin _$PluginInstallation {
 
- String get targetPath; String? get subdirectory; String? get assetPattern; String? get extractPattern; String? get downloadUrl;// For directory-based installations
- bool get preserveDirectoryStructure; String? get sourceDirectoryPath;
+ String get targetPath; String? get subdirectory; String? get assetPattern; String? get extractPattern; String? get downloadUrl; bool get preserveDirectoryStructure; String? get sourceDirectoryPath;
 /// Create a copy of PluginInstallation
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1927,16 +1976,21 @@ $PluginInstallationCopyWith<PluginInstallation> get copyWith => _$PluginInstalla
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginInstallation&&(identical(other.targetPath, targetPath) || other.targetPath == targetPath)&&(identical(other.subdirectory, subdirectory) || other.subdirectory == subdirectory)&&(identical(other.assetPattern, assetPattern) || other.assetPattern == assetPattern)&&(identical(other.extractPattern, extractPattern) || other.extractPattern == extractPattern)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl)&&(identical(other.preserveDirectoryStructure, preserveDirectoryStructure) || other.preserveDirectoryStructure == preserveDirectoryStructure)&&(identical(other.sourceDirectoryPath, sourceDirectoryPath) || other.sourceDirectoryPath == sourceDirectoryPath));
+  final _this = this as PluginInstallation;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginInstallation&&(identical(other.targetPath, _this.targetPath) || other.targetPath == _this.targetPath)&&(identical(other.subdirectory, _this.subdirectory) || other.subdirectory == _this.subdirectory)&&(identical(other.assetPattern, _this.assetPattern) || other.assetPattern == _this.assetPattern)&&(identical(other.extractPattern, _this.extractPattern) || other.extractPattern == _this.extractPattern)&&(identical(other.downloadUrl, _this.downloadUrl) || other.downloadUrl == _this.downloadUrl)&&(identical(other.preserveDirectoryStructure, _this.preserveDirectoryStructure) || other.preserveDirectoryStructure == _this.preserveDirectoryStructure)&&(identical(other.sourceDirectoryPath, _this.sourceDirectoryPath) || other.sourceDirectoryPath == _this.sourceDirectoryPath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,targetPath,subdirectory,assetPattern,extractPattern,downloadUrl,preserveDirectoryStructure,sourceDirectoryPath);
+int get hashCode {
+  final _this = this as PluginInstallation;
+  return Object.hash(runtimeType,_this.targetPath,_this.subdirectory,_this.assetPattern,_this.extractPattern,_this.downloadUrl,_this.preserveDirectoryStructure,_this.sourceDirectoryPath);
+}
 
 @override
 String toString() {
-  return 'PluginInstallation(targetPath: $targetPath, subdirectory: $subdirectory, assetPattern: $assetPattern, extractPattern: $extractPattern, downloadUrl: $downloadUrl, preserveDirectoryStructure: $preserveDirectoryStructure, sourceDirectoryPath: $sourceDirectoryPath)';
+  final _this = this as PluginInstallation;
+  return 'PluginInstallation(targetPath: ${_this.targetPath}, subdirectory: ${_this.subdirectory}, assetPattern: ${_this.assetPattern}, extractPattern: ${_this.extractPattern}, downloadUrl: ${_this.downloadUrl}, preserveDirectoryStructure: ${_this.preserveDirectoryStructure}, sourceDirectoryPath: ${_this.sourceDirectoryPath})';
 }
 
 
@@ -1965,7 +2019,7 @@ class _$PluginInstallationCopyWithImpl<$Res>
 /// Create a copy of PluginInstallation
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? targetPath = null,Object? subdirectory = freezed,Object? assetPattern = freezed,Object? extractPattern = freezed,Object? downloadUrl = freezed,Object? preserveDirectoryStructure = null,Object? sourceDirectoryPath = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginInstallation(
 targetPath: null == targetPath ? _self.targetPath : targetPath // ignore: cast_nullable_to_non_nullable
 as String,subdirectory: freezed == subdirectory ? _self.subdirectory : subdirectory // ignore: cast_nullable_to_non_nullable
 as String?,assetPattern: freezed == assetPattern ? _self.assetPattern : assetPattern // ignore: cast_nullable_to_non_nullable
@@ -2116,7 +2170,6 @@ class _PluginInstallation implements PluginInstallation {
 @override final  String? assetPattern;
 @override final  String? extractPattern;
 @override final  String? downloadUrl;
-// For directory-based installations
 @override@JsonKey() final  bool preserveDirectoryStructure;
 @override final  String? sourceDirectoryPath;
 
@@ -2133,16 +2186,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginInstallation&&(identical(other.targetPath, targetPath) || other.targetPath == targetPath)&&(identical(other.subdirectory, subdirectory) || other.subdirectory == subdirectory)&&(identical(other.assetPattern, assetPattern) || other.assetPattern == assetPattern)&&(identical(other.extractPattern, extractPattern) || other.extractPattern == extractPattern)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl)&&(identical(other.preserveDirectoryStructure, preserveDirectoryStructure) || other.preserveDirectoryStructure == preserveDirectoryStructure)&&(identical(other.sourceDirectoryPath, sourceDirectoryPath) || other.sourceDirectoryPath == sourceDirectoryPath));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginInstallation&&(identical(other.targetPath, targetPath) || other.targetPath == targetPath)&&(identical(other.subdirectory, subdirectory) || other.subdirectory == subdirectory)&&(identical(other.assetPattern, assetPattern) || other.assetPattern == assetPattern)&&(identical(other.extractPattern, extractPattern) || other.extractPattern == extractPattern)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl)&&(identical(other.preserveDirectoryStructure, preserveDirectoryStructure) || other.preserveDirectoryStructure == preserveDirectoryStructure)&&(identical(other.sourceDirectoryPath, sourceDirectoryPath) || other.sourceDirectoryPath == sourceDirectoryPath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,targetPath,subdirectory,assetPattern,extractPattern,downloadUrl,preserveDirectoryStructure,sourceDirectoryPath);
+int get hashCode {
+    return Object.hash(runtimeType,targetPath,subdirectory,assetPattern,extractPattern,downloadUrl,preserveDirectoryStructure,sourceDirectoryPath);
+}
 
 @override
 String toString() {
-  return 'PluginInstallation(targetPath: $targetPath, subdirectory: $subdirectory, assetPattern: $assetPattern, extractPattern: $extractPattern, downloadUrl: $downloadUrl, preserveDirectoryStructure: $preserveDirectoryStructure, sourceDirectoryPath: $sourceDirectoryPath)';
+    return 'PluginInstallation(targetPath: $targetPath, subdirectory: $subdirectory, assetPattern: $assetPattern, extractPattern: $extractPattern, downloadUrl: $downloadUrl, preserveDirectoryStructure: $preserveDirectoryStructure, sourceDirectoryPath: $sourceDirectoryPath)';
 }
 
 
@@ -2203,16 +2258,21 @@ $PluginCompatibilityCopyWith<PluginCompatibility> get copyWith => _$PluginCompat
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCompatibility&&(identical(other.minFirmwareVersion, minFirmwareVersion) || other.minFirmwareVersion == minFirmwareVersion)&&(identical(other.maxFirmwareVersion, maxFirmwareVersion) || other.maxFirmwareVersion == maxFirmwareVersion)&&const DeepCollectionEquality().equals(other.requiredFeatures, requiredFeatures));
+  final _this = this as PluginCompatibility;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCompatibility&&(identical(other.minFirmwareVersion, _this.minFirmwareVersion) || other.minFirmwareVersion == _this.minFirmwareVersion)&&(identical(other.maxFirmwareVersion, _this.maxFirmwareVersion) || other.maxFirmwareVersion == _this.maxFirmwareVersion)&&const DeepCollectionEquality().equals(other.requiredFeatures, _this.requiredFeatures));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,minFirmwareVersion,maxFirmwareVersion,const DeepCollectionEquality().hash(requiredFeatures));
+int get hashCode {
+  final _this = this as PluginCompatibility;
+  return Object.hash(runtimeType,_this.minFirmwareVersion,_this.maxFirmwareVersion,const DeepCollectionEquality().hash(_this.requiredFeatures));
+}
 
 @override
 String toString() {
-  return 'PluginCompatibility(minFirmwareVersion: $minFirmwareVersion, maxFirmwareVersion: $maxFirmwareVersion, requiredFeatures: $requiredFeatures)';
+  final _this = this as PluginCompatibility;
+  return 'PluginCompatibility(minFirmwareVersion: ${_this.minFirmwareVersion}, maxFirmwareVersion: ${_this.maxFirmwareVersion}, requiredFeatures: ${_this.requiredFeatures})';
 }
 
 
@@ -2241,7 +2301,7 @@ class _$PluginCompatibilityCopyWithImpl<$Res>
 /// Create a copy of PluginCompatibility
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? minFirmwareVersion = freezed,Object? maxFirmwareVersion = freezed,Object? requiredFeatures = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginCompatibility(
 minFirmwareVersion: freezed == minFirmwareVersion ? _self.minFirmwareVersion : minFirmwareVersion // ignore: cast_nullable_to_non_nullable
 as String?,maxFirmwareVersion: freezed == maxFirmwareVersion ? _self.maxFirmwareVersion : maxFirmwareVersion // ignore: cast_nullable_to_non_nullable
 as String?,requiredFeatures: null == requiredFeatures ? _self.requiredFeatures : requiredFeatures // ignore: cast_nullable_to_non_nullable
@@ -2380,7 +2440,7 @@ return $default(_that.minFirmwareVersion,_that.maxFirmwareVersion,_that.required
 @JsonSerializable()
 
 class _PluginCompatibility implements PluginCompatibility {
-  const _PluginCompatibility({this.minFirmwareVersion, this.maxFirmwareVersion, final  List<String> requiredFeatures = const []}): _requiredFeatures = requiredFeatures;
+  const _PluginCompatibility({this.minFirmwareVersion, this.maxFirmwareVersion,  List<String> requiredFeatures = const []}): _requiredFeatures = requiredFeatures;
   factory _PluginCompatibility.fromJson(Map<String, dynamic> json) => _$PluginCompatibilityFromJson(json);
 
 @override final  String? minFirmwareVersion;
@@ -2406,16 +2466,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginCompatibility&&(identical(other.minFirmwareVersion, minFirmwareVersion) || other.minFirmwareVersion == minFirmwareVersion)&&(identical(other.maxFirmwareVersion, maxFirmwareVersion) || other.maxFirmwareVersion == maxFirmwareVersion)&&const DeepCollectionEquality().equals(other._requiredFeatures, _requiredFeatures));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginCompatibility&&(identical(other.minFirmwareVersion, minFirmwareVersion) || other.minFirmwareVersion == minFirmwareVersion)&&(identical(other.maxFirmwareVersion, maxFirmwareVersion) || other.maxFirmwareVersion == maxFirmwareVersion)&&const DeepCollectionEquality().equals(other.requiredFeatures, _requiredFeatures));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,minFirmwareVersion,maxFirmwareVersion,const DeepCollectionEquality().hash(_requiredFeatures));
+int get hashCode {
+    return Object.hash(runtimeType,minFirmwareVersion,maxFirmwareVersion,const DeepCollectionEquality().hash(_requiredFeatures));
+}
 
 @override
 String toString() {
-  return 'PluginCompatibility(minFirmwareVersion: $minFirmwareVersion, maxFirmwareVersion: $maxFirmwareVersion, requiredFeatures: $requiredFeatures)';
+    return 'PluginCompatibility(minFirmwareVersion: $minFirmwareVersion, maxFirmwareVersion: $maxFirmwareVersion, requiredFeatures: $requiredFeatures)';
 }
 
 
@@ -2472,16 +2534,21 @@ $PluginScreenshotCopyWith<PluginScreenshot> get copyWith => _$PluginScreenshotCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginScreenshot&&(identical(other.url, url) || other.url == url)&&(identical(other.caption, caption) || other.caption == caption)&&(identical(other.thumbnail, thumbnail) || other.thumbnail == thumbnail));
+  final _this = this as PluginScreenshot;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginScreenshot&&(identical(other.url, _this.url) || other.url == _this.url)&&(identical(other.caption, _this.caption) || other.caption == _this.caption)&&(identical(other.thumbnail, _this.thumbnail) || other.thumbnail == _this.thumbnail));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,url,caption,thumbnail);
+int get hashCode {
+  final _this = this as PluginScreenshot;
+  return Object.hash(runtimeType,_this.url,_this.caption,_this.thumbnail);
+}
 
 @override
 String toString() {
-  return 'PluginScreenshot(url: $url, caption: $caption, thumbnail: $thumbnail)';
+  final _this = this as PluginScreenshot;
+  return 'PluginScreenshot(url: ${_this.url}, caption: ${_this.caption}, thumbnail: ${_this.thumbnail})';
 }
 
 
@@ -2510,7 +2577,7 @@ class _$PluginScreenshotCopyWithImpl<$Res>
 /// Create a copy of PluginScreenshot
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? url = null,Object? caption = freezed,Object? thumbnail = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginScreenshot(
 url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,caption: freezed == caption ? _self.caption : caption // ignore: cast_nullable_to_non_nullable
 as String?,thumbnail: freezed == thumbnail ? _self.thumbnail : thumbnail // ignore: cast_nullable_to_non_nullable
@@ -2669,16 +2736,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginScreenshot&&(identical(other.url, url) || other.url == url)&&(identical(other.caption, caption) || other.caption == caption)&&(identical(other.thumbnail, thumbnail) || other.thumbnail == thumbnail));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginScreenshot&&(identical(other.url, url) || other.url == url)&&(identical(other.caption, caption) || other.caption == caption)&&(identical(other.thumbnail, thumbnail) || other.thumbnail == thumbnail));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,url,caption,thumbnail);
+int get hashCode {
+    return Object.hash(runtimeType,url,caption,thumbnail);
+}
 
 @override
 String toString() {
-  return 'PluginScreenshot(url: $url, caption: $caption, thumbnail: $thumbnail)';
+    return 'PluginScreenshot(url: $url, caption: $caption, thumbnail: $thumbnail)';
 }
 
 
@@ -2735,16 +2804,21 @@ $PluginDocumentationCopyWith<PluginDocumentation> get copyWith => _$PluginDocume
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginDocumentation&&(identical(other.readme, readme) || other.readme == readme)&&(identical(other.manual, manual) || other.manual == manual)&&(identical(other.examples, examples) || other.examples == examples));
+  final _this = this as PluginDocumentation;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginDocumentation&&(identical(other.readme, _this.readme) || other.readme == _this.readme)&&(identical(other.manual, _this.manual) || other.manual == _this.manual)&&(identical(other.examples, _this.examples) || other.examples == _this.examples));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,readme,manual,examples);
+int get hashCode {
+  final _this = this as PluginDocumentation;
+  return Object.hash(runtimeType,_this.readme,_this.manual,_this.examples);
+}
 
 @override
 String toString() {
-  return 'PluginDocumentation(readme: $readme, manual: $manual, examples: $examples)';
+  final _this = this as PluginDocumentation;
+  return 'PluginDocumentation(readme: ${_this.readme}, manual: ${_this.manual}, examples: ${_this.examples})';
 }
 
 
@@ -2773,7 +2847,7 @@ class _$PluginDocumentationCopyWithImpl<$Res>
 /// Create a copy of PluginDocumentation
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? readme = freezed,Object? manual = freezed,Object? examples = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginDocumentation(
 readme: freezed == readme ? _self.readme : readme // ignore: cast_nullable_to_non_nullable
 as String?,manual: freezed == manual ? _self.manual : manual // ignore: cast_nullable_to_non_nullable
 as String?,examples: freezed == examples ? _self.examples : examples // ignore: cast_nullable_to_non_nullable
@@ -2932,16 +3006,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginDocumentation&&(identical(other.readme, readme) || other.readme == readme)&&(identical(other.manual, manual) || other.manual == manual)&&(identical(other.examples, examples) || other.examples == examples));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginDocumentation&&(identical(other.readme, readme) || other.readme == readme)&&(identical(other.manual, manual) || other.manual == manual)&&(identical(other.examples, examples) || other.examples == examples));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,readme,manual,examples);
+int get hashCode {
+    return Object.hash(runtimeType,readme,manual,examples);
+}
 
 @override
 String toString() {
-  return 'PluginDocumentation(readme: $readme, manual: $manual, examples: $examples)';
+    return 'PluginDocumentation(readme: $readme, manual: $manual, examples: $examples)';
 }
 
 
@@ -2998,16 +3074,21 @@ $PluginMetricsCopyWith<PluginMetrics> get copyWith => _$PluginMetricsCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetrics&&(identical(other.downloads, downloads) || other.downloads == downloads)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount));
+  final _this = this as PluginMetrics;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMetrics&&(identical(other.downloads, _this.downloads) || other.downloads == _this.downloads)&&(identical(other.rating, _this.rating) || other.rating == _this.rating)&&(identical(other.ratingCount, _this.ratingCount) || other.ratingCount == _this.ratingCount));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,downloads,rating,ratingCount);
+int get hashCode {
+  final _this = this as PluginMetrics;
+  return Object.hash(runtimeType,_this.downloads,_this.rating,_this.ratingCount);
+}
 
 @override
 String toString() {
-  return 'PluginMetrics(downloads: $downloads, rating: $rating, ratingCount: $ratingCount)';
+  final _this = this as PluginMetrics;
+  return 'PluginMetrics(downloads: ${_this.downloads}, rating: ${_this.rating}, ratingCount: ${_this.ratingCount})';
 }
 
 
@@ -3036,7 +3117,7 @@ class _$PluginMetricsCopyWithImpl<$Res>
 /// Create a copy of PluginMetrics
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? downloads = null,Object? rating = freezed,Object? ratingCount = null,}) {
-  return _then(_self.copyWith(
+  return _then(PluginMetrics(
 downloads: null == downloads ? _self.downloads : downloads // ignore: cast_nullable_to_non_nullable
 as int,rating: freezed == rating ? _self.rating : rating // ignore: cast_nullable_to_non_nullable
 as double?,ratingCount: null == ratingCount ? _self.ratingCount : ratingCount // ignore: cast_nullable_to_non_nullable
@@ -3195,16 +3276,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetrics&&(identical(other.downloads, downloads) || other.downloads == downloads)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMetrics&&(identical(other.downloads, downloads) || other.downloads == downloads)&&(identical(other.rating, rating) || other.rating == rating)&&(identical(other.ratingCount, ratingCount) || other.ratingCount == ratingCount));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,downloads,rating,ratingCount);
+int get hashCode {
+    return Object.hash(runtimeType,downloads,rating,ratingCount);
+}
 
 @override
 String toString() {
-  return 'PluginMetrics(downloads: $downloads, rating: $rating, ratingCount: $ratingCount)';
+    return 'PluginMetrics(downloads: $downloads, rating: $rating, ratingCount: $ratingCount)';
 }
 
 
@@ -3261,16 +3344,21 @@ $GalleryPluginCopyWith<GalleryPlugin> get copyWith => _$GalleryPluginCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryPlugin&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.longDescription, longDescription) || other.longDescription == longDescription)&&(identical(other.type, type) || other.type == type)&&(identical(other.category, category) || other.category == category)&&const DeepCollectionEquality().equals(other.tags, tags)&&(identical(other.author, author) || other.author == author)&&(identical(other.repository, repository) || other.repository == repository)&&(identical(other.releases, releases) || other.releases == releases)&&(identical(other.installation, installation) || other.installation == installation)&&(identical(other.compatibility, compatibility) || other.compatibility == compatibility)&&const DeepCollectionEquality().equals(other.screenshots, screenshots)&&(identical(other.documentation, documentation) || other.documentation == documentation)&&(identical(other.metrics, metrics) || other.metrics == metrics)&&(identical(other.featured, featured) || other.featured == featured)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.isCollection, isCollection) || other.isCollection == isCollection)&&(identical(other.guid, guid) || other.guid == guid)&&const DeepCollectionEquality().equals(other.collectionGuids, collectionGuids)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  final _this = this as GalleryPlugin;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryPlugin&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.longDescription, _this.longDescription) || other.longDescription == _this.longDescription)&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.category, _this.category) || other.category == _this.category)&&const DeepCollectionEquality().equals(other.tags, _this.tags)&&(identical(other.author, _this.author) || other.author == _this.author)&&(identical(other.repository, _this.repository) || other.repository == _this.repository)&&(identical(other.releases, _this.releases) || other.releases == _this.releases)&&(identical(other.installation, _this.installation) || other.installation == _this.installation)&&(identical(other.compatibility, _this.compatibility) || other.compatibility == _this.compatibility)&&const DeepCollectionEquality().equals(other.screenshots, _this.screenshots)&&(identical(other.documentation, _this.documentation) || other.documentation == _this.documentation)&&(identical(other.metrics, _this.metrics) || other.metrics == _this.metrics)&&(identical(other.featured, _this.featured) || other.featured == _this.featured)&&(identical(other.verified, _this.verified) || other.verified == _this.verified)&&(identical(other.isCollection, _this.isCollection) || other.isCollection == _this.isCollection)&&(identical(other.guid, _this.guid) || other.guid == _this.guid)&&const DeepCollectionEquality().equals(other.collectionGuids, _this.collectionGuids)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,name,description,longDescription,type,category,const DeepCollectionEquality().hash(tags),author,repository,releases,installation,compatibility,const DeepCollectionEquality().hash(screenshots),documentation,metrics,featured,verified,isCollection,guid,const DeepCollectionEquality().hash(collectionGuids),createdAt,updatedAt]);
+int get hashCode {
+  final _this = this as GalleryPlugin;
+  return Object.hashAll([runtimeType,_this.id,_this.name,_this.description,_this.longDescription,_this.type,_this.category,const DeepCollectionEquality().hash(_this.tags),_this.author,_this.repository,_this.releases,_this.installation,_this.compatibility,const DeepCollectionEquality().hash(_this.screenshots),_this.documentation,_this.metrics,_this.featured,_this.verified,_this.isCollection,_this.guid,const DeepCollectionEquality().hash(_this.collectionGuids),_this.createdAt,_this.updatedAt]);
+}
 
 @override
 String toString() {
-  return 'GalleryPlugin(id: $id, name: $name, description: $description, longDescription: $longDescription, type: $type, category: $category, tags: $tags, author: $author, repository: $repository, releases: $releases, installation: $installation, compatibility: $compatibility, screenshots: $screenshots, documentation: $documentation, metrics: $metrics, featured: $featured, verified: $verified, isCollection: $isCollection, guid: $guid, collectionGuids: $collectionGuids, createdAt: $createdAt, updatedAt: $updatedAt)';
+  final _this = this as GalleryPlugin;
+  return 'GalleryPlugin(id: ${_this.id}, name: ${_this.name}, description: ${_this.description}, longDescription: ${_this.longDescription}, type: ${_this.type}, category: ${_this.category}, tags: ${_this.tags}, author: ${_this.author}, repository: ${_this.repository}, releases: ${_this.releases}, installation: ${_this.installation}, compatibility: ${_this.compatibility}, screenshots: ${_this.screenshots}, documentation: ${_this.documentation}, metrics: ${_this.metrics}, featured: ${_this.featured}, verified: ${_this.verified}, isCollection: ${_this.isCollection}, guid: ${_this.guid}, collectionGuids: ${_this.collectionGuids}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -3299,7 +3387,7 @@ class _$GalleryPluginCopyWithImpl<$Res>
 /// Create a copy of GalleryPlugin
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? description = null,Object? longDescription = freezed,Object? type = null,Object? category = freezed,Object? tags = null,Object? author = null,Object? repository = null,Object? releases = null,Object? installation = null,Object? compatibility = freezed,Object? screenshots = null,Object? documentation = freezed,Object? metrics = freezed,Object? featured = null,Object? verified = null,Object? isCollection = null,Object? guid = freezed,Object? collectionGuids = null,Object? createdAt = freezed,Object? updatedAt = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(GalleryPlugin(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
@@ -3330,7 +3418,7 @@ as DateTime?,
 @override
 @pragma('vm:prefer-inline')
 $PluginRepositoryCopyWith<$Res> get repository {
-  
+
   return $PluginRepositoryCopyWith<$Res>(_self.repository, (value) {
     return _then(_self.copyWith(repository: value));
   });
@@ -3339,7 +3427,7 @@ $PluginRepositoryCopyWith<$Res> get repository {
 @override
 @pragma('vm:prefer-inline')
 $PluginReleasesCopyWith<$Res> get releases {
-  
+
   return $PluginReleasesCopyWith<$Res>(_self.releases, (value) {
     return _then(_self.copyWith(releases: value));
   });
@@ -3348,7 +3436,7 @@ $PluginReleasesCopyWith<$Res> get releases {
 @override
 @pragma('vm:prefer-inline')
 $PluginInstallationCopyWith<$Res> get installation {
-  
+
   return $PluginInstallationCopyWith<$Res>(_self.installation, (value) {
     return _then(_self.copyWith(installation: value));
   });
@@ -3520,7 +3608,7 @@ return $default(_that.id,_that.name,_that.description,_that.longDescription,_tha
 @JsonSerializable()
 
 class _GalleryPlugin implements GalleryPlugin {
-  const _GalleryPlugin({required this.id, required this.name, required this.description, this.longDescription, required this.type, this.category, final  List<String> tags = const [], required this.author, required this.repository, required this.releases, required this.installation, this.compatibility, final  List<PluginScreenshot> screenshots = const [], this.documentation, this.metrics, this.featured = false, this.verified = false, this.isCollection = false, this.guid, final  List<String> collectionGuids = const [], this.createdAt, this.updatedAt}): _tags = tags,_screenshots = screenshots,_collectionGuids = collectionGuids;
+  const _GalleryPlugin({required this.id, required this.name, required this.description, this.longDescription, required this.type, this.category,  List<String> tags = const [], required this.author, required this.repository, required this.releases, required this.installation, this.compatibility,  List<PluginScreenshot> screenshots = const [], this.documentation, this.metrics, this.featured = false, this.verified = false, this.isCollection = false, this.guid,  List<String> collectionGuids = const [], this.createdAt, this.updatedAt}): _tags = tags,_screenshots = screenshots,_collectionGuids = collectionGuids;
   factory _GalleryPlugin.fromJson(Map<String, dynamic> json) => _$GalleryPluginFromJson(json);
 
 @override final  String id;
@@ -3577,16 +3665,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GalleryPlugin&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.longDescription, longDescription) || other.longDescription == longDescription)&&(identical(other.type, type) || other.type == type)&&(identical(other.category, category) || other.category == category)&&const DeepCollectionEquality().equals(other._tags, _tags)&&(identical(other.author, author) || other.author == author)&&(identical(other.repository, repository) || other.repository == repository)&&(identical(other.releases, releases) || other.releases == releases)&&(identical(other.installation, installation) || other.installation == installation)&&(identical(other.compatibility, compatibility) || other.compatibility == compatibility)&&const DeepCollectionEquality().equals(other._screenshots, _screenshots)&&(identical(other.documentation, documentation) || other.documentation == documentation)&&(identical(other.metrics, metrics) || other.metrics == metrics)&&(identical(other.featured, featured) || other.featured == featured)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.isCollection, isCollection) || other.isCollection == isCollection)&&(identical(other.guid, guid) || other.guid == guid)&&const DeepCollectionEquality().equals(other._collectionGuids, _collectionGuids)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GalleryPlugin&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.longDescription, longDescription) || other.longDescription == longDescription)&&(identical(other.type, type) || other.type == type)&&(identical(other.category, category) || other.category == category)&&const DeepCollectionEquality().equals(other.tags, _tags)&&(identical(other.author, author) || other.author == author)&&(identical(other.repository, repository) || other.repository == repository)&&(identical(other.releases, releases) || other.releases == releases)&&(identical(other.installation, installation) || other.installation == installation)&&(identical(other.compatibility, compatibility) || other.compatibility == compatibility)&&const DeepCollectionEquality().equals(other.screenshots, _screenshots)&&(identical(other.documentation, documentation) || other.documentation == documentation)&&(identical(other.metrics, metrics) || other.metrics == metrics)&&(identical(other.featured, featured) || other.featured == featured)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.isCollection, isCollection) || other.isCollection == isCollection)&&(identical(other.guid, guid) || other.guid == guid)&&const DeepCollectionEquality().equals(other.collectionGuids, _collectionGuids)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,name,description,longDescription,type,category,const DeepCollectionEquality().hash(_tags),author,repository,releases,installation,compatibility,const DeepCollectionEquality().hash(_screenshots),documentation,metrics,featured,verified,isCollection,guid,const DeepCollectionEquality().hash(_collectionGuids),createdAt,updatedAt]);
+int get hashCode {
+    return Object.hashAll([runtimeType,id,name,description,longDescription,type,category,const DeepCollectionEquality().hash(_tags),author,repository,releases,installation,compatibility,const DeepCollectionEquality().hash(_screenshots),documentation,metrics,featured,verified,isCollection,guid,const DeepCollectionEquality().hash(_collectionGuids),createdAt,updatedAt]);
+}
 
 @override
 String toString() {
-  return 'GalleryPlugin(id: $id, name: $name, description: $description, longDescription: $longDescription, type: $type, category: $category, tags: $tags, author: $author, repository: $repository, releases: $releases, installation: $installation, compatibility: $compatibility, screenshots: $screenshots, documentation: $documentation, metrics: $metrics, featured: $featured, verified: $verified, isCollection: $isCollection, guid: $guid, collectionGuids: $collectionGuids, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'GalleryPlugin(id: $id, name: $name, description: $description, longDescription: $longDescription, type: $type, category: $category, tags: $tags, author: $author, repository: $repository, releases: $releases, installation: $installation, compatibility: $compatibility, screenshots: $screenshots, documentation: $documentation, metrics: $metrics, featured: $featured, verified: $verified, isCollection: $isCollection, guid: $guid, collectionGuids: $collectionGuids, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -3647,7 +3737,7 @@ as DateTime?,
 @override
 @pragma('vm:prefer-inline')
 $PluginRepositoryCopyWith<$Res> get repository {
-  
+
   return $PluginRepositoryCopyWith<$Res>(_self.repository, (value) {
     return _then(_self.copyWith(repository: value));
   });
@@ -3656,7 +3746,7 @@ $PluginRepositoryCopyWith<$Res> get repository {
 @override
 @pragma('vm:prefer-inline')
 $PluginReleasesCopyWith<$Res> get releases {
-  
+
   return $PluginReleasesCopyWith<$Res>(_self.releases, (value) {
     return _then(_self.copyWith(releases: value));
   });
@@ -3665,7 +3755,7 @@ $PluginReleasesCopyWith<$Res> get releases {
 @override
 @pragma('vm:prefer-inline')
 $PluginInstallationCopyWith<$Res> get installation {
-  
+
   return $PluginInstallationCopyWith<$Res>(_self.installation, (value) {
     return _then(_self.copyWith(installation: value));
   });
@@ -3725,16 +3815,21 @@ $GalleryCopyWith<Gallery> get copyWith => _$GalleryCopyWithImpl<Gallery>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Gallery&&(identical(other.version, version) || other.version == version)&&(identical(other.lastUpdated, lastUpdated) || other.lastUpdated == lastUpdated)&&(identical(other.metadata, metadata) || other.metadata == metadata)&&const DeepCollectionEquality().equals(other.categories, categories)&&const DeepCollectionEquality().equals(other.authors, authors)&&const DeepCollectionEquality().equals(other.plugins, plugins));
+  final _this = this as Gallery;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Gallery&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.lastUpdated, _this.lastUpdated) || other.lastUpdated == _this.lastUpdated)&&(identical(other.metadata, _this.metadata) || other.metadata == _this.metadata)&&const DeepCollectionEquality().equals(other.categories, _this.categories)&&const DeepCollectionEquality().equals(other.authors, _this.authors)&&const DeepCollectionEquality().equals(other.plugins, _this.plugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version,lastUpdated,metadata,const DeepCollectionEquality().hash(categories),const DeepCollectionEquality().hash(authors),const DeepCollectionEquality().hash(plugins));
+int get hashCode {
+  final _this = this as Gallery;
+  return Object.hash(runtimeType,_this.version,_this.lastUpdated,_this.metadata,const DeepCollectionEquality().hash(_this.categories),const DeepCollectionEquality().hash(_this.authors),const DeepCollectionEquality().hash(_this.plugins));
+}
 
 @override
 String toString() {
-  return 'Gallery(version: $version, lastUpdated: $lastUpdated, metadata: $metadata, categories: $categories, authors: $authors, plugins: $plugins)';
+  final _this = this as Gallery;
+  return 'Gallery(version: ${_this.version}, lastUpdated: ${_this.lastUpdated}, metadata: ${_this.metadata}, categories: ${_this.categories}, authors: ${_this.authors}, plugins: ${_this.plugins})';
 }
 
 
@@ -3763,7 +3858,7 @@ class _$GalleryCopyWithImpl<$Res>
 /// Create a copy of Gallery
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? version = null,Object? lastUpdated = null,Object? metadata = null,Object? categories = null,Object? authors = null,Object? plugins = null,}) {
-  return _then(_self.copyWith(
+  return _then(Gallery(
 version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as String,lastUpdated: null == lastUpdated ? _self.lastUpdated : lastUpdated // ignore: cast_nullable_to_non_nullable
 as DateTime,metadata: null == metadata ? _self.metadata : metadata // ignore: cast_nullable_to_non_nullable
@@ -3778,7 +3873,7 @@ as List<GalleryPlugin>,
 @override
 @pragma('vm:prefer-inline')
 $GalleryMetadataCopyWith<$Res> get metadata {
-  
+
   return $GalleryMetadataCopyWith<$Res>(_self.metadata, (value) {
     return _then(_self.copyWith(metadata: value));
   });
@@ -3914,7 +4009,7 @@ return $default(_that.version,_that.lastUpdated,_that.metadata,_that.categories,
 @JsonSerializable()
 
 class _Gallery implements Gallery {
-  const _Gallery({required this.version, required this.lastUpdated, required this.metadata, final  List<PluginCategory> categories = const [], final  Map<String, PluginAuthor> authors = const {}, final  List<GalleryPlugin> plugins = const []}): _categories = categories,_authors = authors,_plugins = plugins;
+  const _Gallery({required this.version, required this.lastUpdated, required this.metadata,  List<PluginCategory> categories = const [],  Map<String, PluginAuthor> authors = const {},  List<GalleryPlugin> plugins = const []}): _categories = categories,_authors = authors,_plugins = plugins;
   factory _Gallery.fromJson(Map<String, dynamic> json) => _$GalleryFromJson(json);
 
 @override final  String version;
@@ -3955,16 +4050,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Gallery&&(identical(other.version, version) || other.version == version)&&(identical(other.lastUpdated, lastUpdated) || other.lastUpdated == lastUpdated)&&(identical(other.metadata, metadata) || other.metadata == metadata)&&const DeepCollectionEquality().equals(other._categories, _categories)&&const DeepCollectionEquality().equals(other._authors, _authors)&&const DeepCollectionEquality().equals(other._plugins, _plugins));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Gallery&&(identical(other.version, version) || other.version == version)&&(identical(other.lastUpdated, lastUpdated) || other.lastUpdated == lastUpdated)&&(identical(other.metadata, metadata) || other.metadata == metadata)&&const DeepCollectionEquality().equals(other.categories, _categories)&&const DeepCollectionEquality().equals(other.authors, _authors)&&const DeepCollectionEquality().equals(other.plugins, _plugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version,lastUpdated,metadata,const DeepCollectionEquality().hash(_categories),const DeepCollectionEquality().hash(_authors),const DeepCollectionEquality().hash(_plugins));
+int get hashCode {
+    return Object.hash(runtimeType,version,lastUpdated,metadata,const DeepCollectionEquality().hash(_categories),const DeepCollectionEquality().hash(_authors),const DeepCollectionEquality().hash(_plugins));
+}
 
 @override
 String toString() {
-  return 'Gallery(version: $version, lastUpdated: $lastUpdated, metadata: $metadata, categories: $categories, authors: $authors, plugins: $plugins)';
+    return 'Gallery(version: $version, lastUpdated: $lastUpdated, metadata: $metadata, categories: $categories, authors: $authors, plugins: $plugins)';
 }
 
 
@@ -4009,7 +4106,7 @@ as List<GalleryPlugin>,
 @override
 @pragma('vm:prefer-inline')
 $GalleryMetadataCopyWith<$Res> get metadata {
-  
+
   return $GalleryMetadataCopyWith<$Res>(_self.metadata, (value) {
     return _then(_self.copyWith(metadata: value));
   });
@@ -4030,16 +4127,21 @@ $PluginInstallStatusCopyWith<PluginInstallStatus> get copyWith => _$PluginInstal
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginInstallStatus&&(identical(other.phase, phase) || other.phase == phase)&&(identical(other.progress, progress) || other.progress == progress)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+  final _this = this as PluginInstallStatus;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginInstallStatus&&(identical(other.phase, _this.phase) || other.phase == _this.phase)&&(identical(other.progress, _this.progress) || other.progress == _this.progress)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,phase,progress,errorMessage);
+int get hashCode {
+  final _this = this as PluginInstallStatus;
+  return Object.hash(runtimeType,_this.phase,_this.progress,_this.errorMessage);
+}
 
 @override
 String toString() {
-  return 'PluginInstallStatus(phase: $phase, progress: $progress, errorMessage: $errorMessage)';
+  final _this = this as PluginInstallStatus;
+  return 'PluginInstallStatus(phase: ${_this.phase}, progress: ${_this.progress}, errorMessage: ${_this.errorMessage})';
 }
 
 
@@ -4068,7 +4170,7 @@ class _$PluginInstallStatusCopyWithImpl<$Res>
 /// Create a copy of PluginInstallStatus
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? phase = null,Object? progress = null,Object? errorMessage = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(PluginInstallStatus(
 phase: null == phase ? _self.phase : phase // ignore: cast_nullable_to_non_nullable
 as PluginInstallPhase,progress: null == progress ? _self.progress : progress // ignore: cast_nullable_to_non_nullable
 as double,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
@@ -4208,7 +4310,7 @@ return $default(_that.phase,_that.progress,_that.errorMessage);case _:
 
 class _PluginInstallStatus implements PluginInstallStatus {
   const _PluginInstallStatus({required this.phase, this.progress = 0.0, this.errorMessage});
-  
+
 
 @override final  PluginInstallPhase phase;
 @override@JsonKey() final  double progress;
@@ -4224,16 +4326,18 @@ _$PluginInstallStatusCopyWith<_PluginInstallStatus> get copyWith => __$PluginIns
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginInstallStatus&&(identical(other.phase, phase) || other.phase == phase)&&(identical(other.progress, progress) || other.progress == progress)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginInstallStatus&&(identical(other.phase, phase) || other.phase == phase)&&(identical(other.progress, progress) || other.progress == progress)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,phase,progress,errorMessage);
+int get hashCode {
+    return Object.hash(runtimeType,phase,progress,errorMessage);
+}
 
 @override
 String toString() {
-  return 'PluginInstallStatus(phase: $phase, progress: $progress, errorMessage: $errorMessage)';
+    return 'PluginInstallStatus(phase: $phase, progress: $progress, errorMessage: $errorMessage)';
 }
 
 
@@ -4287,16 +4391,21 @@ $CollectionExpansionCopyWith<CollectionExpansion> get copyWith => _$CollectionEx
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CollectionExpansion&&const DeepCollectionEquality().equals(other.plugins, plugins)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.error, error) || other.error == error));
+  final _this = this as CollectionExpansion;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CollectionExpansion&&const DeepCollectionEquality().equals(other.plugins, _this.plugins)&&(identical(other.isLoading, _this.isLoading) || other.isLoading == _this.isLoading)&&(identical(other.error, _this.error) || other.error == _this.error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(plugins),isLoading,error);
+int get hashCode {
+  final _this = this as CollectionExpansion;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.plugins),_this.isLoading,_this.error);
+}
 
 @override
 String toString() {
-  return 'CollectionExpansion(plugins: $plugins, isLoading: $isLoading, error: $error)';
+  final _this = this as CollectionExpansion;
+  return 'CollectionExpansion(plugins: ${_this.plugins}, isLoading: ${_this.isLoading}, error: ${_this.error})';
 }
 
 
@@ -4325,7 +4434,7 @@ class _$CollectionExpansionCopyWithImpl<$Res>
 /// Create a copy of CollectionExpansion
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? plugins = null,Object? isLoading = null,Object? error = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(CollectionExpansion(
 plugins: null == plugins ? _self.plugins : plugins // ignore: cast_nullable_to_non_nullable
 as List<CollectionPlugin>,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
 as bool,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
@@ -4464,8 +4573,8 @@ return $default(_that.plugins,_that.isLoading,_that.error);case _:
 
 
 class _CollectionExpansion implements CollectionExpansion {
-  const _CollectionExpansion({required final  List<CollectionPlugin> plugins, this.isLoading = false, this.error}): _plugins = plugins;
-  
+  const _CollectionExpansion({required  List<CollectionPlugin> plugins, this.isLoading = false, this.error}): _plugins = plugins;
+
 
  final  List<CollectionPlugin> _plugins;
 @override List<CollectionPlugin> get plugins {
@@ -4487,16 +4596,18 @@ _$CollectionExpansionCopyWith<_CollectionExpansion> get copyWith => __$Collectio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CollectionExpansion&&const DeepCollectionEquality().equals(other._plugins, _plugins)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CollectionExpansion&&const DeepCollectionEquality().equals(other.plugins, _plugins)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins),isLoading,error);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_plugins),isLoading,error);
+}
 
 @override
 String toString() {
-  return 'CollectionExpansion(plugins: $plugins, isLoading: $isLoading, error: $error)';
+    return 'CollectionExpansion(plugins: $plugins, isLoading: $isLoading, error: $error)';
 }
 
 
@@ -4540,8 +4651,7 @@ as String?,
 /// @nodoc
 mixin _$CollectionPlugin {
 
- String get name; String get relativePath; String get fileType;// 'o', 'lua', '3pot'
- String? get description; int? get fileSize; bool get selected;
+ String get name; String get relativePath; String get fileType; String? get description; int? get fileSize; bool get selected;
 /// Create a copy of CollectionPlugin
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -4554,16 +4664,21 @@ $CollectionPluginCopyWith<CollectionPlugin> get copyWith => _$CollectionPluginCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CollectionPlugin&&(identical(other.name, name) || other.name == name)&&(identical(other.relativePath, relativePath) || other.relativePath == relativePath)&&(identical(other.fileType, fileType) || other.fileType == fileType)&&(identical(other.description, description) || other.description == description)&&(identical(other.fileSize, fileSize) || other.fileSize == fileSize)&&(identical(other.selected, selected) || other.selected == selected));
+  final _this = this as CollectionPlugin;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CollectionPlugin&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.relativePath, _this.relativePath) || other.relativePath == _this.relativePath)&&(identical(other.fileType, _this.fileType) || other.fileType == _this.fileType)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.fileSize, _this.fileSize) || other.fileSize == _this.fileSize)&&(identical(other.selected, _this.selected) || other.selected == _this.selected));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,relativePath,fileType,description,fileSize,selected);
+int get hashCode {
+  final _this = this as CollectionPlugin;
+  return Object.hash(runtimeType,_this.name,_this.relativePath,_this.fileType,_this.description,_this.fileSize,_this.selected);
+}
 
 @override
 String toString() {
-  return 'CollectionPlugin(name: $name, relativePath: $relativePath, fileType: $fileType, description: $description, fileSize: $fileSize, selected: $selected)';
+  final _this = this as CollectionPlugin;
+  return 'CollectionPlugin(name: ${_this.name}, relativePath: ${_this.relativePath}, fileType: ${_this.fileType}, description: ${_this.description}, fileSize: ${_this.fileSize}, selected: ${_this.selected})';
 }
 
 
@@ -4592,7 +4707,7 @@ class _$CollectionPluginCopyWithImpl<$Res>
 /// Create a copy of CollectionPlugin
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? relativePath = null,Object? fileType = null,Object? description = freezed,Object? fileSize = freezed,Object? selected = null,}) {
-  return _then(_self.copyWith(
+  return _then(CollectionPlugin(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,relativePath: null == relativePath ? _self.relativePath : relativePath // ignore: cast_nullable_to_non_nullable
 as String,fileType: null == fileType ? _self.fileType : fileType // ignore: cast_nullable_to_non_nullable
@@ -4740,7 +4855,6 @@ class _CollectionPlugin implements CollectionPlugin {
 @override final  String name;
 @override final  String relativePath;
 @override final  String fileType;
-// 'o', 'lua', '3pot'
 @override final  String? description;
 @override final  int? fileSize;
 @override@JsonKey() final  bool selected;
@@ -4758,16 +4872,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CollectionPlugin&&(identical(other.name, name) || other.name == name)&&(identical(other.relativePath, relativePath) || other.relativePath == relativePath)&&(identical(other.fileType, fileType) || other.fileType == fileType)&&(identical(other.description, description) || other.description == description)&&(identical(other.fileSize, fileSize) || other.fileSize == fileSize)&&(identical(other.selected, selected) || other.selected == selected));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CollectionPlugin&&(identical(other.name, name) || other.name == name)&&(identical(other.relativePath, relativePath) || other.relativePath == relativePath)&&(identical(other.fileType, fileType) || other.fileType == fileType)&&(identical(other.description, description) || other.description == description)&&(identical(other.fileSize, fileSize) || other.fileSize == fileSize)&&(identical(other.selected, selected) || other.selected == selected));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,relativePath,fileType,description,fileSize,selected);
+int get hashCode {
+    return Object.hash(runtimeType,name,relativePath,fileType,description,fileSize,selected);
+}
 
 @override
 String toString() {
-  return 'CollectionPlugin(name: $name, relativePath: $relativePath, fileType: $fileType, description: $description, fileSize: $fileSize, selected: $selected)';
+    return 'CollectionPlugin(name: $name, relativePath: $relativePath, fileType: $fileType, description: $description, fileSize: $fileSize, selected: $selected)';
 }
 
 
@@ -4814,8 +4930,7 @@ as bool,
 /// @nodoc
 mixin _$QueuedPlugin {
 
- GalleryPlugin get plugin; String get selectedVersion;// 'latest', 'stable', or 'beta'
- bool get isCollection; QueuedPluginStatus get status; String? get errorMessage; double? get progress; List<CollectionPlugin> get selectedPlugins;
+ GalleryPlugin get plugin; String get selectedVersion; bool get isCollection; QueuedPluginStatus get status; String? get errorMessage; double? get progress; List<CollectionPlugin> get selectedPlugins;
 /// Create a copy of QueuedPlugin
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -4828,16 +4943,21 @@ $QueuedPluginCopyWith<QueuedPlugin> get copyWith => _$QueuedPluginCopyWithImpl<Q
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is QueuedPlugin&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.selectedVersion, selectedVersion) || other.selectedVersion == selectedVersion)&&(identical(other.isCollection, isCollection) || other.isCollection == isCollection)&&(identical(other.status, status) || other.status == status)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.progress, progress) || other.progress == progress)&&const DeepCollectionEquality().equals(other.selectedPlugins, selectedPlugins));
+  final _this = this as QueuedPlugin;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is QueuedPlugin&&(identical(other.plugin, _this.plugin) || other.plugin == _this.plugin)&&(identical(other.selectedVersion, _this.selectedVersion) || other.selectedVersion == _this.selectedVersion)&&(identical(other.isCollection, _this.isCollection) || other.isCollection == _this.isCollection)&&(identical(other.status, _this.status) || other.status == _this.status)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage)&&(identical(other.progress, _this.progress) || other.progress == _this.progress)&&const DeepCollectionEquality().equals(other.selectedPlugins, _this.selectedPlugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,plugin,selectedVersion,isCollection,status,errorMessage,progress,const DeepCollectionEquality().hash(selectedPlugins));
+int get hashCode {
+  final _this = this as QueuedPlugin;
+  return Object.hash(runtimeType,_this.plugin,_this.selectedVersion,_this.isCollection,_this.status,_this.errorMessage,_this.progress,const DeepCollectionEquality().hash(_this.selectedPlugins));
+}
 
 @override
 String toString() {
-  return 'QueuedPlugin(plugin: $plugin, selectedVersion: $selectedVersion, isCollection: $isCollection, status: $status, errorMessage: $errorMessage, progress: $progress, selectedPlugins: $selectedPlugins)';
+  final _this = this as QueuedPlugin;
+  return 'QueuedPlugin(plugin: ${_this.plugin}, selectedVersion: ${_this.selectedVersion}, isCollection: ${_this.isCollection}, status: ${_this.status}, errorMessage: ${_this.errorMessage}, progress: ${_this.progress}, selectedPlugins: ${_this.selectedPlugins})';
 }
 
 
@@ -4866,7 +4986,7 @@ class _$QueuedPluginCopyWithImpl<$Res>
 /// Create a copy of QueuedPlugin
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? plugin = null,Object? selectedVersion = null,Object? isCollection = null,Object? status = null,Object? errorMessage = freezed,Object? progress = freezed,Object? selectedPlugins = null,}) {
-  return _then(_self.copyWith(
+  return _then(QueuedPlugin(
 plugin: null == plugin ? _self.plugin : plugin // ignore: cast_nullable_to_non_nullable
 as GalleryPlugin,selectedVersion: null == selectedVersion ? _self.selectedVersion : selectedVersion // ignore: cast_nullable_to_non_nullable
 as String,isCollection: null == isCollection ? _self.isCollection : isCollection // ignore: cast_nullable_to_non_nullable
@@ -4882,7 +5002,7 @@ as List<CollectionPlugin>,
 @override
 @pragma('vm:prefer-inline')
 $GalleryPluginCopyWith<$Res> get plugin {
-  
+
   return $GalleryPluginCopyWith<$Res>(_self.plugin, (value) {
     return _then(_self.copyWith(plugin: value));
   });
@@ -5018,12 +5138,11 @@ return $default(_that.plugin,_that.selectedVersion,_that.isCollection,_that.stat
 @JsonSerializable()
 
 class _QueuedPlugin implements QueuedPlugin {
-  const _QueuedPlugin({required this.plugin, required this.selectedVersion, required this.isCollection, this.status = QueuedPluginStatus.queued, this.errorMessage, this.progress, final  List<CollectionPlugin> selectedPlugins = const []}): _selectedPlugins = selectedPlugins;
+  const _QueuedPlugin({required this.plugin, required this.selectedVersion, required this.isCollection, this.status = QueuedPluginStatus.queued, this.errorMessage, this.progress,  List<CollectionPlugin> selectedPlugins = const []}): _selectedPlugins = selectedPlugins;
   factory _QueuedPlugin.fromJson(Map<String, dynamic> json) => _$QueuedPluginFromJson(json);
 
 @override final  GalleryPlugin plugin;
 @override final  String selectedVersion;
-// 'latest', 'stable', or 'beta'
 @override final  bool isCollection;
 @override@JsonKey() final  QueuedPluginStatus status;
 @override final  String? errorMessage;
@@ -5049,16 +5168,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _QueuedPlugin&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.selectedVersion, selectedVersion) || other.selectedVersion == selectedVersion)&&(identical(other.isCollection, isCollection) || other.isCollection == isCollection)&&(identical(other.status, status) || other.status == status)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.progress, progress) || other.progress == progress)&&const DeepCollectionEquality().equals(other._selectedPlugins, _selectedPlugins));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _QueuedPlugin&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.selectedVersion, selectedVersion) || other.selectedVersion == selectedVersion)&&(identical(other.isCollection, isCollection) || other.isCollection == isCollection)&&(identical(other.status, status) || other.status == status)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.progress, progress) || other.progress == progress)&&const DeepCollectionEquality().equals(other.selectedPlugins, _selectedPlugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,plugin,selectedVersion,isCollection,status,errorMessage,progress,const DeepCollectionEquality().hash(_selectedPlugins));
+int get hashCode {
+    return Object.hash(runtimeType,plugin,selectedVersion,isCollection,status,errorMessage,progress,const DeepCollectionEquality().hash(_selectedPlugins));
+}
 
 @override
 String toString() {
-  return 'QueuedPlugin(plugin: $plugin, selectedVersion: $selectedVersion, isCollection: $isCollection, status: $status, errorMessage: $errorMessage, progress: $progress, selectedPlugins: $selectedPlugins)';
+    return 'QueuedPlugin(plugin: $plugin, selectedVersion: $selectedVersion, isCollection: $isCollection, status: $status, errorMessage: $errorMessage, progress: $progress, selectedPlugins: $selectedPlugins)';
 }
 
 
@@ -5104,7 +5225,7 @@ as List<CollectionPlugin>,
 @override
 @pragma('vm:prefer-inline')
 $GalleryPluginCopyWith<$Res> get plugin {
-  
+
   return $GalleryPluginCopyWith<$Res>(_self.plugin, (value) {
     return _then(_self.copyWith(plugin: value));
   });

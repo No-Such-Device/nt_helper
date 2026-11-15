@@ -717,45 +717,18 @@ void main() {
       expect(b.roundRobin, 5);
     });
 
-    test(
-      'discardChanges resets only selected existing rows and removes selected new rows',
-      () {
-        final cubit = _ExposedPolyMultisampleBuilderCubit(
-          previewService: PolyAudioPreviewService(
-            adapter: _FakePreviewAdapter(),
-          ),
-        );
-        addTearDown(cubit.close);
-        cubit.setTestState(
-          const PolyMultisampleBuilderState(
-            sourceMode: PolySampleSourceMode.local,
-            currentInstrument: PolySampleInstrument(
-              name: 'Piano',
-              sourcePath: '/tmp',
-              regions: [
-                PolySampleRegion(
-                  path: '/tmp/a.wav',
-                  fileName: 'a.wav',
-                  displayName: 'a.wav',
-                  rootMidi: 48,
-                  rootName: 'C3',
-                  switchPoint: 48,
-                  velocityLayer: 1,
-                  roundRobin: 1,
-                ),
-                PolySampleRegion(
-                  path: '/tmp/b.wav',
-                  fileName: 'b.wav',
-                  displayName: 'b.wav',
-                  rootMidi: 50,
-                  rootName: 'D3',
-                  switchPoint: 50,
-                  velocityLayer: 2,
-                  roundRobin: 2,
-                ),
-              ],
-            ),
-            baselineRegions: [
+    test('discardChanges resets only selected existing rows and removes selected new rows', () {
+      final cubit = _ExposedPolyMultisampleBuilderCubit(
+        previewService: PolyAudioPreviewService(adapter: _FakePreviewAdapter()),
+      );
+      addTearDown(cubit.close);
+      cubit.setTestState(
+        const PolyMultisampleBuilderState(
+          sourceMode: PolySampleSourceMode.local,
+          currentInstrument: PolySampleInstrument(
+            name: 'Piano',
+            sourcePath: '/tmp',
+            regions: [
               PolySampleRegion(
                 path: '/tmp/a.wav',
                 fileName: 'a.wav',
@@ -777,80 +750,102 @@ void main() {
                 roundRobin: 2,
               ),
             ],
-            editedRegions: [
-              PolySampleRegion(
-                path: '/tmp/a.wav',
-                fileName: 'a.wav',
-                displayName: 'a.wav',
-                rootMidi: 49,
-                rootName: 'C#3',
-                switchPoint: 49,
-                velocityLayer: 3,
-                roundRobin: 3,
-              ),
-              PolySampleRegion(
-                path: '/tmp/b.wav',
-                fileName: 'b.wav',
-                displayName: 'b.wav',
-                rootMidi: 51,
-                rootName: 'D#3',
-                switchPoint: 51,
-                velocityLayer: 4,
-                roundRobin: 4,
-              ),
-              PolySampleRegion(
-                path: '/tmp/new.wav',
-                fileName: 'new.wav',
-                displayName: 'new.wav',
-                rootMidi: 53,
-                rootName: 'F3',
-                switchPoint: 53,
-                velocityLayer: 5,
-                roundRobin: 5,
-              ),
-            ],
-            selectedPaths: {'/tmp/a.wav', '/tmp/new.wav'},
-            focusedPath: '/tmp/a.wav',
-            loopDrafts: {
-              '/tmp/a.wav': PolyWaveformDraft(loopStart: 10, loopEnd: 20),
-              '/tmp/b.wav': PolyWaveformDraft(loopStart: 30, loopEnd: 40),
-              '/tmp/new.wav': PolyWaveformDraft(loopStart: 50, loopEnd: 60),
-            },
-            wavEditDrafts: {
-              '/tmp/a.wav': PolyWaveformDraft(trimStart: 1),
-              '/tmp/b.wav': PolyWaveformDraft(trimStart: 2),
-              '/tmp/new.wav': PolyWaveformDraft(trimStart: 3),
-            },
           ),
-        );
+          baselineRegions: [
+            PolySampleRegion(
+              path: '/tmp/a.wav',
+              fileName: 'a.wav',
+              displayName: 'a.wav',
+              rootMidi: 48,
+              rootName: 'C3',
+              switchPoint: 48,
+              velocityLayer: 1,
+              roundRobin: 1,
+            ),
+            PolySampleRegion(
+              path: '/tmp/b.wav',
+              fileName: 'b.wav',
+              displayName: 'b.wav',
+              rootMidi: 50,
+              rootName: 'D3',
+              switchPoint: 50,
+              velocityLayer: 2,
+              roundRobin: 2,
+            ),
+          ],
+          editedRegions: [
+            PolySampleRegion(
+              path: '/tmp/a.wav',
+              fileName: 'a.wav',
+              displayName: 'a.wav',
+              rootMidi: 49,
+              rootName: 'C#3',
+              switchPoint: 49,
+              velocityLayer: 3,
+              roundRobin: 3,
+            ),
+            PolySampleRegion(
+              path: '/tmp/b.wav',
+              fileName: 'b.wav',
+              displayName: 'b.wav',
+              rootMidi: 51,
+              rootName: 'D#3',
+              switchPoint: 51,
+              velocityLayer: 4,
+              roundRobin: 4,
+            ),
+            PolySampleRegion(
+              path: '/tmp/new.wav',
+              fileName: 'new.wav',
+              displayName: 'new.wav',
+              rootMidi: 53,
+              rootName: 'F3',
+              switchPoint: 53,
+              velocityLayer: 5,
+              roundRobin: 5,
+            ),
+          ],
+          selectedPaths: {'/tmp/a.wav', '/tmp/new.wav'},
+          focusedPath: '/tmp/a.wav',
+          loopDrafts: {
+            '/tmp/a.wav': PolyWaveformDraft(loopStart: 10, loopEnd: 20),
+            '/tmp/b.wav': PolyWaveformDraft(loopStart: 30, loopEnd: 40),
+            '/tmp/new.wav': PolyWaveformDraft(loopStart: 50, loopEnd: 60),
+          },
+          wavEditDrafts: {
+            '/tmp/a.wav': PolyWaveformDraft(trimStart: 1),
+            '/tmp/b.wav': PolyWaveformDraft(trimStart: 2),
+            '/tmp/new.wav': PolyWaveformDraft(trimStart: 3),
+          },
+        ),
+      );
 
-        cubit.discardChanges();
+      cubit.discardChanges();
 
-        expect(cubit.state.editedRegions.map((region) => region.path), [
-          '/tmp/a.wav',
-          '/tmp/b.wav',
-        ]);
-        final a = cubit.state.editedRegions[0];
-        final b = cubit.state.editedRegions[1];
-        expect(a.rootMidi, 48);
-        expect(a.rootName, 'C3');
-        expect(a.switchPoint, 48);
-        expect(a.velocityLayer, 1);
-        expect(a.roundRobin, 1);
-        expect(b.rootMidi, 51);
-        expect(b.rootName, 'D#3');
-        expect(b.switchPoint, 51);
-        expect(b.velocityLayer, 4);
-        expect(b.roundRobin, 4);
-        expect(cubit.state.loopDrafts, isNot(contains('/tmp/a.wav')));
-        expect(cubit.state.wavEditDrafts, isNot(contains('/tmp/a.wav')));
-        expect(cubit.state.loopDrafts, isNot(contains('/tmp/new.wav')));
-        expect(cubit.state.wavEditDrafts, isNot(contains('/tmp/new.wav')));
-        expect(cubit.state.loopDrafts, contains('/tmp/b.wav'));
-        expect(cubit.state.wavEditDrafts, contains('/tmp/b.wav'));
-        expect(cubit.state.selectedPaths, {'/tmp/a.wav'});
-      },
-    );
+      expect(cubit.state.editedRegions.map((region) => region.path), [
+        '/tmp/a.wav',
+        '/tmp/b.wav',
+      ]);
+      final a = cubit.state.editedRegions[0];
+      final b = cubit.state.editedRegions[1];
+      expect(a.rootMidi, 48);
+      expect(a.rootName, 'C3');
+      expect(a.switchPoint, 48);
+      expect(a.velocityLayer, 1);
+      expect(a.roundRobin, 1);
+      expect(b.rootMidi, 51);
+      expect(b.rootName, 'D#3');
+      expect(b.switchPoint, 51);
+      expect(b.velocityLayer, 4);
+      expect(b.roundRobin, 4);
+      expect(cubit.state.loopDrafts, isNot(contains('/tmp/a.wav')));
+      expect(cubit.state.wavEditDrafts, isNot(contains('/tmp/a.wav')));
+      expect(cubit.state.loopDrafts, isNot(contains('/tmp/new.wav')));
+      expect(cubit.state.wavEditDrafts, isNot(contains('/tmp/new.wav')));
+      expect(cubit.state.loopDrafts, contains('/tmp/b.wav'));
+      expect(cubit.state.wavEditDrafts, contains('/tmp/b.wav'));
+      expect(cubit.state.selectedPaths, {'/tmp/a.wav'});
+    });
 
     test('discardChanges with no selection keeps full discard behavior', () {
       final cubit = _ExposedPolyMultisampleBuilderCubit(
@@ -1107,60 +1102,57 @@ void main() {
       await _waitForCondition(() => _waveformPreviewRootCount() == before);
     });
 
-    test(
-      'updateWavEditDraft removing the draft prunes waveform preview temp roots',
-      () async {
-        final source = File('${tempRoot.path}/Piano_C4.wav');
-        _writeTinyPreviewWav(source, frames: 8);
-        final adapter = _FakePreviewAdapter();
-        final previewService = PolyAudioPreviewService(adapter: adapter);
-        final cubit = _ExposedPolyMultisampleBuilderCubit(
-          previewService: previewService,
-        );
-        addTearDown(cubit.close);
-        cubit.setTestState(
-          PolyMultisampleBuilderState(
-            sourceMode: PolySampleSourceMode.local,
-            editedRegions: [
-              PolySampleRegion(
-                path: source.path,
-                fileName: 'Piano_C4.wav',
-                displayName: 'Piano_C4.wav',
-              ),
-            ],
-            waveformSummaries: {source.path: _overviewWithFrameCount(8)},
-            selectedPaths: {source.path},
-            focusedPath: source.path,
-          ),
-        );
+    test('updateWavEditDraft removing the draft prunes waveform preview temp roots', () async {
+      final source = File('${tempRoot.path}/Piano_C4.wav');
+      _writeTinyPreviewWav(source, frames: 8);
+      final adapter = _FakePreviewAdapter();
+      final previewService = PolyAudioPreviewService(adapter: adapter);
+      final cubit = _ExposedPolyMultisampleBuilderCubit(
+        previewService: previewService,
+      );
+      addTearDown(cubit.close);
+      cubit.setTestState(
+        PolyMultisampleBuilderState(
+          sourceMode: PolySampleSourceMode.local,
+          editedRegions: [
+            PolySampleRegion(
+              path: source.path,
+              fileName: 'Piano_C4.wav',
+              displayName: 'Piano_C4.wav',
+            ),
+          ],
+          waveformSummaries: {source.path: _overviewWithFrameCount(8)},
+          selectedPaths: {source.path},
+          focusedPath: source.path,
+        ),
+      );
 
-        await cubit.playOrStopPreview(source.path);
+      await cubit.playOrStopPreview(source.path);
 
-        cubit.updateWavEditDraft(
-          source.path,
-          const PolyWaveformDraft(fadeInFrames: 4),
-        );
-        // Root creation precedes render completion and cache registration.
-        await _waitForCondition(() => adapter.playedPaths.length == 2);
-        final editedPreview = File(adapter.playedPaths.last);
-        final editedRoot = editedPreview.parent;
-        expect(editedRoot.path, contains('nt_helper_poly_waveform_preview_'));
-        expect(editedPreview.existsSync(), isTrue);
+      cubit.updateWavEditDraft(
+        source.path,
+        const PolyWaveformDraft(fadeInFrames: 4),
+      );
+      // Root creation precedes render completion and cache registration.
+      await _waitForCondition(() => adapter.playedPaths.length == 2);
+      final editedPreview = File(adapter.playedPaths.last);
+      final editedRoot = editedPreview.parent;
+      expect(editedRoot.path, contains('nt_helper_poly_waveform_preview_'));
+      expect(editedPreview.existsSync(), isTrue);
 
-        cubit.updateWavEditDraft(source.path, const PolyWaveformDraft());
+      cubit.updateWavEditDraft(source.path, const PolyWaveformDraft());
 
-        await _waitForCondition(() => !editedRoot.existsSync());
-        // Reverting the playing sample creates a new, unedited preview root;
-        // a global temp-root count cannot distinguish it from a leaked draft.
-        await _waitForCondition(() => adapter.playedPaths.length == 3);
-        expect(editedRoot.existsSync(), isFalse);
-        expect(
-          File(adapter.playedPaths.last).readAsBytesSync(),
-          source.readAsBytesSync(),
-        );
-        expect(cubit.state.wavEditDrafts, isEmpty);
-      },
-    tags: ['regression']);
+      await _waitForCondition(() => !editedRoot.existsSync());
+      // Reverting the playing sample creates a new, unedited preview root;
+      // a global temp-root count cannot distinguish it from a leaked draft.
+      await _waitForCondition(() => adapter.playedPaths.length == 3);
+      expect(editedRoot.existsSync(), isFalse);
+      expect(
+        File(adapter.playedPaths.last).readAsBytesSync(),
+        source.readAsBytesSync(),
+      );
+      expect(cubit.state.wavEditDrafts, isEmpty);
+    }, tags: ['regression']);
 
     test(
       'keyboard note preview selects and plays a rendered local wav',
@@ -1313,7 +1305,8 @@ void main() {
         expect(adapter.playedPaths.first, adapter.playedPaths.last);
         expect(adapter.stopCount, 1);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('keyboard note preview honors an explicit switch boundary', () async {
       final lower = File('${tempRoot.path}/Lower_C3.wav');
@@ -1699,7 +1692,8 @@ void main() {
         expect(cubit.state.previewState.visiblePath, d4.path);
         expect(cubit.state.error, isNull);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'keyboard note preview invalidates cache when source file changes',
@@ -1779,7 +1773,8 @@ void main() {
           isEmpty,
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('keyboard note preview cleans temp files on close', () async {
       final source = File('${tempRoot.path}/Piano_C4.wav');
@@ -1813,39 +1808,36 @@ void main() {
       expect(root.existsSync(), isFalse);
     });
 
-    test(
-      'keyboard note preview with auto-preview enabled plays only rendered audio',
-      () async {
-        final source = File('${tempRoot.path}/Piano_C4.wav');
-        _writeTinyPreviewWav(source);
-        final adapter = _FakePreviewAdapter();
-        final cubit = _ExposedPolyMultisampleBuilderCubit(
-          previewService: PolyAudioPreviewService(adapter: adapter),
-          notePreviewRenderer: _ImmediateNotePreviewRenderer().render,
-        );
-        addTearDown(cubit.close);
-        cubit.setTestState(
-          PolyMultisampleBuilderState(
-            sourceMode: PolySampleSourceMode.local,
-            autoPreview: true,
-            editedRegions: [
-              PolySampleRegion(
-                path: source.path,
-                fileName: 'Piano_C4.wav',
-                displayName: 'Piano_C4.wav',
-                rootMidi: 60,
-                switchPoint: 60,
-              ),
-            ],
-          ),
-        );
+    test('keyboard note preview with auto-preview enabled plays only rendered audio', () async {
+      final source = File('${tempRoot.path}/Piano_C4.wav');
+      _writeTinyPreviewWav(source);
+      final adapter = _FakePreviewAdapter();
+      final cubit = _ExposedPolyMultisampleBuilderCubit(
+        previewService: PolyAudioPreviewService(adapter: adapter),
+        notePreviewRenderer: _ImmediateNotePreviewRenderer().render,
+      );
+      addTearDown(cubit.close);
+      cubit.setTestState(
+        PolyMultisampleBuilderState(
+          sourceMode: PolySampleSourceMode.local,
+          autoPreview: true,
+          editedRegions: [
+            PolySampleRegion(
+              path: source.path,
+              fileName: 'Piano_C4.wav',
+              displayName: 'Piano_C4.wav',
+              rootMidi: 60,
+              switchPoint: 60,
+            ),
+          ],
+        ),
+      );
 
-        await cubit.playKeyboardNotePreview(60);
+      await cubit.playKeyboardNotePreview(60);
 
-        expect(adapter.playedPaths, hasLength(1));
-        expect(adapter.playedPaths.single, isNot(source.path));
-      },
-    );
+      expect(adapter.playedPaths, hasLength(1));
+      expect(adapter.playedPaths.single, isNot(source.path));
+    });
 
     test('keyboard note preview reports adapter failures', () async {
       final source = File('${tempRoot.path}/Piano_C4.wav');
@@ -2007,7 +1999,8 @@ void main() {
         expect(cubit.state.editedRegions.single.rootMidi, 50);
         expect(cubit.state.editedRegions.single.velocityLayer, 2);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'hardware selection auto-preview drops stale selections without backlog',
@@ -2081,7 +2074,8 @@ void main() {
           '/samples/Piano/Piano_D3.wav',
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('saveDestructiveWav forwards fade curve and strength', () {
       const draft = PolyWaveformDraft(
@@ -2234,87 +2228,84 @@ void main() {
       expect(draft.loopEnd, 900);
     });
 
-    test(
-      'loop edit preview debounces to the latest draft without queuing stale previews',
-      () async {
-        final source = File('${tempRoot.path}/loop-preview.wav');
-        _writeTinyPreviewWav(source, frames: 240);
-        final adapter = _FakePreviewAdapter();
-        final cubit = _ExposedPolyMultisampleBuilderCubit(
-          previewService: PolyAudioPreviewService(adapter: adapter),
-        );
-        addTearDown(cubit.close);
-        cubit.setTestState(
-          PolyMultisampleBuilderState(
-            waveformSummaries: {
-              source.path: WavOverview(
-                sampleRate: 44100,
-                frameCount: 240,
-                peaks: const [WavPeak(min: -0.5, max: 0.5)],
-                zeroCrossings: const [20, 80, 120, 160, 220],
-              ),
-            },
-          ),
-        );
-
-        // Control only debounce timers. Filesystem and preview Futures still
-        // run normally; observe completion instead of sleeping for I/O.
-        final timers = <_ControlledPreviewTimer>[];
-        runZoned(
-          () {
-            cubit.updateLoopDraft(
-              source.path,
-              const PolyWaveformDraft(loopStart: 70, loopEnd: 118),
-            );
-            cubit.updateLoopDraft(
-              source.path,
-              const PolyWaveformDraft(loopStart: 78, loopEnd: 158),
-            );
-            cubit.updateLoopDraft(
-              source.path,
-              const PolyWaveformDraft(loopStart: 82, loopEnd: 218),
-            );
+    test('loop edit preview debounces to the latest draft without queuing stale previews', () async {
+      final source = File('${tempRoot.path}/loop-preview.wav');
+      _writeTinyPreviewWav(source, frames: 240);
+      final adapter = _FakePreviewAdapter();
+      final cubit = _ExposedPolyMultisampleBuilderCubit(
+        previewService: PolyAudioPreviewService(adapter: adapter),
+      );
+      addTearDown(cubit.close);
+      cubit.setTestState(
+        PolyMultisampleBuilderState(
+          waveformSummaries: {
+            source.path: WavOverview(
+              sampleRate: 44100,
+              frameCount: 240,
+              peaks: const [WavPeak(min: -0.5, max: 0.5)],
+              zeroCrossings: const [20, 80, 120, 160, 220],
+            ),
           },
-          zoneSpecification: ZoneSpecification(
-            createTimer: (self, parent, zone, duration, callback) {
-              expect(duration, greaterThan(Duration.zero));
-              final timer = _ControlledPreviewTimer(
-                zone.bindCallbackGuarded(callback),
-              );
-              timers.add(timer);
-              return timer;
-            },
-          ),
-        );
+        ),
+      );
 
-        expect(timers, hasLength(3));
-        expect(timers.take(2).every((timer) => !timer.isActive), isTrue);
-        expect(timers.last.isActive, isTrue);
-        expect(adapter.playedPaths, isEmpty);
-        timers[0].fire();
-        timers[1].fire();
-        expect(adapter.playedPaths, isEmpty);
+      // Control only debounce timers. Filesystem and preview Futures still
+      // run normally; observe completion instead of sleeping for I/O.
+      final timers = <_ControlledPreviewTimer>[];
+      runZoned(
+        () {
+          cubit.updateLoopDraft(
+            source.path,
+            const PolyWaveformDraft(loopStart: 70, loopEnd: 118),
+          );
+          cubit.updateLoopDraft(
+            source.path,
+            const PolyWaveformDraft(loopStart: 78, loopEnd: 158),
+          );
+          cubit.updateLoopDraft(
+            source.path,
+            const PolyWaveformDraft(loopStart: 82, loopEnd: 218),
+          );
+        },
+        zoneSpecification: ZoneSpecification(
+          createTimer: (self, parent, zone, duration, callback) {
+            expect(duration, greaterThan(Duration.zero));
+            final timer = _ControlledPreviewTimer(
+              zone.bindCallbackGuarded(callback),
+            );
+            timers.add(timer);
+            return timer;
+          },
+        ),
+      );
 
-        final playback = cubit.stream.firstWhere(
-          (state) => state.previewState.visiblePath == source.path,
-        );
-        timers.last.fire();
-        await playback.timeout(const Duration(seconds: 10));
+      expect(timers, hasLength(3));
+      expect(timers.take(2).every((timer) => !timer.isActive), isTrue);
+      expect(timers.last.isActive, isTrue);
+      expect(adapter.playedPaths, isEmpty);
+      timers[0].fire();
+      timers[1].fire();
+      expect(adapter.playedPaths, isEmpty);
 
-        expect(adapter.playedPaths, hasLength(1));
-        expect(adapter.playedPaths.single, isNot(source.path));
-        expect(cubit.state.previewState.visiblePath, source.path);
-        expect(cubit.state.loopDrafts[source.path]?.loopStart, 80);
-        expect(cubit.state.loopDrafts[source.path]?.loopEnd, 220);
-        final rendered = WavMetadataReader.parse(
-          await File(adapter.playedPaths.single).readAsBytes(),
-        );
-        // Final 80..220 loop: 140-frame pre-roll plus two 141-frame cycles.
-        // Earlier drafts would produce a shorter preview.
-        expect(rendered?.frameCount, 422);
-        expect(timers.last.isActive, isFalse);
-      },
-    tags: ['regression']);
+      final playback = cubit.stream.firstWhere(
+        (state) => state.previewState.visiblePath == source.path,
+      );
+      timers.last.fire();
+      await playback.timeout(const Duration(seconds: 10));
+
+      expect(adapter.playedPaths, hasLength(1));
+      expect(adapter.playedPaths.single, isNot(source.path));
+      expect(cubit.state.previewState.visiblePath, source.path);
+      expect(cubit.state.loopDrafts[source.path]?.loopStart, 80);
+      expect(cubit.state.loopDrafts[source.path]?.loopEnd, 220);
+      final rendered = WavMetadataReader.parse(
+        await File(adapter.playedPaths.single).readAsBytes(),
+      );
+      // Final 80..220 loop: 140-frame pre-roll plus two 141-frame cycles.
+      // Earlier drafts would produce a shorter preview.
+      expect(rendered?.frameCount, 422);
+      expect(timers.last.isActive, isFalse);
+    }, tags: ['regression']);
 
     test('discardChanges clears waveform drafts', () {
       final cubit = _ExposedPolyMultisampleBuilderCubit(
@@ -2979,7 +2970,8 @@ void main() {
         expect(cubit.state.currentInstrument, isNull);
         expect(cubit.state.effect, isNull);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('saveCustomDraft refuses to clear unsaved waveform drafts', () async {
       final cubit = _ExposedPolyMultisampleBuilderCubit(
@@ -3047,6 +3039,68 @@ void main() {
       },
     );
 
+    test(
+      'document URI WAV save preserves source drafts and the local folder',
+      () async {
+        final wavService = _RecordingWavService();
+        final cubit = _ExposedPolyMultisampleBuilderCubit(
+          wavService: wavService,
+          previewService: PolyAudioPreviewService(
+            adapter: _FakePreviewAdapter(),
+          ),
+        );
+        addTearDown(cubit.close);
+        cubit.setTestState(
+          const PolyMultisampleBuilderState(
+            lastWavExportFolder: '/tmp/previous folder',
+            wavEditDrafts: {'/tmp/a.wav': PolyWaveformDraft(trimStart: 10)},
+          ),
+        );
+
+        await cubit.completeDestructiveWavSave(
+          '/tmp/a.wav',
+          Uri.parse('content://documents/edited.wav'),
+        );
+
+        expect(cubit.state.error, isNull);
+        expect(cubit.state.wavEditDrafts, contains('/tmp/a.wav'));
+        expect(cubit.state.lastWavExportFolder, '/tmp/previous folder');
+        expect(wavService.loadedPaths, isEmpty);
+        expect(cubit.state.effect, 'Saved edited WAV.');
+      },
+    );
+
+    test(
+      'file URI WAV save decodes paths before detecting an overwrite',
+      () async {
+        final wavService = _RecordingWavService();
+        final cubit = _ExposedPolyMultisampleBuilderCubit(
+          wavService: wavService,
+          previewService: PolyAudioPreviewService(
+            adapter: _FakePreviewAdapter(),
+          ),
+        );
+        addTearDown(cubit.close);
+        cubit.setTestState(
+          const PolyMultisampleBuilderState(
+            wavEditDrafts: {
+              '/tmp/sample name.wav': PolyWaveformDraft(trimStart: 10),
+            },
+          ),
+        );
+
+        await cubit.completeDestructiveWavSave(
+          '/tmp/sample name.wav',
+          Uri.file('/tmp/sample name.wav'),
+        );
+
+        expect(cubit.state.error, isNull);
+        expect(cubit.state.wavEditDrafts, isEmpty);
+        expect(cubit.state.lastWavExportFolder, '/tmp');
+        expect(wavService.loadedPaths, ['/tmp/sample name.wav']);
+      },
+    );
+
     test('saveDestructiveWav reports failures and preserves drafts', () async {
       final wavService = _FailingWavService(saveWavFails: true);
       final cubit = _ExposedPolyMultisampleBuilderCubit(
@@ -3101,7 +3155,8 @@ void main() {
         expect(cubit.state.waveformLoadingPaths, isNot(contains('/tmp/a.wav')));
         expect(cubit.state.waveformSummaries, contains('/tmp/a.wav'));
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'stale waveform load completion is ignored after returning to sources',
@@ -3123,7 +3178,8 @@ void main() {
         expect(cubit.state.waveformSummaries, isNot(contains('/tmp/a.wav')));
         expect(cubit.state.waveformLoadingPaths, isEmpty);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'older same-path waveform load cannot overwrite forced refresh',
@@ -3148,7 +3204,8 @@ void main() {
 
         expect(cubit.state.waveformSummaries['/tmp/a.wav']!.frameCount, 2000);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'mapping edit during waveform load clears stale loading state',
@@ -3192,7 +3249,8 @@ void main() {
         expect(cubit.state.waveformLoadingPaths, isEmpty);
         expect(cubit.state.waveformSummaries, isNot(contains('/tmp/a.wav')));
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('forced waveform refresh failure removes stale summary', () async {
       final wavService = _FailingWavService();
@@ -3264,9 +3322,8 @@ void main() {
       expect(cubit.state.error, contains('already exists'));
       expect(existingOutput.readAsBytesSync(), [9]);
       expect(
-        File(
-          '${outputFolder.path}/poly_multisample_build_report.txt',
-        ).existsSync(),
+        File('${outputFolder.path}/poly_multisample_build_report.txt')
+            .existsSync(),
         isFalse,
       );
     });
@@ -3290,9 +3347,8 @@ void main() {
       expect(cubit.state.currentInstrument?.sourcePath, outputFolder.path);
       expect(cubit.state.lastCustomOutputFolder, outputFolder.parent.path);
       expect(
-        File(
-          '${outputFolder.path}/poly_multisample_build_report.txt',
-        ).readAsStringSync(),
+        File('${outputFolder.path}/poly_multisample_build_report.txt')
+            .readAsStringSync(),
         contains(
           'SoftPiano_C3.wav natural=C3 (explicit) low=C-1 (automatic) '
           'high=G9 velocity=- rr=-',
@@ -3355,7 +3411,8 @@ void main() {
         expect(tempImport.existsSync(), isTrue);
         expect(outputFolder.existsSync(), isTrue);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'hardware folder list clears a previously loaded instrument',
@@ -3531,7 +3588,8 @@ void main() {
         expect(cubit.state.status, PolyMultisampleLoadStatus.idle);
         expect(cubit.state.currentInstrument, isNull);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('cleans staged import temp roots on close', () async {
       final tempImport = Directory('${tempRoot.path}/import_temp')
@@ -3577,7 +3635,8 @@ void main() {
 
         expect(tempImport.existsSync(), isFalse);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'defers import temp cleanup while a custom draft save is active',
@@ -3613,7 +3672,8 @@ void main() {
 
         expect(tempImport.existsSync(), isFalse);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'defers replaced import temp cleanup while a custom draft save is active',
@@ -3665,7 +3725,8 @@ void main() {
         await cubit.close();
         expect(secondTemp.existsSync(), isFalse);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('does not let stale save use a newer import draft', () async {
       final firstTemp = Directory('${tempRoot.path}/first_stale_save_temp')
@@ -3749,7 +3810,8 @@ void main() {
         expect(firstTemp.existsSync(), isFalse);
         expect(secondTemp.existsSync(), isTrue);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
   });
 }
 

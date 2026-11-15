@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,9 +11,8 @@ const _stoppedSelectionAnimation = AlwaysStoppedAnimation<double>(1);
 Widget _testApp({required Widget home, bool disableAnimations = true}) {
   return MaterialApp(
     builder: (context, child) => MediaQuery(
-      data: MediaQuery.of(
-        context,
-      ).copyWith(disableAnimations: disableAnimations),
+      data: MediaQuery.of(context)
+          .copyWith(disableAnimations: disableAnimations),
       child: child!,
     ),
     home: home,

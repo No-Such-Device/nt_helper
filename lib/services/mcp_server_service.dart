@@ -10,7 +10,9 @@ import 'package:mcp_dart/mcp_dart.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/mcp/tool_registry.dart';
 import 'package:nt_helper/services/debug_service.dart';
+
 import 'dart:math' as math;
+
 import 'package:crypto/crypto.dart';
 
 /// Generate a unique session ID with secure random number generator
@@ -69,13 +71,10 @@ class McpServerService extends ChangeNotifier with WidgetsBindingObserver {
 
   @visibleForTesting
   McpServerService.forTesting({
-    required DistingCubit distingCubit,
-    required Future<IpadLocalNetwork> Function() readNetwork,
-    required Future<HttpServer> Function(InternetAddress, int) bindHttp,
-  }) : _distingCubit = distingCubit,
-       _isIos = true,
-       _readNetwork = readNetwork,
-       _bindHttp = bindHttp;
+    required this._distingCubit,
+    required this._readNetwork,
+    required this._bindHttp,
+  }) : _isIos = true;
 
   final bool _isIos;
   final Future<IpadLocalNetwork> Function() _readNetwork;

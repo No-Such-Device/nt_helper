@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Compact settings-row control for selecting an opaque Material theme seed.
 class ThemeSeedPicker extends StatelessWidget {

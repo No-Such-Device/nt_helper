@@ -11,6 +11,7 @@
 
 import 'dart:async';
 import 'dart:collection';
+
 import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
@@ -477,17 +478,14 @@ class _RttStats {
 class DistingMessageScheduler {
   DistingMessageScheduler({
     required MidiCommand midiCommand,
-    required MidiDevice inputDevice,
-    required MidiDevice outputDevice,
-    required int sysExId,
+    required this._inputDevice,
+    required this._outputDevice,
+    required this._sysExId,
     Duration messageInterval = const Duration(milliseconds: 50),
     Duration defaultTimeout = const Duration(milliseconds: 1000),
     this.defaultMaxRetries = 5,
     Duration defaultRetryDelay = Duration.zero,
   }) : _midi = midiCommand,
-       _inputDevice = inputDevice,
-       _outputDevice = outputDevice,
-       _sysExId = sysExId,
        messageInterval = _normalizeDuration(messageInterval),
        defaultTimeout = _normalizeDuration(defaultTimeout),
        defaultRetryDelay = _normalizeDuration(defaultRetryDelay) {

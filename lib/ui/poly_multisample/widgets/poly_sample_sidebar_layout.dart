@@ -1,6 +1,6 @@
 import 'dart:ui' show FontFeature;
 
-import 'package:flutter/material.dart' hide FontFeature;
+import 'package:material_ui/material_ui.dart' hide FontFeature;
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 
 class PolySampleSidebarLayout {

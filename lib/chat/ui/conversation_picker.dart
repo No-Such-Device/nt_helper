@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/chat/cubit/chat_cubit.dart';
 import 'package:nt_helper/chat/cubit/chat_state.dart';
 import 'package:nt_helper/chat/models/stored_conversation.dart';
@@ -244,9 +244,9 @@ class _ConversationPickerState extends State<ConversationPicker> {
                 child: Container(
                   height: 16,
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),

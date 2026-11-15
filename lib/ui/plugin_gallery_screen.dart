@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:nt_helper/ui/gallery/gallery_recovery_panel.dart';
 import 'package:flutter/foundation.dart';
@@ -334,9 +334,8 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
             const SizedBox(height: 8),
             Text(
               state.message,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: Theme.of(context).colorScheme.error),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -498,9 +497,8 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
               Text(
                 '${state.filteredPlugins.length} plugin${state.filteredPlugins.length == 1 ? '' : 's'}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: Theme.of(context).colorScheme.onSurface
+                      .withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -523,17 +521,15 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
           avatar: Icon(
             Icons.category,
             size: 18,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.7),
+            color: Theme.of(context).colorScheme.onSurface
+                .withValues(alpha: 0.7),
           ),
           label: Text(state.selectedCategory ?? 'Category'),
           deleteIcon: Icon(
             Icons.arrow_drop_down,
             size: 18,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.7),
+            color: Theme.of(context).colorScheme.onSurface
+                .withValues(alpha: 0.7),
           ),
           onDeleted: () {},
         ),
@@ -577,17 +573,15 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
           avatar: Icon(
             Icons.extension,
             size: 18,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.7),
+            color: Theme.of(context).colorScheme.onSurface
+                .withValues(alpha: 0.7),
           ),
           label: Text(state.selectedType?.displayName ?? 'Type'),
           deleteIcon: Icon(
             Icons.arrow_drop_down,
             size: 18,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.7),
+            color: Theme.of(context).colorScheme.onSurface
+                .withValues(alpha: 0.7),
           ),
           onDeleted: () {},
         ),
@@ -688,26 +682,23 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
           Icon(
             Icons.search_off,
             size: 64,
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.4),
+            color: Theme.of(context).colorScheme.onSurface
+                .withValues(alpha: 0.4),
           ),
           const SizedBox(height: 16),
           Text(
             'No plugins found',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.6),
+              color: Theme.of(context).colorScheme.onSurface
+                  .withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Try adjusting your search or filters',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.4),
+              color: Theme.of(context).colorScheme.onSurface
+                  .withValues(alpha: 0.4),
             ),
           ),
         ],
@@ -723,9 +714,8 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
       children: [
         Text(
           '$title ($count)',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.titleLarge
+              ?.copyWith(fontWeight: FontWeight.bold),
         ),
         if (showUpdateAll)
           FilledButton.tonalIcon(
@@ -858,9 +848,9 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
                           Icon(
                             Icons.person,
                             size: 12,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -882,9 +872,9 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
                             plugin.type.displayName,
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSecondary,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSecondary,
                                 ),
                           ),
                         ),
@@ -896,9 +886,8 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.outline.withValues(alpha: 0.2),
+                              color: Theme.of(context).colorScheme.outline
+                                  .withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -949,9 +938,9 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
                                       padding: const EdgeInsets.only(right: 8),
                                       child: Text(
                                         plugin.formattedLatestVersion,
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.bodySmall,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall,
                                       ),
                                     ),
                                   if (plugin.hasReadmeDocumentation)
@@ -1796,9 +1785,8 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(
-                  context,
-                ).colorScheme.shadow.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.shadow
+                    .withValues(alpha: 0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -1825,9 +1813,8 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
               Text(
                 'Supports .lua, .3pot, and .o files',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(context).colorScheme.onSurface
+                      .withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1849,9 +1836,8 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(
-                  context,
-                ).colorScheme.shadow.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.shadow
+                    .withValues(alpha: 0.1),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -1870,9 +1856,8 @@ class _PluginGalleryViewState extends State<_PluginGalleryView> {
               Text(
                 'This may take a few moments',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(context).colorScheme.onSurface
+                      .withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -2151,9 +2136,8 @@ class _BackupProgressDialogState extends State<_BackupProgressDialog> {
             const SizedBox(height: 8),
             Text(
               'Error: $_error',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.error,
-              ),
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: Theme.of(context).colorScheme.error),
             ),
           ],
         ],

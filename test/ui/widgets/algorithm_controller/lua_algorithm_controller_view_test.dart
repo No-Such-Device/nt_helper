@@ -1,6 +1,6 @@
 import 'dart:ui' show Tristate;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -238,7 +238,8 @@ void main() {
         expect(find.text('Nested section'), findsNothing);
         expect(find.text('Second content'), findsOneWidget);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
   }
 
   testWidgets('re-evaluates Lua when a new immutable Slot arrives', (

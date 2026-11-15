@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'algorithm_parameter.dart';
@@ -9,16 +9,14 @@ part of 'algorithm_parameter.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
 /// @nodoc
 mixin _$AlgorithmParameter {
 
- String get name; String? get unit;// Using dynamic for min/max/default as they can be int, double, or null
- dynamic get min; dynamic get max; dynamic get defaultValue; String? get scope;// e.g., "global", "per-channel", "per-trigger", "operator", "program", "mix", "routing", "vco", "gain", "filter", "animate"
- String? get description; List<String>? get enumValues; String? get type;// e.g., "file", "folder", "toggle", "bus", "scaled", "enum", "trigger", "trigger/gate"
- String? get busIdRef; String? get channelCountRef; bool? get isPerChannel; bool? get isCommon;
+ String get name; String? get unit; dynamic get min; dynamic get max; dynamic get defaultValue; String? get scope; String? get description; List<String>? get enumValues; String? get type; String? get busIdRef; String? get channelCountRef; bool? get isPerChannel; bool? get isCommon;
 /// Create a copy of AlgorithmParameter
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -31,16 +29,21 @@ $AlgorithmParameterCopyWith<AlgorithmParameter> get copyWith => _$AlgorithmParam
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmParameter&&(identical(other.name, name) || other.name == name)&&(identical(other.unit, unit) || other.unit == unit)&&const DeepCollectionEquality().equals(other.min, min)&&const DeepCollectionEquality().equals(other.max, max)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&(identical(other.scope, scope) || other.scope == scope)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.enumValues, enumValues)&&(identical(other.type, type) || other.type == type)&&(identical(other.busIdRef, busIdRef) || other.busIdRef == busIdRef)&&(identical(other.channelCountRef, channelCountRef) || other.channelCountRef == channelCountRef)&&(identical(other.isPerChannel, isPerChannel) || other.isPerChannel == isPerChannel)&&(identical(other.isCommon, isCommon) || other.isCommon == isCommon));
+  final _this = this as AlgorithmParameter;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmParameter&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.unit, _this.unit) || other.unit == _this.unit)&&const DeepCollectionEquality().equals(other.min, _this.min)&&const DeepCollectionEquality().equals(other.max, _this.max)&&const DeepCollectionEquality().equals(other.defaultValue, _this.defaultValue)&&(identical(other.scope, _this.scope) || other.scope == _this.scope)&&(identical(other.description, _this.description) || other.description == _this.description)&&const DeepCollectionEquality().equals(other.enumValues, _this.enumValues)&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.busIdRef, _this.busIdRef) || other.busIdRef == _this.busIdRef)&&(identical(other.channelCountRef, _this.channelCountRef) || other.channelCountRef == _this.channelCountRef)&&(identical(other.isPerChannel, _this.isPerChannel) || other.isPerChannel == _this.isPerChannel)&&(identical(other.isCommon, _this.isCommon) || other.isCommon == _this.isCommon));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,unit,const DeepCollectionEquality().hash(min),const DeepCollectionEquality().hash(max),const DeepCollectionEquality().hash(defaultValue),scope,description,const DeepCollectionEquality().hash(enumValues),type,busIdRef,channelCountRef,isPerChannel,isCommon);
+int get hashCode {
+  final _this = this as AlgorithmParameter;
+  return Object.hash(runtimeType,_this.name,_this.unit,const DeepCollectionEquality().hash(_this.min),const DeepCollectionEquality().hash(_this.max),const DeepCollectionEquality().hash(_this.defaultValue),_this.scope,_this.description,const DeepCollectionEquality().hash(_this.enumValues),_this.type,_this.busIdRef,_this.channelCountRef,_this.isPerChannel,_this.isCommon);
+}
 
 @override
 String toString() {
-  return 'AlgorithmParameter(name: $name, unit: $unit, min: $min, max: $max, defaultValue: $defaultValue, scope: $scope, description: $description, enumValues: $enumValues, type: $type, busIdRef: $busIdRef, channelCountRef: $channelCountRef, isPerChannel: $isPerChannel, isCommon: $isCommon)';
+  final _this = this as AlgorithmParameter;
+  return 'AlgorithmParameter(name: ${_this.name}, unit: ${_this.unit}, min: ${_this.min}, max: ${_this.max}, defaultValue: ${_this.defaultValue}, scope: ${_this.scope}, description: ${_this.description}, enumValues: ${_this.enumValues}, type: ${_this.type}, busIdRef: ${_this.busIdRef}, channelCountRef: ${_this.channelCountRef}, isPerChannel: ${_this.isPerChannel}, isCommon: ${_this.isCommon})';
 }
 
 
@@ -69,7 +72,7 @@ class _$AlgorithmParameterCopyWithImpl<$Res>
 /// Create a copy of AlgorithmParameter
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? unit = freezed,Object? min = freezed,Object? max = freezed,Object? defaultValue = freezed,Object? scope = freezed,Object? description = freezed,Object? enumValues = freezed,Object? type = freezed,Object? busIdRef = freezed,Object? channelCountRef = freezed,Object? isPerChannel = freezed,Object? isCommon = freezed,}) {
-  return _then(_self.copyWith(
+  return _then(AlgorithmParameter(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,unit: freezed == unit ? _self.unit : unit // ignore: cast_nullable_to_non_nullable
 as String?,min: freezed == min ? _self.min : min // ignore: cast_nullable_to_non_nullable
@@ -218,17 +221,15 @@ return $default(_that.name,_that.unit,_that.min,_that.max,_that.defaultValue,_th
 @JsonSerializable()
 
 class _AlgorithmParameter implements AlgorithmParameter {
-  const _AlgorithmParameter({required this.name, this.unit, this.min, this.max, this.defaultValue, this.scope, this.description, final  List<String>? enumValues, this.type, this.busIdRef, this.channelCountRef, this.isPerChannel, this.isCommon}): _enumValues = enumValues;
+  const _AlgorithmParameter({required this.name, this.unit, this.min, this.max, this.defaultValue, this.scope, this.description,  List<String>? enumValues, this.type, this.busIdRef, this.channelCountRef, this.isPerChannel, this.isCommon}): _enumValues = enumValues;
   factory _AlgorithmParameter.fromJson(Map<String, dynamic> json) => _$AlgorithmParameterFromJson(json);
 
 @override final  String name;
 @override final  String? unit;
-// Using dynamic for min/max/default as they can be int, double, or null
 @override final  dynamic min;
 @override final  dynamic max;
 @override final  dynamic defaultValue;
 @override final  String? scope;
-// e.g., "global", "per-channel", "per-trigger", "operator", "program", "mix", "routing", "vco", "gain", "filter", "animate"
 @override final  String? description;
  final  List<String>? _enumValues;
 @override List<String>? get enumValues {
@@ -240,7 +241,6 @@ class _AlgorithmParameter implements AlgorithmParameter {
 }
 
 @override final  String? type;
-// e.g., "file", "folder", "toggle", "bus", "scaled", "enum", "trigger", "trigger/gate"
 @override final  String? busIdRef;
 @override final  String? channelCountRef;
 @override final  bool? isPerChannel;
@@ -259,16 +259,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmParameter&&(identical(other.name, name) || other.name == name)&&(identical(other.unit, unit) || other.unit == unit)&&const DeepCollectionEquality().equals(other.min, min)&&const DeepCollectionEquality().equals(other.max, max)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&(identical(other.scope, scope) || other.scope == scope)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other._enumValues, _enumValues)&&(identical(other.type, type) || other.type == type)&&(identical(other.busIdRef, busIdRef) || other.busIdRef == busIdRef)&&(identical(other.channelCountRef, channelCountRef) || other.channelCountRef == channelCountRef)&&(identical(other.isPerChannel, isPerChannel) || other.isPerChannel == isPerChannel)&&(identical(other.isCommon, isCommon) || other.isCommon == isCommon));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmParameter&&(identical(other.name, name) || other.name == name)&&(identical(other.unit, unit) || other.unit == unit)&&const DeepCollectionEquality().equals(other.min, min)&&const DeepCollectionEquality().equals(other.max, max)&&const DeepCollectionEquality().equals(other.defaultValue, defaultValue)&&(identical(other.scope, scope) || other.scope == scope)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.enumValues, _enumValues)&&(identical(other.type, type) || other.type == type)&&(identical(other.busIdRef, busIdRef) || other.busIdRef == busIdRef)&&(identical(other.channelCountRef, channelCountRef) || other.channelCountRef == channelCountRef)&&(identical(other.isPerChannel, isPerChannel) || other.isPerChannel == isPerChannel)&&(identical(other.isCommon, isCommon) || other.isCommon == isCommon));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,unit,const DeepCollectionEquality().hash(min),const DeepCollectionEquality().hash(max),const DeepCollectionEquality().hash(defaultValue),scope,description,const DeepCollectionEquality().hash(_enumValues),type,busIdRef,channelCountRef,isPerChannel,isCommon);
+int get hashCode {
+    return Object.hash(runtimeType,name,unit,const DeepCollectionEquality().hash(min),const DeepCollectionEquality().hash(max),const DeepCollectionEquality().hash(defaultValue),scope,description,const DeepCollectionEquality().hash(_enumValues),type,busIdRef,channelCountRef,isPerChannel,isCommon);
+}
 
 @override
 String toString() {
-  return 'AlgorithmParameter(name: $name, unit: $unit, min: $min, max: $max, defaultValue: $defaultValue, scope: $scope, description: $description, enumValues: $enumValues, type: $type, busIdRef: $busIdRef, channelCountRef: $channelCountRef, isPerChannel: $isPerChannel, isCommon: $isCommon)';
+    return 'AlgorithmParameter(name: $name, unit: $unit, min: $min, max: $max, defaultValue: $defaultValue, scope: $scope, description: $description, enumValues: $enumValues, type: $type, busIdRef: $busIdRef, channelCountRef: $channelCountRef, isPerChannel: $isPerChannel, isCommon: $isCommon)';
 }
 
 

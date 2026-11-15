@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'connection_deletion_state.dart';
@@ -9,6 +9,7 @@ part of 'connection_deletion_state.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -20,7 +21,7 @@ mixin _$ConnectionDeletionState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionDeletionState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionDeletionState);
 }
 
 
@@ -29,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ConnectionDeletionState()';
+    return 'ConnectionDeletionState()';
 }
 
 
@@ -188,7 +189,7 @@ return tapSelected(_that.selectedConnectionIds);case _:
 
 class _Initial extends ConnectionDeletionState {
   const _Initial(): super._();
-  
+
 
 
 
@@ -197,7 +198,7 @@ class _Initial extends ConnectionDeletionState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Initial);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Initial);
 }
 
 
@@ -206,7 +207,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ConnectionDeletionState.initial()';
+    return 'ConnectionDeletionState.initial()';
 }
 
 
@@ -220,7 +221,7 @@ String toString() {
 
 class _Hovering extends ConnectionDeletionState {
   const _Hovering(this.connectionId): super._();
-  
+
 
  final  String connectionId;
 
@@ -234,16 +235,18 @@ _$HoveringCopyWith<_Hovering> get copyWith => __$HoveringCopyWithImpl<_Hovering>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Hovering&&(identical(other.connectionId, connectionId) || other.connectionId == connectionId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Hovering&&(identical(other.connectionId, connectionId) || other.connectionId == connectionId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,connectionId);
+int get hashCode {
+    return Object.hash(runtimeType,connectionId);
+}
 
 @override
 String toString() {
-  return 'ConnectionDeletionState.hovering(connectionId: $connectionId)';
+    return 'ConnectionDeletionState.hovering(connectionId: $connectionId)';
 }
 
 
@@ -285,8 +288,8 @@ as String,
 
 
 class _TapSelected extends ConnectionDeletionState {
-  const _TapSelected(final  Set<String> selectedConnectionIds): _selectedConnectionIds = selectedConnectionIds,super._();
-  
+  const _TapSelected( Set<String> selectedConnectionIds): _selectedConnectionIds = selectedConnectionIds,super._();
+
 
  final  Set<String> _selectedConnectionIds;
  Set<String> get selectedConnectionIds {
@@ -306,16 +309,18 @@ _$TapSelectedCopyWith<_TapSelected> get copyWith => __$TapSelectedCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TapSelected&&const DeepCollectionEquality().equals(other._selectedConnectionIds, _selectedConnectionIds));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _TapSelected&&const DeepCollectionEquality().equals(other.selectedConnectionIds, _selectedConnectionIds));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_selectedConnectionIds));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_selectedConnectionIds));
+}
 
 @override
 String toString() {
-  return 'ConnectionDeletionState.tapSelected(selectedConnectionIds: $selectedConnectionIds)';
+    return 'ConnectionDeletionState.tapSelected(selectedConnectionIds: $selectedConnectionIds)';
 }
 
 

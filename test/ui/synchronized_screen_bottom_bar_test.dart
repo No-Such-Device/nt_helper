@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -67,17 +67,14 @@ void main() {
       mockMetadataDao = MockMetadataDao();
       mockPresetsDao = MockPresetsDao();
       when(() => mockCubit.checkpoints).thenReturn([]);
-      when(
-        () => mockCubit.cpuUsageStream,
-      ).thenAnswer((_) => const Stream.empty());
+      when(() => mockCubit.cpuUsageStream)
+          .thenAnswer((_) => const Stream.empty());
       when(() => mockCubit.resumeCpuMonitoring()).thenReturn(null);
       when(() => mockCubit.pauseCpuMonitoring()).thenReturn(null);
-      when(
-        () => mockCubit.displayMemoryState,
-      ).thenReturn(const MemoryDisplayState.available(_memoryFixture));
-      when(
-        () => mockCubit.displayMemoryStateStream,
-      ).thenAnswer((_) => const Stream.empty());
+      when(() => mockCubit.displayMemoryState)
+          .thenReturn(const MemoryDisplayState.available(_memoryFixture));
+      when(() => mockCubit.displayMemoryStateStream)
+          .thenAnswer((_) => const Stream.empty());
       when(() => mockCubit.refreshDisplayMemory()).thenAnswer((_) async {});
       when(() => mockCubit.supportsMemoryUsage).thenReturn(false);
       when(() => mockCubit.database).thenReturn(mockDatabase);
@@ -281,7 +278,8 @@ void main() {
           1440: const Size(48, 48),
         });
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets(
       'supported live shortcut keeps all device-reported detail in the viewport',
@@ -358,7 +356,8 @@ void main() {
         }
         semantics.dispose();
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets('memory bars populate and update while detail stays closed', (
       tester,
@@ -373,12 +372,10 @@ void main() {
       final memoryStates = StreamController<MemoryDisplayState>.broadcast();
       addTearDown(memoryStates.close);
       var currentMemoryState = const MemoryDisplayState.unavailable();
-      when(
-        () => mockCubit.displayMemoryState,
-      ).thenAnswer((_) => currentMemoryState);
-      when(
-        () => mockCubit.displayMemoryStateStream,
-      ).thenAnswer((_) => memoryStates.stream);
+      when(() => mockCubit.displayMemoryState)
+          .thenAnswer((_) => currentMemoryState);
+      when(() => mockCubit.displayMemoryStateStream)
+          .thenAnswer((_) => memoryStates.stream);
 
       Future<void> emitFractions(Map<String, double> fractions) async {
         MemoryPoolUsage pool(String name) => MemoryPoolUsage(
@@ -423,9 +420,8 @@ void main() {
         expect(tester.getSize(fillOf(name)).height, 0, reason: name);
       }
 
-      final colorScheme = Theme.of(
-        tester.element(find.byType(MemoryMiniature)),
-      ).colorScheme;
+      final colorScheme = Theme.of(tester.element(find.byType(MemoryMiniature)))
+          .colorScheme;
       final expectedColors = <String, Color>{
         'SRAM': colorScheme.primary,
         'DRAM': colorScheme.secondary,

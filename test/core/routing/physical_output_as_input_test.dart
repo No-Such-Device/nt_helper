@@ -14,11 +14,10 @@ class _FakeRouting extends AlgorithmRouting {
   RoutingState _state = const RoutingState();
 
   _FakeRouting({
-    required String id,
+    required this._id,
     List<core.Port>? inputs,
     List<core.Port>? outputs,
-  }) : _id = id,
-       _inputs = inputs ?? const [],
+  }) : _inputs = inputs ?? const [],
        _outputs = outputs ?? const [] {
     algorithmUuid = _id;
   }
@@ -62,31 +61,28 @@ core.Port _inPort(
 
 void main() {
   group('Physical Output as Input Source', () {
-    test(
-      'creates hardware input connection for algorithm input on bus 15 (physical output O3)',
-      () {
-        // Algorithm with input on bus 15 (physical output O3)
-        final algo = _FakeRouting(
-          id: 'test_algo',
-          inputs: [_inPort('test_in', 15)],
-        );
+    test('creates hardware input connection for algorithm input on bus 15 (physical output O3)', () {
+      // Algorithm with input on bus 15 (physical output O3)
+      final algo = _FakeRouting(
+        id: 'test_algo',
+        inputs: [_inPort('test_in', 15)],
+      );
 
-        final conns = ConnectionDiscoveryService.discoverConnections([algo]);
+      final conns = ConnectionDiscoveryService.discoverConnections([algo]);
 
-        // Should create connection from hw_out_3 to algorithm input
-        final hwConn = conns.firstWhere(
-          (c) =>
-              c.connectionType == ConnectionType.hardwareInput &&
-              c.sourcePortId == 'hw_out_3' &&
-              c.destinationPortId == 'test_in',
-          orElse: () =>
-              throw Exception('Expected hardware input connection not found'),
-        );
+      // Should create connection from hw_out_3 to algorithm input
+      final hwConn = conns.firstWhere(
+        (c) =>
+            c.connectionType == ConnectionType.hardwareInput &&
+            c.sourcePortId == 'hw_out_3' &&
+            c.destinationPortId == 'test_in',
+        orElse: () =>
+            throw Exception('Expected hardware input connection not found'),
+      );
 
-        expect(hwConn.busNumber, equals(15));
-        expect(hwConn.connectionType, equals(ConnectionType.hardwareInput));
-      },
-    );
+      expect(hwConn.busNumber, equals(15));
+      expect(hwConn.connectionType, equals(ConnectionType.hardwareInput));
+    });
 
     test(
       'creates hardware input connection for bus 13 (physical output O1)',
@@ -132,45 +128,38 @@ void main() {
       },
     );
 
-    test(
-      'still creates hardware input connections for buses 1-12 (regression test)',
-      () {
-        final algo = _FakeRouting(
-          id: 'test_algo',
-          inputs: [
-            _inPort('in_1', 1),
-            _inPort('in_5', 5),
-            _inPort('in_12', 12),
-          ],
-        );
+    test('still creates hardware input connections for buses 1-12 (regression test)', () {
+      final algo = _FakeRouting(
+        id: 'test_algo',
+        inputs: [_inPort('in_1', 1), _inPort('in_5', 5), _inPort('in_12', 12)],
+      );
 
-        final conns = ConnectionDiscoveryService.discoverConnections([algo]);
+      final conns = ConnectionDiscoveryService.discoverConnections([algo]);
 
-        // Should have hardware input connections for buses 1, 5, 12
-        final hwConns = conns
-            .where((c) => c.connectionType == ConnectionType.hardwareInput)
-            .toList();
+      // Should have hardware input connections for buses 1, 5, 12
+      final hwConns = conns
+          .where((c) => c.connectionType == ConnectionType.hardwareInput)
+          .toList();
 
-        expect(hwConns.length, greaterThanOrEqualTo(3));
+      expect(hwConns.length, greaterThanOrEqualTo(3));
 
-        // Verify specific connections
-        expect(
-          hwConns.any((c) => c.sourcePortId == 'hw_in_1' && c.busNumber == 1),
-          isTrue,
-          reason: 'Should have hw_in_1 connection',
-        );
-        expect(
-          hwConns.any((c) => c.sourcePortId == 'hw_in_5' && c.busNumber == 5),
-          isTrue,
-          reason: 'Should have hw_in_5 connection',
-        );
-        expect(
-          hwConns.any((c) => c.sourcePortId == 'hw_in_12' && c.busNumber == 12),
-          isTrue,
-          reason: 'Should have hw_in_12 connection',
-        );
-      },
-    );
+      // Verify specific connections
+      expect(
+        hwConns.any((c) => c.sourcePortId == 'hw_in_1' && c.busNumber == 1),
+        isTrue,
+        reason: 'Should have hw_in_1 connection',
+      );
+      expect(
+        hwConns.any((c) => c.sourcePortId == 'hw_in_5' && c.busNumber == 5),
+        isTrue,
+        reason: 'Should have hw_in_5 connection',
+      );
+      expect(
+        hwConns.any((c) => c.sourcePortId == 'hw_in_12' && c.busNumber == 12),
+        isTrue,
+        reason: 'Should have hw_in_12 connection',
+      );
+    });
 
     test('does NOT create hardware connection for aux bus 21', () {
       final algo = _FakeRouting(

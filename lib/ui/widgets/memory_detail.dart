@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:nt_helper/models/memory_display_state.dart';
 import 'package:nt_helper/models/memory_usage.dart';
@@ -640,9 +640,8 @@ class _MemoryFreshnessStatus extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               label,
-              style: Theme.of(
-                context,
-              ).textTheme.labelSmall?.copyWith(color: color),
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(color: color),
             ),
           ],
         ),

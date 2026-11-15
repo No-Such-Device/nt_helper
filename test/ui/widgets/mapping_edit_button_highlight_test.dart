@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -27,9 +27,8 @@ void main() {
     mockMidiListenerCubit = MockMidiListenerCubit();
 
     when(() => mockDistingCubit.state).thenReturn(const DistingStateInitial());
-    when(
-      () => mockDistingCubit.scheduleParameterRefresh(any()),
-    ).thenReturn(null);
+    when(() => mockDistingCubit.scheduleParameterRefresh(any()))
+        .thenReturn(null);
     when(() => mockDistingCubit.disting()).thenReturn(null);
   });
 
@@ -75,9 +74,8 @@ void main() {
   Widget createTestWidget() {
     return MaterialApp(
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.teal,
-        ).copyWith(tertiary: Colors.orange),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal)
+            .copyWith(tertiary: Colors.orange),
       ),
       home: MultiBlocProvider(
         providers: [

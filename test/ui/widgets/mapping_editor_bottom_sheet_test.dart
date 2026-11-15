@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -42,9 +42,8 @@ void main() {
       tester,
     ) async {
       final pendingSave = Completer<void>();
-      when(
-        () => distingCubit.saveMapping(any(), any(), any()),
-      ).thenAnswer((_) => pendingSave.future);
+      when(() => distingCubit.saveMapping(any(), any(), any()))
+          .thenAnswer((_) => pendingSave.future);
 
       final accessibilityMessages = <Object?>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

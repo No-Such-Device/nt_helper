@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/chat/models/allowed_file_root.dart';
 import 'package:nt_helper/chat/models/chat_settings.dart';
 import 'package:nt_helper/chat/models/additional_provider_config.dart';
@@ -967,9 +967,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
       await settings.setThemeSeedColor(_themeSeedColor);
 
       if (mounted) {
-        Navigator.of(
-          context,
-        ).pop(true); // Return true to indicate settings were saved
+        Navigator.of(context)
+            .pop(true); // Return true to indicate settings were saved
       }
     }
   }
@@ -1127,9 +1126,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           'Connect to device to view RTT stats',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
                         ),
                       ),
@@ -1515,9 +1514,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
               children: [
                 TextButton(
                   onPressed: () {
-                    Navigator.of(
-                      context,
-                    ).pop(false); // Return false to indicate cancel
+                    Navigator.of(context)
+                        .pop(false); // Return false to indicate cancel
                   },
                   child: const Text('Cancel'),
                 ),

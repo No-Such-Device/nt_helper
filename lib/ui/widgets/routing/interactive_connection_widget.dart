@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:nt_helper/core/platform/platform_interaction_service.dart';
@@ -289,15 +289,13 @@ class _InteractiveConnectionWidgetState
                   width: minSize,
                   height: minSize,
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.error.withValues(alpha: 0.9),
+                    color: Theme.of(context).colorScheme.error
+                        .withValues(alpha: 0.9),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.shadow.withValues(alpha: 0.3),
+                        color: Theme.of(context).colorScheme.shadow
+                            .withValues(alpha: 0.3),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -330,15 +328,13 @@ class _InteractiveConnectionWidgetState
                 width: minSize,
                 height: minSize,
                 decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.error.withValues(alpha: 0.9),
+                  color: Theme.of(context).colorScheme.error
+                      .withValues(alpha: 0.9),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.shadow.withValues(alpha: 0.2),
+                      color: Theme.of(context).colorScheme.shadow
+                          .withValues(alpha: 0.2),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),

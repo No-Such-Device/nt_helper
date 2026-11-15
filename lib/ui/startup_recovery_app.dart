@@ -3,7 +3,7 @@ import 'dart:ffi' show Abi;
 import 'dart:io';
 import 'dart:ui' show AppExitResponse;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:nt_helper/disting_app.dart';
@@ -187,12 +187,12 @@ class _RecoveryDialogState extends State<_RecoveryDialog> {
   Future<void> _chooseLibrary() async {
     setState(() => _choosing = true);
     try {
-      final result = await FilePicker.pickFiles(
+      final result = await FilePicker.pickFile(
         dialogTitle: 'Choose saved library',
         type: FileType.custom,
         allowedExtensions: ['sqlite', 'sqlite3', 'db'],
       );
-      final path = result?.files.single.path;
+      final path = result?.path;
       if (path != null && mounted && !controller.closed) {
         await controller.retry(importSource: File(path));
       }

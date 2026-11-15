@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/routing_editor_cubit.dart';
@@ -92,8 +92,6 @@ void main() {
       // Verify no exceptions during rendering with callbacks
       expect(tester.takeException(), isNull);
     });
-
-    
 
     testWidgets('RoutingEditorCubit setPortOutputMode integration', (
       tester,

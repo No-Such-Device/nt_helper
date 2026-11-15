@@ -527,9 +527,8 @@ class Ntx8cvSettingsState {
 /// listens to [Ntx8cvConnectionCubit] so it can only issue setting requests
 /// through the session that is currently scoped to the selected device.
 class Ntx8cvSettingsCubit extends Cubit<Ntx8cvSettingsState> {
-  Ntx8cvSettingsCubit({required Ntx8cvConnectionCubit connectionCubit})
-    : _connectionCubit = connectionCubit,
-      super(const Ntx8cvSettingsState()) {
+  Ntx8cvSettingsCubit({required this._connectionCubit})
+    : super(const Ntx8cvSettingsState()) {
     _connectionSubscription = _connectionCubit.stream.listen(
       _handleConnectionState,
     );

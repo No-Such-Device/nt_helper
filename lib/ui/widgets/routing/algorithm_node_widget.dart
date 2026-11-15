@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -10,6 +10,7 @@ import 'package:nt_helper/cubit/routing_editor_cubit.dart';
 import 'package:nt_helper/ui/widgets/mapping_editor_bottom_sheet.dart';
 
 import 'package:nt_helper/ui/widgets/routing/port_widget.dart';
+
 // No direct dependency on RoutingEditorWidget static members
 
 /// A draggable widget representing an algorithm node in the routing editor.
@@ -743,8 +744,7 @@ class _AlgorithmNodeWidgetState extends State<AlgorithmNodeWidget> {
       portId: portId,
       labelPosition: isInput ? PortLabelPosition.right : PortLabelPosition.left,
       theme: theme,
-      isConnected:
-          isConnected, // Keep using the passed connection info for algorithm ports
+      isConnected: isConnected, // Keep using the passed connection info for algorithm ports
       isHighlighted: portId != null && portId == widget.highlightedPortId,
       showShadowDot: showShadowDot,
       isFocused: focusIndex != null && focusIndex == _focusedPortIndex,

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'physical_connection.dart';
@@ -9,6 +9,7 @@ part of 'physical_connection.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -35,16 +36,21 @@ $PhysicalConnectionCopyWith<PhysicalConnection> get copyWith => _$PhysicalConnec
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhysicalConnection&&(identical(other.id, id) || other.id == id)&&(identical(other.sourcePortId, sourcePortId) || other.sourcePortId == sourcePortId)&&(identical(other.targetPortId, targetPortId) || other.targetPortId == targetPortId)&&(identical(other.busNumber, busNumber) || other.busNumber == busNumber)&&(identical(other.isInputConnection, isInputConnection) || other.isInputConnection == isInputConnection)&&(identical(other.algorithmIndex, algorithmIndex) || other.algorithmIndex == algorithmIndex));
+  final _this = this as PhysicalConnection;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhysicalConnection&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.sourcePortId, _this.sourcePortId) || other.sourcePortId == _this.sourcePortId)&&(identical(other.targetPortId, _this.targetPortId) || other.targetPortId == _this.targetPortId)&&(identical(other.busNumber, _this.busNumber) || other.busNumber == _this.busNumber)&&(identical(other.isInputConnection, _this.isInputConnection) || other.isInputConnection == _this.isInputConnection)&&(identical(other.algorithmIndex, _this.algorithmIndex) || other.algorithmIndex == _this.algorithmIndex));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sourcePortId,targetPortId,busNumber,isInputConnection,algorithmIndex);
+int get hashCode {
+  final _this = this as PhysicalConnection;
+  return Object.hash(runtimeType,_this.id,_this.sourcePortId,_this.targetPortId,_this.busNumber,_this.isInputConnection,_this.algorithmIndex);
+}
 
 @override
 String toString() {
-  return 'PhysicalConnection(id: $id, sourcePortId: $sourcePortId, targetPortId: $targetPortId, busNumber: $busNumber, isInputConnection: $isInputConnection, algorithmIndex: $algorithmIndex)';
+  final _this = this as PhysicalConnection;
+  return 'PhysicalConnection(id: ${_this.id}, sourcePortId: ${_this.sourcePortId}, targetPortId: ${_this.targetPortId}, busNumber: ${_this.busNumber}, isInputConnection: ${_this.isInputConnection}, algorithmIndex: ${_this.algorithmIndex})';
 }
 
 
@@ -73,7 +79,7 @@ class _$PhysicalConnectionCopyWithImpl<$Res>
 /// Create a copy of PhysicalConnection
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sourcePortId = null,Object? targetPortId = null,Object? busNumber = null,Object? isInputConnection = null,Object? algorithmIndex = null,}) {
-  return _then(_self.copyWith(
+  return _then(PhysicalConnection(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sourcePortId: null == sourcePortId ? _self.sourcePortId : sourcePortId // ignore: cast_nullable_to_non_nullable
 as String,targetPortId: null == targetPortId ? _self.targetPortId : targetPortId // ignore: cast_nullable_to_non_nullable
@@ -245,16 +251,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhysicalConnection&&(identical(other.id, id) || other.id == id)&&(identical(other.sourcePortId, sourcePortId) || other.sourcePortId == sourcePortId)&&(identical(other.targetPortId, targetPortId) || other.targetPortId == targetPortId)&&(identical(other.busNumber, busNumber) || other.busNumber == busNumber)&&(identical(other.isInputConnection, isInputConnection) || other.isInputConnection == isInputConnection)&&(identical(other.algorithmIndex, algorithmIndex) || other.algorithmIndex == algorithmIndex));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhysicalConnection&&(identical(other.id, id) || other.id == id)&&(identical(other.sourcePortId, sourcePortId) || other.sourcePortId == sourcePortId)&&(identical(other.targetPortId, targetPortId) || other.targetPortId == targetPortId)&&(identical(other.busNumber, busNumber) || other.busNumber == busNumber)&&(identical(other.isInputConnection, isInputConnection) || other.isInputConnection == isInputConnection)&&(identical(other.algorithmIndex, algorithmIndex) || other.algorithmIndex == algorithmIndex));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sourcePortId,targetPortId,busNumber,isInputConnection,algorithmIndex);
+int get hashCode {
+    return Object.hash(runtimeType,id,sourcePortId,targetPortId,busNumber,isInputConnection,algorithmIndex);
+}
 
 @override
 String toString() {
-  return 'PhysicalConnection(id: $id, sourcePortId: $sourcePortId, targetPortId: $targetPortId, busNumber: $busNumber, isInputConnection: $isInputConnection, algorithmIndex: $algorithmIndex)';
+    return 'PhysicalConnection(id: $id, sourcePortId: $sourcePortId, targetPortId: $targetPortId, busNumber: $busNumber, isInputConnection: $isInputConnection, algorithmIndex: $algorithmIndex)';
 }
 
 

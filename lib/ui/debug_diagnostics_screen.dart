@@ -1,6 +1,7 @@
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/services/sysex_diagnostics_service.dart';
@@ -74,9 +75,8 @@ class _DebugDiagnosticsScreenState extends State<DebugDiagnosticsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Diagnostics failed: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Diagnostics failed: $e')));
       }
     } finally {
       if (mounted) {
@@ -261,12 +261,12 @@ class _DebugDiagnosticsScreenState extends State<DebugDiagnosticsScreen> {
                             icon: const Icon(Icons.stop),
                             label: const Text('Cancel'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.error,
-                              foregroundColor: Theme.of(
-                                context,
-                              ).colorScheme.onError,
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .error,
+                              foregroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .onError,
                             ),
                           ),
                       ],

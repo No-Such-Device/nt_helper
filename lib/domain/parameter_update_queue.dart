@@ -42,11 +42,11 @@ class ParameterUpdate {
 
 class ParameterUpdateQueue {
   ParameterUpdateQueue({
-    required IDistingMidiManager midiManager,
+    required this._midiManager,
     this.processingInterval = const Duration(milliseconds: 5),
     this.operationInterval = const Duration(milliseconds: 25),
     this.onParameterStringUpdated,
-  }) : _midiManager = midiManager;
+  });
 
   final IDistingMidiManager _midiManager;
   final Duration processingInterval;

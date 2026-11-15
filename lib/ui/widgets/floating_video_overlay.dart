@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' show FlutterView, ViewFocusEvent, ViewFocusState;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -422,8 +422,7 @@ class FloatingVideoContent extends StatelessWidget {
               final opacity = 0.3 + 0.7 * Curves.easeOut.transform(fadeT);
 
               return Semantics(
-                label:
-                    'Disting NT display. Long press to copy frame to clipboard.',
+                label: 'Disting NT display. Long press to copy frame to clipboard.',
                 child: GestureDetector(
                   onLongPress: onCopyToClipboard,
                   child: SizedBox.expand(
@@ -463,28 +462,27 @@ class FloatingVideoContent extends StatelessWidget {
               bloc: cubit,
               builder: (context, cubitState) {
                 final videoState = cubitState.maybeWhen(
-                  synchronized:
-                      (
-                        _,
-                        _,
-                        _,
-                        _,
-                        _,
-                        _,
-                        _,
-                        _,
-                        _,
-                        _,
-                        _,
-                        _,
-                        _,
-                        _,
-                        videoStream,
-                        _,
-                        _,
-                        _,
-                        _,
-                      ) => videoStream,
+                  synchronized: (
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    _,
+                    videoStream,
+                    _,
+                    _,
+                    _,
+                    _,
+                  ) => videoStream,
                   orElse: () => null,
                 );
 

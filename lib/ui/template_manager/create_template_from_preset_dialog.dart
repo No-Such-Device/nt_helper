@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/semantics.dart';
 import 'package:nt_helper/db/daos/presets_dao.dart';
@@ -200,9 +200,8 @@ class _CreateTemplateFromPresetDialogState
     });
     _announce('Importing template JSON.');
     try {
-      await TemplateShareService(
-        _database,
-      ).importTemplate(await File(path).readAsString());
+      await TemplateShareService(_database)
+          .importTemplate(await File(path).readAsString());
       if (!mounted) return;
       _announce('Imported template.');
       Navigator.of(context).pop();

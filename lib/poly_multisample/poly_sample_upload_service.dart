@@ -61,8 +61,8 @@ const int _sysExUploadChunkSize = 512;
 
 class PolySampleUploadService {
   const PolySampleUploadService({
-    PolySampleApplyService applyService = const PolySampleApplyService(),
-  }) : _applyService = applyService;
+    this._applyService = const PolySampleApplyService(),
+  });
 
   final PolySampleApplyService _applyService;
 

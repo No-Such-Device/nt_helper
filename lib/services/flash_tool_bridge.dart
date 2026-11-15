@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:nt_helper/models/flash_progress.dart';
@@ -15,8 +16,7 @@ class FlashToolBridge {
   IOSink? _logSink;
   File? _currentLogFile;
 
-  FlashToolBridge({required FlashToolManager toolManager})
-    : _toolManager = toolManager;
+  FlashToolBridge({required this._toolManager});
 
   /// Flash firmware to the device
   /// Returns a stream of progress updates

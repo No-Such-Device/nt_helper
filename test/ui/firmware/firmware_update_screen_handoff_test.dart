@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:archive/archive.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/firmware_update_state.dart';
 import 'package:nt_helper/services/ipad_firmware_session.dart';
+
 import '../../test_helpers/ipad_firmware.dart';
+
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:flutter_midi_command_platform_interface/midi_port.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -134,18 +136,16 @@ void main() {
       downloadUrl: 'https://example.com/firmware.zip',
     );
 
-    when(
-      () => firmwareVersionService.fetchAvailableVersions(),
-    ).thenAnswer((_) async => [release]);
+    when(() => firmwareVersionService.fetchAvailableVersions())
+        .thenAnswer((_) async => [release]);
     when(
       () => firmwareVersionService.downloadFirmware(
         any(),
         onProgress: any(named: 'onProgress'),
       ),
     ).thenAnswer((_) async => '/tmp/downloaded-firmware.zip');
-    when(
-      () => flashToolManager.getToolPath(),
-    ).thenAnswer((_) async => '/path/to/nt-flash');
+    when(() => flashToolManager.getToolPath())
+        .thenAnswer((_) async => '/path/to/nt-flash');
     when(() => flashToolBridge.cancel()).thenAnswer((_) async {});
   });
 
@@ -379,9 +379,8 @@ void main() {
         contains('Programming complete. Verifying fresh application version'),
       );
       expect(spoken, contains('Application version mismatch'));
-      Focus.of(
-        tester.element(find.text('Recheck version only')),
-      ).requestFocus();
+      Focus.of(tester.element(find.text('Recheck version only')))
+          .requestFocus();
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
@@ -407,9 +406,8 @@ void main() {
       final flashProgress = StreamController<FlashProgress>();
       addTearDown(flashProgress.close);
       _stubDistingState(distingCubit, _selectionState());
-      when(
-        () => flashToolBridge.flash(any()),
-      ).thenAnswer((_) => flashProgress.stream);
+      when(() => flashToolBridge.flash(any()))
+          .thenAnswer((_) => flashProgress.stream);
 
       await _pumpScreen(
         tester,
@@ -434,9 +432,8 @@ void main() {
       );
       await tester.pump();
 
-      verify(
-        () => flashToolBridge.flash('/tmp/downloaded-firmware.zip'),
-      ).called(1);
+      verify(() => flashToolBridge.flash('/tmp/downloaded-firmware.zip'))
+          .called(1);
       flashProgress.add(
         const FlashProgress(
           stage: FlashStage.write,
@@ -489,9 +486,8 @@ void main() {
           17,
         ),
       ).thenAnswer((_) async => midiManager);
-      when(
-        () => flashToolBridge.flash(any()),
-      ).thenAnswer((_) => flashProgress.stream);
+      when(() => flashToolBridge.flash(any()))
+          .thenAnswer((_) => flashProgress.stream);
 
       await _pumpScreen(
         tester,
@@ -612,9 +608,8 @@ void main() {
           outputDevice,
         ),
       ).called(1);
-      verify(
-        () => flashToolBridge.flash('/tmp/downloaded-firmware.zip'),
-      ).called(1);
+      verify(() => flashToolBridge.flash('/tmp/downloaded-firmware.zip'))
+          .called(1);
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
@@ -700,9 +695,8 @@ void main() {
           outputDevice,
         ),
       ).called(1);
-      verify(
-        () => flashToolBridge.flash('/tmp/downloaded-firmware.zip'),
-      ).called(1);
+      verify(() => flashToolBridge.flash('/tmp/downloaded-firmware.zip'))
+          .called(1);
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();

@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:nt_helper/chat/models/chat_message.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 
@@ -238,28 +238,35 @@ class _AssistantBubbleState extends State<_AssistantBubble> {
                 label: widget.isNew
                     ? 'Assistant: ${widget.message.content}'
                     : null,
-                child: MarkdownBody(
-                  data: widget.message.content,
-                  selectable: true,
-                  styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-                    p: theme.textTheme.bodyMedium,
-                    code: theme.textTheme.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                      backgroundColor: theme.colorScheme.surfaceContainerLow,
-                    ),
-                    blockquote: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
-                    blockquoteDecoration: BoxDecoration(
-                      border: Border(
-                        left: BorderSide(
-                          color: theme.colorScheme.outlineVariant,
-                          width: 3,
+                child: SelectionArea(
+                  child: GptMarkdown(
+                    widget.message.content,
+                    style: theme.textTheme.bodyMedium,
+                    textDirection: Directionality.of(context),
+                    html: false,
+                    isStreaming: false,
+                    styleSheet: GptMarkdownStyleSheet(
+                      blockSpacing: 8,
+                      inlineCode: InlineCodeStyle(
+                        fontFamily: 'monospace',
+                        backgroundColor: theme.colorScheme.surfaceContainerLow,
+                        borderWidth: 0,
+                      ),
+                      codeBlock: const CodeBlockStyle(
+                        fontFamily: 'monospace',
+                        showCopyButton: false,
+                        showLanguageLabel: false,
+                      ),
+                      blockQuote: BlockQuoteStyle(
+                        textStyle: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
                         ),
+                        barColor: theme.colorScheme.outlineVariant,
+                        barWidth: 3,
+                        padding: const EdgeInsets.only(left: 12),
                       ),
                     ),
-                    blockquotePadding: const EdgeInsets.only(left: 12),
                   ),
                 ),
               ),

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,8 +55,7 @@ const Map<String, Object> _nonDefaultSeeds = {
   'openai_base_url': 'https://example.invalid/v1',
   'allow_codex_auth_refresh': true,
   'chat_local_directory': '/tmp/nt-helper-chat-workspace',
-  'allowed_file_roots':
-      '[{"id":"seed","label":"Seed","path":"/tmp/seed","acl":{"chat":["read"],"mcp":["search"]}}]',
+  'allowed_file_roots': '[{"id":"seed","label":"Seed","path":"/tmp/seed","acl":{"chat":["read"],"mcp":["search"]}}]',
   'ui_scale': 1.4,
   'theme_seed_argb': 0xFF6750A4,
   'auto_center_on_selection': false,
@@ -163,174 +162,168 @@ void main() {
       }
     });
 
-    test(
-      'after reset, every persisted key returns its declared default',
-      () async {
-        SharedPreferences.setMockInitialValues(_nonDefaultSeeds);
-        await settings.init();
+    test('after reset, every persisted key returns its declared default', () async {
+      SharedPreferences.setMockInitialValues(_nonDefaultSeeds);
+      await settings.init();
 
-        for (final key in SettingsService.debugPersistedKeys) {
-          expect(
-            _nonDefaultSeeds.containsKey(key),
-            isTrue,
-            reason: 'seed missing for $key',
-          );
-        }
-        expect(settings.ipadMcpEnabled, isTrue);
+      for (final key in SettingsService.debugPersistedKeys) {
         expect(
-          settings.requestTimeout,
-          isNot(SettingsService.defaultRequestTimeout),
+          _nonDefaultSeeds.containsKey(key),
+          isTrue,
+          reason: 'seed missing for $key',
         );
-        expect(
-          settings.cpuMonitorEnabled,
-          isNot(SettingsService.defaultCpuMonitorEnabled),
-        );
-        expect(settings.chatEnabled, isNot(SettingsService.defaultChatEnabled));
-        expect(settings.dismissedUpdateVersion, isNotNull);
-        expect(settings.lastUpdateCheckTimestamp, isNotNull);
-        expect(settings.anthropicApiKey, isNotNull);
-        expect(settings.openaiApiKey, isNotNull);
-        expect(settings.openaiBaseUrl, isNotNull);
-        expect(
-          settings.openaiSubscriptionModel,
-          isNot(SettingsService.defaultOpenaiSubscriptionModel),
-        );
-        expect(
-          settings.allowCodexAuthRefresh,
-          isNot(SettingsService.defaultAllowCodexAuthRefresh),
-        );
-        expect(settings.chatLocalDirectory, isNotNull);
-        expect(settings.allowedFileRoots, isNotEmpty);
+      }
+      expect(settings.ipadMcpEnabled, isTrue);
+      expect(
+        settings.requestTimeout,
+        isNot(SettingsService.defaultRequestTimeout),
+      );
+      expect(
+        settings.cpuMonitorEnabled,
+        isNot(SettingsService.defaultCpuMonitorEnabled),
+      );
+      expect(settings.chatEnabled, isNot(SettingsService.defaultChatEnabled));
+      expect(settings.dismissedUpdateVersion, isNotNull);
+      expect(settings.lastUpdateCheckTimestamp, isNotNull);
+      expect(settings.anthropicApiKey, isNotNull);
+      expect(settings.openaiApiKey, isNotNull);
+      expect(settings.openaiBaseUrl, isNotNull);
+      expect(
+        settings.openaiSubscriptionModel,
+        isNot(SettingsService.defaultOpenaiSubscriptionModel),
+      );
+      expect(
+        settings.allowCodexAuthRefresh,
+        isNot(SettingsService.defaultAllowCodexAuthRefresh),
+      );
+      expect(settings.chatLocalDirectory, isNotNull);
+      expect(settings.allowedFileRoots, isNotEmpty);
 
-        expect(settings.companionColumnWidths, isNotEmpty);
-        await settings.resetToDefaults();
-        expect(settings.companionColumnWidths, isEmpty);
+      expect(settings.companionColumnWidths, isNotEmpty);
+      await settings.resetToDefaults();
+      expect(settings.companionColumnWidths, isEmpty);
 
-        expect(settings.requestTimeout, SettingsService.defaultRequestTimeout);
-        expect(
-          settings.interMessageDelay,
-          SettingsService.defaultInterMessageDelay,
-        );
-        expect(settings.ipadMcpEnabled, isFalse);
-        expect(settings.hapticsEnabled, SettingsService.defaultHapticsEnabled);
-        expect(settings.mcpEnabled, SettingsService.defaultMcpEnabled);
-        expect(
-          settings.mcpRemoteConnections,
-          SettingsService.defaultMcpRemoteConnections,
-        );
-        expect(
-          settings.startPagesCollapsed,
-          SettingsService.defaultStartPagesCollapsed,
-        );
-        expect(settings.galleryUrl, SettingsService.defaultGalleryUrl);
-        expect(
-          settings.graphqlEndpoint,
-          SettingsService.defaultGraphqlEndpoint,
-        );
-        expect(
-          settings.includeCommunityPlugins,
-          SettingsService.defaultIncludeCommunityPlugins,
-        );
-        expect(
-          settings.overlayPositionX,
-          SettingsService.defaultOverlayPositionX,
-        );
-        expect(
-          settings.overlayPositionY,
-          SettingsService.defaultOverlayPositionY,
-        );
-        expect(
-          settings.overlaySizeScale,
-          SettingsService.defaultOverlaySizeScale,
-        );
-        expect(
-          settings.videoPopupNativeWindowEnabled,
-          SettingsService.defaultVideoPopupNativeWindowEnabled,
-        );
-        expect(
-          settings.videoToolbarAlwaysVisible,
-          SettingsService.defaultVideoToolbarAlwaysVisible,
-        );
-        expect(
-          settings.videoPopupAlwaysOnTop,
-          SettingsService.defaultVideoPopupAlwaysOnTop,
-        );
-        expect(
-          settings.videoPopupBoundsX,
-          SettingsService.defaultVideoPopupBoundsX,
-        );
-        expect(
-          settings.videoPopupBoundsY,
-          SettingsService.defaultVideoPopupBoundsY,
-        );
-        expect(
-          settings.videoPopupBoundsWidth,
-          SettingsService.defaultVideoPopupBoundsWidth,
-        );
-        expect(
-          settings.videoPopupBoundsHeight,
-          SettingsService.defaultVideoPopupBoundsHeight,
-        );
-        expect(settings.showDebugPanel, SettingsService.defaultShowDebugPanel);
-        expect(
-          settings.showContextualHelp,
-          SettingsService.defaultShowContextualHelp,
-        );
-        expect(
-          settings.algorithmCacheDays,
-          SettingsService.defaultAlgorithmCacheDays,
-        );
-        expect(
-          settings.cpuMonitorEnabled,
-          SettingsService.defaultCpuMonitorEnabled,
-        );
-        expect(
-          settings.splitDividerPosition,
-          SettingsService.defaultSplitDividerPosition,
-        );
-        expect(settings.chatEnabled, SettingsService.defaultChatEnabled);
-        expect(settings.chatPanelWidth, SettingsService.defaultChatPanelWidth);
-        expect(settings.chatLlmProvider, LlmProviderType.anthropic);
-        expect(settings.anthropicApiKey, isNull);
-        expect(settings.openaiApiKey, isNull);
-        expect(settings.anthropicModel, SettingsService.defaultAnthropicModel);
-        expect(settings.openaiModel, SettingsService.defaultOpenaiModel);
-        expect(
-          settings.openaiSubscriptionModel,
-          SettingsService.defaultOpenaiSubscriptionModel,
-        );
-        expect(settings.openaiBaseUrl, isNull);
-        expect(
-          settings.allowCodexAuthRefresh,
-          SettingsService.defaultAllowCodexAuthRefresh,
-        );
-        expect(settings.chatLocalDirectory, isNull);
-        expect(settings.allowedFileRoots, isEmpty);
-        expect(settings.dismissedUpdateVersion, isNull);
-        expect(settings.lastUpdateCheckTimestamp, isNull);
-        expect(settings.uiScale, SettingsService.defaultUiScale);
-        expect(settings.themeSeedColor, SettingsService.defaultThemeSeedColor);
-        expect(
-          settings.autoCenterOnSelection,
-          SettingsService.defaultAutoCenterOnSelection,
-        );
-        expect(
-          settings.showBackwardConnections,
-          SettingsService.defaultShowBackwardConnections,
-        );
+      expect(settings.requestTimeout, SettingsService.defaultRequestTimeout);
+      expect(
+        settings.interMessageDelay,
+        SettingsService.defaultInterMessageDelay,
+      );
+      expect(settings.ipadMcpEnabled, isFalse);
+      expect(settings.hapticsEnabled, SettingsService.defaultHapticsEnabled);
+      expect(settings.mcpEnabled, SettingsService.defaultMcpEnabled);
+      expect(
+        settings.mcpRemoteConnections,
+        SettingsService.defaultMcpRemoteConnections,
+      );
+      expect(
+        settings.startPagesCollapsed,
+        SettingsService.defaultStartPagesCollapsed,
+      );
+      expect(settings.galleryUrl, SettingsService.defaultGalleryUrl);
+      expect(settings.graphqlEndpoint, SettingsService.defaultGraphqlEndpoint);
+      expect(
+        settings.includeCommunityPlugins,
+        SettingsService.defaultIncludeCommunityPlugins,
+      );
+      expect(
+        settings.overlayPositionX,
+        SettingsService.defaultOverlayPositionX,
+      );
+      expect(
+        settings.overlayPositionY,
+        SettingsService.defaultOverlayPositionY,
+      );
+      expect(
+        settings.overlaySizeScale,
+        SettingsService.defaultOverlaySizeScale,
+      );
+      expect(
+        settings.videoPopupNativeWindowEnabled,
+        SettingsService.defaultVideoPopupNativeWindowEnabled,
+      );
+      expect(
+        settings.videoToolbarAlwaysVisible,
+        SettingsService.defaultVideoToolbarAlwaysVisible,
+      );
+      expect(
+        settings.videoPopupAlwaysOnTop,
+        SettingsService.defaultVideoPopupAlwaysOnTop,
+      );
+      expect(
+        settings.videoPopupBoundsX,
+        SettingsService.defaultVideoPopupBoundsX,
+      );
+      expect(
+        settings.videoPopupBoundsY,
+        SettingsService.defaultVideoPopupBoundsY,
+      );
+      expect(
+        settings.videoPopupBoundsWidth,
+        SettingsService.defaultVideoPopupBoundsWidth,
+      );
+      expect(
+        settings.videoPopupBoundsHeight,
+        SettingsService.defaultVideoPopupBoundsHeight,
+      );
+      expect(settings.showDebugPanel, SettingsService.defaultShowDebugPanel);
+      expect(
+        settings.showContextualHelp,
+        SettingsService.defaultShowContextualHelp,
+      );
+      expect(
+        settings.algorithmCacheDays,
+        SettingsService.defaultAlgorithmCacheDays,
+      );
+      expect(
+        settings.cpuMonitorEnabled,
+        SettingsService.defaultCpuMonitorEnabled,
+      );
+      expect(
+        settings.splitDividerPosition,
+        SettingsService.defaultSplitDividerPosition,
+      );
+      expect(settings.chatEnabled, SettingsService.defaultChatEnabled);
+      expect(settings.chatPanelWidth, SettingsService.defaultChatPanelWidth);
+      expect(settings.chatLlmProvider, LlmProviderType.anthropic);
+      expect(settings.anthropicApiKey, isNull);
+      expect(settings.openaiApiKey, isNull);
+      expect(settings.anthropicModel, SettingsService.defaultAnthropicModel);
+      expect(settings.openaiModel, SettingsService.defaultOpenaiModel);
+      expect(
+        settings.openaiSubscriptionModel,
+        SettingsService.defaultOpenaiSubscriptionModel,
+      );
+      expect(settings.openaiBaseUrl, isNull);
+      expect(
+        settings.allowCodexAuthRefresh,
+        SettingsService.defaultAllowCodexAuthRefresh,
+      );
+      expect(settings.chatLocalDirectory, isNull);
+      expect(settings.allowedFileRoots, isEmpty);
+      expect(settings.dismissedUpdateVersion, isNull);
+      expect(settings.lastUpdateCheckTimestamp, isNull);
+      expect(settings.uiScale, SettingsService.defaultUiScale);
+      expect(settings.themeSeedColor, SettingsService.defaultThemeSeedColor);
+      expect(
+        settings.autoCenterOnSelection,
+        SettingsService.defaultAutoCenterOnSelection,
+      );
+      expect(
+        settings.showBackwardConnections,
+        SettingsService.defaultShowBackwardConnections,
+      );
 
-        final prefs = await SharedPreferences.getInstance();
-        final leftoverOwnedKeys = prefs.getKeys().toSet().intersection(
-          SettingsService.debugPersistedKeys.toSet(),
-        );
-        expect(
-          leftoverOwnedKeys,
-          isEmpty,
-          reason:
-              'resetToDefaults left behind owned keys in storage: $leftoverOwnedKeys',
-        );
-      },
-    );
+      final prefs = await SharedPreferences.getInstance();
+      final leftoverOwnedKeys = prefs.getKeys().toSet().intersection(
+        SettingsService.debugPersistedKeys.toSet(),
+      );
+      expect(
+        leftoverOwnedKeys,
+        isEmpty,
+        reason:
+            'resetToDefaults left behind owned keys in storage: $leftoverOwnedKeys',
+      );
+    });
 
     test(
       'resetToDefaults resyncs ValueNotifiers backed by removed keys',
@@ -452,28 +445,24 @@ void main() {
       await settings.init();
     });
 
-    test(
-      'migrates legacy chat local directory as chat read/search',
-      () async {
-        SharedPreferences.setMockInitialValues({
-          'chat_local_directory': '/Volumes/DistingSD',
-        });
-        await settings.init();
+    test('migrates legacy chat local directory as chat read/search', () async {
+      SharedPreferences.setMockInitialValues({
+        'chat_local_directory': '/Volumes/DistingSD',
+      });
+      await settings.init();
 
-        final roots = settings.allowedFileRoots;
+      final roots = settings.allowedFileRoots;
 
-        expect(roots, hasLength(1));
-        expect(roots.single.id, 'local_context');
-        expect(roots.single.label, 'Local Context');
-        expect(roots.single.path, '/Volumes/DistingSD');
-        expect(
-          roots.single.permissionsFor(FileRootActor.chat),
-          containsAll({FileRootPermission.read, FileRootPermission.search}),
-        );
-        expect(roots.single.permissionsFor(FileRootActor.mcp), isEmpty);
-      },
-      tags: ['regression'],
-    );
+      expect(roots, hasLength(1));
+      expect(roots.single.id, 'local_context');
+      expect(roots.single.label, 'Local Context');
+      expect(roots.single.path, '/Volumes/DistingSD');
+      expect(
+        roots.single.permissionsFor(FileRootActor.chat),
+        containsAll({FileRootPermission.read, FileRootPermission.search}),
+      );
+      expect(roots.single.permissionsFor(FileRootActor.mcp), isEmpty);
+    }, tags: ['regression']);
 
     test('saves and loads ACL permissions', () async {
       await settings.setAllowedFileRoots([
@@ -619,9 +608,8 @@ void main() {
   group('SettingsService key registry', () {
     test('every _xxxKey constant in settings_service.dart is in '
         '_persistedKeys (and vice-versa)', () {
-      final source = File(
-        'lib/services/settings_service.dart',
-      ).readAsStringSync();
+      final source = File('lib/services/settings_service.dart')
+          .readAsStringSync();
 
       final keyConstantPattern = RegExp(
         r"static\s+const\s+String\s+_\w+Key\s*=\s*'([^']+)'\s*;",

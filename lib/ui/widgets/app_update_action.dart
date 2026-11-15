@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/models/app_release.dart';
 import 'package:nt_helper/services/app_update_service.dart';
 import 'package:nt_helper/ui/widgets/app_update_dialog.dart';

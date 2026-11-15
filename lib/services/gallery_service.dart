@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:nt_helper/utils/plugin_installation_path.dart';
 import 'package:http/http.dart' as http;
@@ -135,12 +136,11 @@ class SampleInstallationResult {
 /// Callback for installing a bundled sample or wavetable at its SD-card path.
 /// Returns `true` if installed, `false` if skipped (already exists).
 /// Throws an exception on failure.
-typedef SampleInstallCallback =
-    Future<bool> Function(
-      String targetPath,
-      Uint8List data, {
-      Function(double)? onProgress,
-    });
+typedef SampleInstallCallback = Future<bool> Function(
+  String targetPath,
+  Uint8List data, {
+  Function(double)? onProgress,
+});
 
 /// Service for managing the plugin gallery
 class GalleryService {
@@ -176,16 +176,12 @@ class GalleryService {
 
   /// Constructor with optional database for installation tracking
   GalleryService({
-    required SettingsService settingsService,
-    AppDatabase? database,
-    GalleryCacheStorage? cacheStorage,
-    Duration graphqlRequestTimeout = _defaultGraphqlRequestTimeout,
+    required this._settingsService,
+    this._database,
+    this._cacheStorage,
+    this._graphqlRequestTimeout = _defaultGraphqlRequestTimeout,
     List<Duration> graphqlRetryDelays = _defaultGraphqlRetryDelays,
-  }) : _settingsService = settingsService,
-       _database = database,
-       _cacheStorage = cacheStorage,
-       _graphqlRequestTimeout = graphqlRequestTimeout,
-       _graphqlRetryDelays = List.unmodifiable(graphqlRetryDelays) {
+  }) : _graphqlRetryDelays = List.unmodifiable(graphqlRetryDelays) {
     // Initialize update checker if database is available
     if (_database != null) {
       _updateChecker = PluginUpdateChecker(
@@ -1274,9 +1270,9 @@ class GalleryService {
       );
 
       if (response.statusCode == 200) {
-        final releaseData =
-            json.decode(utf8.decode(response.bodyBytes))
-                as Map<String, dynamic>;
+        final releaseData = json.decode(
+          utf8.decode(response.bodyBytes),
+        ) as Map<String, dynamic>;
         final assets = releaseData['assets'] as List;
 
         if (assets.isNotEmpty) {
@@ -1531,9 +1527,9 @@ class GalleryService {
             continue; // Success, move to next file
           } catch (pathError) {
             // Explicit SD destinations must never fall back to another folder.
-            if (PluginInstallationPath.normalize(
-              relativePath,
-            ).toLowerCase().startsWith('programs/')) {
+            if (PluginInstallationPath.normalize(relativePath)
+                .toLowerCase()
+                .startsWith('programs/')) {
               rethrow;
             }
             // Legacy relative plugin subfolders retain their root fallback.

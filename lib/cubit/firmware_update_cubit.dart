@@ -74,22 +74,22 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
     required FlashToolBridge flashToolBridge,
     FirmwareUpdateProvider? provider,
     required String currentVersion,
-    required bool isDemo,
-    required bool isOffline,
+    required this._isDemo,
+    required this._isOffline,
     this.recoverAttachedBootloader = false,
-    FirmwareVersion? firmwareVersion,
-    IDistingMidiManager? midiManager,
-    Future<IDistingMidiManager> Function()? createMidiManager,
-    void Function(IDistingMidiManager)? disposeMidiManager,
-    Future<bool> Function()? checkMidiDevices,
+    this._firmwareVersion,
+    this._midiManager,
+    this._createMidiManager,
+    this._disposeMidiManager,
+    this._checkMidiDevices,
     LocalFirmwareFileReader? readLocalFirmwareFile,
-    Duration midiPollInterval = const Duration(seconds: 5),
-    int midiPollAttempts = 12,
+    this._midiPollInterval = const Duration(seconds: 5),
+    this._midiPollAttempts = 12,
     bool? isWindowsOverride,
-    bool ownsServices = false,
+    this._ownsServices = false,
     IpadFirmwareSession? ipadSession,
-    Future<String?> Function()? probeFreshVersion,
-    bool Function()? selectedStillLive,
+    this._probeFreshVersion,
+    this._selectedStillLive,
   }) : _firmwareVersionService = firmwareVersionService,
        _provider =
            provider ??
@@ -105,29 +105,17 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
        _flashToolBridge = provider is DesktopFirmwareUpdateProvider
            ? provider.bridge
            : flashToolBridge,
-       _isDemo = isDemo,
-       _isOffline = isOffline,
        _initialCurrentVersion = currentVersion,
-       _firmwareVersion = firmwareVersion,
-       _midiManager = midiManager,
-       _createMidiManager = createMidiManager,
-       _disposeMidiManager = disposeMidiManager,
-       _checkMidiDevices = checkMidiDevices,
        _fileProvider = FileFirmwareProvider(
          versionService: firmwareVersionService,
          read: readLocalFirmwareFile ?? _readLocalFirmwareFileFromDisk,
        ),
-       _midiPollInterval = midiPollInterval,
-       _midiPollAttempts = midiPollAttempts,
        _isWindows = isWindowsOverride ?? Platform.isWindows,
-       _ownsServices = ownsServices,
        _ipadSession = provider is IpadFirmwareUpdateProvider
            ? provider.session
            : provider is DesktopFirmwareUpdateProvider
            ? null
            : ipadSession,
-       _probeFreshVersion = probeFreshVersion,
-       _selectedStillLive = selectedStillLive,
        super(FirmwareUpdateState.initial(currentVersion: currentVersion));
 
   bool _isCurrent(int generation) =>
@@ -179,8 +167,7 @@ class FirmwareUpdateCubit extends Cubit<FirmwareUpdateState> {
           state is FirmwareUpdateStateInitial) {
         emit(
           (state as FirmwareUpdateStateInitial).copyWith(
-            fetchError:
-                'Firmware updates require a supported development iPad and a live NT with known bootloader capability.',
+            fetchError: 'Firmware updates require a supported development iPad and a live NT with known bootloader capability.',
           ),
         );
       }

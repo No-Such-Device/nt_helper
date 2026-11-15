@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -55,9 +55,8 @@ class PolySamplesView extends StatelessWidget {
             error,
             TextDirection.ltr,
           );
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(error)));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(error)));
           return;
         }
         final effect = state.effect;
@@ -221,9 +220,9 @@ class PolySamplesView extends StatelessWidget {
         'zip',
       ],
     );
-    if (result == null || !context.mounted) return;
+    if (!context.mounted) return;
     final paths = <String>[
-      for (final file in result.files)
+      for (final file in result)
         if (file.path != null) file.path!,
     ];
     if (paths.isEmpty) return;
@@ -259,11 +258,12 @@ class PolySamplesView extends StatelessWidget {
       type: FileType.custom,
       allowedExtensions: const ['wav', 'aif', 'aiff'],
     );
-    if (result == null || !context.mounted) return;
+    if (!context.mounted) return;
     final paths = <String>[
-      for (final file in result.files)
+      for (final file in result)
         if (file.path != null) file.path!,
     ];
+    if (paths.isEmpty) return;
     final staged = await showPolyLooseWavImportDialog(context, paths: paths);
     if (staged != null) await cubit.addStagedRegions(staged);
   }

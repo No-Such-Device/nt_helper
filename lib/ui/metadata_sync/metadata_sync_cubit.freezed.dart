@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'metadata_sync_cubit.dart';
@@ -9,6 +9,7 @@ part of 'metadata_sync_cubit.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
@@ -19,14 +20,14 @@ mixin _$MetadataSyncState implements DiagnosticableTreeMixin {
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState'))
     ;
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MetadataSyncState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MetadataSyncState);
 }
 
 
@@ -35,7 +36,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState()';
+    return 'MetadataSyncState()';
 }
 
 
@@ -272,7 +273,7 @@ return failure(_that.error);case _:
 
 class Idle with DiagnosticableTreeMixin implements MetadataSyncState {
   const Idle();
-  
+
 
 
 
@@ -280,14 +281,14 @@ class Idle with DiagnosticableTreeMixin implements MetadataSyncState {
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.idle'))
     ;
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Idle);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is Idle);
 }
 
 
@@ -296,7 +297,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.idle()';
+    return 'MetadataSyncState.idle()';
 }
 
 
@@ -310,16 +311,12 @@ String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
 
 class SyncingMetadata with DiagnosticableTreeMixin implements MetadataSyncState {
   const SyncingMetadata({required this.progress, required this.mainMessage, required this.subMessage, this.algorithmsProcessed, this.totalAlgorithms});
-  
+
 
  final  double progress;
-// 0.0 to 1.0
  final  String mainMessage;
-// e.g., "Processing Algorithm X (15/128)"
  final  String subMessage;
-// e.g., "Adding to preset..."
  final  int? algorithmsProcessed;
-// Keep for progress calculation
  final  int? totalAlgorithms;
 
 /// Create a copy of MetadataSyncState
@@ -331,23 +328,25 @@ $SyncingMetadataCopyWith<SyncingMetadata> get copyWith => _$SyncingMetadataCopyW
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.syncingMetadata'))
     ..add(DiagnosticsProperty('progress', progress))..add(DiagnosticsProperty('mainMessage', mainMessage))..add(DiagnosticsProperty('subMessage', subMessage))..add(DiagnosticsProperty('algorithmsProcessed', algorithmsProcessed))..add(DiagnosticsProperty('totalAlgorithms', totalAlgorithms));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SyncingMetadata&&(identical(other.progress, progress) || other.progress == progress)&&(identical(other.mainMessage, mainMessage) || other.mainMessage == mainMessage)&&(identical(other.subMessage, subMessage) || other.subMessage == subMessage)&&(identical(other.algorithmsProcessed, algorithmsProcessed) || other.algorithmsProcessed == algorithmsProcessed)&&(identical(other.totalAlgorithms, totalAlgorithms) || other.totalAlgorithms == totalAlgorithms));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SyncingMetadata&&(identical(other.progress, progress) || other.progress == progress)&&(identical(other.mainMessage, mainMessage) || other.mainMessage == mainMessage)&&(identical(other.subMessage, subMessage) || other.subMessage == subMessage)&&(identical(other.algorithmsProcessed, algorithmsProcessed) || other.algorithmsProcessed == algorithmsProcessed)&&(identical(other.totalAlgorithms, totalAlgorithms) || other.totalAlgorithms == totalAlgorithms));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,progress,mainMessage,subMessage,algorithmsProcessed,totalAlgorithms);
+int get hashCode {
+    return Object.hash(runtimeType,progress,mainMessage,subMessage,algorithmsProcessed,totalAlgorithms);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.syncingMetadata(progress: $progress, mainMessage: $mainMessage, subMessage: $subMessage, algorithmsProcessed: $algorithmsProcessed, totalAlgorithms: $totalAlgorithms)';
+    return 'MetadataSyncState.syncingMetadata(progress: $progress, mainMessage: $mainMessage, subMessage: $subMessage, algorithmsProcessed: $algorithmsProcessed, totalAlgorithms: $totalAlgorithms)';
 }
 
 
@@ -394,7 +393,7 @@ as int?,
 
 class CheckpointFound with DiagnosticableTreeMixin implements MetadataSyncState {
   const CheckpointFound({required this.algorithmName, required this.algorithmIndex});
-  
+
 
  final  String algorithmName;
  final  int algorithmIndex;
@@ -408,23 +407,25 @@ $CheckpointFoundCopyWith<CheckpointFound> get copyWith => _$CheckpointFoundCopyW
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.checkpointFound'))
     ..add(DiagnosticsProperty('algorithmName', algorithmName))..add(DiagnosticsProperty('algorithmIndex', algorithmIndex));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CheckpointFound&&(identical(other.algorithmName, algorithmName) || other.algorithmName == algorithmName)&&(identical(other.algorithmIndex, algorithmIndex) || other.algorithmIndex == algorithmIndex));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CheckpointFound&&(identical(other.algorithmName, algorithmName) || other.algorithmName == algorithmName)&&(identical(other.algorithmIndex, algorithmIndex) || other.algorithmIndex == algorithmIndex));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,algorithmName,algorithmIndex);
+int get hashCode {
+    return Object.hash(runtimeType,algorithmName,algorithmIndex);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.checkpointFound(algorithmName: $algorithmName, algorithmIndex: $algorithmIndex)';
+    return 'MetadataSyncState.checkpointFound(algorithmName: $algorithmName, algorithmIndex: $algorithmIndex)';
 }
 
 
@@ -468,7 +469,7 @@ as int,
 
 class MetadataSyncSuccess with DiagnosticableTreeMixin implements MetadataSyncState {
   const MetadataSyncSuccess(this.message);
-  
+
 
  final  String message;
 
@@ -481,23 +482,25 @@ $MetadataSyncSuccessCopyWith<MetadataSyncSuccess> get copyWith => _$MetadataSync
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.metadataSyncSuccess'))
     ..add(DiagnosticsProperty('message', message));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MetadataSyncSuccess&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MetadataSyncSuccess&&(identical(other.message, message) || other.message == message));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+    return Object.hash(runtimeType,message);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.metadataSyncSuccess(message: $message)';
+    return 'MetadataSyncState.metadataSyncSuccess(message: $message)';
 }
 
 
@@ -540,7 +543,7 @@ as String,
 
 class MetadataSyncFailure with DiagnosticableTreeMixin implements MetadataSyncState {
   const MetadataSyncFailure(this.error);
-  
+
 
  final  String error;
 
@@ -553,23 +556,25 @@ $MetadataSyncFailureCopyWith<MetadataSyncFailure> get copyWith => _$MetadataSync
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.metadataSyncFailure'))
     ..add(DiagnosticsProperty('error', error));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MetadataSyncFailure&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MetadataSyncFailure&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.metadataSyncFailure(error: $error)';
+    return 'MetadataSyncState.metadataSyncFailure(error: $error)';
 }
 
 
@@ -612,7 +617,7 @@ as String,
 
 class SavingPreset with DiagnosticableTreeMixin implements MetadataSyncState {
   const SavingPreset();
-  
+
 
 
 
@@ -620,14 +625,14 @@ class SavingPreset with DiagnosticableTreeMixin implements MetadataSyncState {
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.savingPreset'))
     ;
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SavingPreset);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SavingPreset);
 }
 
 
@@ -636,7 +641,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.savingPreset()';
+    return 'MetadataSyncState.savingPreset()';
 }
 
 
@@ -650,7 +655,7 @@ String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
 
 class LoadingPreset with DiagnosticableTreeMixin implements MetadataSyncState {
   const LoadingPreset();
-  
+
 
 
 
@@ -658,14 +663,14 @@ class LoadingPreset with DiagnosticableTreeMixin implements MetadataSyncState {
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.loadingPreset'))
     ;
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoadingPreset);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LoadingPreset);
 }
 
 
@@ -674,7 +679,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.loadingPreset()';
+    return 'MetadataSyncState.loadingPreset()';
 }
 
 
@@ -688,7 +693,7 @@ String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
 
 class InjectingTemplate with DiagnosticableTreeMixin implements MetadataSyncState {
   const InjectingTemplate({required this.applied, required this.total});
-  
+
 
  final  int applied;
  final  int total;
@@ -702,23 +707,25 @@ $InjectingTemplateCopyWith<InjectingTemplate> get copyWith => _$InjectingTemplat
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.injectingTemplate'))
     ..add(DiagnosticsProperty('applied', applied))..add(DiagnosticsProperty('total', total));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InjectingTemplate&&(identical(other.applied, applied) || other.applied == applied)&&(identical(other.total, total) || other.total == total));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is InjectingTemplate&&(identical(other.applied, applied) || other.applied == applied)&&(identical(other.total, total) || other.total == total));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,applied,total);
+int get hashCode {
+    return Object.hash(runtimeType,applied,total);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.injectingTemplate(applied: $applied, total: $total)';
+    return 'MetadataSyncState.injectingTemplate(applied: $applied, total: $total)';
 }
 
 
@@ -762,7 +769,7 @@ as int,
 
 class PresetSaveSuccess with DiagnosticableTreeMixin implements MetadataSyncState {
   const PresetSaveSuccess(this.message);
-  
+
 
  final  String message;
 
@@ -775,23 +782,25 @@ $PresetSaveSuccessCopyWith<PresetSaveSuccess> get copyWith => _$PresetSaveSucces
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.presetSaveSuccess'))
     ..add(DiagnosticsProperty('message', message));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetSaveSuccess&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetSaveSuccess&&(identical(other.message, message) || other.message == message));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+    return Object.hash(runtimeType,message);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.presetSaveSuccess(message: $message)';
+    return 'MetadataSyncState.presetSaveSuccess(message: $message)';
 }
 
 
@@ -834,7 +843,7 @@ as String,
 
 class PresetSaveFailure with DiagnosticableTreeMixin implements MetadataSyncState {
   const PresetSaveFailure(this.error);
-  
+
 
  final  String error;
 
@@ -847,23 +856,25 @@ $PresetSaveFailureCopyWith<PresetSaveFailure> get copyWith => _$PresetSaveFailur
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.presetSaveFailure'))
     ..add(DiagnosticsProperty('error', error));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetSaveFailure&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetSaveFailure&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.presetSaveFailure(error: $error)';
+    return 'MetadataSyncState.presetSaveFailure(error: $error)';
 }
 
 
@@ -906,7 +917,7 @@ as String,
 
 class PresetLoadSuccess with DiagnosticableTreeMixin implements MetadataSyncState {
   const PresetLoadSuccess(this.message);
-  
+
 
  final  String message;
 
@@ -919,23 +930,25 @@ $PresetLoadSuccessCopyWith<PresetLoadSuccess> get copyWith => _$PresetLoadSucces
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.presetLoadSuccess'))
     ..add(DiagnosticsProperty('message', message));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetLoadSuccess&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetLoadSuccess&&(identical(other.message, message) || other.message == message));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+    return Object.hash(runtimeType,message);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.presetLoadSuccess(message: $message)';
+    return 'MetadataSyncState.presetLoadSuccess(message: $message)';
 }
 
 
@@ -978,7 +991,7 @@ as String,
 
 class PresetLoadFailure with DiagnosticableTreeMixin implements MetadataSyncState {
   const PresetLoadFailure(this.error);
-  
+
 
  final  String error;
 
@@ -991,23 +1004,25 @@ $PresetLoadFailureCopyWith<PresetLoadFailure> get copyWith => _$PresetLoadFailur
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.presetLoadFailure'))
     ..add(DiagnosticsProperty('error', error));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetLoadFailure&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetLoadFailure&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.presetLoadFailure(error: $error)';
+    return 'MetadataSyncState.presetLoadFailure(error: $error)';
 }
 
 
@@ -1050,7 +1065,7 @@ as String,
 
 class DeletingPreset with DiagnosticableTreeMixin implements MetadataSyncState {
   const DeletingPreset();
-  
+
 
 
 
@@ -1058,14 +1073,14 @@ class DeletingPreset with DiagnosticableTreeMixin implements MetadataSyncState {
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.deletingPreset'))
     ;
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeletingPreset);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DeletingPreset);
 }
 
 
@@ -1074,7 +1089,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.deletingPreset()';
+    return 'MetadataSyncState.deletingPreset()';
 }
 
 
@@ -1088,7 +1103,7 @@ String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
 
 class PresetDeleteSuccess with DiagnosticableTreeMixin implements MetadataSyncState {
   const PresetDeleteSuccess(this.message);
-  
+
 
  final  String message;
 
@@ -1101,23 +1116,25 @@ $PresetDeleteSuccessCopyWith<PresetDeleteSuccess> get copyWith => _$PresetDelete
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.presetDeleteSuccess'))
     ..add(DiagnosticsProperty('message', message));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetDeleteSuccess&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetDeleteSuccess&&(identical(other.message, message) || other.message == message));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+    return Object.hash(runtimeType,message);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.presetDeleteSuccess(message: $message)';
+    return 'MetadataSyncState.presetDeleteSuccess(message: $message)';
 }
 
 
@@ -1160,7 +1177,7 @@ as String,
 
 class PresetDeleteFailure with DiagnosticableTreeMixin implements MetadataSyncState {
   const PresetDeleteFailure(this.error);
-  
+
 
  final  String error;
 
@@ -1173,23 +1190,25 @@ $PresetDeleteFailureCopyWith<PresetDeleteFailure> get copyWith => _$PresetDelete
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.presetDeleteFailure'))
     ..add(DiagnosticsProperty('error', error));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetDeleteFailure&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PresetDeleteFailure&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.presetDeleteFailure(error: $error)';
+    return 'MetadataSyncState.presetDeleteFailure(error: $error)';
 }
 
 
@@ -1231,8 +1250,8 @@ as String,
 
 
 class ViewingLocalData with DiagnosticableTreeMixin implements MetadataSyncState {
-  const ViewingLocalData({required final  List<AlgorithmEntry> algorithms, required final  Map<String, int> parameterCounts, required final  List<PresetEntry> presets}): _algorithms = algorithms,_parameterCounts = parameterCounts,_presets = presets;
-  
+  const ViewingLocalData({required  List<AlgorithmEntry> algorithms, required  Map<String, int> parameterCounts, required  List<PresetEntry> presets}): _algorithms = algorithms,_parameterCounts = parameterCounts,_presets = presets;
+
 
  final  List<AlgorithmEntry> _algorithms;
  List<AlgorithmEntry> get algorithms {
@@ -1265,23 +1284,25 @@ $ViewingLocalDataCopyWith<ViewingLocalData> get copyWith => _$ViewingLocalDataCo
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.viewingLocalData'))
     ..add(DiagnosticsProperty('algorithms', algorithms))..add(DiagnosticsProperty('parameterCounts', parameterCounts))..add(DiagnosticsProperty('presets', presets));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ViewingLocalData&&const DeepCollectionEquality().equals(other._algorithms, _algorithms)&&const DeepCollectionEquality().equals(other._parameterCounts, _parameterCounts)&&const DeepCollectionEquality().equals(other._presets, _presets));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ViewingLocalData&&const DeepCollectionEquality().equals(other.algorithms, _algorithms)&&const DeepCollectionEquality().equals(other.parameterCounts, _parameterCounts)&&const DeepCollectionEquality().equals(other.presets, _presets));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_algorithms),const DeepCollectionEquality().hash(_parameterCounts),const DeepCollectionEquality().hash(_presets));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_algorithms),const DeepCollectionEquality().hash(_parameterCounts),const DeepCollectionEquality().hash(_presets));
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.viewingLocalData(algorithms: $algorithms, parameterCounts: $parameterCounts, presets: $presets)';
+    return 'MetadataSyncState.viewingLocalData(algorithms: $algorithms, parameterCounts: $parameterCounts, presets: $presets)';
 }
 
 
@@ -1326,7 +1347,7 @@ as List<PresetEntry>,
 
 class Failure with DiagnosticableTreeMixin implements MetadataSyncState {
   const Failure(this.error);
-  
+
 
  final  String error;
 
@@ -1339,23 +1360,25 @@ $FailureCopyWith<Failure> get copyWith => _$FailureCopyWithImpl<Failure>(this, _
 
 @override
 void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-  properties
+    properties
     ..add(DiagnosticsProperty('type', 'MetadataSyncState.failure'))
     ..add(DiagnosticsProperty('error', error));
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Failure&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is Failure&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString({ DiagnosticLevel minLevel = DiagnosticLevel.info }) {
-  return 'MetadataSyncState.failure(error: $error)';
+    return 'MetadataSyncState.failure(error: $error)';
 }
 
 

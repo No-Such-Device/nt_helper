@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // coverage:ignore-file
-// ignore_for_file: type=lint
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'algorithm_feature.dart';
@@ -9,6 +9,7 @@ part of 'algorithm_feature.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
 
@@ -28,16 +29,21 @@ $AlgorithmFeatureCopyWith<AlgorithmFeature> get copyWith => _$AlgorithmFeatureCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmFeature&&(identical(other.guid, guid) || other.guid == guid)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.parameters, parameters));
+  final _this = this as AlgorithmFeature;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AlgorithmFeature&&(identical(other.guid, _this.guid) || other.guid == _this.guid)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&const DeepCollectionEquality().equals(other.parameters, _this.parameters));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,guid,name,description,const DeepCollectionEquality().hash(parameters));
+int get hashCode {
+  final _this = this as AlgorithmFeature;
+  return Object.hash(runtimeType,_this.guid,_this.name,_this.description,const DeepCollectionEquality().hash(_this.parameters));
+}
 
 @override
 String toString() {
-  return 'AlgorithmFeature(guid: $guid, name: $name, description: $description, parameters: $parameters)';
+  final _this = this as AlgorithmFeature;
+  return 'AlgorithmFeature(guid: ${_this.guid}, name: ${_this.name}, description: ${_this.description}, parameters: ${_this.parameters})';
 }
 
 
@@ -66,7 +72,7 @@ class _$AlgorithmFeatureCopyWithImpl<$Res>
 /// Create a copy of AlgorithmFeature
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') @override $Res call({Object? guid = null,Object? name = null,Object? description = freezed,Object? parameters = null,}) {
-  return _then(_self.copyWith(
+  return _then(AlgorithmFeature(
 guid: null == guid ? _self.guid : guid // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
@@ -206,7 +212,7 @@ return $default(_that.guid,_that.name,_that.description,_that.parameters);case _
 @JsonSerializable()
 
 class _AlgorithmFeature implements AlgorithmFeature {
-  const _AlgorithmFeature({required this.guid, required this.name, this.description, final  List<AlgorithmParameter> parameters = const []}): _parameters = parameters;
+  const _AlgorithmFeature({required this.guid, required this.name, this.description,  List<AlgorithmParameter> parameters = const []}): _parameters = parameters;
   factory _AlgorithmFeature.fromJson(Map<String, dynamic> json) => _$AlgorithmFeatureFromJson(json);
 
 @override final  String guid;
@@ -233,16 +239,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmFeature&&(identical(other.guid, guid) || other.guid == guid)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other._parameters, _parameters));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AlgorithmFeature&&(identical(other.guid, guid) || other.guid == guid)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.parameters, _parameters));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,guid,name,description,const DeepCollectionEquality().hash(_parameters));
+int get hashCode {
+    return Object.hash(runtimeType,guid,name,description,const DeepCollectionEquality().hash(_parameters));
+}
 
 @override
 String toString() {
-  return 'AlgorithmFeature(guid: $guid, name: $name, description: $description, parameters: $parameters)';
+    return 'AlgorithmFeature(guid: $guid, name: $name, description: $description, parameters: $parameters)';
 }
 
 

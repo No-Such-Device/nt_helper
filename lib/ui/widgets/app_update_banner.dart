@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/models/app_release.dart';
 
 class AppUpdateBanner extends StatelessWidget {

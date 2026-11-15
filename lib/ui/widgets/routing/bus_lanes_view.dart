@@ -1,5 +1,5 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -253,8 +253,7 @@ class _BusLanesViewState extends State<BusLanesView> {
                             child: Semantics(
                               label:
                                   'Bus lanes canvas with $blockCount algorithm $blockLabel',
-                              hint:
-                                  'Pan to navigate. Drag beads to reassign buses.',
+                              hint: 'Pan to navigate. Drag beads to reassign buses.',
                               container: true,
                               child: MouseRegion(
                                 onHover: (e) => _hover.value = e.localPosition,

@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -137,7 +137,8 @@ void main() {
         );
         expect(_headerInkColor(tester, _performanceHeader), expectedShade);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
   }
 
   testWidgets('preserves individual and expand-all section behavior', (

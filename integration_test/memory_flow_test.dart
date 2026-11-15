@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:ui' show PointerDeviceKind, Tristate;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -92,9 +92,8 @@ final class _MemoryFlowHarness {
     when(() => cubit.resumeCpuMonitoring()).thenReturn(null);
     when(() => cubit.pauseCpuMonitoring()).thenReturn(null);
     when(() => cubit.displayMemoryState).thenAnswer((_) => memoryState);
-    when(
-      () => cubit.displayMemoryStateStream,
-    ).thenAnswer((_) => memoryController.stream);
+    when(() => cubit.displayMemoryStateStream)
+        .thenAnswer((_) => memoryController.stream);
     when(() => cubit.refreshDisplayMemory()).thenAnswer((_) async {
       refreshCalls++;
     });
@@ -110,9 +109,8 @@ final class _MemoryFlowHarness {
     when(() => cubit.refreshAlgorithms()).thenReturn(null);
     when(() => cubit.reboot()).thenAnswer((_) async {});
     when(() => cubit.rescanPlugins()).thenAnswer((_) async {});
-    when(
-      () => platformService.isMobilePlatform(),
-    ).thenReturn(Platform.isAndroid || Platform.isIOS);
+    when(() => platformService.isMobilePlatform())
+        .thenReturn(Platform.isAndroid || Platform.isIOS);
 
     McpServerService.initialize(distingCubit: cubit);
   }
@@ -134,9 +132,8 @@ final class _MemoryFlowHarness {
     return MaterialApp(
       key: ValueKey('memory-app-$firmware-$textScale'),
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(
-          context,
-        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
         child: child!,
       ),
       home: BlocProvider<DistingCubit>.value(
@@ -308,7 +305,8 @@ Future<void> main() async {
       expect(tester.takeException(), isNull);
       semantics.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     '$runtime interaction modes and native modal focus remain accessible',
@@ -415,7 +413,8 @@ Future<void> main() async {
       expect(_semanticsIsFocused(tester, moreOptions), isTrue);
       semantics.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets('$runtime System preserves unfresh, CPU and action safeguards', (
     tester,

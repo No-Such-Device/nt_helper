@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/models/plugin_cleanup_outcome.dart';
 
 /// Status text for a root-duplicate cleanup outcome, or null when skipped.

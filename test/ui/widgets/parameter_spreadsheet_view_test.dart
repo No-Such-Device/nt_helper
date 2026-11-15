@@ -1,6 +1,6 @@
 import 'dart:ui' show Tristate;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,9 +62,8 @@ void main() {
     when(() => cubit.state).thenReturn(state);
     return MaterialApp(
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.teal,
-        ).copyWith(tertiary: Colors.orange),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal)
+            .copyWith(tertiary: Colors.orange),
       ),
       home: BlocProvider<DistingCubit>.value(
         value: cubit,
@@ -885,20 +884,8 @@ Slot _quadMixerSlot() {
         max: 1,
         enumValues: const ['Cartesian', 'Polar'],
       ),
-      _parameter(
-        firstNumber + 2,
-        '$channel:X',
-        value: 0,
-        min: -100,
-        max: 100,
-      ),
-      _parameter(
-        firstNumber + 3,
-        '$channel:Y',
-        value: 0,
-        min: -100,
-        max: 100,
-      ),
+      _parameter(firstNumber + 2, '$channel:X', value: 0, min: -100, max: 100),
+      _parameter(firstNumber + 3, '$channel:Y', value: 0, min: -100, max: 100),
     ]);
     channelPages.add(
       ParameterPage(

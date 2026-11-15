@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:ui' show SemanticsAction, Tristate;
 
 import 'package:bloc_test/bloc_test.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
@@ -209,9 +209,8 @@ void main() {
       });
       await _pumpPage(tester, harness);
       await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
-      verify(
-        () => harness.cubit.connectToDevices(inputDevice, outputDevice, 0),
-      ).called(1);
+      verify(() => harness.cubit.connectToDevices(inputDevice, outputDevice, 0))
+          .called(1);
 
       harness.states.add(
         DistingState.connected(
@@ -248,13 +247,13 @@ void main() {
       expect(semantics.getSemanticsData().flagsCollection.isButton, isTrue);
       expect(tester.getRect(connect), before);
       await tester.tap(connect);
-      verify(
-        () => harness.cubit.connectToDevices(inputDevice, outputDevice, 1),
-      ).called(1);
+      verify(() => harness.cubit.connectToDevices(inputDevice, outputDevice, 1))
+          .called(1);
       semanticsHandle.dispose();
     },
     variant: TargetPlatformVariant.only(TargetPlatform.linux),
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   final replacementInput = _input('replacement-input', 'Replacement Input');
   final replacementOutput = _output('replacement-output', 'Replacement Output');
@@ -322,18 +321,16 @@ void main() {
         final semantics = tester.ensureSemantics();
         final harness = _SelectionHarness(
           DistingState.selectDevice(
-                inputDevices: selectionCase.inputDevices,
-                outputDevices: selectionCase.outputDevices,
-                canWorkOffline: true,
-                selectedInputDevice: selectionCase.selectedInputDevice,
-                selectedOutputDevice: selectionCase.selectedOutputDevice,
-                selectedSysExId: 17,
-              )
-              as DistingStateSelectDevice,
+            inputDevices: selectionCase.inputDevices,
+            outputDevices: selectionCase.outputDevices,
+            canWorkOffline: true,
+            selectedInputDevice: selectionCase.selectedInputDevice,
+            selectedOutputDevice: selectionCase.selectedOutputDevice,
+            selectedSysExId: 17,
+          ) as DistingStateSelectDevice,
         );
-        when(
-          () => harness.cubit.connectToDevices(any(), any(), any()),
-        ).thenAnswer((_) async {});
+        when(() => harness.cubit.connectToDevices(any(), any(), any()))
+            .thenAnswer((_) async {});
         final navigatorObserver = _RecordingNavigatorObserver();
 
         await _pumpPage(tester, harness, navigatorObserver: navigatorObserver);
@@ -414,15 +411,13 @@ void main() {
       final outputDevice = _output('custom-output', 'Custom Output');
       final harness = _SelectionHarness(
         DistingState.selectDevice(
-              inputDevices: [inputDevice],
-              outputDevices: [outputDevice],
-              canWorkOffline: true,
-            )
-            as DistingStateSelectDevice,
+          inputDevices: [inputDevice],
+          outputDevices: [outputDevice],
+          canWorkOffline: true,
+        ) as DistingStateSelectDevice,
       );
-      when(
-        () => harness.cubit.connectToDevices(inputDevice, outputDevice, 0),
-      ).thenAnswer((_) async {});
+      when(() => harness.cubit.connectToDevices(inputDevice, outputDevice, 0))
+          .thenAnswer((_) async {});
 
       await _pumpPage(tester, harness);
 
@@ -452,9 +447,8 @@ void main() {
       await tester.tap(connect);
       await tester.pump();
 
-      verify(
-        () => harness.cubit.connectToDevices(inputDevice, outputDevice, 0),
-      ).called(1);
+      verify(() => harness.cubit.connectToDevices(inputDevice, outputDevice, 0))
+          .called(1);
     },
   );
 
@@ -467,17 +461,15 @@ void main() {
     final foreverOutput = _output('forever-output', 'Forever');
     final harness = _SelectionHarness(
       DistingState.selectDevice(
-            inputDevices: [distingInput, foreverInput],
-            outputDevices: [distingOutput, foreverOutput],
-            canWorkOffline: true,
-            selectedInputDevice: distingInput,
-            selectedOutputDevice: distingOutput,
-          )
-          as DistingStateSelectDevice,
+        inputDevices: [distingInput, foreverInput],
+        outputDevices: [distingOutput, foreverOutput],
+        canWorkOffline: true,
+        selectedInputDevice: distingInput,
+        selectedOutputDevice: distingOutput,
+      ) as DistingStateSelectDevice,
     );
-    when(
-      () => harness.cubit.connectToDevices(foreverInput, foreverOutput, 0),
-    ).thenAnswer((_) async {});
+    when(() => harness.cubit.connectToDevices(foreverInput, foreverOutput, 0))
+        .thenAnswer((_) async {});
 
     await _pumpPage(tester, harness);
 
@@ -514,9 +506,8 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
     await tester.pump();
 
-    verify(
-      () => harness.cubit.connectToDevices(foreverInput, foreverOutput, 0),
-    ).called(1);
+    verify(() => harness.cubit.connectToDevices(foreverInput, foreverOutput, 0))
+        .called(1);
     verifyNever(
       () => harness.cubit.probeFirmwareVersion(foreverInput, foreverOutput, 0),
     );
@@ -531,26 +522,24 @@ void main() {
     final refreshedOutput = _output('forever-output', 'Forever');
     final harness = _SelectionHarness(
       DistingState.selectDevice(
-            inputDevices: [inputDevice],
-            outputDevices: [outputDevice],
-            canWorkOffline: true,
-            selectedInputDevice: inputDevice,
-            selectedOutputDevice: outputDevice,
-            selectedSysExId: 7,
-          )
-          as DistingStateSelectDevice,
+        inputDevices: [inputDevice],
+        outputDevices: [outputDevice],
+        canWorkOffline: true,
+        selectedInputDevice: inputDevice,
+        selectedOutputDevice: outputDevice,
+        selectedSysExId: 7,
+      ) as DistingStateSelectDevice,
     );
     when(() => harness.cubit.loadDevices()).thenAnswer((_) async {
       harness.emit(
         DistingState.selectDevice(
-              inputDevices: [refreshedInput],
-              outputDevices: [refreshedOutput],
-              canWorkOffline: true,
-              selectedInputDevice: refreshedInput,
-              selectedOutputDevice: refreshedOutput,
-              selectedSysExId: 7,
-            )
-            as DistingStateSelectDevice,
+          inputDevices: [refreshedInput],
+          outputDevices: [refreshedOutput],
+          canWorkOffline: true,
+          selectedInputDevice: refreshedInput,
+          selectedOutputDevice: refreshedOutput,
+          selectedSysExId: 7,
+        ) as DistingStateSelectDevice,
       );
     });
     when(

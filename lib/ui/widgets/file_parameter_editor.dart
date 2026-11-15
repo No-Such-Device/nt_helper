@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -670,9 +670,8 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
     }
 
     if (_sampleCatalogueError != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_sampleCatalogueError!)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(_sampleCatalogueError!)));
     }
 
     while (mounted) {
@@ -1109,9 +1108,8 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
                 size: 24,
                 color: canGoPrev
                     ? null
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.38),
+                    : Theme.of(context).colorScheme.onSurface
+                          .withValues(alpha: 0.38),
               ),
             ),
           ),
@@ -1164,9 +1162,8 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
                 size: 24,
                 color: canGoNext
                     ? null
-                    : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.38),
+                    : Theme.of(context).colorScheme.onSurface
+                          .withValues(alpha: 0.38),
               ),
             ),
           ),
@@ -1750,9 +1747,9 @@ class _FileSelectionDialogState extends State<_FileSelectionDialog> {
                                 if (!entry.isDirectory)
                                   Text(
                                     widget.formatFileSize(entry.size),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall,
                                   ),
                               ],
                             ),

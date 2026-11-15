@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -191,7 +191,8 @@ void main() {
         _expectStableRect(entry.value, _stableRect(tester, entry.key));
       }
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'mapping stepper focus and rect stay stable after keyboard activation',
@@ -227,7 +228,8 @@ void main() {
         _stableRect(tester, 'poly-sidebar-mapping-velocity-increase'),
       );
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets('mapping stepper auto-previews when enabled', (tester) async {
     final adapter = _FakePreviewAdapter();
@@ -496,7 +498,12 @@ void main() {
 
     expect(find.text('Auto C3'), findsWidgets);
     expect(find.text('Unset'), findsNothing);
-    final root = tester.getSemantics(find.bySemanticsLabel('Root value'));
+    // PopupMenuButton now adds merged semantics annotations; inspect the
+    // exposed control node rather than counting the contributing widgets.
+    final root = tester.getSemantics(
+      find.byKey(const ValueKey('poly-mapping-root-semantics')),
+    );
+    expect(root.label, contains('Root value'));
     expect(root.value, 'Auto C3');
   });
 
@@ -920,7 +927,8 @@ void main() {
         100,
       );
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'waveform slider geometry stays fixed across gain and peak value changes',
@@ -993,7 +1001,8 @@ void main() {
         _stableRect(tester, 'poly-sidebar-normalize-peak-value'),
       );
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'fade geometry stays fixed across curve and strength value changes',
@@ -1041,7 +1050,8 @@ void main() {
         _expectStableRect(entry.value, _stableRect(tester, entry.key));
       }
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets('duplicate sample names show a disambiguated edit target', (
     tester,
@@ -1102,7 +1112,12 @@ void main() {
 
     expect(find.bySemanticsLabel('Preview gain'), findsOneWidget);
     expect(find.bySemanticsLabel('Preview gain value'), findsOneWidget);
-    expect(find.bySemanticsLabel('Root value'), findsOneWidget);
+    expect(
+      tester
+          .getSemantics(find.byKey(const ValueKey('poly-mapping-root-menu')))
+          .label,
+      contains('Root value'),
+    );
     expect(
       find.descendant(
         of: _byStableKey('poly-sidebar-mapping-root-row'),

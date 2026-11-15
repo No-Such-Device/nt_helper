@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:nt_helper/models/sd_card_file_system.dart';
 
@@ -79,9 +79,9 @@ class MobileDrillDownNavigator extends StatelessWidget {
                           child: Icon(
                             Icons.chevron_right,
                             size: 16,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
                           ),
                         ),
                         InkWell(
@@ -99,9 +99,9 @@ class MobileDrillDownNavigator extends StatelessWidget {
                                     ? FontWeight.bold
                                     : FontWeight.normal,
                                 color: isLast
-                                    ? Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant
+                                    ? Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
                                     : Theme.of(context).colorScheme.primary,
                               ),
                             ),
@@ -168,9 +168,8 @@ class MobileDrillDownNavigator extends StatelessWidget {
                                 : _getFileIcon(item.name);
 
                             final iconColor = isParentDir
-                                ? Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withValues(alpha: 0.7)
+                                ? Theme.of(context).colorScheme.primary
+                                      .withValues(alpha: 0.7)
                                 : item.isDirectory
                                 ? Theme.of(context).colorScheme.primary
                                 : isJsonPreset
@@ -214,16 +213,16 @@ class MobileDrillDownNavigator extends StatelessWidget {
                                   ? ExcludeSemantics(
                                       child: Icon(
                                         Icons.chevron_right,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
                                       ),
                                     )
                                   : null,
                               selected: isSelected,
-                              selectedTileColor: Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer,
+                              selectedTileColor: Theme.of(context)
+                                  .colorScheme
+                                  .primaryContainer,
                               onTap: () => onItemTap(item),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16.0,

@@ -75,7 +75,7 @@ xcodebuild -workspace ios/Runner.xcworkspace -scheme RunnerInitialSdp \
   FLUTTER_BUILD_MODE=profile build
 ```
 
-Use Flutter **3.44.9**, matching this checkout's generated configuration. Verify
+Use the FVM-pinned Flutter **3.50.0** with bundled Dart **3.14.0**. Verify
 the signed products as below, substituting `build/initial-sdp-aot` for
 `build/initial-sdp`. The built `Frameworks/App.framework/App` must contain AOT
 snapshot instructions, with no `flutter_assets/kernel_blob.bin`. Install this

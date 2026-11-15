@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/poly_multisample/poly_audio_preview_service.dart';
@@ -117,9 +117,8 @@ void main() {
   testWidgets('dirty state enables Apply and Discard', (tester) async {
     final cubit = _TestPolyMultisampleBuilderCubit()
       ..setTestState(
-        _state(
-          dirty: true,
-        ).copyWith(selectedPaths: const {}, clearFocusedPath: true),
+        _state(dirty: true)
+            .copyWith(selectedPaths: const {}, clearFocusedPath: true),
       );
     addTearDown(cubit.close);
 
@@ -142,9 +141,8 @@ void main() {
   ) async {
     final cubit = _TestPolyMultisampleBuilderCubit()
       ..setTestState(
-        _state(
-          dirty: true,
-        ).copyWith(selectedPaths: const {}, clearFocusedPath: true),
+        _state(dirty: true)
+            .copyWith(selectedPaths: const {}, clearFocusedPath: true),
       );
     addTearDown(cubit.close);
 

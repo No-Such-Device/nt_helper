@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -448,7 +448,8 @@ void main() {
       );
       semantics.dispose();
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'conflicting returned indices replace displayed parameters, mappings, and routing',
@@ -520,7 +521,8 @@ void main() {
         containsAll(<double>[77, 10]),
       );
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'matching unchanged values establish current state without acknowledgement',
@@ -642,15 +644,12 @@ void main() {
         '2',
       );
       await tester.pump(const Duration(seconds: 2));
-      expect(
-        manager.mutations,
-        [
-          [3],
-        ],
-        reason: 'reopening must not retain or resend the submitted proposal',
-      );
+      expect(manager.mutations, [
+        [3],
+      ], reason: 'reopening must not retain or resend the submitted proposal');
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets(
     'missing and late readback exits waiting at ten seconds without resending',
@@ -752,7 +751,8 @@ void main() {
       ]);
       expect(find.byTooltip('Refresh'), findsOneWidget);
     },
-  tags: ['regression']);
+    tags: ['regression'],
+  );
 
   testWidgets('hydration failure exits waiting without showing stale success', (
     tester,
@@ -924,30 +924,29 @@ DistingStateSynchronized _synchronizedState(
   _WidgetRespecificationManager manager,
 ) {
   return DistingState.synchronized(
-        disting: manager,
-        distingVersion: '1.19.0',
-        firmwareVersion: FirmwareVersion('1.19.0'),
-        presetName: 'Respecification widget fixture',
-        algorithms: [
-          AlgorithmInfo(
-            algorithmIndex: 17,
-            guid: _algorithmGuid,
-            name: 'Shape fixture',
-            specifications: [
-              Specification(
-                name: 'Parameter count',
-                min: 1,
-                max: 3,
-                defaultValue: 1,
-                type: 0,
-              ),
-            ],
+    disting: manager,
+    distingVersion: '1.19.0',
+    firmwareVersion: FirmwareVersion('1.19.0'),
+    presetName: 'Respecification widget fixture',
+    algorithms: [
+      AlgorithmInfo(
+        algorithmIndex: 17,
+        guid: _algorithmGuid,
+        name: 'Shape fixture',
+        specifications: [
+          Specification(
+            name: 'Parameter count',
+            min: 1,
+            max: 3,
+            defaultValue: 1,
+            type: 0,
           ),
         ],
-        slots: [_initialSlot()],
-        unitStrings: const [],
-      )
-      as DistingStateSynchronized;
+      ),
+    ],
+    slots: [_initialSlot()],
+    unitStrings: const [],
+  ) as DistingStateSynchronized;
 }
 
 Slot _initialSlot() {

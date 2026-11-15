@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:nt_helper/chat/models/additional_provider_config.dart';
 import 'package:nt_helper/chat/providers/openai_endpoint.dart';
 import 'package:nt_helper/chat/services/gemini_model_catalog.dart';
@@ -14,11 +14,10 @@ import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 
-typedef AdditionalCatalogFactory =
-    ChatModelCatalog Function(
-      LlmProviderType provider,
-      AdditionalProviderConfig config,
-    );
+typedef AdditionalCatalogFactory = ChatModelCatalog Function(
+  LlmProviderType provider,
+  AdditionalProviderConfig config,
+);
 
 class ChatSettingsDialog extends StatefulWidget {
   final AdditionalCatalogFactory? additionalCatalogFactory;
@@ -347,8 +346,7 @@ class _ChatSettingsDialogState extends State<ChatSettingsDialog> {
       if (!mounted || generation != _modelLoadGeneration) return;
       setState(() {
         _modelListLoading = false;
-        _modelListError =
-            'Could not load models. Check the connection and refresh, or enter a model ID.';
+        _modelListError = 'Could not load models. Check the connection and refresh, or enter a model ID.';
       });
     } finally {
       catalog?.dispose();
