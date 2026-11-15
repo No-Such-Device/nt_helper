@@ -111,6 +111,10 @@ before/after count, rather than the earlier approximate transitive count.
 - Archive 4.7 normalizes backslashes on ZIP encoding. Restored raw unsafe names
   in the existing test fixture bytes so firmware preflight regressions still
   test malformed packages rather than silently accepting a sanitized fixture.
+  The first Linux CI run also exposed a timestamp-sensitive immutable-copy
+  assertion: a second ZIP encoding could cross a second boundary. Compare the
+  snapshot against the actual original ZIP bytes instead, retaining the exact
+  byte-equality assertion without delays, skips or weaker coverage.
 - `desktop_multi_window` 0.3.1 uses Swift Package Manager. The macOS pod lockfile
   and generated Xcode/plugin registration changes were refreshed by the build.
 - CI now runs the full default suite, removing the old regression-tag filter to
@@ -209,7 +213,7 @@ Use `flutter build apk --debug` for the validated Android workflow.
 - External fork: `./gradlew :lib:assembleRelease
   :lib:publishReleasePublicationToMavenLocal` with Android Studio's JBR: passed.
 - `dart format --output=none --set-exit-if-changed <all changed Dart files>`:
-  **316 files, zero changes**. Broad source/test churn is primarily the required
+  **317 files, zero changes**. Broad source/test churn is primarily the required
   Material import migration and Dart 3.14 formatting, plus regenerated outputs.
   Scheduler CRLF normalization explains its large line count; its substantive
   edits are supported initializing-formal fixes, not scheduling changes.
