@@ -59,7 +59,7 @@ def apple_token(key_json: Path) -> str:
     import jwt
 
     data = json.loads(key_json.read_text())
-    key = data["key"].replace("\\n", "\n")
+    key = "\n".join(line.strip() for line in data["key"].replace("\\n", "\n").splitlines()) + "\n"
     return jwt.encode(
         {"iss": data["issuer_id"], "iat": int(time.time()), "exp": int(time.time()) + 900, "aud": "appstoreconnect-v1"},
         key,

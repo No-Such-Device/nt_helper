@@ -86,7 +86,7 @@ class StorePromotionTests(unittest.TestCase):
                 self.assertFalse((self.root / "fastlane/metadata/en-US").exists())
                 self.assertEqual(args[args.index("--precheck_include_in_app_purchases") + 1], "false")
 
-    def test_ios_releases_after_approval_while_macos_remains_manual(self):
+    def test_ios_and_macos_release_automatically_after_approval(self):
         # Credential tests exercise iOS only and do not protect platform release policy.
         self.env["APP_STORE_CONNECT_API_KEY_JSON"] = json.dumps(
             dict(key_id="TEST", issuer_id="TEST", key=self.key))
@@ -102,8 +102,7 @@ class StorePromotionTests(unittest.TestCase):
                 result = self.run_step("apple-production", "Submit existing build for review")
                 self.assertEqual(result.returncode, 0, result.stderr)
                 args = (self.root / "arguments").read_text().splitlines()
-                self.assertEqual(args[args.index("--automatic_release") + 1],
-                                 "true" if platform["platform"] == "ios" else "false")
+                self.assertEqual(args[args.index("--automatic_release") + 1], "true")
                 self.assertEqual(args[args.index("--submit_for_review") + 1], "true")
 
     def test_invalid_apple_key_fails_before_fastlane_without_disclosing_secret(self):
