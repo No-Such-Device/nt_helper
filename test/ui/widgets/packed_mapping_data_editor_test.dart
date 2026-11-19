@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:ui' show Tristate;
+
+import '../../test_helpers/mapping_v8.dart' show mappingV8Fixture;
 
 import 'package:bloc_test/bloc_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -76,6 +79,145 @@ void main() {
         ),
       );
     }
+
+    for (final (label, tab, field) in [
+      ('Change viewed parameter', 'MIDI', 'view'),
+      ('Ignore MIDI when algorithm is bypassed', 'MIDI', 'midi'),
+      ('Ignore I2C when algorithm is bypassed', 'I2C', 'i2c'),
+    ]) {
+      testWidgets(
+        '$field v8 option saves only its bit with stable async geometry and semantics',
+        (tester) async {
+          tester.view.physicalSize = const Size(1000, 1800);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          final semantics = tester.ensureSemantics();
+          try {
+            final original = PackedMappingData.fromBytes(8, mappingV8Fixture());
+            final held = Completer<void>();
+            PackedMappingData? saved;
+            await tester.pumpWidget(
+              createTestWidget(
+                initialData: original,
+                firmwareVersion: FirmwareVersion('1.20beta'),
+                onSave: (data) {
+                  saved = data;
+                  return held.future;
+                },
+              ),
+            );
+            await tester.tap(find.text(tab));
+            await tester.pumpAndSettle();
+            final finder = find.widgetWithText(SwitchListTile, label);
+            await tester.ensureVisible(finder);
+            await tester.pumpAndSettle();
+            final before = tester.getRect(finder);
+            final initial = tester.widget<SwitchListTile>(finder).value;
+            expect(tester.getSemantics(finder).label, contains(label));
+            await tester.tap(finder);
+            await tester.pump();
+            expect(saved, isNotNull);
+            final expected = switch (field) {
+              'view' => original.copyWith(midiViewChange: !initial),
+              'midi' => original.copyWith(midiIgnoreWhenBypassed: !initial),
+              _ => original.copyWith(i2cIgnoreWhenBypassed: !initial),
+            };
+            expect(saved, expected);
+            expect(tester.getRect(finder), before);
+            expect(
+              tester
+                  .getSemantics(finder)
+                  .getSemanticsData()
+                  .flagsCollection
+                  .isToggled,
+              !initial ? Tristate.isTrue : Tristate.isFalse,
+            );
+            await tester.pump(const Duration(seconds: 1));
+            expect(tester.getRect(finder), before);
+            held.complete();
+            await tester.pump();
+            expect(tester.getRect(finder), before);
+          } finally {
+            semantics.dispose();
+          }
+        },
+      );
+    }
+
+    for (final (version, wireVersion) in [
+      ('1.12.0', 8),
+      ('1.19.99', 8),
+      ('unknown', 8),
+      ('1.20beta', 7),
+    ]) {
+      testWidgets(
+        'new mapping controls stay read-only for $version with wire v$wireVersion',
+        (tester) async {
+          await tester.pumpWidget(
+            createTestWidget(
+              initialData: PackedMappingData.fromBytes(
+                8,
+                mappingV8Fixture(),
+              ).copyWith(version: wireVersion),
+              firmwareVersion: FirmwareVersion(version),
+            ),
+          );
+          await tester.tap(find.text('MIDI'));
+          await tester.pumpAndSettle();
+          for (final label in [
+            'Change viewed parameter',
+            'Ignore MIDI when algorithm is bypassed',
+          ]) {
+            expect(
+              tester
+                  .widget<SwitchListTile>(
+                    find.widgetWithText(SwitchListTile, label),
+                  )
+                  .onChanged,
+              isNull,
+            );
+          }
+          await tester.tap(find.text('I2C'));
+          await tester.pumpAndSettle();
+          final control = tester.widget<SwitchListTile>(
+            find.widgetWithText(
+              SwitchListTile,
+              'Ignore I2C when algorithm is bypassed',
+            ),
+          );
+          expect(control.onChanged, isNull);
+          expect(control.value, isTrue);
+        },
+      );
+    }
+
+    testWidgets(
+      'expressive MIDI selection keeps observed v8 and bypass options',
+      (tester) async {
+        PackedMappingData? saved;
+        await tester.pumpWidget(
+          createTestWidget(
+            initialData: PackedMappingData.fromBytes(8, mappingV8Fixture()),
+            firmwareVersion: FirmwareVersion('1.20beta'),
+            onSave: (data) async {
+              saved = data;
+            },
+          ),
+        );
+        await tester.tap(find.text('MIDI'));
+        await tester.pumpAndSettle();
+        final menu = tester.widget<DropdownMenu<MidiMappingType>>(
+          find.byType(DropdownMenu<MidiMappingType>),
+        );
+        menu.onSelected!(MidiMappingType.pitchBend);
+        await tester.pump();
+        expect(saved?.version, 8);
+        expect(saved?.midiIgnoreWhenBypassed, isTrue);
+        expect(saved?.midiViewChange, isFalse);
+        expect(saved?.i2cIgnoreWhenBypassed, isTrue);
+      },
+    );
 
     testWidgets('MIDI type dropdown includes all 5 options', (tester) async {
       await tester.pumpWidget(createTestWidget());

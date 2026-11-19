@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:nt_helper/models/algorithm_metadata.dart';
 import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
@@ -382,8 +383,7 @@ class MCPAlgorithmTools {
           'results': [],
           'message':
               'No algorithms found matching "$query". Try searching by algorithm name or category.',
-          'suggestions':
-              'Use `search_algorithms` with a broader query or `algorithm_info` for specific algorithms.',
+          'suggestions': 'Use `search_algorithms` with a broader query or `algorithm_info` for specific algorithms.',
         }),
       );
     }
@@ -933,8 +933,7 @@ class MCPAlgorithmTools {
       return jsonEncode(
         convertToSnakeCaseKeys({
           'success': false,
-          'error':
-              'Invalid identifier format: expected slot_index:parameter_number.',
+          'error': 'Invalid identifier format: expected slot_index:parameter_number.',
         }),
       );
     }
@@ -942,8 +941,7 @@ class MCPAlgorithmTools {
       return jsonEncode(
         convertToSnakeCaseKeys({
           'success': false,
-          'error':
-              'Invalid identifier format: expected slot_index:parameter_number.',
+          'error': 'Invalid identifier format: expected slot_index:parameter_number.',
         }),
       );
     }
@@ -1062,8 +1060,7 @@ class MCPAlgorithmTools {
     if (mode is! String || !modes.contains(mode)) {
       return jsonEncode({
         'success': false,
-        'error':
-            'Invalid mode: expected parameter, algorithm, overview, or vu_meters.',
+        'error': 'Invalid mode: expected parameter, algorithm, overview, or vu_meters.',
         'valid_modes': modes,
       });
     }
@@ -1097,8 +1094,7 @@ class MCPAlgorithmTools {
       if (displayMode != null) {
         return jsonEncode({
           'success': false,
-          'error':
-              'show_screen takes no arguments. Use remote_control for menu navigation; use set_display_mode only for an explicitly requested display mode change.',
+          'error': 'show_screen takes no arguments. Use remote_control for menu navigation; use set_display_mode only for an explicitly requested display mode change.',
         });
       }
 
@@ -1417,6 +1413,8 @@ class MCPAlgorithmTools {
         'midi_cc': data.midiCC,
         'is_midi_symmetric': data.isMidiSymmetric,
         'is_midi_relative': data.isMidiRelative,
+        'midi_view_change': data.midiViewChange,
+        'midi_ignore_when_bypassed': data.midiIgnoreWhenBypassed,
         'midi_min': data.midiMin,
         'midi_max': data.midiMax,
       };
@@ -1428,6 +1426,7 @@ class MCPAlgorithmTools {
         'is_i2c_enabled': data.isI2cEnabled,
         'i2c_cc': data.i2cCC,
         'is_i2c_symmetric': data.isI2cSymmetric,
+        'i2c_ignore_when_bypassed': data.i2cIgnoreWhenBypassed,
         'i2c_min': data.i2cMin,
         'i2c_max': data.i2cMax,
       };

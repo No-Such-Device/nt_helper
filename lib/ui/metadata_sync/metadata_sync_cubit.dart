@@ -1111,14 +1111,25 @@ class MetadataSyncCubit extends Cubit<MetadataSyncState> {
       );
     }
 
+    final supportsV8 = state.firmwareVersion.hasBypassAwareMappings;
+    mapping.validateForFirmware(state.firmwareVersion);
     final baseVersion = mapping.version < 1
         ? supportsExpressiveMidiMapping
               ? 7
               : 6
         : mapping.version;
     final version = isExpressive && supportsExpressiveMidiMapping
-        ? 7
-        : baseVersion.clamp(1, supportsExpressiveMidiMapping ? 7 : 6).toInt();
+        ? (baseVersion == 8 && supportsV8 ? 8 : 7)
+        : baseVersion
+              .clamp(
+                1,
+                supportsV8
+                    ? 8
+                    : supportsExpressiveMidiMapping
+                    ? 7
+                    : 6,
+              )
+              .toInt();
 
     if (!isExpressive) {
       return mapping.copyWith(version: version);

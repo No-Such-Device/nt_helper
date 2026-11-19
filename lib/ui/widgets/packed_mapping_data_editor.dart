@@ -686,6 +686,16 @@ class PackedMappingDataEditorState extends State<PackedMappingDataEditor>
               _restoreParameterValue();
             },
           ),
+          _bypassMappingSwitch(
+            'Change viewed parameter',
+            _data.midiViewChange,
+            (value) => _data = _data.copyWith(midiViewChange: value),
+          ),
+          _bypassMappingSwitch(
+            'Ignore MIDI when algorithm is bypassed',
+            _data.midiIgnoreWhenBypassed,
+            (value) => _data = _data.copyWith(midiIgnoreWhenBypassed: value),
+          ),
           // Add the MIDI Detector
           MidiDetectorWidget(
             onMidiEventFound:
@@ -762,6 +772,37 @@ class PackedMappingDataEditorState extends State<PackedMappingDataEditor>
     );
   }
 
+  bool _supportsBypassAwareMappings() {
+    final state = context.read<DistingCubit>().state;
+    return _data.version == 8 &&
+        _data.unknownMidiMappingType == null &&
+        state is DistingStateSynchronized &&
+        state.firmwareVersion.hasBypassAwareMappings;
+  }
+
+  Widget _bypassMappingSwitch(
+    String label,
+    bool value,
+    ValueChanged<bool> update,
+  ) {
+    final supported = _supportsBypassAwareMappings();
+    return Tooltip(
+      message: supported ? label : 'Requires firmware 1.20 and a v8 mapping',
+      child: SwitchListTile(
+        title: Text(label),
+        value: value,
+        dense: true,
+        contentPadding: EdgeInsets.zero,
+        onChanged: supported
+            ? (value) {
+                setState(() => update(value));
+                _triggerOptimisticSave();
+              }
+            : null,
+      ),
+    );
+  }
+
   bool _supportsExpressiveMidiMapping() {
     final state = context.read<DistingCubit>().state;
     return state is DistingStateSynchronized &&
@@ -784,7 +825,7 @@ class PackedMappingDataEditorState extends State<PackedMappingDataEditor>
 
   int _mappingVersionForType(MidiMappingType type) {
     if (_isExpressiveMidiType(type) && _supportsExpressiveMidiMapping()) {
-      return 7;
+      return _data.version == 8 ? 8 : 7;
     }
     return _data.version;
   }
@@ -883,6 +924,11 @@ class PackedMappingDataEditorState extends State<PackedMappingDataEditor>
               });
               _triggerOptimisticSave();
             },
+          ),
+          _bypassMappingSwitch(
+            'Ignore I2C when algorithm is bypassed',
+            _data.i2cIgnoreWhenBypassed,
+            (value) => _data = _data.copyWith(i2cIgnoreWhenBypassed: value),
           ),
           SwitchListTile(
             title: const Text('I2C Symmetric'),

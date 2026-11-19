@@ -24,6 +24,18 @@ class FirmwareVersion {
     }
   }
 
+  /// Owner-confirmed 1.20 feature line, including announced betas. Wire v8
+  /// is independently required for new edits; this is not an earliest-version
+  /// claim for every v8 field. Build-date digits never establish capabilities.
+  bool get hasBypassAwareMappings {
+    final version = versionString.split('\n').first.trim();
+    final recognized = RegExp(
+      r'^v?\d+\.\d+(?:\.\d+)?(?:-?beta(?:\.?\d+)?)?$',
+      caseSensitive: false,
+    ).hasMatch(version);
+    return recognized && FirmwareVersion(version).isSupported('1.20.0');
+  }
+
   /// Firmware 1.16+ supports performance page items via SysEx 0x57/0x58.
   bool get hasPerfPageItems {
     return major > 1 || (major == 1 && minor >= 16);
