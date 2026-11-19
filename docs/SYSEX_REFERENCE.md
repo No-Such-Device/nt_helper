@@ -841,6 +841,18 @@ F7
 
 Returns parameters that share the same output mode group. Used for visual grouping in the UI (colored backgrounds).
 
+**Firmware compatibility:** Parameter I/O flags and this query require firmware
+1.12 or later. See the [1.12 release notes](https://expert-sleepers.co.uk/distingNTfirmwareupdates.html)
+and upstream [output-mode implementation](https://github.com/expertsleepersltd/distingNT/commit/39b5376bdf3f8136051d8acc9d32a875485060fe).
+The live manager returns no metadata and sends no `0x55` on older or unrecognized
+firmware. Recognized beta versions use their numeric firmware line (for example,
+`1.12.0-beta.2` is enabled); offline cached metadata remains available.
+Existing value decoders continue masking flags independently of the version gate.
+
+This threshold does **not** enable upstream mapping version 8's new view-change
+and bypass options. Their minimum firmware version is unconfirmed; they remain
+separate from this 1.12 compatibility change.
+
 ---
 
 ### `0x56` — Query Paths

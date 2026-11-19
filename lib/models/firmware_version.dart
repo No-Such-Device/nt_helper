@@ -24,6 +24,18 @@ class FirmwareVersion {
     }
   }
 
+  /// Firmware 1.12+ supplies parameter I/O flags and output-mode usage (0x55).
+  /// Recognized betas use their numeric firmware line, like other capabilities.
+  /// Only the first reply line is a version; build dates are not capabilities.
+  bool get hasParameterIoMetadata {
+    final version = versionString.split('\n').first.trim();
+    final recognized = RegExp(
+      r'^v?\d+\.\d+(?:\.\d+)?(?:-?beta(?:\.?\d+)?)?$',
+      caseSensitive: false,
+    ).hasMatch(version);
+    return recognized && FirmwareVersion(version).isSupported('1.12.0');
+  }
+
   /// Firmware 1.16+ supports performance page items via SysEx 0x57/0x58.
   bool get hasPerfPageItems {
     return major > 1 || (major == 1 && minor >= 16);

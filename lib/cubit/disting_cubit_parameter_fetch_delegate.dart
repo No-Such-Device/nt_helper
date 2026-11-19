@@ -433,12 +433,12 @@ class _ParameterFetchDelegate {
           (i) => visible.contains(i) && isEnum(i) && !shouldSkipEnumStrings(i),
         )
         .length;
-    final mappingCount = Iterable<int>.generate(
-      numParams,
-    ).where((i) => visible.contains(i) && isMappable(i)).length;
-    final valueStringCount = Iterable<int>.generate(
-      numParams,
-    ).where((i) => visible.contains(i) && isString(i)).length;
+    final mappingCount = Iterable<int>.generate(numParams)
+        .where((i) => visible.contains(i) && isMappable(i))
+        .length;
+    final valueStringCount = Iterable<int>.generate(numParams)
+        .where((i) => visible.contains(i) && isString(i))
+        .length;
     final optionalStopwatch = Stopwatch()..start();
     _diag(
       'fetchSlot[$algorithmIndex] optionalDetails start '
@@ -468,9 +468,8 @@ class _ParameterFetchDelegate {
       ),
       // Mappings
       _forEachLimited(
-        Iterable<int>.generate(
-          numParams,
-        ).where((i) => visible.contains(i) && isMappable(i)),
+        Iterable<int>.generate(numParams)
+            .where((i) => visible.contains(i) && isMappable(i)),
         (param) async {
           try {
             final mappingResult = await disting.requestMappings(
@@ -491,9 +490,8 @@ class _ParameterFetchDelegate {
       // String-type parameters may not respond (depends on unit type and firmware).
       // We accept null gracefully rather than retrying, matching reference implementation.
       _forEachLimited(
-        Iterable<int>.generate(
-          numParams,
-        ).where((i) => visible.contains(i) && isString(i)),
+        Iterable<int>.generate(numParams)
+            .where((i) => visible.contains(i) && isString(i)),
         (param) async {
           try {
             final valueStringResult = await disting.requestParameterValueString(
@@ -532,7 +530,10 @@ class _ParameterFetchDelegate {
           paramEnums.values.contains('Replace'),
     );
 
-    if (outputModeParamNumbers.isEmpty && hasAddReplaceEnum) {
+    // Older firmware has Add/Replace enums but does not supply I/O flags.
+    if (firmware?.hasParameterIoMetadata == true &&
+        outputModeParamNumbers.isEmpty &&
+        hasAddReplaceEnum) {
       throw StateError(
         'Output mode parameters missing ioFlags; fallback is not permitted.',
       );

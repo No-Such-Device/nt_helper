@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:nt_helper/domain/patch_map/patch_map_client.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:path/path.dart' as p;
@@ -215,11 +216,12 @@ class DistingMidiManager
       messageType: DistingNTRespMessageType.respMessage,
     );
 
-    return await _scheduler.sendRequest<String>(
+    _firmwareVersion = await _scheduler.sendRequest<String>(
       packet,
       key,
       responseExpectation: ResponseExpectation.required,
     );
+    return _firmwareVersion;
   }
 
   @override
@@ -512,6 +514,11 @@ class DistingMidiManager
     int algorithmIndex,
     int parameterNumber,
   ) async {
+    _firmwareVersion ??= await requestVersionString();
+    if (!FirmwareVersion(_firmwareVersion ?? '').hasParameterIoMetadata) {
+      return null;
+    }
+
     final message = RequestOutputModeUsageMessage(
       sysExId: sysExId,
       algorithmIndex: algorithmIndex,
