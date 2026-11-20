@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:nt_helper/utils/plugin_installation_path.dart';
 
@@ -43,6 +44,7 @@ import 'package:nt_helper/models/remote_action.dart';
 import 'package:nt_helper/models/remote_control_state.dart';
 import 'package:nt_helper/models/performance_page_item.dart';
 import 'package:nt_helper/models/slot_count_info.dart';
+import 'package:nt_helper/cubit/preset_load_completion.dart';
 import 'package:nt_helper/services/elf_guid_extractor.dart';
 import 'package:nt_helper/services/firmware_version_service.dart';
 import 'package:nt_helper/ui/parameter_editor_registry.dart';
@@ -240,28 +242,27 @@ class DistingCubit extends _DistingCubitBase
   /// Stream of video state updates from the cubit's state
   Stream<VideoStreamState?> get videoStreamState => stream.map(
     (state) => state.maybeWhen(
-      synchronized:
-          (
-            disting,
-            distingVersion,
-            firmwareVersion,
-            deviceIoProfile,
-            presetName,
-            algorithms,
-            slots,
-            unitStrings,
-            inputDevice,
-            outputDevice,
-            loading,
-            offline,
-            screenshot,
-            demo,
-            videoStream,
-            availableFirmwareUpdate,
-            perfPageItems,
-            isDirty,
-            renameConfirmationName,
-          ) => videoStream,
+      synchronized: (
+        disting,
+        distingVersion,
+        firmwareVersion,
+        deviceIoProfile,
+        presetName,
+        algorithms,
+        slots,
+        unitStrings,
+        inputDevice,
+        outputDevice,
+        loading,
+        offline,
+        screenshot,
+        demo,
+        videoStream,
+        availableFirmwareUpdate,
+        perfPageItems,
+        isDirty,
+        renameConfirmationName,
+      ) => videoStream,
       orElse: () => null,
     ),
   );
