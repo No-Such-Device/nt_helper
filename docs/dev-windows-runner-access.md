@@ -48,6 +48,32 @@ runner for the Windows package. `subosito/flutter-action` installs the pinned
 Flutter SDK for that job. An interactive Windows shell does not necessarily
 have `flutter` on its `PATH`; let the workflow set up Flutter for CI work.
 
+## Guest prerequisites
+
+The guest is Windows 11 Home x64 with 8 virtual CPUs, 16 GB RAM, a 100 GB
+dynamically allocated disk, VirtualBox Guest Additions, and Windows Developer
+Mode. Keep the Flutter action's `architecture: x64` and the existing x64
+build/output paths. These prerequisites are already provisioned and are part of
+the runner contract:
+
+- Visual Studio Build Tools at `C:\BuildTools`, including
+  `Microsoft.VisualStudio.Workload.VCTools` and
+  `Microsoft.VisualStudio.Component.VC.ATL` (`atlbase.h` is required by the USB
+  video plugin).
+- Windows Developer Mode enabled machine-wide so Flutter plugins can create
+  symlinks.
+- Machine-wide PowerShell 7 at
+  `C:\Program Files\PowerShell\7\pwsh.exe`.
+- Git Bash at `C:\Program Files\Git\bin\bash.exe`.
+- `jq.exe` at `C:\ProgramData\nt-helper-runner\bin\jq.exe`.
+- Machine-wide Inno Setup 6 at
+  `C:\Program Files (x86)\Inno Setup 6\ISCC.exe`.
+- Git and GitHub CLI available to the runner service.
+
+The release workflow's `Add runner tools to PATH` and `Verify Inno Setup` steps
+are intentional portability checks; do not replace them with assumptions
+inherited from GitHub-hosted images.
+
 ## Run a one-off command in Windows
 
 VirtualBox Guest Additions is installed, so commands can be run from the Linux
