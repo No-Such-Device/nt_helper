@@ -97,11 +97,11 @@ jobs:
       - name: Set Version
         run: echo "VERSION=${{ needs.setup.outputs.version }}" >> "$GITHUB_ENV"
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -191,11 +191,11 @@ jobs:
       - name: Set Version
         run: echo "VERSION=${{ needs.setup.outputs.version }}" >> "$GITHUB_ENV"
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
