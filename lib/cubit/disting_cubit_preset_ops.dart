@@ -3,6 +3,16 @@ part of 'disting_cubit.dart';
 mixin _DistingCubitPresetOps on _DistingCubitBase {
   CancelableOperation<void>? _renamePresetVerificationOperation;
 
+  @visibleForTesting
+  PresetLoadCompletion presetLoadCompletion = const PresetLoadCompletion();
+
+  bool _isLoadingPresetOn(IDistingMidiManager disting) {
+    final current = state;
+    return !isClosed &&
+        current is DistingStateConnected &&
+        identical(current.disting, disting);
+  }
+
   Future<void> newPresetImpl() async {
     final currentState = state;
     if (currentState is DistingStateSynchronized) {
@@ -31,6 +41,11 @@ mixin _DistingCubitPresetOps on _DistingCubitBase {
       syncProgress: 0,
     );
     emit(loadingState);
+    final fileSlotCount = await presetLoadCompletion.readPresetSlotCount(
+      disting,
+      name,
+    );
+    if (!_isLoadingPresetOn(disting)) return;
     try {
       await disting.requestLoadPreset(name, append);
     } catch (_) {
@@ -42,12 +57,34 @@ mixin _DistingCubitPresetOps on _DistingCubitBase {
 
     // Cancel/disconnect while the load was being sent must not sync a different
     // connection or bring the old connection back into the UI.
-    final afterLoad = state;
-    if (isClosed ||
-        afterLoad is! DistingStateConnected ||
-        !identical(afterLoad.disting, disting)) {
-      return;
-    }
+    if (!_isLoadingPresetOn(disting)) return;
+
+    // The NT builds the loaded algorithms after reporting the new preset name;
+    // syncing straight away reads an empty or partial preset.
+    final targetSlotCount = fileSlotCount == null
+        ? null
+        : math.min(
+            DistingLimits.maxPresetSlots,
+            (append ? currentState.slots.length : 0) + fileSlotCount,
+          );
+    await presetLoadCompletion.waitForSlots(
+      disting,
+      targetSlotCount: targetSlotCount,
+      isCurrent: () => _isLoadingPresetOn(disting),
+      onSlotCount: (count) {
+        final waiting = state;
+        if (waiting is! DistingStateConnected) return;
+        emit(
+          waiting.copyWith(
+            syncStatus: targetSlotCount == null
+                ? 'Loading preset... ($count slots)'
+                : 'Loading preset... ($count of $targetSlotCount slots)',
+          ),
+        );
+      },
+    );
+    if (!_isLoadingPresetOn(disting)) return;
+
     await _performSyncAndEmit(
       preserveSlotSpecificationsFrom: append ? currentState : null,
     );
