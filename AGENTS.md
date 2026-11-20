@@ -121,31 +121,14 @@ GUIDs of a plug-in `.o` for install checks, the gallery and SD-card scans.
 
 ## Graphify Codebase Graph
 
-`nt_helper` is indexed in Substrate's registered `graphify-mcp` graph. Invoke
-the `graphify` skill for graph search, architecture discovery, relationship
-tracing, ownership/adjacency checks, or PR impact work. The skill is the source
-of truth for live service discovery and tool routing.
+`nt_helper` is indexed in Substrate's registered `graphify-mcp` graph; the
+`graphify` skill describes the workflow. Use it to find existing behavior before
+adding a new helper, delegate or service, and confirm findings in the checkout.
 
-Route every Graphify service lookup and tool call through `mcp__substrate`.
-Use the `graphify-mcp__*` tools mapped by Substrate, or
-`mcp__substrate.invoke_tool` when the compatibility wrapper is required. Never
-connect to or invoke a standalone Graphify MCP server directly.
-
-Use Graphify to find existing behavior before introducing a new helper,
-delegate, service, or parallel implementation.
-
-1. Start with the smallest useful query: `query_graph` for orientation,
-   `get_node`/`get_neighbors` for a specific symbol, and `shortest_path` for a
-   relationship between concepts.
-2. For architecture or impact work, inspect the relevant communities rather
-   than stopping at Community 0, which is only the largest cluster.
-3. Treat Graphify as a map, not source truth. Confirm important findings with
-   `rg` and the actual files in this checkout before editing.
-
-Follow the skill's Substrate-registered service workflow rather than using
-generic knowledge search, an external Graphify install, or a local graph
-rebuild. Prefer plain `rg` for a simple exact text/file lookup. Use PR-impact
-tools only for PR/merge work, and corroborate current GitHub status separately.
+Route every Graphify call through `mcp__substrate` (`graphify-mcp__*` tools, or
+`mcp__substrate.invoke_tool`). Never use a standalone Graphify MCP server, an
+external install, or a local graph rebuild. Community 0 is only the largest
+cluster; inspect the relevant communities for architecture or impact work.
 
 ## Commands
 
@@ -155,60 +138,19 @@ flutter test test/path/to/affected_test.dart --no-pub  # Tight local loop
 flutter run -d macos --print-dtd   # Run with DTD URL for MCP connection
 ```
 
-For local iteration, select the affected test file(s), then the related test
-folder when shared behavior changes; use `--plain-name 'test name'` to isolate a
-failure. Run `dart format --output=none --set-exit-if-changed <changed Dart files>`
-and `flutter analyze --no-pub` for Dart changes. Preserve regression tests and
-assertions: narrow selection, not coverage. Docs/workflow-only edits need link,
-diff, and workflow validation rather than an unrelated Flutter suite.
+Locally, run the affected tests plus `dart format` and `flutter analyze --no-pub`
+on changed Dart files. The full suite runs in CI on every PR and main push; it is
+required locally only on the release commit. Before committing, report the exact
+checks run. See `test/AGENTS.md` and `docs/developer-feedback.md` for test
+selection and CI routing.
 
-Before committing, run relevant checks and report the exact commands and limits.
-The full `flutter test --no-pub` suite runs once per CI run on every PR and main
-push; it is not required after every local edit. Releases still require the full
-local suite on the release commit. See `test/AGENTS.md` for selection examples and
-`docs/developer-feedback.md` for CI routing and required-check configuration.
+Tests must be deterministic: await futures, stream states or completers, and use
+`fakeAsync`/`pump` for timers, never real sleeps. Fix a flaky test rather than
+skipping it, lengthening timeouts, or weakening a regression assertion.
 
-## Deterministic, bounded tests
-
-Await observable completion: operation futures, a stream state (check current
-state before subscribing), or a test-controlled `Completer`. Test timers with
-`fakeAsync`/`elapse` or `WidgetTester.pump`; inject/capture a `Clock` when code
-also measures elapsed time. Hold mocked work with a completer while asserting
-loading state and geometry, then release it explicitly. Bound waits for real
-filesystem, isolate, or child-process work and clean up subscriptions/resources.
-
-| Best practice | Counterexample |
-|---|---|
-| Await `cubit.stream.firstWhere(done)` after checking current state | Sleep 100 ms and assume async work finished |
-| Advance virtual time just before/at a debounce deadline | Wait in real time for the debounce |
-| Coalesce repaint-only pump loops, preserving virtual time and verified async boundaries | Repaint the entire widget tree 30 times after every gesture |
-| Simulate `TimeoutException` in an HTTP mock to test retry handling | Give real localhost requests a 5 ms deadline |
-| Seed an old DB timestamp and require it to advance | Sleep, then accept an unchanged timestamp |
-| Profile slow tests; remove redundant non-regression smoke tests | Keep long tests whose only assertion is `expect(true, isTrue)` |
-
-Preserve bug regressions and meaningful assertions; make them deterministic
-rather than adding skips, larger sleeps/timeouts, or weakening coverage. Keep
-intentional virtual-time latency simulations. Real process-crash tests may use
-bounded checkpoint polling and a worker keep-alive timer; these synchronize
-external processes, not guessed application completion.
-
-## Updating Flutter (fvm)
-
-```
-fvm releases                     # List versions; find latest stable at the bottom
-fvm install <VERSION>            # e.g. fvm install 3.41.6
-fvm global <VERSION>             # Set as global default
-```
-
-## Worktrees
-
-Generated files (mocks, freezed, drift) are gitignored. After `git worktree add`, run:
-
-```
-dart run build_runner build --delete-conflicting-outputs
-```
-
-before `flutter analyze` or `flutter test`.
+Generated files (mocks, freezed, drift) are gitignored. In a fresh worktree, run
+`dart run build_runner build --delete-conflicting-outputs` before analyze/test.
+Flutter is managed with `fvm`.
 
 ## Release
 
@@ -255,14 +197,11 @@ installer. Finish with a clean worktree whose `HEAD` matches `origin/main`.
 
 ### Windows self-hosted release runner
 
-For SSH, direct Windows commands, and desktop access, see
+The Windows job targets `[self-hosted, Windows, X64]`, the runner `dev-Windows`
+in the VirtualBox VM `nt-helper-windows-x64` on
+`neal@dev.allosaurus-newton.ts.net`. For guest prerequisites, SSH, direct
+Windows commands, desktop access and shutdown, see
 [dev-Windows runner access](docs/dev-windows-runner-access.md).
-
-The Windows job targets `[self-hosted, Windows, X64]`. It runs in the VirtualBox
-VM named `nt-helper-windows-x64` on
-`neal@dev.allosaurus-newton.ts.net`, registered with GitHub as `dev-Windows`.
-The VM and its 100 GB dynamically allocated disk live under
-`/mnt/LINDATA/nt-helper-windows-runner` on that host.
 
 Before tagging, check the VM state and start it headlessly when necessary:
 
@@ -286,39 +225,9 @@ reconnects to GitHub. Do not switch the job back to GitHub-hosted Windows as a
 fallback when hosted minutes are unavailable; fix a missing runner prerequisite
 instead.
 
-The guest is Windows 11 Home x64 with 8 virtual CPUs, 16 GB RAM, VirtualBox
-Guest Additions, and Windows Developer Mode. Keep the Flutter action's
-`architecture: x64` and the existing x64 build/output paths. These guest
-prerequisites are already provisioned and are part of the runner contract:
-
-- Visual Studio Build Tools at `C:\BuildTools`, including
-  `Microsoft.VisualStudio.Workload.VCTools` and
-  `Microsoft.VisualStudio.Component.VC.ATL` (`atlbase.h` is required by the USB
-  video plugin).
-- Windows Developer Mode enabled machine-wide so Flutter plugins can create
-  symlinks.
-- Machine-wide PowerShell 7 at
-  `C:\Program Files\PowerShell\7\pwsh.exe`.
-- Git Bash at `C:\Program Files\Git\bin\bash.exe`.
-- `jq.exe` at `C:\ProgramData\nt-helper-runner\bin\jq.exe`.
-- Machine-wide Inno Setup 6 at
-  `C:\Program Files (x86)\Inno Setup 6\ISCC.exe`.
-- Git and GitHub CLI available to the runner service.
-
-The workflow's `Add runner tools to PATH` and `Verify Inno Setup` steps are
-intentional portability checks; do not replace them with assumptions inherited
-from GitHub-hosted images. If a Windows build fails, inspect the exact failed
-step, repair the persistent guest prerequisite, and rerun the failed job. Do not
-move/delete the release tag or create another version merely to retry it.
-
-The VM may remain running as the persistent nt_helper runner. If it must be
-stopped to reclaim host resources, first confirm the runner is not busy and no
-Windows job is queued, then request a graceful guest shutdown:
-
-```bash
-ssh neal@dev.allosaurus-newton.ts.net \
-  'VBoxManage controlvm "nt-helper-windows-x64" acpipowerbutton'
-```
+If a Windows build fails, inspect the exact failed step, repair the persistent
+guest prerequisite, and rerun the failed job. Do not move/delete the release tag
+or create another version merely to retry it.
 
 ## MCP Docs
 
@@ -335,21 +244,14 @@ as feedback appears or clears. Test geometry across asynchronous state changes.
 
 ## Flutter Accessibility
 
-- Build Flutter UI so blind users can understand state, navigate controls, and complete workflows with a screen reader.
-- Provide semantic labels for icon-only controls, custom widgets, progress indicators, and non-text affordances.
-- Mark page, dialog, section, and group titles with `Semantics(header: true)` when they structure navigation.
-- Use `Semantics(liveRegion: true)` and `SemanticsService.sendAnnouncement` for meaningful async state changes, validation errors, empty states, selection changes, and completion of non-visual operations.
-- Wrap decorative or duplicated visual-only content in `ExcludeSemantics` so screen readers do not announce noise.
-- Preserve keyboard and focus traversal for dialogs, lists, toggles, segmented controls, file import/export flows, and drag/drop alternatives.
-- Add or update widget semantics tests for new interactive UI, especially icon-only actions, live status text, selected states, and error paths.
+Every workflow must be fully usable with a screen reader and keyboard. Label
+icon-only and custom controls, mark structural titles as headers, announce
+meaningful async results (`SemanticsService.sendAnnouncement` / live regions),
+exclude decorative content, and add semantics tests for new interactive UI.
 
 ## Commits
 
-- Use Conventional Commit-style subjects so changelog and semver tooling can classify changes.
-- Prefer types such as `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `perf:`, `build:`, `ci:`, `chore:`, and `revert:`.
-- Use an optional scope when it adds clarity, for example `feat(template-manager): add JSON import`.
-- Mark breaking changes with `!` in the subject or a `BREAKING CHANGE:` footer.
-- Keep the subject imperative and focused on the user-visible or release-relevant change.
+Use Conventional Commit subjects; changelog and semver tooling depend on them.
 
 ## Rules
 
@@ -362,3 +264,5 @@ as feedback appears or clears. Test geometry across asynchronous state changes.
   requests. Verify large WAV uploads by directory listing names/sizes or a
   mounted SD-card filesystem, not whole-file SysEx download.
 - Snackbars are exclusively for errors, exceptional warnings, or invalid actions. ZERO affirmative/success or routine progress snackbars anywhere in the app (including helpers). Use ordinary inline state and accessibility announcements; do not replace successes with toasts.
+- Never replace code with a comment.
+- Use only comments that are absolutely required for code understanding, not for tracking what should have been written in the code.
