@@ -1,6 +1,9 @@
 import 'dart:convert';
 
+import '../test_helpers/mapping_v8.dart' show mappingV8Fixture;
+
 import 'package:drift/native.dart';
+import 'package:nt_helper/domain/offline_disting_midi_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nt_helper/db/daos/presets_dao.dart';
 import 'package:nt_helper/db/database.dart';
@@ -78,6 +81,40 @@ void main() {
 
   tearDown(() async {
     await db.close();
+  });
+
+  test('template JSON and SQLite retain v8 flags and opaque bits', () async {
+    final mapping = PackedMappingData.fromBytes(8, mappingV8Fixture());
+    final service = TemplateShareService(db);
+    final source = FullPresetDetails(
+      preset: PresetEntry(
+        id: 1,
+        name: 'V8',
+        lastModified: DateTime(2026),
+        isTemplate: true,
+      ),
+      slots: [_slotWithMapping(0, 'AAAA', 'Alpha', mapping)],
+    );
+    final id = await service.importTemplate(service.encodeTemplate(source));
+    final restored = (await db.presetsDao.getFullPresetDetails(id))!
+        .slots
+        .single
+        .mappings[2]!;
+    expect(restored, mapping);
+    expect(restored.toBytes(), mappingV8Fixture());
+    expect(restored.version, 8);
+    final offline = OfflineDistingMidiManager(db);
+    addTearDown(offline.dispose);
+    await offline.initializeFromDb(
+      await db.presetsDao.getFullPresetDetails(id),
+    );
+    await offline.setPerformancePageMapping(0, 2, 4);
+    final offlineMapping = (await offline.requestMappings(
+      0,
+      2,
+    ))!.packedMappingData;
+    expect(offlineMapping, mapping.copyWith(perfPageIndex: 4));
+    expect(offlineMapping.toBytes(), mappingV8Fixture());
   });
 
   test('exports and imports a template JSON payload', () async {

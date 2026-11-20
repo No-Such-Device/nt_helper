@@ -1759,15 +1759,13 @@ class DistingTools {
         } else {
           return {
             'success': false,
-            'error':
-                'Failed to decode PNG bytes (from controller) into an image object.',
+            'error': 'Failed to decode PNG bytes (from controller) into an image object.',
           };
         }
       } else {
         return {
           'success': false,
-          'error':
-              'Module screenshot is currently unavailable (controller returned null/empty) or device not connected.',
+          'error': 'Module screenshot is currently unavailable (controller returned null/empty) or device not connected.',
         };
       }
     } catch (e) {
@@ -4275,6 +4273,8 @@ class DistingTools {
         'midi_cc': packed.midiCC,
         'is_midi_symmetric': packed.isMidiSymmetric,
         'is_midi_relative': packed.isMidiRelative,
+        'midi_view_change': packed.midiViewChange,
+        'midi_ignore_when_bypassed': packed.midiIgnoreWhenBypassed,
         'midi_min': packed.midiMin,
         'midi_max': packed.midiMax,
       };
@@ -4286,6 +4286,7 @@ class DistingTools {
         'is_i2c_enabled': packed.isI2cEnabled,
         'i2c_cc': packed.i2cCC,
         'is_i2c_symmetric': packed.isI2cSymmetric,
+        'i2c_ignore_when_bypassed': packed.i2cIgnoreWhenBypassed,
         'i2c_min': packed.i2cMin,
         'i2c_max': packed.i2cMax,
       };
@@ -4796,7 +4797,7 @@ class DistingTools {
                     ? false
                     : updatedPacked.isMidiRelative,
                 version: _isExpressiveMidiTypeString(midiType)
-                    ? 7
+                    ? (updatedPacked.version == 8 ? 8 : 7)
                     : updatedPacked.version,
               );
             }

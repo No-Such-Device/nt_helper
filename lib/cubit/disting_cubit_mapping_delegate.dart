@@ -310,14 +310,30 @@ class _MappingDelegate {
     final isExpressive = _isExpressiveMidiType(data.midiMappingType);
     final supportsExpressiveMidiMapping =
         state.firmwareVersion.hasExpressiveMidiMapping;
+    final supportsV8 =
+        state.offline ||
+        state.demo ||
+        state.firmwareVersion.hasBypassAwareMappings;
+    data.validateForFirmware(
+      supportsV8 ? FirmwareVersion('1.20') : state.firmwareVersion,
+    );
     final baseVersion = data.version < 1
         ? supportsExpressiveMidiMapping
               ? 7
               : 6
         : data.version;
     final version = isExpressive && supportsExpressiveMidiMapping
-        ? 7
-        : baseVersion.clamp(1, supportsExpressiveMidiMapping ? 7 : 6).toInt();
+        ? (baseVersion == 8 && supportsV8 ? 8 : 7)
+        : baseVersion
+              .clamp(
+                1,
+                supportsV8
+                    ? 8
+                    : supportsExpressiveMidiMapping
+                    ? 7
+                    : 6,
+              )
+              .toInt();
 
     if (!isExpressive) {
       return data.copyWith(version: version);

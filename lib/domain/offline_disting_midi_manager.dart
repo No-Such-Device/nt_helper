@@ -11,7 +11,9 @@ import 'package:nt_helper/domain/i_disting_midi_manager.dart'
     show AlgorithmVisualStyleWriter, IDistingMidiManager;
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:flutter/foundation.dart';
+
 import '../db/daos/presets_dao.dart';
+
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/memory_query_input.dart';
@@ -734,29 +736,7 @@ class OfflineDistingMidiManager
 
       final currentMapping = _mappings[slotIndex]?[parameterNumber];
       final updatedMapping = currentMapping != null
-          ? PackedMappingData(
-              source: currentMapping.source,
-              cvInput: currentMapping.cvInput,
-              isUnipolar: currentMapping.isUnipolar,
-              isGate: currentMapping.isGate,
-              volts: currentMapping.volts,
-              delta: currentMapping.delta,
-              midiChannel: currentMapping.midiChannel,
-              midiMappingType: currentMapping.midiMappingType,
-              midiCC: currentMapping.midiCC,
-              isMidiEnabled: currentMapping.isMidiEnabled,
-              isMidiSymmetric: currentMapping.isMidiSymmetric,
-              isMidiRelative: currentMapping.isMidiRelative,
-              midiMin: currentMapping.midiMin,
-              midiMax: currentMapping.midiMax,
-              i2cCC: currentMapping.i2cCC,
-              isI2cEnabled: currentMapping.isI2cEnabled,
-              isI2cSymmetric: currentMapping.isI2cSymmetric,
-              i2cMin: currentMapping.i2cMin,
-              i2cMax: currentMapping.i2cMax,
-              perfPageIndex: perfPageIndex, // Updated value
-              version: currentMapping.version,
-            )
+          ? currentMapping.copyWith(perfPageIndex: perfPageIndex)
           : PackedMappingData(
               source: 0,
               cvInput: 0,

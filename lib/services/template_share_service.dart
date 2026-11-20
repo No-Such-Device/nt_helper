@@ -142,6 +142,13 @@ class TemplateShareService {
   Map<String, Object?> _encodeMapping(PackedMappingData mapping) {
     return {
       'version': mapping.version,
+      'midi_view_change': mapping.midiViewChange,
+      'midi_ignore_when_bypassed': mapping.midiIgnoreWhenBypassed,
+      'i2c_ignore_when_bypassed': mapping.i2cIgnoreWhenBypassed,
+      'cv_flags_extra': mapping.cvFlagsExtra,
+      'i2c_flags_extra': mapping.i2cFlagsExtra,
+      if (mapping.unknownMidiMappingType != null)
+        'unknown_midi_type': mapping.unknownMidiMappingType,
       'source': mapping.source,
       'cv_input': mapping.cvInput,
       'is_unipolar': mapping.isUnipolar,
@@ -213,6 +220,14 @@ class TemplateShareService {
     final midiType = _midiTypeFromString(value['midi_type'] as String?);
     return PackedMappingData(
       version: _optionalInt(value['version']) ?? 6,
+      midiViewChange: value['midi_view_change'] as bool? ?? true,
+      midiIgnoreWhenBypassed:
+          value['midi_ignore_when_bypassed'] as bool? ?? false,
+      i2cIgnoreWhenBypassed:
+          value['i2c_ignore_when_bypassed'] as bool? ?? false,
+      cvFlagsExtra: _optionalInt(value['cv_flags_extra']) ?? 0,
+      i2cFlagsExtra: _optionalInt(value['i2c_flags_extra']) ?? 0,
+      unknownMidiMappingType: _optionalInt(value['unknown_midi_type']),
       source: _optionalInt(value['source']) ?? 0,
       cvInput: _optionalInt(value['cv_input']) ?? 0,
       isUnipolar: value['is_unipolar'] as bool? ?? false,

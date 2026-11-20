@@ -2,6 +2,7 @@ import 'dart:math' show min;
 import 'dart:typed_data';
 
 import 'package:nt_helper/domain/sysex/sysex_utils.dart';
+import 'package:nt_helper/models/firmware_version.dart';
 
 enum MidiMappingType {
   cc(0),
@@ -45,9 +46,18 @@ class PackedMappingData {
   final int i2cMin; // Minimum I2C value
   final int i2cMax; // Maximum I2C value
 
+  // Mapping v8 (upstream distingNT commit 905deb6). View change is the
+  // inverse of MIDI flags bit 2; bypass flags are MIDI flags2 bit 1 / I2C bit 2.
+  final bool midiViewChange;
+  final bool midiIgnoreWhenBypassed;
+  final bool i2cIgnoreWhenBypassed;
+  // Preserve reserved bits without assigning undocumented semantics.
+  final int cvFlagsExtra;
+  final int i2cFlagsExtra;
+  final int? unknownMidiMappingType;
+
   // Performance Page (used for sort order only, not navigation)
-  final int
-  perfPageIndex; // Performance page index (0 = not assigned, 1-30 = valid pages)
+  final int perfPageIndex; // Performance page index (0 = not assigned, 1-30 = valid pages)
 
   // Constructor
   PackedMappingData({
@@ -72,6 +82,12 @@ class PackedMappingData {
     required this.i2cMax,
     required this.perfPageIndex,
     required this.version,
+    this.midiViewChange = true,
+    this.midiIgnoreWhenBypassed = false,
+    this.i2cIgnoreWhenBypassed = false,
+    this.cvFlagsExtra = 0,
+    this.i2cFlagsExtra = 0,
+    this.unknownMidiMappingType,
   });
 
   factory PackedMappingData.filler() {
@@ -108,9 +124,9 @@ class PackedMappingData {
 
     // Parse using the highest known feature set. Version-conditional reads
     // below handle per-version field presence. For truly unknown future
-    // versions (> 7) we parse as v7 and let safe-read helpers handle any
+    // versions (> 8) we parse as v8 and let safe-read helpers handle any
     // fields beyond the data boundary.
-    final int parseVersion = version.clamp(1, 7);
+    final int parseVersion = version.clamp(1, 8);
 
     int offset = 0;
     final dataLength = data.length;
@@ -147,7 +163,8 @@ class PackedMappingData {
     //   v5: CV(7) + MIDI(9) + I2C(9) + Perf(1) = 26
     //   v6: CV(7) + MIDI(9) + I2C(9)           = 25  (perf page removed)
     //   v7: CV(7) + MIDI(9) + I2C(9)           = 25  (pitch bend/channel pressure)
-    // For unknown future versions (> 7), require the v4 core (25 bytes).
+    //   v8: CV(7) + MIDI(9) + I2C(9)           = 25  (view/bypass flags)
+    // For unknown future versions (> 8), require the v4 core (25 bytes).
     final int expectedLength = switch (parseVersion) {
       1 => 22,
       2 => 23,
@@ -244,14 +261,45 @@ class PackedMappingData {
       i2cMax: i2cMax,
       perfPageIndex: perfPageIndex,
       version: version,
+      midiViewChange: version < 8 || (midiFlags & 4) == 0,
+      midiIgnoreWhenBypassed: version >= 8 && (midiFlags2 & 2) != 0,
+      i2cIgnoreWhenBypassed: version >= 8 && (i2cFlags & 4) != 0,
+      cvFlagsExtra: cvFlags & 0x7C,
+      i2cFlagsExtra: i2cFlags & (version >= 8 ? 0x78 : 0x7C),
+      unknownMidiMappingType: typeValue >= MidiMappingType.values.length
+          ? typeValue
+          : null,
     );
   }
 
+  bool get hasV8Options =>
+      !midiViewChange || midiIgnoreWhenBypassed || i2cIgnoreWhenBypassed;
+
+  /// Reject lossy or unsupported live writes before any mapping subset is sent.
+  /// Reading/caching observed data remains independent of firmware eligibility.
+  void validateForFirmware(FirmwareVersion firmware) {
+    if (version > 8 || unknownMidiMappingType != null) {
+      throw UnsupportedError(
+        'Unknown mapping version or MIDI type is read-only',
+      );
+    }
+    if ((version >= 8 || hasV8Options) && !firmware.hasBypassAwareMappings) {
+      throw UnsupportedError(
+        'Bypass-aware mappings require firmware 1.20 or newer',
+      );
+    }
+    if (hasV8Options && version < 8) {
+      throw UnsupportedError(
+        'Bypass-aware mappings require an observed v8 mapping',
+      );
+    }
+  }
+
   Uint8List encodeCVPackedData() {
-    final int encodeVersion = min(version, 7);
+    final int encodeVersion = min(version, 8);
 
     // Compute the flags
-    int flags = (isUnipolar ? 1 : 0) | (isGate ? 2 : 0);
+    int flags = (cvFlagsExtra & 0x7C) | (isUnipolar ? 1 : 0) | (isGate ? 2 : 0);
 
     // Build the packed payload (starting after the version byte)
     final payload = [
@@ -266,7 +314,7 @@ class PackedMappingData {
   }
 
   Uint8List encodeMIDIPackedData() {
-    final int encodeVersion = min(version, 7);
+    final int encodeVersion = min(version, 8);
     final effectiveMidiMappingType =
         encodeVersion >= 7 &&
             midiMappingType == MidiMappingType.cc &&
@@ -284,7 +332,8 @@ class PackedMappingData {
     int flags =
         (isMidiEnabled ? 1 : 0) |
         (isMidiSymmetric ? 2 : 0) |
-        ((midiChannel & 0xF) << 3);
+        ((midiChannel & 0xF) << 3) |
+        (encodeVersion >= 8 && !midiViewChange ? 4 : 0);
 
     // Encode midiFlags2 using bit-shift: relative flag (bit 0) and type value (bits 2-6)
     final effectiveIsMidiRelative =
@@ -293,7 +342,8 @@ class PackedMappingData {
         isMidiRelative;
     int midiFlags2 =
         (effectiveIsMidiRelative ? 1 : 0) |
-        (effectiveMidiMappingType.value << 2);
+        ((unknownMidiMappingType ?? effectiveMidiMappingType.value) << 2) |
+        (encodeVersion >= 8 && midiIgnoreWhenBypassed ? 2 : 0);
 
     // Adjust the CC number and flags if necessary for legacy aftertouch.
     if (encodeVersion < 7 && adjustedCC == 128) {
@@ -315,12 +365,16 @@ class PackedMappingData {
   }
 
   Uint8List encodeI2CPackedData() {
-    final int encodeVersion = min(version, 7);
+    final int encodeVersion = min(version, 8);
 
     var adjustedCC = i2cCC;
 
     // Compute the flags
-    int flags = (isI2cEnabled ? 1 : 0) | (isI2cSymmetric ? 2 : 0);
+    int flags =
+        (i2cFlagsExtra & (encodeVersion >= 8 ? 0x78 : 0x7C)) |
+        (isI2cEnabled ? 1 : 0) |
+        (isI2cSymmetric ? 2 : 0) |
+        (encodeVersion >= 8 && i2cIgnoreWhenBypassed ? 4 : 0);
 
     // Build the packed payload (starting after the version byte)
     final payload = [
@@ -336,7 +390,7 @@ class PackedMappingData {
 
   // Convert back to Uint8List (excluding the version byte itself)
   Uint8List toBytes() {
-    final int encodeVersion = min(version, 7);
+    final int encodeVersion = min(version, 8);
 
     final cvBytes = encodeCVPackedData();
     final midiBytes = encodeMIDIPackedData();
@@ -377,12 +431,24 @@ class PackedMappingData {
         other.isI2cSymmetric == isI2cSymmetric &&
         other.i2cMin == i2cMin &&
         other.i2cMax == i2cMax &&
-        other.perfPageIndex == perfPageIndex;
+        other.perfPageIndex == perfPageIndex &&
+        other.midiViewChange == midiViewChange &&
+        other.midiIgnoreWhenBypassed == midiIgnoreWhenBypassed &&
+        other.i2cIgnoreWhenBypassed == i2cIgnoreWhenBypassed &&
+        other.cvFlagsExtra == cvFlagsExtra &&
+        other.i2cFlagsExtra == i2cFlagsExtra &&
+        other.unknownMidiMappingType == unknownMidiMappingType;
   }
 
   @override
   int get hashCode {
-    return Object.hash(
+    return Object.hashAll([
+      midiViewChange,
+      midiIgnoreWhenBypassed,
+      i2cIgnoreWhenBypassed,
+      cvFlagsExtra,
+      i2cFlagsExtra,
+      unknownMidiMappingType,
       source,
       cvInput,
       isUnipolar,
@@ -402,7 +468,7 @@ class PackedMappingData {
       isI2cSymmetric,
       i2cMin,
       Object.hash(i2cMax, perfPageIndex),
-    );
+    ]);
   }
 
   bool isMapped() {
@@ -435,8 +501,23 @@ class PackedMappingData {
     int? i2cMax,
     int? perfPageIndex,
     int? version,
+    bool? midiViewChange,
+    bool? midiIgnoreWhenBypassed,
+    bool? i2cIgnoreWhenBypassed,
+    int? cvFlagsExtra,
+    int? i2cFlagsExtra,
   }) {
     return PackedMappingData(
+      midiViewChange: midiViewChange ?? this.midiViewChange,
+      midiIgnoreWhenBypassed:
+          midiIgnoreWhenBypassed ?? this.midiIgnoreWhenBypassed,
+      i2cIgnoreWhenBypassed:
+          i2cIgnoreWhenBypassed ?? this.i2cIgnoreWhenBypassed,
+      cvFlagsExtra: cvFlagsExtra ?? this.cvFlagsExtra,
+      i2cFlagsExtra: i2cFlagsExtra ?? this.i2cFlagsExtra,
+      unknownMidiMappingType: midiMappingType == null
+          ? unknownMidiMappingType
+          : null,
       source: source ?? this.source,
       cvInput: cvInput ?? this.cvInput,
       isUnipolar: isUnipolar ?? this.isUnipolar,

@@ -659,9 +659,43 @@ F0 00 21 27 6D <id> 4B <slot>
 F7
 ```
 
-**Mapping version** is currently `7`. The version field controls which optional fields are present.
+**Mapping version** is currently `8`. The version field controls which optional fields are present.
 Version 6 removed the perf page byte from mapping data; perf page assignments are managed via separate commands (0x54).
 Version 7 adds explicit MIDI mapping types for pitch bend and channel pressure.
+
+Version 8 keeps the same 25-byte core (CV 7 + MIDI 9 + I2C 9), with
+these additional flags; the `0x4D`, `0x4E`, and `0x4F` layouts are unchanged:
+
+| Block | Bit | Meaning when set |
+|-------|-----|------------------|
+| MIDI `flags` | 2 (`0x04`) | Suppress changing the viewed parameter (inverse of the positive “Change viewed parameter” control) |
+| MIDI `flags2` | 1 (`0x02`) | Ignore this MIDI mapping while the algorithm is bypassed |
+| I2C `flags` | 2 (`0x04`) | Ignore this I2C mapping while the algorithm is bypassed |
+
+MIDI CC/14-bit CC, note and expressive mappings share the MIDI flag; there is
+no separate CC-only bypass flag. CV mappings are unchanged. Missing legacy
+fields default to view change enabled and both bypass-ignore options disabled.
+Reserved CV/I2C flag bits are retained opaquely, without assigning semantics.
+
+Wire source: [upstream editor commit 905deb6](https://github.com/expertsleepersltd/distingNT/commit/905deb6a325d352c74ce9aa4daf8af61b526b6ee),
+`processMapping`, `mapping_midi`, and `mapping_i2c`. The owner-confirmed target
+is the announced **1.20 beta / 1.20.0** feature line. This does not establish the
+earliest firmware supporting every v8 field. Helper admits recognized 1.20
+beta spellings by numeric version convention (e.g. `1.20beta`,
+`1.20.0-beta.2`); unknown/malformed versions fail closed. Only the first version
+reply line is considered, never build-date digits.
+
+New controls require eligible firmware **and an observed v8 mapping**. Received
+v8 data remains decodable/cacheable independently of control eligibility.
+Live v8 writes validate firmware and query the destination mapping before any
+subset is queued; incompatible firmware/wire data is rejected, not silently
+downgraded. Legacy v1–v7 writes keep their existing no-probe behavior. Unknown
+mapping layouts/types are read-only for live writes. Templates validate the
+firmware before preset mutations; target wire validation can occur only after
+its algorithm exists. Cached v8 data and ordinary offline edits are preserved and revalidated
+when applied to hardware; the new controls remain read-only without an eligible
+firmware version. No database schema change is needed.
+
 
 ---
 

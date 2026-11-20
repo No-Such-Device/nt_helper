@@ -7,7 +7,7 @@ void main() {
     test('documents current mapping data and performance page versions', () {
       final reference = File('docs/SYSEX_REFERENCE.md').readAsStringSync();
 
-      expect(reference, contains('**Mapping version** is currently `7`.'));
+      expect(reference, contains('**Mapping version** is currently `8`.'));
       expect(
         reference,
         contains(

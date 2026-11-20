@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:nt_helper/domain/patch_map/patch_map_client.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
 import 'package:path/path.dart' as p;
@@ -868,7 +869,19 @@ class DistingMidiManager
     int algorithmIndex,
     int parameterNumber,
     PackedMappingData data,
-  ) {
+  ) async {
+    // Legacy calls retain their no-probe behavior. Extended/unknown data must
+    // be validated before ANY subset is enqueued (a CV edit writes all three).
+    if (data.version >= 8 ||
+        data.hasV8Options ||
+        data.unknownMidiMappingType != null) {
+      _firmwareVersion ??= await requestVersionString();
+      data.validateForFirmware(FirmwareVersion(_firmwareVersion ?? ''));
+      final observed = await requestMappings(algorithmIndex, parameterNumber);
+      if (observed?.packedMappingData.version != 8) {
+        throw UnsupportedError('Destination does not report mapping v8');
+      }
+    }
     final cvMessage = SetCVMappingMessage(
       sysExId: sysExId,
       algorithmIndex: algorithmIndex,
@@ -894,7 +907,7 @@ class DistingMidiManager
 
     final key = RequestKey(sysExId: sysExId);
 
-    return Future.wait([
+    await Future.wait([
       _scheduler.sendRequest<void>(
         cvPacket,
         key,

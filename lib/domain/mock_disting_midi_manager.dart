@@ -1120,28 +1120,8 @@ class MockDistingMidiManager implements IDistingMidiManager {
           final currentData = currentMapping.packedMappingData;
 
           // Create updated mapping with new perfPageIndex
-          final updatedData = PackedMappingData(
-            source: currentData.source,
-            cvInput: currentData.cvInput,
-            isUnipolar: currentData.isUnipolar,
-            isGate: currentData.isGate,
-            volts: currentData.volts,
-            delta: currentData.delta,
-            midiChannel: currentData.midiChannel,
-            midiMappingType: currentData.midiMappingType,
-            midiCC: currentData.midiCC,
-            isMidiEnabled: currentData.isMidiEnabled,
-            isMidiSymmetric: currentData.isMidiSymmetric,
-            isMidiRelative: currentData.isMidiRelative,
-            midiMin: currentData.midiMin,
-            midiMax: currentData.midiMax,
-            i2cCC: currentData.i2cCC,
-            isI2cEnabled: currentData.isI2cEnabled,
-            isI2cSymmetric: currentData.isI2cSymmetric,
-            i2cMin: currentData.i2cMin,
-            i2cMax: currentData.i2cMax,
-            perfPageIndex: perfPageIndex, // Updated value
-            version: currentData.version,
+          final updatedData = currentData.copyWith(
+            perfPageIndex: perfPageIndex,
           );
 
           // Update the slot with the new mapping
