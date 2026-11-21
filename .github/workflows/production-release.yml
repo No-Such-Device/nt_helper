@@ -232,9 +232,60 @@ jobs:
           path: ${{ runner.temp }}/store-baselines.json
           if-no-files-found: error
 
+  inspect-store-candidate:
+    name: Inspect exact store candidate
+    needs: verify-candidate
+    if: inputs.mode == 'prepare' || inputs.mode == 'promote'
+    runs-on: ubuntu-latest
+    environment: production-release
+    steps:
+      - name: Check out store inspector
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install store API clients
+        run: python -m pip install --disable-pip-version-check google-api-python-client google-auth PyJWT cryptography
+
+      - name: Inspect processing and existing submissions without promotion
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          APP_STORE_CONNECT_API_KEY_JSON: ${{ secrets.APP_STORE_CONNECT_API_KEY_JSON }}
+          APP_VERSION: ${{ needs.verify-candidate.outputs.version }}
+          BUILD_NUMBER: ${{ needs.verify-candidate.outputs.build_number }}
+          RELEASE_ANDROID: ${{ inputs.release_android }}
+          SUBMIT_IOS: ${{ inputs.submit_ios }}
+          SUBMIT_MACOS: ${{ inputs.submit_macos }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f "$RUNNER_TEMP/google-play.json" "$RUNNER_TEMP/app-store-connect.json"' EXIT
+          printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/google-play.json"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_JSON" > "$RUNNER_TEMP/app-store-connect.json"
+          python tool/store_candidate_state.py \
+            --google-json "$RUNNER_TEMP/google-play.json" \
+            --apple-json "$RUNNER_TEMP/app-store-connect.json" \
+            --version "$APP_VERSION" --build "$BUILD_NUMBER" \
+            --android "$RELEASE_ANDROID" --ios "$SUBMIT_IOS" --macos "$SUBMIT_MACOS" \
+            --output "$RUNNER_TEMP/store-candidate.json"
+
+      - name: Upload candidate state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-candidate-${{ inputs.tag }}
+          path: ${{ runner.temp }}/store-candidate.json
+          if-no-files-found: warn
+
   android-production:
     name: Promote Android to Google Play production
-    needs: verify-candidate
+    needs: [verify-candidate, inspect-store-candidate]
     if: inputs.mode == 'promote' && inputs.release_android
     runs-on: ubuntu-latest
     environment: production-release
@@ -295,7 +346,7 @@ jobs:
 
   apple-production:
     name: Submit Apple builds for review
-    needs: verify-candidate
+    needs: [verify-candidate, inspect-store-candidate]
     if: inputs.mode == 'promote' && (inputs.submit_ios || inputs.submit_macos)
     runs-on: ubuntu-latest
     environment: production-release
@@ -384,3 +435,66 @@ jobs:
       - name: Remove Apple credential file
         if: always() && matrix.enabled == true
         run: rm -f "$RUNNER_TEMP/app-store-connect-api-key.json"
+
+  verify-store-result:
+    name: Read back production store results
+    needs: [verify-candidate, android-production, apple-production]
+    if: >-
+      always() && inputs.mode == 'promote' &&
+      needs.verify-candidate.result == 'success' &&
+      (needs.android-production.result == 'success' || !inputs.release_android) &&
+      (needs.apple-production.result == 'success' || (!inputs.submit_ios && !inputs.submit_macos))
+    runs-on: ubuntu-latest
+    environment: production-release
+    steps:
+      - name: Check out store inspector
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download reviewed notes
+        uses: actions/download-artifact@v4
+        with:
+          name: mobile-release-notes-${{ inputs.tag }}
+          path: ${{ runner.temp }}/mobile-release-notes
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install store API clients
+        run: python -m pip install --disable-pip-version-check google-api-python-client google-auth PyJWT cryptography
+
+      - name: Verify committed track and accepted automatic Apple submissions
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          APP_STORE_CONNECT_API_KEY_JSON: ${{ secrets.APP_STORE_CONNECT_API_KEY_JSON }}
+          APP_VERSION: ${{ needs.verify-candidate.outputs.version }}
+          BUILD_NUMBER: ${{ needs.verify-candidate.outputs.build_number }}
+          RELEASE_ANDROID: ${{ inputs.release_android }}
+          SUBMIT_IOS: ${{ inputs.submit_ios }}
+          SUBMIT_MACOS: ${{ inputs.submit_macos }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f "$RUNNER_TEMP/google-play.json" "$RUNNER_TEMP/app-store-connect.json"' EXIT
+          printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/google-play.json"
+          printf '%s' "$APP_STORE_CONNECT_API_KEY_JSON" > "$RUNNER_TEMP/app-store-connect.json"
+          python tool/store_candidate_state.py --verify \
+            --google-json "$RUNNER_TEMP/google-play.json" \
+            --apple-json "$RUNNER_TEMP/app-store-connect.json" \
+            --version "$APP_VERSION" --build "$BUILD_NUMBER" \
+            --android "$RELEASE_ANDROID" --ios "$SUBMIT_IOS" --macos "$SUBMIT_MACOS" \
+            --google-notes "$RUNNER_TEMP/mobile-release-notes/google-play.txt" \
+            --apple-notes "$RUNNER_TEMP/mobile-release-notes/app-store.txt" \
+            --output "$RUNNER_TEMP/store-result.json"
+
+      - name: Upload store readback
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-result-${{ inputs.tag }}
+          path: ${{ runner.temp }}/store-result.json
+          if-no-files-found: warn

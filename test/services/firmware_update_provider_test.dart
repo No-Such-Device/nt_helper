@@ -45,7 +45,8 @@ void main() {
   test(
     'local beta source snapshots validated bytes without downloading a stable release',
     () async {
-      var bytes = ipadPackageBytes();
+      final originalBytes = ipadPackageBytes();
+      var bytes = originalBytes;
       final provider = FileFirmwareProvider(
         versionService: service,
         read: (_) async => bytes,
@@ -62,7 +63,7 @@ void main() {
       expect(prepared.application, ipadImage(application: true));
       expect(
         await File(prepared.packagePath).readAsBytes(),
-        ipadPackageBytes(),
+        originalBytes,
       );
       expect(
         FirmwareVersionService.matchesApplicationVersion(
