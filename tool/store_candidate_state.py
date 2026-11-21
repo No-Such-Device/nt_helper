@@ -45,7 +45,8 @@ def apple_state(api: AppleAPI, bundle: str, platform: str, version: str, build: 
     versions = api.pages(f"/apps/{app_id}/appStoreVersions?" + urllib.parse.urlencode(
         {"filter[platform]": platform, "limit": 200}))
     versions = [v for v in versions if v["attributes"]["platform"] == platform]
-    live = [v for v in versions if v["attributes"]["appStoreState"] == "READY_FOR_SALE"]
+    live = api.get(f"/apps/{app_id}/appStoreVersions?" + urllib.parse.urlencode(
+        {"filter[platform]": platform, "filter[appStoreState]": "READY_FOR_SALE", "limit": 1}))["data"]
     if len(live) != 1:
         raise RuntimeError(f"Expected exactly one live {platform} version")
     builds = api.pages("/builds?" + urllib.parse.urlencode(

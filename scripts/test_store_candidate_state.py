@@ -28,6 +28,8 @@ class FakeApple:
         raise AssertionError(path)
 
     def get(self, path):
+        if path.startswith("/apps/app/appStoreVersions?"):
+            return {"data": [self.pages(path)[0]], "links": {"next": "older-history"}}
         if path.endswith("/preReleaseVersion"):
             return {"data": {"attributes": {"version": "2.64.1", "platform": "IOS"}}}
         if path.endswith("/build"):
@@ -123,6 +125,19 @@ class StoreCandidateTests(unittest.TestCase):
                 store.google_state(Path("unused.json"), "package")
             self.assertEqual(edits.delete.call_count, 2)
             edits.commit.assert_not_called()
+
+    def test_live_baseline_uses_store_current_query_not_historical_ready_states(self):
+        api = FakeApple()
+        pages = api.pages
+        def historical(path):
+            result = pages(path)
+            if "/appStoreVersions?" in path:
+                result.append({"id": "old", "attributes": {"versionString": "2.60.0",
+                    "platform": "IOS", "appStoreState": "READY_FOR_SALE"}})
+            return result
+        with patch.object(api, "pages", side_effect=historical):
+            state = store.apple_state(api, "bundle", "IOS", "2.64.1", "356")
+        self.assertEqual(state["live_version"], "2.63.3")
 
     def test_ambiguous_baseline_never_guessed(self):
         with self.assertRaisesRegex(RuntimeError, "exactly one git tag"):

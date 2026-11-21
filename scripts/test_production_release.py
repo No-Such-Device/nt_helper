@@ -51,6 +51,15 @@ class StorePromotionTests(unittest.TestCase):
         return subprocess.run(["bash", "-c", script], cwd=self.root, env=self.env,
                               capture_output=True, text=True, timeout=30)
 
+    def test_store_inspection_waits_for_baseline_google_edit_cleanup(self):
+        inspector = self.workflow["jobs"]["inspect-store-candidate"]
+        self.assertIn("resolve-store-baselines", inspector["needs"])
+        self.assertIn("needs.resolve-store-baselines.result == 'success'", inspector["if"])
+        self.assertIn("needs.resolve-store-baselines.result == 'skipped'", inspector["if"])
+        self.assertIn("needs.verify-candidate.result == 'success'", inspector["if"])
+        for job in ("android-production", "apple-production"):
+            self.assertIn("inspect-store-candidate", self.workflow["jobs"][job]["needs"])
+
     def test_android_uses_locale_root_and_only_requested_version(self):
         result = self.run_step("android-production", "Promote internal release")
         self.assertEqual(result.returncode, 0, result.stderr)
