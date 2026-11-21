@@ -234,8 +234,11 @@ jobs:
 
   inspect-store-candidate:
     name: Inspect exact store candidate
-    needs: verify-candidate
-    if: inputs.mode == 'prepare' || inputs.mode == 'promote'
+    needs: [verify-candidate, resolve-store-baselines]
+    if: >-
+      always() && (inputs.mode == 'prepare' || inputs.mode == 'promote') &&
+      needs.verify-candidate.result == 'success' &&
+      (needs.resolve-store-baselines.result == 'success' || needs.resolve-store-baselines.result == 'skipped')
     runs-on: ubuntu-latest
     environment: production-release
     steps:
