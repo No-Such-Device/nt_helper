@@ -289,7 +289,9 @@ jobs:
   android-production:
     name: Promote Android to Google Play production
     needs: [verify-candidate, inspect-store-candidate]
-    if: inputs.mode == 'promote' && inputs.release_android
+    if: >-
+      always() && inputs.mode == 'promote' && inputs.release_android &&
+      needs.verify-candidate.result == 'success' && needs.inspect-store-candidate.result == 'success'
     runs-on: ubuntu-latest
     environment: production-release
     steps:
@@ -350,7 +352,9 @@ jobs:
   apple-production:
     name: Submit Apple builds for review
     needs: [verify-candidate, inspect-store-candidate]
-    if: inputs.mode == 'promote' && (inputs.submit_ios || inputs.submit_macos)
+    if: >-
+      always() && inputs.mode == 'promote' && (inputs.submit_ios || inputs.submit_macos) &&
+      needs.verify-candidate.result == 'success' && needs.inspect-store-candidate.result == 'success'
     runs-on: ubuntu-latest
     environment: production-release
     strategy:
@@ -442,14 +446,24 @@ jobs:
   verify-store-result:
     name: Read back production store results
     needs: [verify-candidate, android-production, apple-production]
-    if: >-
-      always() && inputs.mode == 'promote' &&
-      needs.verify-candidate.result == 'success' &&
-      (needs.android-production.result == 'success' || !inputs.release_android) &&
-      (needs.apple-production.result == 'success' || (!inputs.submit_ios && !inputs.submit_macos))
+    if: always() && inputs.mode == 'promote'
     runs-on: ubuntu-latest
     environment: production-release
     steps:
+      - name: Require selected store jobs to succeed
+        env:
+          CANDIDATE_RESULT: ${{ needs.verify-candidate.result }}
+          ANDROID_RESULT: ${{ needs.android-production.result }}
+          APPLE_RESULT: ${{ needs.apple-production.result }}
+          RELEASE_ANDROID: ${{ inputs.release_android }}
+          SUBMIT_IOS: ${{ inputs.submit_ios }}
+          SUBMIT_MACOS: ${{ inputs.submit_macos }}
+        run: |
+          set -euo pipefail
+          test "$CANDIDATE_RESULT" = success
+          if [ "$RELEASE_ANDROID" = true ]; then test "$ANDROID_RESULT" = success; fi
+          if [ "$SUBMIT_IOS" = true ] || [ "$SUBMIT_MACOS" = true ]; then test "$APPLE_RESULT" = success; fi
+
       - name: Check out store inspector
         uses: actions/checkout@v4
         with:

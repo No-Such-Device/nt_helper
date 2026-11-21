@@ -58,7 +58,28 @@ class StorePromotionTests(unittest.TestCase):
         self.assertIn("needs.resolve-store-baselines.result == 'skipped'", inspector["if"])
         self.assertIn("needs.verify-candidate.result == 'success'", inspector["if"])
         for job in ("android-production", "apple-production"):
-            self.assertIn("inspect-store-candidate", self.workflow["jobs"][job]["needs"])
+            definition = self.workflow["jobs"][job]
+            self.assertIn("inspect-store-candidate", definition["needs"])
+            self.assertIn("always()", definition["if"])
+            self.assertIn("needs.inspect-store-candidate.result == 'success'", definition["if"])
+            self.assertIn("needs.verify-candidate.result == 'success'", definition["if"])
+
+    def test_selected_jobs_cannot_be_skipped_or_failed_in_green_promotion(self):
+        self.assertEqual(self.workflow["jobs"]["verify-store-result"]["if"],
+                         "always() && inputs.mode == 'promote'")
+        successful = dict(CANDIDATE_RESULT="success", ANDROID_RESULT="success", APPLE_RESULT="success",
+                          RELEASE_ANDROID="true", SUBMIT_IOS="true", SUBMIT_MACOS="true")
+        self.env.update(successful)
+        self.assertEqual(self.run_step("verify-store-result", "Require selected store jobs to succeed").returncode, 0)
+        for field in ("CANDIDATE_RESULT", "ANDROID_RESULT", "APPLE_RESULT"):
+            for result in ("skipped", "failure", "cancelled", ""):
+                with self.subTest(field=field, result=result):
+                    self.env.update(successful)
+                    self.env[field] = result
+                    self.assertNotEqual(self.run_step("verify-store-result", "Require selected store jobs to succeed").returncode, 0)
+        self.env.update(successful, RELEASE_ANDROID="false", ANDROID_RESULT="skipped",
+                        SUBMIT_IOS="false", SUBMIT_MACOS="false", APPLE_RESULT="skipped")
+        self.assertEqual(self.run_step("verify-store-result", "Require selected store jobs to succeed").returncode, 0)
 
     def test_android_uses_locale_root_and_only_requested_version(self):
         result = self.run_step("android-production", "Promote internal release")
