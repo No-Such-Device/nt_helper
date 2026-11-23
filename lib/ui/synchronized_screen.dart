@@ -41,6 +41,7 @@ import 'package:nt_helper/core/routing/node_layout_algorithm.dart';
 import 'package:nt_helper/services/key_binding_service.dart';
 import 'package:nt_helper/services/mcp_server_service.dart';
 import 'package:nt_helper/services/settings_service.dart';
+import 'package:nt_helper/ui/module_settings_screen.dart';
 import 'package:nt_helper/services/video_popup_window_service.dart';
 import 'package:nt_helper/services/wave_cache_maintenance_service.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
@@ -1952,6 +1953,30 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                                   );
                                 },
                         ),
+                      IconButton(
+                        key: const ValueKey('nt-settings-shortcut'),
+                        tooltip: 'NT Settings',
+                        icon: const Icon(
+                          Icons.settings_outlined,
+                          semanticLabel: 'NT Settings',
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                        onPressed: widget.loading
+                            ? null
+                            : () {
+                                final cubit = context.read<DistingCubit>();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ModuleSettingsScreen(cubit: cubit),
+                                  ),
+                                );
+                              },
+                      ),
                       if (!isMobile)
                         IconButton(
                           tooltip: 'Samples',

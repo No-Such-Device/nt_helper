@@ -28,12 +28,20 @@ import 'package:nt_helper/domain/sysex/responses/lua_output_response.dart';
 import 'package:nt_helper/domain/sysex/responses/output_mode_usage_response.dart';
 import 'package:nt_helper/domain/sysex/responses/perf_page_item_response.dart';
 
+import 'package:nt_helper/domain/sysex/responses/module_settings_response.dart';
+
 class ResponseFactory {
   static SysexResponse? fromMessageType(
     DistingNTRespMessageType type,
     Uint8List payload,
   ) {
     switch (type) {
+      case DistingNTRespMessageType.respSettingsGroups:
+        return ModuleSettingsGroupsResponse(payload);
+      case DistingNTRespMessageType.respSettingInfo:
+        return ModuleSettingInfoResponse(payload);
+      case DistingNTRespMessageType.respSettingValue:
+        return ModuleSettingValueResponse(payload);
       case DistingNTRespMessageType.respLuaOutput:
         return LuaOutputResponse(payload);
       case DistingNTRespMessageType.respNumAlgorithms:
