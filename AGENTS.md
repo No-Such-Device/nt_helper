@@ -225,6 +225,18 @@ reconnects to GitHub. Do not switch the job back to GitHub-hosted Windows as a
 fallback when hosted minutes are unavailable; fix a missing runner prerequisite
 instead.
 
+After the Windows release job has finished successfully, including artifact
+uploads and cleanup, shut down the VM gracefully as soon as it is safe, even if
+other distribution jobs are still running. First verify the runner is idle,
+there are no queued Windows jobs needing it, and no other active/shared guest
+work needs the VM. Follow the graceful shutdown and verification procedure in
+`docs/dev-windows-runner-access.md`; never use hard power-off or saved state.
+Keep durable supervision until `VMState="poweroff"` and the runner is offline.
+If another job or user needs the VM, explicitly record the deferral and continue
+supervising until shutdown is safe. On a terminal Windows failure, first decide
+whether repair/rerun needs the guest; shut it down safely when no longer needed.
+Report the final VM state and shutdown method with the release result.
+
 If a Windows build fails, inspect the exact failed step, repair the persistent
 guest prerequisite, and rerun the failed job. Do not move/delete the release tag
 or create another version merely to retry it.
