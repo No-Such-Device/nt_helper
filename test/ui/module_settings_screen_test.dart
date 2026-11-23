@@ -68,6 +68,22 @@ void main() {
     states.add(state);
   }
 
+  ModuleSettingsState riskyState() {
+    final base = settingsScreenState(draft: true);
+    return ModuleSettingsState(
+      connectionId: 1,
+      tree: base.tree,
+      settings: {
+        ...base.settings,
+        5: ModuleSettingEdit(
+          info: settingInfo(5, flags: 3),
+          observed: const ModuleSettingValue(0),
+          draft: const ModuleSettingValue(4),
+        ),
+      },
+    );
+  }
+
   testWidgets(
     'initial discovery mounts a coherent form without moving toolbar or status',
     (tester) async {
@@ -88,7 +104,8 @@ void main() {
       );
       emit(settingsScreenState());
       await tester.pump();
-      expect(find.byType(TextField), findsNWidgets(2));
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byKey(const ValueKey('module-setting-1-9')), findsNothing);
       expect(
         tester.getRect(find.widgetWithText(FilledButton, 'Commit to flash')),
         commit,
@@ -112,7 +129,9 @@ void main() {
           find.byKey(const Key('module-settings-status')),
         ),
         'first': tester.getRect(find.byType(TextField).first),
-        'second': tester.getRect(find.byType(TextField).last),
+        'footer': tester.getRect(
+          find.byKey(const Key('module-settings-footer')),
+        ),
         'apply': tester.getRect(
           find.byKey(const ValueKey('module-settings-apply-3')),
         ),
@@ -149,7 +168,7 @@ void main() {
       }
       expect(find.byType(SnackBar), findsNothing);
       expect(find.bySemanticsLabel('NT Settings'), findsOneWidget);
-      expect(find.bySemanticsLabel('Engine'), findsOneWidget);
+      expect(find.bySemanticsLabel('Engine'), findsNWidgets(2));
       semantics.dispose();
     },
   );
@@ -171,10 +190,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Apply changes'), findsOneWidget);
-      expect(find.text('Apply Engine'), findsOneWidget);
+      expect(find.text('Apply Engine'), findsNothing);
       expect(
         find.byKey(const ValueKey('module-settings-apply-0')),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         find.byKey(const ValueKey('module-settings-apply-3')),
@@ -185,7 +204,7 @@ void main() {
       expect(find.textContaining('Default'), findsNothing);
       expect(find.text('Discard drafts'), findsNothing);
       expect(find.byType(BottomNavigationBar), findsNothing);
-      expect(find.byTooltip(RegExp('Default 0')), findsNWidgets(2));
+      expect(find.byTooltip(RegExp('Default 0')), findsOneWidget);
     },
   );
 
@@ -205,7 +224,7 @@ void main() {
       },
     );
     await tester.pumpWidget(app());
-    expect(find.text('Apply changes'), findsNothing);
+    expect(find.text('Apply changes').hitTestable(), findsNothing);
     expect(find.byType(TextField), findsNothing);
   });
 
@@ -218,9 +237,9 @@ void main() {
         error: 'Change not confirmed.',
       );
       await tester.pumpWidget(app());
-      expect(find.text('Change not confirmed. · Last read: 0'), findsOneWidget);
+      expect(find.text('Change not confirmed. · was 0'), findsOneWidget);
       final status = find.bySemanticsLabel(
-        'Setting 5: Change not confirmed.\nLast read: 0',
+        'Setting 5: Previous confirmed value: 0. Change not confirmed.',
       );
       expect(status, findsOneWidget);
       expect(
@@ -240,60 +259,127 @@ void main() {
   );
 
   testWidgets(
-    'keyboard editing validates without sending; Apply requires explicit impact confirmation',
+    'failed readback disables only its field; independent Apply has no modal',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(900, 1300));
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      current = settingsScreenState(draft: true);
       await tester.pumpWidget(app());
-      final field = find.byType(TextField).first;
-      await tester.tap(field);
-      await tester.enterText(field, '-42');
-      verify(
-        () => cubit.editModuleSetting(
-          5,
-          any(
-            that: isA<ModuleSettingValue>().having(
-              (v) => v.value,
-              'value',
-              -42,
+      final field = find.byType(TextField);
+      final fieldRect = tester.getRect(field);
+      final footer = tester.getRect(
+        find.byKey(const Key('module-settings-footer')),
+      );
+      final before = current;
+      emit(
+        ModuleSettingsState(
+          connectionId: 1,
+          tree: before.tree,
+          changedOnModule: true,
+          settings: {
+            5: ModuleSettingEdit(
+              info: before.settings[5]!.info,
+              observed: const ModuleSettingValue(0),
+              draft: const ModuleSettingValue(4),
+              uncertain: true,
+              refreshRequired: true,
+              error: 'Readback failed. Refresh before applying again.',
             ),
-          ),
+            9: ModuleSettingEdit(
+              info: before.settings[9]!.info,
+              observed: const ModuleSettingValue(0),
+              draft: const ModuleSettingValue(6),
+            ),
+          },
         ),
-      ).called(1);
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      expect(tester.takeException(), isNull);
-      final apply = find.byKey(const ValueKey('module-settings-apply-3'));
-      await tester.tap(apply);
-      await tester.pumpAndSettle();
-      expect(find.textContaining('Applied one at a time'), findsOneWidget);
+      );
+      await tester.pump();
+      expect(tester.widget<TextField>(field).enabled, isFalse);
+      expect(tester.getRect(field), fieldRect);
       expect(
-        find.text('Settings on the connected disting NT module.'),
-        findsNothing,
+        tester.getRect(find.byKey(const Key('module-settings-footer'))),
+        footer,
       );
       expect(
-        find.textContaining('Drafts stay in this connection'),
-        findsNothing,
+        tester
+            .widget<OutlinedButton>(
+              find.byKey(const ValueKey('module-settings-apply-3')),
+            )
+            .onPressed,
+        isNull,
       );
-      verifyNever(() => cubit.applyModuleSettingsGroup(any()));
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      verifyNever(() => cubit.applyModuleSettingsGroup(any()));
-      await tester.tap(apply);
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Apply changes'));
-      await tester.pumpAndSettle();
-      verify(() => cubit.applyModuleSettingsGroup(3)).called(1);
-      expect(find.byType(SnackBar), findsNothing);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Commit to flash'),
+            )
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.byKey(const ValueKey('module-settings-nav-0')));
+      await tester.pump();
+      expect(tester.widget<TextField>(field).enabled, isTrue);
+      expect(
+        tester.getRect(find.byKey(const Key('module-settings-footer'))),
+        footer,
+      );
+      await tester.tap(find.byKey(const ValueKey('module-settings-apply-0')));
+      await tester.pump();
+      expect(find.byType(AlertDialog), findsNothing);
+      verify(() => cubit.applyModuleSettingsGroup(0)).called(1);
+      verifyNever(() => cubit.applyModuleSettingsGroup(3));
+      await tester.tap(find.byKey(const Key('refresh-module-settings')));
+      await tester.pump();
+      verify(() => cubit.loadModuleSettings(force: true)).called(1);
     },
   );
+
+  testWidgets('keyboard editing stages only; engine restart batch warns once', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 1300));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    current = riskyState();
+    await tester.pumpWidget(app());
+    final field = find.byType(TextField).first;
+    await tester.tap(field);
+    await tester.enterText(field, '-42');
+    verify(
+      () => cubit.editModuleSetting(
+        5,
+        any(
+          that: isA<ModuleSettingValue>().having((v) => v.value, 'value', -42),
+        ),
+      ),
+    ).called(1);
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    expect(tester.takeException(), isNull);
+    final apply = find.byKey(const ValueKey('module-settings-apply-3'));
+    await tester.tap(apply);
+    await tester.pumpAndSettle();
+    expect(find.text('Restarts audio. Reboot required.'), findsOneWidget);
+    expect(
+      find.text('Settings on the connected disting NT module.'),
+      findsNothing,
+    );
+    expect(find.textContaining('Drafts stay in this connection'), findsNothing);
+    verifyNever(() => cubit.applyModuleSettingsGroup(any()));
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    verifyNever(() => cubit.applyModuleSettingsGroup(any()));
+    await tester.tap(apply);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Apply changes'));
+    await tester.pumpAndSettle();
+    verify(() => cubit.applyModuleSettingsGroup(3)).called(1);
+    expect(find.byType(SnackBar), findsNothing);
+  });
 
   testWidgets('confirmation cannot apply to a replacement connection', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 1300));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    current = settingsScreenState(draft: true);
+    current = riskyState();
     await tester.pumpWidget(app());
     await tester.tap(find.byKey(const ValueKey('module-settings-apply-3')));
     await tester.pumpAndSettle();
@@ -471,35 +557,30 @@ void main() {
         },
       );
       await tester.pumpWidget(app());
-      Rect field(int id) => tester.getRect(
-        find.descendant(
-          of: find.byKey(ValueKey('module-setting-1-$id')),
-          matching: find.byType(TextField),
-        ),
-      );
-      final engine = tester.getRect(
-        find.byKey(const ValueKey('module-settings-group-3')),
-      );
-      expect(field(5).top, lessThan(field(7).top));
-      expect(field(7).top, lessThan(field(9).top));
-      expect(field(7).left, greaterThan(field(5).left));
-      expect(field(9).left, lessThan(field(5).left));
-      expect(engine.contains(field(5).center), isTrue);
-      expect(engine.contains(field(9).center), isFalse);
       expect(
-        tester
-            .getSemantics(find.text('Engine'))
-            .getSemanticsData()
-            .headingLevel,
-        1,
+        tester.getSize(find.byKey(const Key('module-settings-sidebar'))).width,
+        280,
       );
+      expect(find.byKey(const ValueKey('module-setting-1-5')), findsOneWidget);
+      expect(find.byKey(const ValueKey('module-setting-1-7')), findsNothing);
+      expect(find.byKey(const ValueKey('module-setting-1-9')), findsNothing);
+      final detailLeft = tester.getRect(find.byType(TextField)).left;
+      await tester.tap(find.byTooltip('Expand Engine'));
+      await tester.pump();
       expect(
-        tester
-            .getSemantics(find.text('Tuning'))
-            .getSemanticsData()
-            .headingLevel,
-        2,
+        tester.getRect(find.text('Tuning')).left,
+        greaterThan(tester.getRect(find.text('Engine')).left),
       );
+      await tester.tap(find.byKey(const ValueKey('module-settings-nav-4')));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('module-setting-1-7')), findsOneWidget);
+      expect(find.byKey(const ValueKey('module-setting-1-5')), findsNothing);
+      expect(tester.getRect(find.byType(TextField)).left, detailLeft);
+      expect(find.text('Apply changes'), findsOneWidget);
+      await tester.tap(find.byTooltip('Collapse Engine'));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('module-setting-1-5')), findsOneWidget);
+      expect(find.byKey(const ValueKey('module-settings-nav-4')), findsNothing);
       semantics.dispose();
     },
   );
@@ -566,7 +647,7 @@ void main() {
     await tester.pumpWidget(app());
     final apply = find.byKey(const ValueKey('module-settings-apply-3'));
     SemanticsData data() => tester.getSemantics(apply).getSemanticsData();
-    expect(data().label, 'Apply Engine');
+    expect(data().label, 'Apply changes');
     expect(data().flagsCollection.isFocused, isNot(Tristate.none));
     expect(data().hasAction(SemanticsAction.tap), isTrue);
     for (
@@ -580,8 +661,8 @@ void main() {
     expect(data().flagsCollection.isFocused, Tristate.isTrue);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
-    expect(find.text('Apply changes to Engine?'), findsOneWidget);
-    verifyNever(() => cubit.applyModuleSettingsGroup(any()));
+    expect(find.byType(AlertDialog), findsNothing);
+    verify(() => cubit.applyModuleSettingsGroup(3)).called(1);
     semantics.dispose();
   });
 
@@ -622,7 +703,7 @@ void main() {
         expect(
           find.widgetWithText(
             SelectableText,
-            '${'Change not confirmed. ' * 40}\nLast read: 0',
+            '${'Change not confirmed. ' * 40}\nwas 0',
           ),
           findsOneWidget,
         );
@@ -645,8 +726,7 @@ void main() {
           OutlinedButton,
           'Revert to saved',
         ),
-        'Apply Engine': find.byKey(const ValueKey('module-settings-apply-3')),
-        'Apply changes': find.byKey(const ValueKey('module-settings-apply-0')),
+        'Apply changes': find.byKey(const ValueKey('module-settings-apply-3')),
       };
       Map<String, Rect> rects() => {
         for (final e in buttons.entries) e.key: tester.getRect(e.value),
@@ -736,6 +816,587 @@ void main() {
           isNull,
         );
       }
+    },
+  );
+  ModuleSettingsState navigationState({
+    bool drafts = false,
+    bool many = false,
+  }) {
+    final base = settingsScreenState(draft: drafts);
+    return ModuleSettingsState(
+      connectionId: base.connectionId,
+      tree: ModuleSettingsTree(
+        opaqueHeader: [0, 0, 0],
+        groups: {
+          0: ModuleSettingsGroup(
+            id: 0,
+            name: 'Root',
+            children: const [
+              ModuleSettingChild(id: 3, isGroup: true),
+              ModuleSettingChild(id: 9, isGroup: false),
+              ModuleSettingChild(id: 8, isGroup: true),
+            ],
+          ),
+          3: ModuleSettingsGroup(
+            id: 3,
+            name: 'Engine',
+            children: [
+              const ModuleSettingChild(id: 5, isGroup: false),
+              const ModuleSettingChild(id: 4, isGroup: true),
+              if (many)
+                for (var id = 100; id < 120; id++)
+                  ModuleSettingChild(id: id, isGroup: false),
+            ],
+          ),
+          4: ModuleSettingsGroup(
+            id: 4,
+            name: 'Labels',
+            children: const [ModuleSettingChild(id: 7, isGroup: false)],
+          ),
+          8: ModuleSettingsGroup(
+            id: 8,
+            name: 'Container',
+            children: const [ModuleSettingChild(id: 6, isGroup: true)],
+          ),
+          6: ModuleSettingsGroup(
+            id: 6,
+            name: 'Child',
+            children: const [ModuleSettingChild(id: 10, isGroup: false)],
+          ),
+        },
+      ),
+      settings: {
+        ...base.settings,
+        for (final id in [
+          7,
+          10,
+          if (many)
+            for (var i = 100; i < 120; i++) i,
+        ])
+          id: ModuleSettingEdit(
+            info: settingInfo(id),
+            observed: const ModuleSettingValue(0),
+          ),
+      },
+    );
+  }
+
+  testWidgets(
+    'tree uses a single Tab stop, arrow navigation and RTL disclosure',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      current = navigationState();
+      await tester.pumpWidget(app());
+      await tester.tap(find.byKey(const ValueKey('module-settings-nav-3')));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('module-settings-nav-4')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('module-setting-1-5')), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(find.byKey(const ValueKey('module-setting-1-7')), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(find.byKey(const ValueKey('module-setting-1-5')), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).focusNode?.hasFocus ??
+            FocusManager.instance.primaryFocus!.context!
+                    .findAncestorWidgetOfExactType<TextField>() !=
+                null,
+        isTrue,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: ModuleSettingsScreen(cubit: cubit),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('module-settings-nav-3')));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('module-settings-nav-4')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'compact picker preserves Back; drawer activation, Escape and resize restore focus',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      current = navigationState();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => ModuleSettingsScreen(cubit: cubit),
+                  ),
+                ),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.byType(BackButton), findsOneWidget);
+      expect(find.byTooltip('Open navigation menu'), findsNothing);
+      final picker = find.byKey(const Key('module-settings-picker'));
+      await tester.tap(picker);
+      await tester.pumpAndSettle();
+      expect(
+        FocusManager.instance.primaryFocus!.debugLabel,
+        'Settings group tree',
+      );
+      await tester.tap(find.byKey(const ValueKey('module-settings-nav-8')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('module-settings-nav-6')),
+        findsOneWidget,
+      );
+      expect(
+        tester.state<ScaffoldState>(find.byType(Scaffold).last).isDrawerOpen,
+        isTrue,
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('module-setting-1-10')), findsOneWidget);
+      expect(
+        FocusManager.instance.primaryFocus!.debugLabel,
+        'Settings group picker',
+      );
+      await tester.tap(picker);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(
+        FocusManager.instance.primaryFocus!.debugLabel,
+        'Settings group picker',
+      );
+      await tester.tap(picker);
+      await tester.pumpAndSettle();
+      await tester.binding.setSurfaceSize(const Size(1000, 844));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('module-settings-sidebar')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'selected group and drafts persist across navigation; hidden drafts are discoverable',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      current = navigationState(drafts: true);
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(app());
+      final viewport = tester.getRect(
+        find.byKey(const Key('module-settings-detail')),
+      );
+      final footer = tester.getRect(
+        find.byKey(const Key('module-settings-footer')),
+      );
+      await tester.tap(find.byKey(const ValueKey('module-settings-nav-0')));
+      await tester.pump();
+      expect(
+        tester
+            .getSemantics(find.byKey(const ValueKey('module-settings-nav-3')))
+            .getSemanticsData()
+            .value,
+        'unapplied changes',
+      );
+      await tester.tap(find.byKey(const ValueKey('module-settings-nav-3')));
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '4',
+      );
+      await tester.tap(find.byKey(const ValueKey('module-settings-nav-8')));
+      await tester.pump();
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Apply changes').hitTestable(), findsNothing);
+      expect(
+        tester.getRect(find.byKey(const Key('module-settings-detail'))),
+        viewport,
+      );
+      expect(
+        tester.getRect(find.byKey(const Key('module-settings-footer'))),
+        footer,
+      );
+      emit(
+        ModuleSettingsState(
+          connectionId: 2,
+          tree: current.tree,
+          settings: current.settings,
+        ),
+      );
+      await tester.pump();
+      expect(find.byKey(const ValueKey('module-setting-2-5')), findsOneWidget);
+      expect(find.byKey(const ValueKey('module-settings-nav-6')), findsNothing);
+      semantics.dispose();
+    },
+  );
+
+  testWidgets('detail scroll survives group changes and compact resize', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    current = navigationState(many: true);
+    await tester.pumpWidget(app());
+    final detail = find.byKey(const Key('module-settings-detail'));
+    await tester.drag(detail, const Offset(0, -300));
+    await tester.pumpAndSettle();
+    double offset() =>
+        tester.widget<SingleChildScrollView>(detail).controller!.offset;
+    final original = offset();
+    expect(original, greaterThan(200));
+    await tester.tap(find.byKey(const ValueKey('module-settings-nav-0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('module-settings-nav-3')));
+    await tester.pump();
+    expect(offset(), original);
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    await tester.pumpAndSettle();
+    expect(offset(), original);
+    await tester.binding.setSurfaceSize(const Size(1000, 900));
+    await tester.pumpAndSettle();
+    expect(offset(), original);
+  });
+
+  testWidgets(
+    'risky modal cannot authorize a changed batch or a busy connection',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      for (final busy in [false, true]) {
+        current = riskyState();
+        await tester.pumpWidget(app());
+        emit(current);
+        await tester.pump();
+        await tester.tap(find.byKey(const ValueKey('module-settings-apply-3')));
+        await tester.pumpAndSettle();
+        emit(
+          ModuleSettingsState(
+            connectionId: 1,
+            tree: current.tree,
+            busy: busy,
+            settings: {
+              ...current.settings,
+              5: ModuleSettingEdit(
+                info: current.settings[5]!.info,
+                observed: const ModuleSettingValue(0),
+                draft: const ModuleSettingValue(8),
+              ),
+            },
+          ),
+        );
+        await tester.pump();
+        await tester.tap(find.widgetWithText(FilledButton, 'Apply changes'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        verifyNever(() => cubit.applyModuleSettingsGroup(any()));
+      }
+    },
+  );
+
+  testWidgets(
+    'path metadata stays read only, separately from supported Name writes',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      for (final flags in [0, 4]) {
+        final info = settingInfo(
+          5,
+          type: 5,
+          flags: flags,
+          name: 'Audio recordings folder',
+        );
+        current = ModuleSettingsState(
+          connectionId: 1,
+          tree: settingsScreenState().tree,
+          settings: {
+            ...settingsScreenState().settings,
+            5: ModuleSettingEdit(
+              info: info,
+              observed: const ModuleSettingValue('/recordings'),
+            ),
+          },
+        );
+        await tester.pumpWidget(app());
+        emit(current);
+        await tester.pump();
+        expect(find.byType(TextField), findsNothing);
+        expect(find.text('/recordings'), findsOneWidget);
+        expect(
+          find.byTooltip(
+            RegExp(
+              flags == 4 ? 'The module marks this setting read only.' : 'Path editing is not supported by the settings protocol reference.',
+            ),
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Apply changes').hitTestable(), findsNothing);
+        expect(info.writable, isFalse);
+      }
+      verifyNever(() => cubit.editModuleSetting(any(), any()));
+    },
+  );
+  testWidgets(
+    'bottom persistence dock is anchored, unique and outside the reachable form',
+    (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      for (final width in [390.0, 1000.0]) {
+        for (final scale in [1.0, 3.0]) {
+          await tester.binding.setSurfaceSize(Size(width, 1000));
+          current = navigationState(many: true);
+          await tester.pumpWidget(app(scale: scale));
+          emit(current);
+          await tester.pump();
+          final dock = find.byKey(const Key('module-settings-global'));
+          final commit = find.widgetWithText(FilledButton, 'Commit to flash');
+          final revert = find.widgetWithText(OutlinedButton, 'Revert to saved');
+          final original = tester.getRect(dock);
+          expect(original.bottom, 1000);
+          expect(commit, findsOneWidget);
+          expect(revert, findsOneWidget);
+          expect(
+            tester.getRect(commit).top,
+            greaterThan(
+              tester
+                  .getRect(find.byKey(const Key('module-settings-footer')))
+                  .bottom,
+            ),
+          );
+          final base = current;
+          for (final state in [
+            ModuleSettingsState(
+              connectionId: 1,
+              busy: true,
+              message: 'Reading…',
+            ),
+            ModuleSettingsState(
+              connectionId: 1,
+              tree: base.tree,
+              settings: base.settings,
+              busy: true,
+            ),
+            ModuleSettingsState(
+              connectionId: 1,
+              tree: base.tree,
+              settings: base.settings,
+              actionUncertain: true,
+              message: 'Refresh required',
+            ),
+            base,
+          ]) {
+            emit(state);
+            await tester.pump();
+            expect(tester.getRect(dock), original);
+            expect(tester.widget<FilledButton>(commit).onPressed, isNull);
+            expect(tester.widget<OutlinedButton>(revert).onPressed, isNull);
+          }
+          final detail = find.byKey(const Key('module-settings-detail'));
+          await tester.drag(detail, const Offset(0, -10000));
+          await tester.pumpAndSettle();
+          expect(
+            find.byKey(const ValueKey('module-setting-1-119')).hitTestable(),
+            findsOneWidget,
+          );
+          expect(
+            tester
+                .getRect(find.byKey(const ValueKey('module-setting-1-119')))
+                .bottom,
+            lessThanOrEqualTo(
+              tester
+                  .getRect(find.byKey(const Key('module-settings-footer')))
+                  .top,
+            ),
+          );
+          expect(tester.takeException(), isNull);
+        }
+      }
+    },
+  );
+
+  testWidgets('keyboard inset lifts the bottom dock without covering fields', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(tester.view.resetViewInsets);
+    current = settingsScreenState();
+    await tester.pumpWidget(app());
+    final dock = find.byKey(const Key('module-settings-global'));
+    final original = tester.getRect(dock);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pump();
+    final shifted = tester.getRect(dock);
+    expect(shifted.height, original.height);
+    expect(
+      shifted.bottom,
+      original.bottom - 300 / tester.view.devicePixelRatio,
+    );
+    expect(
+      tester.getRect(find.byKey(const Key('module-settings-detail'))).bottom,
+      lessThanOrEqualTo(shifted.top),
+    );
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets(
+    'desktop editor controls start exactly 24 logical pixels after separator',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      current = navigationState();
+      await tester.pumpWidget(app());
+      final separator = tester.getRect(
+        find.byKey(const Key('module-settings-separator')),
+      );
+      void gap() => expect(
+        tester.getRect(find.byType(TextField)).left - separator.right,
+        24,
+      );
+      gap();
+      final base = current;
+      for (final state in [
+        settingsScreenState(busy: true),
+        settingsScreenState(draft: true, error: 'Readback failed'),
+        base,
+      ]) {
+        emit(state);
+        await tester.pump();
+        gap();
+      }
+      await tester.tap(find.byKey(const ValueKey('module-settings-nav-0')));
+      await tester.pump();
+      gap();
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'was feedback uses confirmed baseline through draft, pending, failure and discard',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 1300));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      ModuleSettingsState value({
+        int observed = 42,
+        int? draft,
+        bool busy = false,
+        String? error,
+      }) => ModuleSettingsState(
+        connectionId: 1,
+        tree: settingsScreenState().tree,
+        busy: busy,
+        settings: {
+          ...settingsScreenState().settings,
+          5: ModuleSettingEdit(
+            info: settingInfo(5),
+            observed: ModuleSettingValue(observed),
+            draft: draft == null ? null : ModuleSettingValue(draft),
+            error: error,
+            uncertain: error != null,
+            refreshRequired: error != null,
+          ),
+        },
+      );
+      current = value();
+      await tester.pumpWidget(app());
+      final feedback = find.byKey(const ValueKey('module-setting-feedback-5'));
+      final original = tester.getRect(feedback);
+      for (final state in [
+        value(draft: 43),
+        value(draft: 43, busy: true),
+        value(draft: 43, error: 'Readback failed'),
+      ]) {
+        emit(state);
+        await tester.pump();
+        expect(
+          find.text(
+            state.settings[5]!.error == null
+                ? 'was 42'
+                : 'Readback failed · was 42',
+          ),
+          findsOneWidget,
+        );
+        expect(tester.getRect(feedback), original);
+        expect(find.textContaining('Draft'), findsNothing);
+        expect(find.textContaining('Last read:'), findsNothing);
+      }
+      // Discard/cancel returns to the confirmed baseline, never the attempted value.
+      emit(value());
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '42',
+      );
+      expect(find.text('was 42'), findsNothing);
+      expect(tester.getRect(feedback), original);
+      emit(value(draft: 43));
+      await tester.pump();
+      emit(value(observed: 43));
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '43',
+      );
+      expect(find.textContaining('was '), findsNothing);
+      expect(tester.getRect(feedback), original);
+    },
+  );
+  testWidgets(
+    'known SysEx address change warns without warning on unrelated ordinary settings',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 1300));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final base = settingsScreenState();
+      current = ModuleSettingsState(
+        connectionId: 1,
+        tree: base.tree,
+        settings: {
+          ...base.settings,
+          5: ModuleSettingEdit(
+            info: settingInfo(5, name: 'SysEx Device ID', min: 0, max: 126),
+            observed: const ModuleSettingValue(0),
+            draft: const ModuleSettingValue(1),
+          ),
+        },
+      );
+      await tester.pumpWidget(app());
+      await tester.tap(find.byKey(const ValueKey('module-settings-apply-3')));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Changes the MIDI connection address'),
+        findsOneWidget,
+      );
+      verifyNever(() => cubit.applyModuleSettingsGroup(any()));
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '1',
+      );
+      verifyNever(() => cubit.applyModuleSettingsGroup(any()));
     },
   );
 }

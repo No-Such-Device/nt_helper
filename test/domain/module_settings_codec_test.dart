@@ -191,6 +191,27 @@ void main() {
     );
   });
 
+  test('Path reads preserve SD paths but neither flag-free nor readonly Path writes are supported', () {
+    for (final flags in [0, 4]) {
+      final info = settingInfo(56, type: 5, flags: flags);
+      expect(
+        ModuleSettingsCodec.value(
+          Uint8List.fromList([0, 0, 56, ...'/recordings'.codeUnits, 0]),
+          info,
+        ).value,
+        '/recordings',
+      );
+      expect(info.writable, isFalse);
+      expect(
+        () =>
+            ModuleSettingsCodec.write(info, const ModuleSettingValue('/other')),
+        throwsArgumentError,
+      );
+    }
+    expect(settingInfo(56, type: 4).writable, isTrue);
+    expect(settingInfo(56, type: 4, flags: 4).writable, isFalse);
+  });
+
   test(
     'all 64 bits, bit63 and little-endian limb boundaries retain precision',
     () {

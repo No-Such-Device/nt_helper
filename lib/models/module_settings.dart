@@ -116,6 +116,26 @@ final class ModuleSettingValue {
   bool sameValue(ModuleSettingValue other) => value == other.value;
 }
 
+enum ModuleSettingWritePhase { beforeSend, send, readback }
+
+final class ModuleSettingWriteException implements Exception {
+  const ModuleSettingWriteException(this.id, this.phase, this.cause);
+  final int id;
+  final ModuleSettingWritePhase phase;
+  final Object cause;
+  bool get mutationMayHaveOccurred =>
+      phase != ModuleSettingWritePhase.beforeSend;
+  @override
+  String toString() => switch (phase) {
+    ModuleSettingWritePhase.beforeSend =>
+      'Pre-write read failed for setting $id. No change was sent. $cause',
+    ModuleSettingWritePhase.send =>
+      'Sending setting $id failed; delivery is unknown. $cause',
+    ModuleSettingWritePhase.readback =>
+      'Readback failed after sending setting $id. $cause',
+  };
+}
+
 @immutable
 final class ModuleSettingEdit {
   const ModuleSettingEdit({
@@ -124,12 +144,15 @@ final class ModuleSettingEdit {
     this.draft,
     this.error,
     this.uncertain = false,
+    this.refreshRequired = false,
   });
   final ModuleSettingInfo info;
   final ModuleSettingValue observed;
   final ModuleSettingValue? draft;
   final String? error;
   final bool uncertain;
+  final bool refreshRequired;
+  bool get needsRefresh => uncertain || refreshRequired;
   ModuleSettingValue get displayed => draft ?? observed;
   bool get changed => draft != null && !draft!.sameValue(observed);
 }
@@ -160,6 +183,23 @@ final class ModuleSettingsState {
   );
   bool get hasUncertainty =>
       actionUncertain || settings.values.any((s) => s.uncertain);
+  bool canApplyGroup(int id) {
+    if (!ready || actionUncertain || tree == null) return false;
+    final changes =
+        tree!.groups[id]?.children
+            .where((c) => !c.isGroup)
+            .map((c) => settings[c.id]!)
+            .where((e) => e.changed && !e.needsRefresh)
+            .toList() ??
+        [];
+    return changes.isNotEmpty &&
+        changes.every((e) => e.info.validate(e.displayed) == null);
+  }
+
   bool get canCommit =>
-      ready && changedOnModule && !hasDrafts && !hasUncertainty;
+      ready &&
+      changedOnModule &&
+      !hasDrafts &&
+      !hasUncertainty &&
+      !settings.values.any((e) => e.needsRefresh);
 }

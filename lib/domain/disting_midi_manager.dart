@@ -131,6 +131,10 @@ class DistingMidiManager
       ),
       RequestKey(sysExId: sysExId, messageType: response, settingId: id),
       maxRetries: 1,
+      // A 1024-byte response alone takes about 330ms over DIN MIDI.
+      timeout: _scheduler.defaultTimeout < const Duration(seconds: 1)
+          ? const Duration(seconds: 1)
+          : _scheduler.defaultTimeout,
       attributionPolicy: ResponseAttributionPolicy.failWhenAmbiguous,
       cancellation: cancellation,
     );
@@ -228,16 +232,42 @@ class DistingMidiManager
     final info = _settingsInfo[id]!;
     final payload = ModuleSettingsCodec.write(info, value);
     // Fail before mutating if a prior same-ID query left ambiguous reply debt.
-    await _readModuleSetting(id, cancellation);
-    await _scheduler.sendRequest<void>(
-      ModuleSettingsCodec.packet(sysExId, 0x66, payload),
-      RequestKey(sysExId: sysExId),
-      responseExpectation: ResponseExpectation.none,
-      replayPolicy: RequestReplayPolicy.never,
-      cancellation: cancellation,
-      preflight: _requireSettingsSnapshot,
-    );
-    return _readModuleSetting(id, cancellation);
+    try {
+      await _readModuleSetting(id, cancellation);
+    } catch (error) {
+      throw ModuleSettingWriteException(
+        id,
+        ModuleSettingWritePhase.beforeSend,
+        error,
+      );
+    }
+    try {
+      await _scheduler.sendRequest<void>(
+        ModuleSettingsCodec.packet(sysExId, 0x66, payload),
+        RequestKey(sysExId: sysExId),
+        responseExpectation: ResponseExpectation.none,
+        replayPolicy: RequestReplayPolicy.never,
+        cancellation: cancellation,
+        preflight: _requireSettingsSnapshot,
+      );
+    } catch (error) {
+      throw ModuleSettingWriteException(
+        id,
+        ModuleSettingWritePhase.send,
+        error,
+      );
+    }
+    // Match the maintained editor's settling interval, not its reply budget.
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    try {
+      return await _readModuleSetting(id, cancellation);
+    } catch (error) {
+      throw ModuleSettingWriteException(
+        id,
+        ModuleSettingWritePhase.readback,
+        error,
+      );
+    }
   });
 
   @override

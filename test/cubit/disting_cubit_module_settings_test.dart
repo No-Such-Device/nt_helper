@@ -237,4 +237,89 @@ void main() {
       verifyNever(() => replacement.discoverModuleSettings(any()));
     },
   );
+  test('pre-write failure is not dirty or unknown delivery and does not block independent edits', () async {
+    when(() => manager.writeModuleSetting(5, any(), any())).thenThrow(
+      ModuleSettingWriteException(
+        5,
+        ModuleSettingWritePhase.beforeSend,
+        TimeoutException('pre-read', const Duration(seconds: 1)),
+      ),
+    );
+    await cubit.loadModuleSettings();
+    cubit.editModuleSetting(5, const ModuleSettingValue(7));
+    await cubit.applyModuleSettingsGroup(3);
+    var state = cubit.moduleSettingsState;
+    expect(state.changedOnModule, isFalse);
+    expect(state.settings[5]!.uncertain, isFalse);
+    expect(state.settings[5]!.needsRefresh, isTrue);
+    expect(state.settings[5]!.error, contains('No change was sent'));
+    cubit.editModuleSetting(9, const ModuleSettingValue(6));
+    expect(cubit.moduleSettingsState.canApplyGroup(0), isTrue);
+    await cubit.applyModuleSettingsGroup(0);
+    state = cubit.moduleSettingsState;
+    expect(state.settings[9]!.observed.value, 6);
+    expect(state.canCommit, isFalse);
+    verify(() => manager.writeModuleSetting(5, any(), any())).called(1);
+    verify(() => manager.writeModuleSetting(9, any(), any())).called(1);
+  });
+
+  test('unknown readback blocks only the failed field and readonly refresh resolves without a replay', () async {
+    final tree = ModuleSettingsTree(
+      opaqueHeader: [0, 0, 0],
+      groups: {
+        0: ModuleSettingsGroup(
+          id: 0,
+          name: '',
+          children: const [ModuleSettingChild(id: 3, isGroup: true)],
+        ),
+        3: ModuleSettingsGroup(
+          id: 3,
+          name: 'Engine',
+          children: const [
+            ModuleSettingChild(id: 5, isGroup: false),
+            ModuleSettingChild(id: 9, isGroup: false),
+          ],
+        ),
+      },
+    );
+    when(() => manager.discoverModuleSettings(any()))
+        .thenAnswer((_) async => tree);
+    when(() => manager.writeModuleSetting(5, any(), any()))
+        .thenAnswer((_) async {
+          values[5] = 7;
+          throw ModuleSettingWriteException(
+            5,
+            ModuleSettingWritePhase.readback,
+            TimeoutException('post-write', const Duration(seconds: 1)),
+          );
+        });
+    await cubit.loadModuleSettings();
+    cubit.editModuleSetting(5, const ModuleSettingValue(7));
+    await cubit.applyModuleSettingsGroup(3);
+    expect(cubit.moduleSettingsState.settings[5]!.uncertain, isTrue);
+    cubit.editModuleSetting(5, const ModuleSettingValue(10));
+    expect(cubit.moduleSettingsState.settings[5]!.draft!.value, 7);
+    cubit.editModuleSetting(9, const ModuleSettingValue(6));
+    expect(cubit.moduleSettingsState.canApplyGroup(3), isTrue);
+    await cubit.applyModuleSettingsGroup(3);
+    expect(cubit.moduleSettingsState.settings[9]!.observed.value, 6);
+    expect(cubit.moduleSettingsState.canCommit, isFalse);
+    when(() => manager.requestModuleSettingValue(5, any()))
+        .thenThrow(StateError('Earlier reply outstanding'));
+    await cubit.loadModuleSettings(force: true);
+    expect(cubit.moduleSettingsState.ready, isTrue);
+    expect(cubit.moduleSettingsState.settings[5]!.needsRefresh, isTrue);
+    expect(cubit.moduleSettingsState.settings[9]!.needsRefresh, isFalse);
+    when(() => manager.requestModuleSettingValue(5, any()))
+        .thenAnswer((_) async => ModuleSettingValue(values[5]!));
+    await cubit.loadModuleSettings(force: true);
+    expect(cubit.moduleSettingsState.settings[5]!.observed.value, 7);
+    expect(cubit.moduleSettingsState.settings[5]!.draft, isNull);
+    expect(cubit.moduleSettingsState.settings[5]!.needsRefresh, isFalse);
+    expect(cubit.moduleSettingsState.canCommit, isTrue);
+    verify(() => manager.discoverModuleSettings(any())).called(1);
+    verify(() => manager.writeModuleSetting(5, any(), any())).called(1);
+    verify(() => manager.writeModuleSetting(9, any(), any())).called(1);
+    verifyNever(() => manager.sendModuleSettingsAction(any(), any()));
+  });
 }

@@ -99,6 +99,13 @@ final class _ModuleSettingsDelegate {
     _synchronize(_cubit.state);
     final scope = _scope;
     if (scope == null || scope.busy || scope.attempted && !force) return;
+    if (force &&
+        scope.tree != null &&
+        !scope.actionUncertain &&
+        scope.edits.values.any((e) => e.needsRefresh)) {
+      await _recoverValues(scope);
+      return;
+    }
     scope.attempted = true;
     scope.busy = true;
     scope.message = 'Reading module settings…';
@@ -157,6 +164,58 @@ final class _ModuleSettingsDelegate {
     }
   }
 
+  Future<void> _recoverValues(_ModuleSettingsScope scope) async {
+    scope.busy = true;
+    scope.message = 'Reading module settings…';
+    _publish();
+    try {
+      for (final id in scope.tree!.settingIds) {
+        if (!_current(scope)) return;
+        final previous = scope.edits[id]!;
+        try {
+          final value = await scope.transport.requestModuleSettingValue(
+            id,
+            scope.cancellation,
+          );
+          if (!_current(scope)) return;
+          final draft = previous.draft?.sameValue(value) == true
+              ? null
+              : previous.draft;
+          scope.edits = {
+            ...scope.edits,
+            id: ModuleSettingEdit(
+              info: previous.info,
+              observed: value,
+              draft: draft,
+              error: draft == null ? null : previous.info.validate(draft),
+            ),
+          };
+        } catch (error) {
+          if (!_current(scope)) return;
+          scope.edits = {
+            ...scope.edits,
+            id: ModuleSettingEdit(
+              info: previous.info,
+              observed: previous.observed,
+              draft: previous.draft,
+              error: 'Refresh failed. $error',
+              uncertain: previous.uncertain,
+              refreshRequired: true,
+            ),
+          };
+        }
+      }
+      scope.message = scope.edits.values.any((e) => e.needsRefresh)
+          ? 'Some settings could not be read.'
+          : '';
+    } finally {
+      if (_current(scope)) {
+        scope.busy = false;
+        _publish();
+      }
+    }
+  }
+
   void edit(int id, ModuleSettingValue value) {
     final snapshot = state;
     final scope = _scope;
@@ -164,7 +223,8 @@ final class _ModuleSettingsDelegate {
     if (!snapshot.ready ||
         scope == null ||
         previous == null ||
-        !previous.info.writable) {
+        !previous.info.writable ||
+        previous.needsRefresh) {
       return;
     }
     scope.edits = {
@@ -175,6 +235,7 @@ final class _ModuleSettingsDelegate {
         draft: value.sameValue(previous.observed) ? null : value,
         error: previous.info.validate(value),
         uncertain: previous.uncertain,
+        refreshRequired: previous.refreshRequired,
       ),
     };
     _publish();
@@ -190,6 +251,8 @@ final class _ModuleSettingsDelegate {
           info: e.value.info,
           observed: e.value.observed,
           uncertain: e.value.uncertain,
+          refreshRequired: e.value.refreshRequired,
+          error: e.value.needsRefresh ? e.value.error : null,
         ),
     };
     _publish();
@@ -198,12 +261,15 @@ final class _ModuleSettingsDelegate {
   Future<void> applyGroup(int groupId) async {
     final snapshot = state;
     final scope = _scope;
-    if (!snapshot.ready || snapshot.hasUncertainty || scope == null) return;
+    if (scope == null || !snapshot.canApplyGroup(groupId)) return;
     final ids =
         scope.tree?.groups[groupId]?.children
             .where((c) => !c.isGroup)
             .map((c) => c.id)
-            .where((id) => scope.edits[id]!.changed)
+            .where(
+              (id) =>
+                  scope.edits[id]!.changed && !scope.edits[id]!.needsRefresh,
+            )
             .toList() ??
         [];
     if (ids.isEmpty ||
@@ -221,7 +287,6 @@ final class _ModuleSettingsDelegate {
       for (final id in ids) {
         if (!_current(scope)) return;
         final before = scope.edits[id]!;
-        scope.dirty = true;
         try {
           final observed = await scope.transport.writeModuleSetting(
             id,
@@ -229,6 +294,7 @@ final class _ModuleSettingsDelegate {
             scope.cancellation,
           );
           if (!_current(scope)) return;
+          scope.dirty = true;
           final matches = observed.sameValue(before.displayed);
           scope.edits = {
             ...scope.edits,
@@ -243,22 +309,27 @@ final class _ModuleSettingsDelegate {
           if (!matches) break;
         } catch (error) {
           if (!_current(scope)) return;
+          final mayHaveSent =
+              error is! ModuleSettingWriteException ||
+              error.mutationMayHaveOccurred;
+          if (mayHaveSent) scope.dirty = true;
           scope.edits = {
             ...scope.edits,
             id: ModuleSettingEdit(
               info: before.info,
               observed: before.observed,
               draft: before.draft,
-              error: 'Change not confirmed. $error',
-              uncertain: true,
+              error: '$error',
+              uncertain: mayHaveSent,
+              refreshRequired: true,
             ),
           };
           break;
         }
       }
       if (_current(scope)) {
-        scope.message = scope.edits.values.any((s) => s.uncertain)
-            ? 'Change unconfirmed. Refresh or reconnect.'
+        scope.message = scope.edits.values.any((s) => s.needsRefresh)
+            ? 'Some settings await refresh; they are not resent.'
             : 'Values confirmed. Not committed to flash.';
       }
     } finally {
@@ -272,12 +343,7 @@ final class _ModuleSettingsDelegate {
   Future<void> action(int action) async {
     final snapshot = state;
     final scope = _scope;
-    if (scope == null ||
-        !snapshot.ready ||
-        snapshot.hasUncertainty ||
-        snapshot.hasDrafts ||
-        action != 0 && action != 2 ||
-        !snapshot.changedOnModule) {
+    if (scope == null || !snapshot.canCommit || action != 0 && action != 2) {
       return;
     }
     scope.busy = true;

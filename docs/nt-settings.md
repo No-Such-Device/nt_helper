@@ -1,76 +1,99 @@
 # NT Settings
 
-The cog immediately after Plugin Manager in the bottom action bar opens the
-module's global settings. It remains available in Play Store builds, where the
-Plugin Manager itself is absent. Existing application Settings/preferences are
-unchanged.
+The cog immediately after Plugin Manager opens the module's global settings.
+It remains available in Play Store builds. Application Settings/preferences and
+the System dialog are unchanged.
 
-NT Settings needs a live connection and recognized firmware 1.20 or later with
-settings protocol v1 support. The app discovers support when the screen opens;
-a version string alone is not proof. Earlier betas may not respond. Retry is
-explicit, and unresolved late replies may require reconnection before another
-query can safely be attributed. Offline and Demo modes never send settings MIDI.
+NT Settings requires a live connection, recognized firmware 1.20 or later and
+settings protocol v1. Discovery happens on opening the screen; a version string
+alone does not prove support. Earlier betas may not respond. Offline and Demo
+modes never send settings MIDI.
 
-The module supplies its own menu hierarchy, labels, ranges, defaults, types,
-flags and values. Edit locally, then choose **Apply changes** for that group.
-The confirmation explains possible audio restart/MIDI disconnection and that
-multiple settings are sent sequentially. Values are queried before and after
-each mutation; there is no write acknowledgement. Unconfirmed changes retain
-the draft and observed value separately and disable more writes until refresh.
-Drafts survive leaving and reopening the screen on the same connection. They
-are never replayed onto a replacement device.
+## Editing and recovery
 
-**Commit to flash** sends the module's persistence command. The protocol does
-not acknowledge durable flash storage, so the app reports only that it sent the
-command. **Revert to saved** is separately confirmed and requires Refresh to
-read active values afterward. The first implementation does not expose factory
-reset, auto-commit, automatic reboot, offline caching, or an MCP settings API.
+The module supplies the hierarchy, labels, ranges, defaults, types and flags.
+The expandable navigation tree selects one group's direct settings. Child groups
+appear only in navigation, not as nested forms. Compact windows use a group
+picker/drawer; desktop uses a 280-pixel sidebar. Drafts, selection and scroll
+positions survive group changes and layout changes on the same connection.
+Hidden drafts/errors are indicated in navigation. A replacement connection resets
+navigation and never receives old drafts.
 
-## UI and accessibility
+Ordinary **Apply changes** immediately applies valid drafts in the selected group.
+Only batches marked as restarting audio or requiring reboot, and changes to the
+known “SysEx Device ID” connection-address setting, ask for confirmation.
+An approval covers the reviewed batch, not subsequent draft changes. No automatic
+reboot occurs. Writes are sequential, not atomic, and are not saved to flash.
 
-The interface preserves the app's Material 3 themes and native form controls.
-Impeccable's Operate/native adaptation/hardening guidance informed the restrained
-hierarchy, width-based layout, labelled 48-pixel cog, standard switches/selectors,
-and reserved status/error slots. The user's minimal-copy direction takes precedence:
-there is no introductory paragraph, breadcrumb, repeated range/default helper,
-or explanatory card. Range/default/type details live in tooltips and accessible
-hints; concise warnings appear only in context. No new visual world or web-specific
-styling was introduced. The Flutter architecture guidance is applied through lean views,
-immutable presentation snapshots, the existing Cubit delegate pattern, and the
-optional live transport interface—not a parallel state-management stack.
+Settings reads have a bounded timeout of at least one second, preserving a longer
+configured timeout. They use one attempt and strict same-ID reply attribution.
+The ordinary request timeout (including a configured 50ms timeout) is insufficient
+for potentially large replies: 1024 bytes takes about 330ms over DIN MIDI alone.
+A pre-write read establishes attribution before mutation. Command `66` has no ACK
+and is never replayed; after sending, the app waits the maintained editor's 20ms
+settling interval and queries `65` for the observed value. That interval is not a
+response deadline or a firmware timing guarantee.
 
-A coherent schema/value snapshot appears together; discovery does not append
-interactive fields one at a time. Toolbar/status positions are stable before
-and after discovery. Refresh, pending writes, validation and disconnection keep
-existing control geometry. Field feedback uses one reserved, text-scale-aware
-line (with a minimum 48-pixel interaction slot). A full-status dialog is offered
-only when the visible feedback is truncated, avoiding redundant focus stops. Meaningful status updates use live-region
-semantics; there are no affirmative/progress snackbars. Section headings,
-read-only values and all 64 bit controls are labelled. Standard focus traversal,
-text editing, dropdown and toggle keyboard behavior are retained. Each action has
-one home: native Back/title; Refresh and Discard drafts in the app bar; flash
-Commit/Revert once in the toolbar; scoped Apply once per editable group (none for
-read-only groups). There is no duplicate global Apply, reset, reboot or screen
-Close action. The existing System dialog and application preferences remain
-unchanged.
+Failed reads retain drafts and observed values, mark the affected field as needing
+refresh, and prevent resending it. Other valid fields remain independently
+editable/applicable. Refresh can recover values against the existing schema
+without discarding drafts. Unresolved late replies can still require another
+explicit refresh or reconnection. No timeout is treated as proof of unsupported
+firmware, successful mutation, or durable flash storage.
 
-Subgroups have visible boundaries and indentation, with heading levels matching
-the module hierarchy. Root settings following a subgroup remain outside it;
-menu order is never rearranged to achieve grouping. Apply retains its native
-button focus semantics and visible accessible name. Numeric edits preserve
-spelling and caret position when a draft is echoed back. Action buttons grow
-with text scaling rather than clipping labels to a fixed height.
+**Commit to flash** and **Revert to saved** occupy one persistent inset bottom
+dock, outside the scrolling form. They stay disabled while drafts or uncertainty
+remain. Both are explicitly confirmed; the protocol provides no durable-write
+acknowledgement. Revert requires Refresh afterward. No factory reset, auto-commit,
+automatic reboot, offline settings cache or MCP settings API is exposed.
+
+## Read-only paths
+
+Path values are displayed as selectable text with a read-only tooltip and
+accessible hint. Read-only flag 4 is always enforced, independently of type.
+Even without flag 4, type 5 Path remains display-only: Os' reference editor renders
+it `readonly`, and its write encoder has no Path branch. A NUL-terminated Path
+*read* does not establish a supported Path *write*.
+
+Read-only inspection of the running app's cached snapshot on 2026-11-23 found
+firmware `v1.20.0beta`, build date `Nov 23 2026 15:10:49`. “Audio recordings folder”
+was setting 56, type 5, unit 18, flags 4, maxLength 255, observed `/recordings`.
+“Preset save folder” likewise had type 5 and flags 4. These are observations,
+not hardcoded IDs or a fresh hardware query. No folder was modified. A folder
+picker must wait for a supported wire contract and writable firmware metadata;
+a local-computer filesystem picker would not select an NT SD-card directory.
+Question for Os: will a later revision expose writable Path metadata and a Path
+write encoding, or is a separate directory-selection command required?
+
+## Layout and accessibility
+
+Only navigation is indented. Desktop editor controls begin exactly 24 logical pixels after the separator;
+compact content retains its 16-pixel inset. Dirty fields show `was <confirmed
+value>` in the reserved feedback slot; successful readback clears it, while
+failures retain the confirmed baseline and error. The detail pane has one scoped Apply footer and no
+redundant visible heading, breadcrumb, explanatory card or global Apply. Refresh
+and Discard drafts remain in the app bar. Status, field feedback, footer and
+bottom persistence dock reserve their space through loading, errors and pending
+operations. No affirmative/progress snackbars are used.
+
+The tree is one keyboard Tab stop: Up/Down/Home/End select visible rows;
+Right expands or moves to the first child; Left collapses or selects the parent
+(swapped in RTL). Enter/Space activates. Collapsing an ancestor selects it. Rows
+expose selected/expanded state and draft/error status; disclosure buttons are
+separately labelled. The compact drawer preserves Back, restores picker focus
+on close, and keeps container-only selections open. Forms retain native keyboard
+editing, labelled read-only values, all 64 bit labels, and live-region feedback.
 
 ## Evidence boundaries
 
-The protocol reference is Os' preset editor at immutable commit
+Protocol source: Os' preset editor at immutable commit
 `82c23673b7e63371df60a59951ab13182cf703ca`; see [SysEx reference](SYSEX_REFERENCE.md).
-Test data are synthetic fixtures derived from that code, not recordings of an
-actual module catalogue. Automated checks cover exact packets, signed16/bit63,
-malformed data, ID attribution, one-attempt discovery, late responses,
-non-replayed mutations, connection cancellation, drafts/uncertainty, semantics,
-widths 390/600/900/1200, 300% text scaling and asynchronous geometry. Additional
-regressions cover nested menu boundaries, heading depth, echoed numeric edits,
-Apply keyboard focus, truncated feedback, large-text label bounds and dropdown
-discard synchronization. No module
-was connected or rebooted to verify persistence or setting-specific effects.
+Automated wire tests use synthetic fixtures, including delayed 140ms replies
+against a 50ms general timeout. These are not measured hardware timings.
+
+The current live app has no NT Settings MCP operations; VM expression evaluation
+reports no compilation service. Read-only VM object inspection captured cached
+firmware/schema/values only. No hardware write/readback/restore cycle or `65`/`66`
+latency measurement was performed for this follow-up, and no app restart was
+performed. The user's report that settings work better is positive manual
+feedback, not proof of a measured transport budget or flash persistence.

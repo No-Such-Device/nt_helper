@@ -64,54 +64,68 @@ void main() {
   setUpAll(() => registerFallbackValue(Uint8List(0)));
   setUp(() async {
     SharedPreferences.setMockInitialValues({
-      'request_timeout_ms': 10,
+      'request_timeout_ms': 50,
       'inter_message_delay_ms': 0,
     });
     await SettingsService().init();
   });
 
-  test('real scheduler discovers in menu order, sends mutation once and fresh ID-keyed readback', () async {
-    final wire = RemoteWireHarness();
-    addTearDown(wire.close);
-    respond(wire);
-    final cancellation = DistingRequestCancellation();
-    await load(wire, cancellation);
-    expect(wire.sentPackets.map((p) => p[6]), [0x63, 0x64, 0x65, 0x64, 0x65]);
-    final result = await wire.manager.writeModuleSetting(
-      5,
-      const ModuleSettingValue(-50),
-      cancellation,
-    );
-    expect(result.value, -50);
-    expect(wire.sentPackets.skip(5).map((p) => p[6]), [0x65, 0x66, 0x65]);
-    expect(wire.sentPackets[6], [
-      240,
-      0,
-      33,
-      39,
-      109,
-      remoteWireSysExId,
-      0x66,
-      0,
-      0,
-      5,
-      ...encode16(-50),
-      247,
-    ]);
-    await wire.manager.sendModuleSettingsAction(0, cancellation);
-    await wire.manager.sendModuleSettingsAction(2, cancellation);
-    expect(wire.sentPackets.skip(8).map((p) => p.sublist(6)), [
-      [0x67, 0, 247],
-      [0x67, 2, 247],
-    ]);
-    await expectLater(
-      wire.manager.writeModuleSetting(
+  test('real scheduler writes once with no ACK and waits 20ms before fresh readback', () {
+    fakeAsync((time) {
+      final wire = RemoteWireHarness();
+      respond(wire);
+      final cancellation = DistingRequestCancellation();
+      var loaded = false;
+      load(wire, cancellation).then((_) => loaded = true);
+      time.flushMicrotasks();
+      expect(loaded, isTrue);
+      expect(wire.sentPackets.map((p) => p[6]), [0x63, 0x64, 0x65, 0x64, 0x65]);
+      ModuleSettingValue? result;
+      wire.manager
+          .writeModuleSetting(5, const ModuleSettingValue(-50), cancellation)
+          .then((v) => result = v);
+      time.flushMicrotasks();
+      expect(wire.sentPackets.skip(5).map((p) => p[6]), [0x65, 0x66]);
+      time.elapse(const Duration(milliseconds: 19));
+      expect(result, isNull);
+      time.elapse(const Duration(milliseconds: 1));
+      time.flushMicrotasks();
+      expect(result!.value, -50);
+      expect(wire.sentPackets.skip(5).map((p) => p[6]), [0x65, 0x66, 0x65]);
+      expect(wire.sentPackets[6], [
+        240,
+        0,
+        33,
+        39,
+        109,
+        remoteWireSysExId,
+        0x66,
+        0,
+        0,
         5,
-        const ModuleSettingValue(2),
-        cancellation,
-      ),
-      throwsStateError,
-    );
+        ...encode16(-50),
+        247,
+      ]);
+      wire.manager.sendModuleSettingsAction(0, cancellation).ignore();
+      wire.manager.sendModuleSettingsAction(2, cancellation).ignore();
+      time.flushMicrotasks();
+      expect(wire.sentPackets.skip(8).map((p) => p.sublist(6)), [
+        [0x67, 0, 247],
+        [0x67, 2, 247],
+      ]);
+      Object? error;
+      wire.manager
+          .writeModuleSetting(5, const ModuleSettingValue(2), cancellation)
+          .catchError((Object e) {
+            error = e;
+            throw e;
+          })
+          .ignore();
+      time.flushMicrotasks();
+      expect(error, isA<StateError>());
+      unawaited(wire.close());
+      time.flushMicrotasks();
+    });
   });
 
   test('never writes without discovery and complete snapshot or to read-only metadata', () async {
@@ -233,7 +247,7 @@ void main() {
         respond(wire, include: (c) => c != 0x65);
         wire.manager.requestModuleSettingValue(5, cancellation).ignore();
         time.flushMicrotasks();
-        time.elapse(const Duration(milliseconds: 100));
+        time.elapse(const Duration(seconds: 1));
         Object? error;
         wire.manager
             .writeModuleSetting(5, const ModuleSettingValue(4), cancellation)
@@ -243,7 +257,20 @@ void main() {
             })
             .ignore();
         time.flushMicrotasks();
-        expect(error, isA<AmbiguousResponseAttributionException>());
+        expect(
+          error,
+          isA<ModuleSettingWriteException>()
+              .having(
+                (e) => e.phase,
+                'phase',
+                ModuleSettingWritePhase.beforeSend,
+              )
+              .having(
+                (e) => e.cause,
+                'cause',
+                isA<AmbiguousResponseAttributionException>(),
+              ),
+        );
         expect(wire.sentPackets.where((p) => p[6] == 0x66), isEmpty);
         inject(wire, 0x65, settingValuePayload(5, 0));
         time.flushMicrotasks();
@@ -252,6 +279,8 @@ void main() {
         wire.manager
             .writeModuleSetting(5, const ModuleSettingValue(4), cancellation)
             .then((v) => value = v.value as int);
+        time.flushMicrotasks();
+        time.elapse(const Duration(milliseconds: 20));
         time.flushMicrotasks();
         expect(value, 4);
         unawaited(wire.close());
@@ -290,6 +319,176 @@ void main() {
           .ignore();
       time.flushMicrotasks();
       expect(wire.attempts.where((p) => p[6] == 0x66), hasLength(1));
+      unawaited(wire.close());
+      time.flushMicrotasks();
+    });
+  });
+  test('cancellation during the 20ms settle interval prevents readback and any mutation replay', () {
+    fakeAsync((time) {
+      final wire = RemoteWireHarness();
+      respond(wire);
+      final cancellation = DistingRequestCancellation();
+      load(wire, cancellation).ignore();
+      time.flushMicrotasks();
+      Object? error;
+      wire.manager
+          .writeModuleSetting(5, const ModuleSettingValue(4), cancellation)
+          .then<void>(
+            (_) => fail('Cancelled write must not complete normally'),
+            onError: (Object e) {
+              error = e;
+            },
+          );
+      time.flushMicrotasks();
+      expect(wire.sentPackets.where((p) => p[6] == 0x66), hasLength(1));
+      final reads = wire.sentPackets.where((p) => p[6] == 0x65).length;
+      cancellation.cancel();
+      time.elapse(const Duration(milliseconds: 20));
+      expect(
+        error,
+        isA<ModuleSettingWriteException>()
+            .having((e) => e.phase, 'phase', ModuleSettingWritePhase.readback)
+            .having(
+              (e) => e.cause,
+              'cause',
+              isA<DistingRequestCancelledException>(),
+            ),
+      );
+      expect(wire.sentPackets.where((p) => p[6] == 0x65), hasLength(reads));
+      expect(wire.sentPackets.where((p) => p[6] == 0x66), hasLength(1));
+      unawaited(wire.close());
+      time.flushMicrotasks();
+    });
+  });
+
+  test('settings reads tolerate 140ms replies with a 50ms general timeout and never await a write ACK', () {
+    fakeAsync((time) {
+      final wire = RemoteWireHarness();
+      var value = 0;
+      wire.onSend = (p) {
+        final id = p.length >= 11 ? decode16(p, 7) : 0;
+        switch (p[6]) {
+          case 0x63:
+            inject(wire, 0x63, settingsGroupsPayload());
+          case 0x64:
+            inject(wire, 0x64, settingInfoPayload(id));
+          case 0x65:
+            final captured = value;
+            Timer(
+              const Duration(milliseconds: 140),
+              () => inject(wire, 0x65, settingValuePayload(id, captured)),
+            );
+          case 0x66:
+            value = decode16(p, 10);
+        }
+      };
+      final cancellation = DistingRequestCancellation();
+      var loaded = false;
+      load(wire, cancellation).then((_) => loaded = true);
+      time.flushMicrotasks();
+      time.elapse(const Duration(milliseconds: 50));
+      expect(loaded, isFalse);
+      time.elapse(const Duration(milliseconds: 250));
+      expect(loaded, isTrue);
+      ModuleSettingValue? observed;
+      Object? error;
+      wire.manager
+          .writeModuleSetting(5, const ModuleSettingValue(4), cancellation)
+          .then<void>(
+            (v) => observed = v,
+            onError: (Object e) {
+              error = e;
+            },
+          );
+      time.flushMicrotasks();
+      time.elapse(const Duration(milliseconds: 50));
+      expect(error, isNull);
+      time.elapse(const Duration(milliseconds: 250));
+      expect(observed!.value, 4);
+      expect(error, isNull);
+      expect(wire.sentPackets.where((p) => p[6] == 0x66), hasLength(1));
+      unawaited(wire.close());
+      time.flushMicrotasks();
+    });
+  });
+
+  test('late readback debt blocks only its ID; independent writes and fresh recovery never replay mutation', () {
+    fakeAsync((time) {
+      final wire = RemoteWireHarness();
+      respond(wire);
+      final cancellation = DistingRequestCancellation();
+      load(wire, cancellation).ignore();
+      time.flushMicrotasks();
+      final values = {5: 0, 9: 0};
+      var sent5 = false;
+      var delayed = false;
+      wire.onSend = (p) {
+        final id = p.length >= 11 ? decode16(p, 7) : 0;
+        if (p[6] == 0x66) {
+          values[id] = decode16(p, 10);
+          if (id == 5) sent5 = true;
+        }
+        if (p[6] == 0x65) {
+          final captured = values[id]!;
+          if (id == 5 && sent5 && !delayed) {
+            delayed = true;
+            Timer(
+              const Duration(milliseconds: 1100),
+              () => inject(wire, 0x65, settingValuePayload(id, captured)),
+            );
+          } else {
+            inject(wire, 0x65, settingValuePayload(id, captured));
+          }
+        }
+      };
+      Object? error;
+      wire.manager
+          .writeModuleSetting(5, const ModuleSettingValue(4), cancellation)
+          .catchError((Object e) {
+            error = e;
+            throw e;
+          })
+          .ignore();
+      time.flushMicrotasks();
+      time.elapse(const Duration(milliseconds: 1020));
+      expect(
+        error,
+        isA<ModuleSettingWriteException>()
+            .having((e) => e.phase, 'phase', ModuleSettingWritePhase.readback)
+            .having((e) => e.mutationMayHaveOccurred, 'may have sent', isTrue),
+      );
+      int? independent;
+      wire.manager
+          .writeModuleSetting(9, const ModuleSettingValue(8), cancellation)
+          .then((v) => independent = v.value as int);
+      time.flushMicrotasks();
+      time.elapse(const Duration(milliseconds: 20));
+      expect(independent, 8);
+      Object? ambiguous;
+      wire.manager.requestModuleSettingValue(5, cancellation).catchError((
+        Object e,
+      ) {
+        ambiguous = e;
+        throw e;
+      }).ignore();
+      time.flushMicrotasks();
+      expect(ambiguous, isA<AmbiguousResponseAttributionException>());
+      values[5] = 9;
+      time.elapse(const Duration(milliseconds: 100));
+      int? fresh;
+      wire.manager
+          .requestModuleSettingValue(5, cancellation)
+          .then((v) => fresh = v.value as int);
+      time.flushMicrotasks();
+      expect(fresh, 9);
+      expect(
+        wire.sentPackets.where((p) => p[6] == 0x66 && decode16(p, 7) == 5),
+        hasLength(1),
+      );
+      expect(
+        wire.sentPackets.where((p) => p[6] == 0x66 && decode16(p, 7) == 9),
+        hasLength(1),
+      );
       unawaited(wire.close());
       time.flushMicrotasks();
     });
