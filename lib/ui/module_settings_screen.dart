@@ -148,7 +148,12 @@ class _ModuleSettingsScreenState extends State<ModuleSettingsScreen> {
                                       i++
                                     ) ...[
                                       if (i > 0) const SizedBox(height: 8),
-                                      SizedBox(height: 56, child: buttons[i]),
+                                      ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          minHeight: 56,
+                                        ),
+                                        child: buttons[i],
+                                      ),
                                     ],
                                   ],
                                 )
@@ -161,8 +166,10 @@ class _ModuleSettingsScreenState extends State<ModuleSettingsScreen> {
                                     ) ...[
                                       if (i > 0) const SizedBox(width: 12),
                                       Expanded(
-                                        child: SizedBox(
-                                          height: 48,
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            minHeight: 48,
+                                          ),
                                           child: buttons[i],
                                         ),
                                       ),
@@ -188,7 +195,12 @@ class _ModuleSettingsScreenState extends State<ModuleSettingsScreen> {
     },
   );
 
-  List<Widget> _group(BuildContext context, ModuleSettingsState state, int id) {
+  List<Widget> _group(
+    BuildContext context,
+    ModuleSettingsState state,
+    int id, [
+    int depth = 0,
+  ]) {
     final group = state.tree!.groups[id]!;
     final direct = group.children.where((c) => !c.isGroup).toList();
     final lastSetting = group.children.lastIndexWhere((c) => !c.isGroup);
@@ -198,12 +210,14 @@ class _ModuleSettingsScreenState extends State<ModuleSettingsScreen> {
     final name = group.name.isEmpty ? 'module settings' : group.name;
     return [
       if (id != 0) ...[
-        const SizedBox(height: 24),
         Semantics(
           header: true,
+          headingLevel: depth.clamp(1, 6),
           child: Text(
             group.name,
-            style: Theme.of(context).textTheme.titleLarge,
+            style: depth == 1
+                ? Theme.of(context).textTheme.titleLarge
+                : Theme.of(context).textTheme.titleMedium,
           ),
         ),
         const SizedBox(height: 8),
@@ -211,7 +225,33 @@ class _ModuleSettingsScreenState extends State<ModuleSettingsScreen> {
       ],
       for (var index = 0; index < group.children.length; index++) ...[
         if (group.children[index].isGroup)
-          ..._group(context, state, group.children[index].id)
+          Padding(
+            padding: const EdgeInsets.only(top: 24, bottom: 16),
+            child: DecoratedBox(
+              key: ValueKey(
+                'module-settings-group-${group.children[index].id}',
+              ),
+              decoration: BoxDecoration(
+                border: BorderDirectional(
+                  start: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(start: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: _group(
+                    context,
+                    state,
+                    group.children[index].id,
+                    depth + 1,
+                  ),
+                ),
+              ),
+            ),
+          )
         else
           _ModuleSettingField(
             key: ValueKey(
@@ -228,33 +268,15 @@ class _ModuleSettingsScreenState extends State<ModuleSettingsScreen> {
         if (index == lastSetting && editable)
           Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: SizedBox(
-              height: 56,
-              child: Semantics(
-                label: 'Apply changes to $name',
-                excludeSemantics: true,
-                button: true,
-                enabled:
-                    state.ready && !state.hasUncertainty && hasChanges && valid,
-                onTap:
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 56),
+              child: OutlinedButton(
+                key: ValueKey('module-settings-apply-$id'),
+                onPressed:
                     state.ready && !state.hasUncertainty && hasChanges && valid
                     ? () => _apply(id, name, state.connectionId)
                     : null,
-                child: OutlinedButton(
-                  key: ValueKey('module-settings-apply-$id'),
-                  onPressed:
-                      state.ready &&
-                          !state.hasUncertainty &&
-                          hasChanges &&
-                          valid
-                      ? () => _apply(id, name, state.connectionId)
-                      : null,
-                  child: Text(
-                    id == 0 ? 'Apply changes' : 'Apply ${group.name}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+                child: Text(id == 0 ? 'Apply changes' : 'Apply ${group.name}'),
               ),
             ),
           ),
@@ -271,93 +293,103 @@ class _SettingsFeedback extends StatelessWidget {
     this.isError = false,
     this.detail = '',
     this.subject = 'NT Settings',
+    this.compact = false,
   });
   final String message;
   final String detail;
   final String subject;
   final bool busy;
   final bool isError;
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
-    final line = MediaQuery.textScalerOf(context).scale(14) * 1.5;
+    final scaler = MediaQuery.textScalerOf(context);
+    final line = scaler.scale(14) * 1.5;
     final fullMessage = detail.isEmpty ? message : '$message\n$detail';
+    final displayMessage = compact && detail.isNotEmpty
+        ? '$message · $detail'
+        : fullMessage;
     final style = Theme.of(context).textTheme.bodySmall
         ?.copyWith(color: isError ? Theme.of(context).colorScheme.error : null);
+    final maxLines = compact ? 1 : 2;
     return SizedBox(
-      height: line * 2 + 16,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: busy
-                ? const ExcludeSemantics(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Tooltip(
-              message: fullMessage,
-              child: Semantics(
-                liveRegion: true,
-                label: fullMessage.isEmpty ? '' : '$subject: $fullMessage',
-                excludeSemantics: true,
-                child: detail.isEmpty
-                    ? Text(
-                        message,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: style,
-                      )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            message,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: style,
-                          ),
-                          Text(
-                            detail,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: message.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: 'Read full status for $subject',
-                    icon: const Icon(Icons.info_outline),
-                    onPressed: () => showDialog<void>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text('$subject status'),
-                        content: SingleChildScrollView(
-                          child: SelectableText(fullMessage),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Close'),
-                          ),
-                        ],
-                      ),
+      height: compact ? (line + 8).clamp(48.0, double.infinity) : line * 2 + 16,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final painter =
+              TextPainter(
+                text: TextSpan(text: displayMessage, style: style),
+                textDirection: Directionality.of(context),
+                textScaler: scaler,
+                maxLines: maxLines,
+                ellipsis: '…',
+              )..layout(
+                maxWidth: (constraints.maxWidth - (compact ? 48 : 80)).clamp(
+                  0.0,
+                  double.infinity,
+                ),
+              );
+          final truncated = painter.didExceedMaxLines;
+          painter.dispose();
+          return Row(
+            children: [
+              if (!compact) ...[
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: busy
+                      ? const ExcludeSemantics(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Tooltip(
+                  message: fullMessage,
+                  child: Semantics(
+                    liveRegion: true,
+                    label: fullMessage.isEmpty ? '' : '$subject: $fullMessage',
+                    excludeSemantics: true,
+                    child: Text(
+                      displayMessage,
+                      maxLines: maxLines,
+                      overflow: TextOverflow.ellipsis,
+                      style: style,
                     ),
                   ),
-          ),
-        ],
+                ),
+              ),
+              SizedBox(
+                width: 48,
+                height: 48,
+                child: fullMessage.isEmpty || !truncated
+                    ? null
+                    : IconButton(
+                        tooltip: 'Read full status for $subject',
+                        icon: const Icon(Icons.info_outline),
+                        onPressed: () => showDialog<void>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('$subject status'),
+                            content: SingleChildScrollView(
+                              child: SelectableText(fullMessage),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Close'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -386,8 +418,12 @@ class _ModuleSettingFieldState extends State<_ModuleSettingField> {
   @override
   void didUpdateWidget(covariant _ModuleSettingField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final value = widget.edit.displayed.value.toString();
-    if (_text.text != value) {
+    final displayed = widget.edit.displayed.value;
+    final current = displayed is int && widget.edit.info.isNumeric
+        ? int.tryParse(_text.text)
+        : _text.text;
+    final value = displayed.toString();
+    if (current != displayed) {
       _text.value = TextEditingValue(
         text: value,
         selection: TextSelection.collapsed(offset: value.length),
@@ -545,6 +581,8 @@ class _ModuleSettingFieldState extends State<_ModuleSettingField> {
             child: Semantics(hint: details, child: control),
           ),
           _SettingsFeedback(
+            key: ValueKey('module-setting-feedback-${info.id}'),
+            compact: true,
             subject: info.name,
             message:
                 edit.error ??

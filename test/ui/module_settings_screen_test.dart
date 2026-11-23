@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:ui' show Tristate;
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -139,9 +141,11 @@ void main() {
         settingsScreenState(message: 'Values read back'),
       ]) {
         emit(state);
-        await tester.pump();
-        expect(rects(), original);
-        expect(tester.takeException(), isNull);
+        for (var frame = 0; frame < 2; frame++) {
+          await tester.pump();
+          expect(rects(), original);
+          expect(tester.takeException(), isNull);
+        }
       }
       expect(find.byType(SnackBar), findsNothing);
       expect(find.bySemanticsLabel('NT Settings'), findsOneWidget);
@@ -214,7 +218,7 @@ void main() {
         error: 'Change not confirmed.',
       );
       await tester.pumpWidget(app());
-      expect(find.text('Last read: 0'), findsOneWidget);
+      expect(find.text('Change not confirmed. · Last read: 0'), findsOneWidget);
       final status = find.bySemanticsLabel(
         'Setting 5: Change not confirmed.\nLast read: 0',
       );
@@ -398,7 +402,7 @@ void main() {
   );
 
   for (final width in [390.0, 600.0, 900.0, 1200.0]) {
-    for (final scale in [1.0, 2.0]) {
+    for (final scale in [1.0, 2.0, 3.0]) {
       testWidgets(
         'responsive width $width scale $scale has no overflow in light/dark and stable feedback',
         (tester) async {
@@ -416,11 +420,298 @@ void main() {
           );
           await tester.pump();
           expect(tester.getRect(find.byType(TextField).last), before);
+          await tester.pump();
+          expect(tester.getRect(find.byType(TextField).last), before);
           expect(tester.takeException(), isNull);
         },
       );
     }
   }
+
+  testWidgets(
+    'nested groups preserve menu order and bound their own settings',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 1800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final semantics = tester.ensureSemantics();
+      current = ModuleSettingsState(
+        connectionId: 1,
+        tree: ModuleSettingsTree(
+          opaqueHeader: [0, 0, 0],
+          groups: {
+            0: ModuleSettingsGroup(
+              id: 0,
+              name: '',
+              children: const [
+                ModuleSettingChild(id: 3, isGroup: true),
+                ModuleSettingChild(id: 9, isGroup: false),
+              ],
+            ),
+            3: ModuleSettingsGroup(
+              id: 3,
+              name: 'Engine',
+              children: const [
+                ModuleSettingChild(id: 5, isGroup: false),
+                ModuleSettingChild(id: 4, isGroup: true),
+              ],
+            ),
+            4: ModuleSettingsGroup(
+              id: 4,
+              name: 'Tuning',
+              children: const [ModuleSettingChild(id: 7, isGroup: false)],
+            ),
+          },
+        ),
+        settings: {
+          ...current.settings,
+          7: ModuleSettingEdit(
+            info: settingInfo(7),
+            observed: const ModuleSettingValue(0),
+          ),
+        },
+      );
+      await tester.pumpWidget(app());
+      Rect field(int id) => tester.getRect(
+        find.descendant(
+          of: find.byKey(ValueKey('module-setting-1-$id')),
+          matching: find.byType(TextField),
+        ),
+      );
+      final engine = tester.getRect(
+        find.byKey(const ValueKey('module-settings-group-3')),
+      );
+      expect(field(5).top, lessThan(field(7).top));
+      expect(field(7).top, lessThan(field(9).top));
+      expect(field(7).left, greaterThan(field(5).left));
+      expect(field(9).left, lessThan(field(5).left));
+      expect(engine.contains(field(5).center), isTrue);
+      expect(engine.contains(field(9).center), isFalse);
+      expect(
+        tester
+            .getSemantics(find.text('Engine'))
+            .getSemanticsData()
+            .headingLevel,
+        1,
+      );
+      expect(
+        tester
+            .getSemantics(find.text('Tuning'))
+            .getSemanticsData()
+            .headingLevel,
+        2,
+      );
+      semantics.dispose();
+    },
+  );
+
+  testWidgets(
+    'echoed numeric drafts preserve spelling and caret while discard restores observed text',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 1300));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      void publishDraft(ModuleSettingValue? value) {
+        final before = current.settings[5]!;
+        emit(
+          ModuleSettingsState(
+            connectionId: current.connectionId,
+            tree: current.tree,
+            settings: {
+              ...current.settings,
+              5: ModuleSettingEdit(
+                info: before.info,
+                observed: before.observed,
+                draft: value,
+              ),
+            },
+          ),
+        );
+      }
+
+      when(() => cubit.editModuleSetting(5, any())).thenAnswer((i) {
+        publishDraft(i.positionalArguments[1] as ModuleSettingValue);
+      });
+      when(() => cubit.discardModuleSettingsDrafts())
+          .thenAnswer((_) => publishDraft(null));
+      await tester.pumpWidget(app());
+      final field = find.byType(TextField).first;
+      await tester.tap(field);
+      for (final text in ['007', '+5', '-0']) {
+        await tester.enterText(field, text);
+        await tester.pump();
+        expect(tester.widget<TextField>(field).controller!.text, text);
+      }
+      tester.testTextInput.updateEditingValue(
+        const TextEditingValue(
+          text: '008',
+          selection: TextSelection.collapsed(offset: 1),
+        ),
+      );
+      await tester.pump();
+      final controller = tester.widget<TextField>(field).controller!;
+      expect(controller.text, '008');
+      expect(controller.selection.baseOffset, 1);
+      await tester.tap(find.byTooltip('Discard drafts'));
+      await tester.pump();
+      expect(controller.text, '0');
+    },
+  );
+
+  testWidgets('Apply retains native visible-label focus and tap semantics', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 1300));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final semantics = tester.ensureSemantics();
+    current = settingsScreenState(draft: true);
+    await tester.pumpWidget(app());
+    final apply = find.byKey(const ValueKey('module-settings-apply-3'));
+    SemanticsData data() => tester.getSemantics(apply).getSemanticsData();
+    expect(data().label, 'Apply Engine');
+    expect(data().flagsCollection.isFocused, isNot(Tristate.none));
+    expect(data().hasAction(SemanticsAction.tap), isTrue);
+    for (
+      var i = 0;
+      i < 12 && data().flagsCollection.isFocused != Tristate.isTrue;
+      i++
+    ) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+    }
+    expect(data().flagsCollection.isFocused, Tristate.isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.text('Apply changes to Engine?'), findsOneWidget);
+    verifyNever(() => cubit.applyModuleSettingsGroup(any()));
+    semantics.dispose();
+  });
+
+  testWidgets(
+    'short field feedback reserves one line without a redundant detail button',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      for (final scale in [1.0, 2.0]) {
+        current = settingsScreenState(draft: true);
+        await tester.pumpWidget(app(scale: scale));
+        emit(current);
+        await tester.pump();
+        final feedback = find.byKey(
+          const ValueKey('module-setting-feedback-5'),
+        );
+        final height = tester.getSize(feedback).height;
+        expect(
+          height,
+          lessThanOrEqualTo((21 * scale + 8).clamp(48.0, double.infinity)),
+        );
+        expect(find.byTooltip('Read full status for Setting 5'), findsNothing);
+        emit(
+          settingsScreenState(
+            draft: true,
+            error: 'Change not confirmed. ' * 40,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Change not confirmed.'), findsOneWidget);
+        expect(tester.getSize(feedback).height, height);
+        expect(
+          find.byTooltip('Read full status for Setting 5'),
+          findsOneWidget,
+        );
+        await tester.tap(find.byTooltip('Read full status for Setting 5'));
+        await tester.pumpAndSettle();
+        expect(
+          find.widgetWithText(
+            SelectableText,
+            '${'Change not confirmed. ' * 40}\nLast read: 0',
+          ),
+          findsOneWidget,
+        );
+        await tester.tap(find.widgetWithText(TextButton, 'Close'));
+        await tester.pumpAndSettle();
+      }
+    },
+  );
+
+  testWidgets(
+    'three-times text labels fit buttons without async geometry changes',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 2400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      current = settingsScreenState(draft: true);
+      await tester.pumpWidget(app(scale: 3));
+      final buttons = {
+        'Commit to flash': find.widgetWithText(FilledButton, 'Commit to flash'),
+        'Revert to saved': find.widgetWithText(
+          OutlinedButton,
+          'Revert to saved',
+        ),
+        'Apply Engine': find.byKey(const ValueKey('module-settings-apply-3')),
+        'Apply changes': find.byKey(const ValueKey('module-settings-apply-0')),
+      };
+      Map<String, Rect> rects() => {
+        for (final e in buttons.entries) e.key: tester.getRect(e.value),
+      };
+      final original = rects();
+      for (final entry in buttons.entries) {
+        final button = tester.getRect(entry.value);
+        final label = tester.getRect(
+          find.descendant(of: entry.value, matching: find.text(entry.key)),
+        );
+        expect(label.left, greaterThanOrEqualTo(button.left));
+        expect(label.right, lessThanOrEqualTo(button.right));
+        expect(label.top, greaterThanOrEqualTo(button.top));
+        expect(label.bottom, lessThanOrEqualTo(button.bottom));
+      }
+      for (final state in [
+        settingsScreenState(busy: true, draft: true, message: 'Applying…'),
+        settingsScreenState(draft: true, error: 'Readback unconfirmed. ' * 30),
+        settingsScreenState(draft: true),
+      ]) {
+        emit(state);
+        for (var frame = 0; frame < 2; frame++) {
+          await tester.pump();
+          expect(rects(), original);
+          expect(tester.takeException(), isNull);
+        }
+      }
+    },
+  );
+
+  testWidgets('dropdown discard restores the observed item in the same field', (
+    tester,
+  ) async {
+    final info = settingInfo(
+      5,
+      unit: 1,
+      min: 0,
+      max: 1,
+      enums: ['Left', 'Right'],
+    );
+    ModuleSettingsState selection(ModuleSettingValue? draft) =>
+        ModuleSettingsState(
+          connectionId: 1,
+          tree: current.tree,
+          settings: {
+            ...current.settings,
+            5: ModuleSettingEdit(
+              info: info,
+              observed: const ModuleSettingValue(0),
+              draft: draft,
+            ),
+          },
+        );
+    current = selection(const ModuleSettingValue(1));
+    when(() => cubit.discardModuleSettingsDrafts())
+        .thenAnswer((_) => emit(selection(null)));
+    await tester.pumpWidget(app());
+    final finder = find.byType(DropdownButtonFormField<int>);
+    final field = tester.state<FormFieldState<int>>(finder);
+    expect(field.value, 1);
+    await tester.tap(find.byTooltip('Discard drafts'));
+    await tester.pump();
+    expect(tester.state<FormFieldState<int>>(finder), same(field));
+    expect(field.value, 0);
+  });
 
   testWidgets(
     'unavailable screen explains demo/unsupported/offline and has no editable form',

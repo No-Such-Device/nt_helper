@@ -42,8 +42,9 @@ optional live transport interface—not a parallel state-management stack.
 A coherent schema/value snapshot appears together; discovery does not append
 interactive fields one at a time. Toolbar/status positions are stable before
 and after discovery. Refresh, pending writes, validation and disconnection keep
-existing control geometry. Feedback has reserved, text-scale-aware space and a
-keyboard-accessible full-status dialog. Meaningful status updates use live-region
+existing control geometry. Field feedback uses one reserved, text-scale-aware
+line (with a minimum 48-pixel interaction slot). A full-status dialog is offered
+only when the visible feedback is truncated, avoiding redundant focus stops. Meaningful status updates use live-region
 semantics; there are no affirmative/progress snackbars. Section headings,
 read-only values and all 64 bit controls are labelled. Standard focus traversal,
 text editing, dropdown and toggle keyboard behavior are retained. Each action has
@@ -53,6 +54,13 @@ read-only groups). There is no duplicate global Apply, reset, reboot or screen
 Close action. The existing System dialog and application preferences remain
 unchanged.
 
+Subgroups have visible boundaries and indentation, with heading levels matching
+the module hierarchy. Root settings following a subgroup remain outside it;
+menu order is never rearranged to achieve grouping. Apply retains its native
+button focus semantics and visible accessible name. Numeric edits preserve
+spelling and caret position when a draft is echoed back. Action buttons grow
+with text scaling rather than clipping labels to a fixed height.
+
 ## Evidence boundaries
 
 The protocol reference is Os' preset editor at immutable commit
@@ -61,5 +69,8 @@ Test data are synthetic fixtures derived from that code, not recordings of an
 actual module catalogue. Automated checks cover exact packets, signed16/bit63,
 malformed data, ID attribution, one-attempt discovery, late responses,
 non-replayed mutations, connection cancellation, drafts/uncertainty, semantics,
-widths 390/600/900/1200, 200% text scaling and asynchronous geometry. No module
+widths 390/600/900/1200, 300% text scaling and asynchronous geometry. Additional
+regressions cover nested menu boundaries, heading depth, echoed numeric edits,
+Apply keyboard focus, truncated feedback, large-text label bounds and dropdown
+discard synchronization. No module
 was connected or rebooted to verify persistence or setting-specific effects.
