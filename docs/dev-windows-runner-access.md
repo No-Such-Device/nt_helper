@@ -134,12 +134,14 @@ ssh neal@dev.allosaurus-newton.ts.net \
 Wait for `VMState="poweroff"` from `showvminfo --machinereadable` and for GitHub
 to report the runner offline. If ACPI leaves Windows running (for example at an
 interactive shutdown prompt), inspect the guest and request OS shutdown through
-Guest Additions instead, after rechecking that no work needs it:
+Guest Additions instead, after rechecking that no work needs it. Use the
+`Administrator` account for this fallback: Guest Additions rejects the `runner`
+account as restricted on the current guest.
 
 ```bash
 ssh neal@dev.allosaurus-newton.ts.net \
   'VBoxManage guestcontrol "nt-helper-windows-x64" run \
-    --username runner \
+    --username Administrator \
     --passwordfile /mnt/LINDATA/nt-helper-windows-runner/nt-helper-windows-x64/runner-password.txt \
     --exe "C:\Windows\System32\shutdown.exe" \
     -- /s /t 0'
