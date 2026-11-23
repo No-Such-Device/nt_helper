@@ -1,4 +1,5 @@
 import 'package:nt_helper/models/packed_mapping_data.dart';
+
 import 'dart:typed_data';
 
 /// The MIDI SysEx reference for Expert Sleepers.
@@ -613,6 +614,11 @@ enum DistingNTRequestMessageType {
   requestNumAlgorithmsInPreset(0x60),
   requestRouting(0x61),
   requestCpuUsage(0x62),
+  requestSettingsGroups(0x63),
+  requestSettingInfo(0x64),
+  requestSettingValue(0x65),
+  setSettingValue(0x66),
+  settingsAction(0x67),
   remoteControl(0x78),
   sdCardOperation(0x7A),
   reboot(0x7F),
@@ -665,6 +671,9 @@ enum DistingNTRespMessageType {
   respNumAlgorithmsInPreset(0x60),
   respRouting(0x61),
   respCpuUsage(0x62),
+  respSettingsGroups(0x63),
+  respSettingInfo(0x64),
+  respSettingValue(0x65),
 
   // SD Card responses (virtual, mapped from 0x7A by the parser)
   respDirectoryListing(0x7A),

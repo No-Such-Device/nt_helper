@@ -1233,3 +1233,58 @@ Triggers a rescan of the `/programs/plug-ins/` directory. Required after uploadi
 | Screenshot Response | `33` | | | X | | | |
 
 **Python tools** = `file_send.py`, `file_receive.py`, `push_plugin_to_device.py`
+
+## Module settings (0x63–0x67, settings protocol v1)
+
+Source: Os' maintained [disting NT Preset Editor at
+82c23673b7e63371df60a59951ab13182cf703ca](https://github.com/expertsleepersltd/distingNT/blob/82c23673b7e63371df60a59951ab13182cf703ca/tools/dnt_preset_editor.html),
+`processSettingGroups`, `processSettingInfo`, `processSettingValue`,
+`sendSettingValue`, and the settings action functions. This is source-derived,
+not a hardware capture or a published 1.20 protocol specification.
+
+These commands have **no checksum**. Here `S16` means three MIDI-safe bytes
+`[(v >> 14) & 3, (v >> 7) & 127, v & 127]`, sign-extended from **16**, not 21,
+bits when reading. IDs must be nonnegative.
+
+| Command | Request payload | Response payload |
+|---|---|---|
+| `63` | empty | version, three opaque bytes, group count, group records |
+| `64` | S16 setting ID | S16 ID/min/max/default, type/unit/flags, S16 max length, NUL name, enum strings if unit 1 |
+| `65` | S16 setting ID | S16 ID followed by typed value |
+| `66` | S16 setting ID followed by typed value | No acknowledgement; query `65` afterward |
+| `67` | action: 0 commit, 1 factory reset, 2 revert to saved | No acknowledgement established |
+
+A group record is a one-byte ID, NUL name, child count, then `[kind, id]` pairs:
+kind 1 denotes a subgroup, 0 a setting. Root is group 0; child order is menu
+order. Names, IDs, groups, ranges, enum labels and flags are all discovered,
+not an app-owned catalogue. The three opaque header bytes have no established
+meaning in this reference.
+
+Type 4 is a NUL-terminated name (writes limited by metadata), type 5 a
+read-only NUL-terminated path, type 6 a 64-bit set encoded as ten **little-endian
+7-bit limbs** (only one bit in limb 9). Other types are read as S16 followed by
+a NUL presentation string; numeric writes send S16 only. nt_helper permits
+numeric writes only for types 0–3 and keeps future types read-only. Names reject
+unsupported characters rather than masking Unicode into 7-bit bytes. BigInt
+preserves all 64 bits, including bit 63.
+
+Unit 1 supplies enum labels, 16 a formatted readback string. Unit 18 is not a
+separate Name wire type. Other unit labels reuse `48` unit strings. Exact
+Off/On and No/Yes pairs can be presented as toggles. Flags 1/2/4 mean engine
+restart / reboot needed / read-only respectively; unknown flags fail closed.
+
+Recognized 1.20 releases/betas are only candidates. Opening NT Settings makes
+one bounded read-only discovery; earlier betas can report the same version but
+not implement this protocol. Unsupported/malformed/no reply never authorizes
+writes. All replies are bounded to 1024-byte frames and correlated by selected
+device, command, and setting ID. Strict scheduler attribution rejects reads
+with unresolved late same-ID reply debt. A fresh pre-write read must succeed
+before a mutation; mutations/actions are never automatically replayed.
+
+The app stages edits until explicit, confirmed per-group Apply. Group writes
+are sequential, not atomic; each requires fresh value readback. A mismatch or
+transport failure leaves requested and observed values separate and blocks
+further writes until refresh/reconnection. Commit status says **sent**, never
+verified flash persistence. Revert can change the MIDI connection and requires
+confirmation and a subsequent explicit refresh. Factory reset and auto-commit
+are intentionally not exposed in this first implementation.

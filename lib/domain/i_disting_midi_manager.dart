@@ -1,4 +1,7 @@
 import 'dart:async';
+
+import 'package:nt_helper/models/module_settings.dart';
+
 import 'dart:typed_data';
 
 import 'package:nt_helper/db/daos/presets_dao.dart' show FullPresetDetails;
@@ -45,6 +48,30 @@ abstract interface class RemoteControlWriter {
     RemoteAction action, {
     required DistingRequestCancellation cancellation,
   });
+}
+
+/// Optional live settings capability; no offline or demo implementation.
+abstract interface class ModuleSettingsTransport {
+  Future<ModuleSettingsTree> discoverModuleSettings(
+    DistingRequestCancellation cancellation,
+  );
+  Future<ModuleSettingInfo> requestModuleSettingInfo(
+    int id,
+    DistingRequestCancellation cancellation,
+  );
+  Future<ModuleSettingValue> requestModuleSettingValue(
+    int id,
+    DistingRequestCancellation cancellation,
+  );
+  Future<ModuleSettingValue> writeModuleSetting(
+    int id,
+    ModuleSettingValue value,
+    DistingRequestCancellation cancellation,
+  );
+  Future<void> sendModuleSettingsAction(
+    int action,
+    DistingRequestCancellation cancellation,
+  );
 }
 
 /// Abstract interface for Disting MIDI communication.

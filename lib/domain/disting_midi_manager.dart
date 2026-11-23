@@ -1,5 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+
+import 'package:nt_helper/models/module_settings.dart';
+import 'package:nt_helper/domain/sysex/module_settings_codec.dart';
+
 import 'dart:typed_data';
 
 import 'package:nt_helper/domain/patch_map/patch_map_client.dart';
@@ -93,6 +97,7 @@ class DistingMidiManager
         AlgorithmVisualStyleWriter,
         AlgorithmRespecificationWriter,
         RemoteControlWriter,
+        ModuleSettingsTransport,
         PatchMapTransport,
         SdCardFileActivityOwner {
   @override
@@ -100,6 +105,190 @@ class DistingMidiManager
     Uint8List request,
     bool Function(Uint8List) matches,
   ) => _scheduler.sendPluginRequest(request, matches);
+
+  ModuleSettingsTree? _settingsTree;
+  final Map<int, ModuleSettingInfo> _settingsInfo = {};
+  final Set<int> _settingsRead = {};
+  Future<void> _settingsTail = Future.value();
+
+  Future<T> _settingsTransaction<T>(Future<T> Function() operation) {
+    final result = _settingsTail.then((_) => operation());
+    _settingsTail = result.then<void>((_) {}, onError: (Object _) {});
+    return result;
+  }
+
+  Future<T> _settingsQuery<T>(
+    int command,
+    DistingNTRespMessageType response,
+    DistingRequestCancellation cancellation, {
+    int? id,
+  }) async {
+    final result = await _scheduler.sendRequest<T>(
+      ModuleSettingsCodec.packet(
+        sysExId,
+        command,
+        id == null ? [] : ModuleSettingsCodec.settingId(id),
+      ),
+      RequestKey(sysExId: sysExId, messageType: response, settingId: id),
+      maxRetries: 1,
+      // A 1024-byte response alone takes about 330ms over DIN MIDI.
+      timeout: _scheduler.defaultTimeout < const Duration(seconds: 1)
+          ? const Duration(seconds: 1)
+          : _scheduler.defaultTimeout,
+      attributionPolicy: ResponseAttributionPolicy.failWhenAmbiguous,
+      cancellation: cancellation,
+    );
+    if (result == null) {
+      throw StateError(
+        'No settings response. Earlier betas may not support NT Settings.',
+      );
+    }
+    return result;
+  }
+
+  @override
+  Future<ModuleSettingsTree> discoverModuleSettings(
+    DistingRequestCancellation cancellation,
+  ) => _settingsTransaction(() async {
+    _settingsTree = null;
+    _settingsInfo.clear();
+    _settingsRead.clear();
+    final tree = await _settingsQuery<ModuleSettingsTree>(
+      0x63,
+      DistingNTRespMessageType.respSettingsGroups,
+      cancellation,
+    );
+    if (cancellation.isCancelled) {
+      throw const DistingRequestCancelledException();
+    }
+    _settingsTree = tree;
+    return tree;
+  });
+
+  void _requireSettingsId(int id) {
+    if (!(_settingsTree?.settingIds.contains(id) ?? false)) {
+      throw StateError('Discover a supported settings hierarchy first.');
+    }
+  }
+
+  @override
+  Future<ModuleSettingInfo> requestModuleSettingInfo(
+    int id,
+    DistingRequestCancellation cancellation,
+  ) => _settingsTransaction(() async {
+    _requireSettingsId(id);
+    final info = await _settingsQuery<ModuleSettingInfo>(
+      0x64,
+      DistingNTRespMessageType.respSettingInfo,
+      cancellation,
+      id: id,
+    );
+    if (info.id != id) throw const FormatException('Wrong setting metadata.');
+    _settingsInfo[id] = info;
+    return info;
+  });
+
+  Future<ModuleSettingValue> _readModuleSetting(
+    int id,
+    DistingRequestCancellation cancellation,
+  ) async {
+    _requireSettingsId(id);
+    final info = _settingsInfo[id];
+    if (info == null) throw StateError('Read setting metadata first.');
+    final bytes = await _settingsQuery<Uint8List>(
+      0x65,
+      DistingNTRespMessageType.respSettingValue,
+      cancellation,
+      id: id,
+    );
+    final value = ModuleSettingsCodec.value(bytes, info);
+    _settingsRead.add(id);
+    return value;
+  }
+
+  @override
+  Future<ModuleSettingValue> requestModuleSettingValue(
+    int id,
+    DistingRequestCancellation cancellation,
+  ) => _settingsTransaction(() => _readModuleSetting(id, cancellation));
+
+  void _requireSettingsSnapshot() {
+    if (_settingsTree == null ||
+        !_settingsTree!.settingIds.every(_settingsRead.contains)) {
+      throw StateError(
+        'Read the complete settings snapshot before changing settings.',
+      );
+    }
+  }
+
+  @override
+  Future<ModuleSettingValue> writeModuleSetting(
+    int id,
+    ModuleSettingValue value,
+    DistingRequestCancellation cancellation,
+  ) => _settingsTransaction(() async {
+    _requireSettingsSnapshot();
+    _requireSettingsId(id);
+    final info = _settingsInfo[id]!;
+    final payload = ModuleSettingsCodec.write(info, value);
+    // Fail before mutating if a prior same-ID query left ambiguous reply debt.
+    try {
+      await _readModuleSetting(id, cancellation);
+    } catch (error) {
+      throw ModuleSettingWriteException(
+        id,
+        ModuleSettingWritePhase.beforeSend,
+        error,
+      );
+    }
+    try {
+      await _scheduler.sendRequest<void>(
+        ModuleSettingsCodec.packet(sysExId, 0x66, payload),
+        RequestKey(sysExId: sysExId),
+        responseExpectation: ResponseExpectation.none,
+        replayPolicy: RequestReplayPolicy.never,
+        cancellation: cancellation,
+        preflight: _requireSettingsSnapshot,
+      );
+    } catch (error) {
+      throw ModuleSettingWriteException(
+        id,
+        ModuleSettingWritePhase.send,
+        error,
+      );
+    }
+    // Match the maintained editor's settling interval, not its reply budget.
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    try {
+      return await _readModuleSetting(id, cancellation);
+    } catch (error) {
+      throw ModuleSettingWriteException(
+        id,
+        ModuleSettingWritePhase.readback,
+        error,
+      );
+    }
+  });
+
+  @override
+  Future<void> sendModuleSettingsAction(
+    int action,
+    DistingRequestCancellation cancellation,
+  ) => _settingsTransaction(() async {
+    if (action != 0 && action != 2) {
+      throw UnsupportedError('Only commit and revert are supported.');
+    }
+    _requireSettingsSnapshot();
+    await _scheduler.sendRequest<void>(
+      ModuleSettingsCodec.packet(sysExId, 0x67, [action]),
+      RequestKey(sysExId: sysExId),
+      responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
+      cancellation: cancellation,
+      preflight: _requireSettingsSnapshot,
+    );
+    if (action == 2) _settingsRead.clear();
+  });
 
   // Implement interface
   final DistingMessageScheduler _scheduler;

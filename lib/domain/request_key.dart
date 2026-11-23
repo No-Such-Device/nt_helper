@@ -10,6 +10,7 @@ class RequestKey {
   messageType; // Optional in the case of messages that don't return a value
   final int? algorithmIndex; // Optional - slot index (0-7)
   final int? parameterNumber; // Optional
+  final int? settingId;
   final int? libraryIndex; // Optional - algorithm library index (0-N)
   final SdCardOperation? sdCardOperation; // Optional - SD operation (1-8)
 
@@ -19,15 +20,23 @@ class RequestKey {
     this.algorithmIndex,
     this.parameterNumber,
     this.libraryIndex,
+    this.settingId,
     this.sdCardOperation,
   });
 
   factory RequestKey.fromDistingNTParsedMessage(DistingNTParsedMessage msg) {
     int? algorithmIndex;
     int? parameterNumber;
+    int? settingId;
     SdCardOperation? sdCardOperation;
 
     switch (msg.messageType) {
+      case DistingNTRespMessageType.respSettingInfo:
+      case DistingNTRespMessageType.respSettingValue:
+        if (msg.payload.length >= 3 && msg.payload[0] <= 3) {
+          settingId = decode16(msg.payload, 0);
+        }
+        break;
       // These messages have an algorithm index as the first payload byte.
       case DistingNTRespMessageType.respNumParameters:
       case DistingNTRespMessageType.respAllParameterValues:
@@ -91,6 +100,7 @@ class RequestKey {
       algorithmIndex: algorithmIndex,
       parameterNumber: parameterNumber,
       sdCardOperation: sdCardOperation,
+      settingId: settingId,
     );
   }
 
@@ -118,6 +128,8 @@ class RequestKey {
       return false;
     }
 
+    if (settingId != null && settingId != responseKey.settingId) return false;
+
     if (!_matchesSdCardOperation(msg, responseKey)) {
       return false;
     }
@@ -143,6 +155,8 @@ class RequestKey {
         parameterNumber != responseKey.parameterNumber) {
       return false;
     }
+
+    if (settingId != null && settingId != responseKey.settingId) return false;
 
     if (!_matchesSdCardOperation(msg, responseKey)) {
       return false;
@@ -180,6 +194,7 @@ class RequestKey {
           algorithmIndex == other.algorithmIndex &&
           parameterNumber == other.parameterNumber &&
           libraryIndex == other.libraryIndex &&
+          settingId == other.settingId &&
           sdCardOperation == other.sdCardOperation;
 
   @override
@@ -189,10 +204,11 @@ class RequestKey {
     algorithmIndex,
     parameterNumber,
     libraryIndex,
+    settingId,
     sdCardOperation,
   );
 
   @override
   String toString() =>
-      "RequestKey(sysExId: $sysExId, algorithmIndex: $algorithmIndex, parameterNumber: $parameterNumber, libraryIndex: $libraryIndex, sdCardOperation: $sdCardOperation, messageType: $messageType)";
+      "RequestKey(settingId: $settingId, sysExId: $sysExId, algorithmIndex: $algorithmIndex, parameterNumber: $parameterNumber, libraryIndex: $libraryIndex, sdCardOperation: $sdCardOperation, messageType: $messageType)";
 }

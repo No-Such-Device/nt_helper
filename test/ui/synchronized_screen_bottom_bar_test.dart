@@ -12,6 +12,8 @@ import 'package:nt_helper/db/daos/presets_dao.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
+import 'package:nt_helper/models/module_settings.dart';
+import 'package:nt_helper/ui/module_settings_screen.dart';
 import 'package:nt_helper/models/memory_display_state.dart';
 import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/services/mcp_server_service.dart';
@@ -131,6 +133,67 @@ void main() {
         ),
       );
     }
+
+    testWidgets(
+      'NT Settings cog follows Plugins, is labelled and has a 48 pixel target',
+      (tester) async {
+        final semantics = tester.ensureSemantics();
+        await tester.pumpWidget(
+          createTestWidget(isMobile: false, isOffline: false),
+        );
+        final cog = find.byKey(const ValueKey('nt-settings-shortcut'));
+        expect(cog, findsOneWidget);
+        expect(tester.getSize(cog).width, greaterThanOrEqualTo(48));
+        expect(tester.getSize(cog).height, greaterThanOrEqualTo(48));
+        expect(find.bySemanticsLabel('NT Settings'), findsOneWidget);
+        expect(
+          tester.getRect(cog).left,
+          greaterThan(tester.getRect(find.byTooltip('Plugin Manager')).left),
+        );
+        semantics.dispose();
+      },
+    );
+
+    testWidgets(
+      'NT Settings stays reachable on narrow screens and route pop preserves pointer input',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(390, 850));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        when(() => mockCubit.moduleSettingsState).thenReturn(
+          ModuleSettingsState(
+            unavailableReason:
+                'Connect to a disting NT to read or change module settings.',
+          ),
+        );
+        when(() => mockCubit.moduleSettingsStream)
+            .thenAnswer((_) => const Stream.empty());
+        when(() => mockCubit.loadModuleSettings()).thenAnswer((_) async {});
+        await tester.pumpWidget(
+          createTestWidget(isMobile: true, isOffline: true),
+        );
+        final cog = find.byKey(const ValueKey('nt-settings-shortcut'));
+        final bar = tester.getRect(
+          find.byKey(const ValueKey('main-bottom-action-bar')),
+        );
+        await tester.ensureVisible(cog);
+        await tester.pumpAndSettle();
+        await tester.tap(cog);
+        await tester.pumpAndSettle();
+        expect(find.byType(ModuleSettingsScreen), findsOneWidget);
+        expect(find.textContaining('Connect to a disting NT'), findsOneWidget);
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        expect(
+          tester.getRect(find.byKey(const ValueKey('main-bottom-action-bar'))),
+          bar,
+        );
+        await tester.ensureVisible(cog);
+        await tester.tap(cog);
+        await tester.pumpAndSettle();
+        expect(find.byType(ModuleSettingsScreen), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('uses a geometry-independent bottom bar alongside the FAB', (
       tester,

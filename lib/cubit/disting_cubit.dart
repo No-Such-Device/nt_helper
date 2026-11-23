@@ -41,6 +41,7 @@ import 'package:nt_helper/models/firmware_release.dart';
 import 'package:nt_helper/models/memory_display_state.dart';
 import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/models/remote_action.dart';
+import 'package:nt_helper/models/module_settings.dart';
 import 'package:nt_helper/models/remote_control_state.dart';
 import 'package:nt_helper/models/performance_page_item.dart';
 import 'package:nt_helper/models/slot_count_info.dart';
@@ -83,6 +84,7 @@ part 'disting_cubit_slot_maintenance_delegate.dart';
 part 'disting_cubit_parameter_value_delegate.dart';
 part 'disting_cubit_hardware_commands_delegate.dart';
 part 'disting_cubit_remote_delegate.dart';
+part 'disting_cubit_module_settings_delegate.dart';
 part 'disting_cubit_state_helpers_delegate.dart';
 part 'disting_cubit_refresh_delegate.dart';
 part 'disting_cubit_perf_page_delegate.dart';
@@ -183,6 +185,8 @@ class DistingCubit extends _DistingCubitBase
   late final _HardwareCommandsDelegate _hardwareCommandsDelegate =
       _HardwareCommandsDelegate(this);
   late final _RemoteDelegate _remoteDelegate = _RemoteDelegate(this);
+  late final _ModuleSettingsDelegate _moduleSettingsDelegate =
+      _ModuleSettingsDelegate(this);
   late final _StateHelpersDelegate _stateHelpersDelegate =
       _StateHelpersDelegate(this);
   late final _RefreshDelegate _refreshDelegate = _RefreshDelegate(this);
@@ -215,6 +219,7 @@ class DistingCubit extends _DistingCubitBase
   void onChange(Change<DistingState> change) {
     _invalidateRespecificationForState(change.nextState);
     _remoteDelegate.onDistingStateWillChange(change.nextState);
+    _moduleSettingsDelegate.onDistingStateWillChange(change.nextState);
     super.onChange(change);
   }
 
@@ -276,6 +281,7 @@ class DistingCubit extends _DistingCubitBase
   Future<void> close() async {
     _cancelRespecificationForConnectionChange();
     await _remoteDelegate.dispose();
+    await _moduleSettingsDelegate.dispose();
     _ccNotificationDelegate.stop();
     await _mappingDelegate.dispose();
     await _memoryDelegate.dispose();
@@ -344,6 +350,19 @@ class DistingCubit extends _DistingCubitBase
   Future<void> updateScreenshot() async {
     return _hardwareCommandsDelegate.updateScreenshot();
   }
+
+  ModuleSettingsState get moduleSettingsState => _moduleSettingsDelegate.state;
+  Stream<ModuleSettingsState> get moduleSettingsStream =>
+      _moduleSettingsDelegate.stream;
+  Future<void> loadModuleSettings({bool force = false}) =>
+      _moduleSettingsDelegate.load(force: force);
+  void editModuleSetting(int id, ModuleSettingValue value) =>
+      _moduleSettingsDelegate.edit(id, value);
+  void discardModuleSettingsDrafts() => _moduleSettingsDelegate.discardDrafts();
+  Future<void> applyModuleSettingsGroup(int id) =>
+      _moduleSettingsDelegate.applyGroup(id);
+  Future<void> commitModuleSettings() => _moduleSettingsDelegate.action(0);
+  Future<void> revertModuleSettings() => _moduleSettingsDelegate.action(2);
 
   RemoteControlState get remoteControlState => _remoteDelegate.state;
   Stream<RemoteControlState> get remoteControlStateStream =>

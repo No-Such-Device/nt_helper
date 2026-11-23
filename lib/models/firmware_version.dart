@@ -36,6 +36,16 @@ class FirmwareVersion {
     return recognized && FirmwareVersion(version).isSupported('1.20.0');
   }
 
+  /// A read-only discovery is still required: early 1.20 betas may not reply.
+  bool get isModuleSettingsCandidate {
+    final version = versionString.split('\n').first.trim();
+    return RegExp(
+          r'^v?\d+\.\d+(?:\.\d+)?(?:-?beta(?:\.?\d+)?)?$',
+          caseSensitive: false,
+        ).hasMatch(version) &&
+        FirmwareVersion(version).isSupported('1.20.0');
+  }
+
   /// Firmware 1.16+ supports performance page items via SysEx 0x57/0x58.
   bool get hasPerfPageItems {
     return major > 1 || (major == 1 && minor >= 16);
