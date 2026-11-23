@@ -115,14 +115,37 @@ window and stop the tunnel when finished.
 
 ## Stop the VM
 
-The VM may stay running as the persistent runner. If host resources are needed,
-check that GitHub reports it idle and that no Windows job is queued, then ask
-Windows to shut down gracefully:
+For a release, shut down the VM as soon as the Windows job has completed
+successfully, including artifact uploads and cleanup; do not wait for unrelated
+Android, Linux or Apple distribution jobs. On terminal failure, first decide
+whether repair/rerun still needs the guest. Never interrupt an active build.
+
+Before shutdown, check that GitHub reports `busy: false`, inspect queued and
+in-progress jobs in every repository using this organization runner, and check
+for active/shared guest work (including interactive sessions). If anything still
+needs the VM, record the deferral and keep supervising until it is safe. Then
+ask Windows to shut down gracefully:
 
 ```bash
 ssh neal@dev.allosaurus-newton.ts.net \
   'VBoxManage controlvm "nt-helper-windows-x64" acpipowerbutton'
 ```
 
-Do not power it off during a job. The next `startvm` command above brings the
-runner service back automatically.
+Wait for `VMState="poweroff"` from `showvminfo --machinereadable` and for GitHub
+to report the runner offline. If ACPI leaves Windows running (for example at an
+interactive shutdown prompt), inspect the guest and request OS shutdown through
+Guest Additions instead, after rechecking that no work needs it:
+
+```bash
+ssh neal@dev.allosaurus-newton.ts.net \
+  'VBoxManage guestcontrol "nt-helper-windows-x64" run \
+    --username runner \
+    --passwordfile /mnt/LINDATA/nt-helper-windows-runner/nt-helper-windows-x64/runner-password.txt \
+    --exe "C:\Windows\System32\shutdown.exe" \
+    -- /s /t 0'
+```
+
+Do not add `/f`, use VirtualBox `poweroff`, or save state. Keep durable
+supervision until graceful shutdown is verified; report the method and final
+VM/runner states with the release result. The next `startvm` command above
+brings the runner service back automatically.
