@@ -7,6 +7,7 @@ import 'package:nt_helper/services/scale_quantizer.dart';
 import 'package:nt_helper/services/step_sequencer_params.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/step_column_widget.dart';
 import 'package:nt_helper/util/parameter_write_debouncer.dart';
+import 'package:nt_helper/ui/widgets/step_sequencer/step_sequencer_edit_scope.dart';
 
 /// Grid view displaying all 16 steps of the step sequencer
 ///
@@ -560,11 +561,16 @@ class _StepGridViewState extends State<StepGridView> {
       return;
     }
 
-    // Debounce parameter writes to prevent flooding hardware
+    final scope = StepSequencerEditScope.capture(
+      context.read<DistingCubit>(),
+      widget.slotIndex,
+      widget.slot,
+    );
+    if (scope == null) return;
     _debouncer.schedule('step_$stepIndex', () {
-      if (mounted) {
-        context.read<DistingCubit>().updateParameterValue(
-          algorithmIndex: widget.slotIndex,
+      if (mounted && scope.isCurrent) {
+        scope.cubit.updateParameterValue(
+          algorithmIndex: scope.slotIndex,
           parameterNumber: paramIndex,
           value: value,
           userIsChangingTheValue: true,

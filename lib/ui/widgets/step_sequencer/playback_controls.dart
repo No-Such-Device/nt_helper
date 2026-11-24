@@ -5,6 +5,7 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/services/step_sequencer_params.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 import 'package:nt_helper/util/parameter_write_debouncer.dart';
+import 'package:nt_helper/ui/widgets/step_sequencer/step_sequencer_edit_scope.dart';
 
 /// Playback controls for Step Sequencer algorithm
 ///
@@ -59,24 +60,29 @@ class _PlaybackControlsState extends State<PlaybackControls> {
   void didUpdateWidget(PlaybackControls oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.slot != widget.slot) {
-      _initializeControllers();
+      _initializeControllers(previous: oldWidget.slot);
       _refreshParameterStates();
     }
   }
 
-  void _initializeControllers() {
+  void _initializeControllers({Slot? previous}) {
     // Initialize start step controller
     final startStepParam = widget.params.startStep;
     if (startStepParam != null && startStepParam < widget.slot.values.length) {
       final startValue = widget.slot.values[startStepParam].value;
-      _startStepController.text = startValue.toString();
+      if (previous?.values.elementAtOrNull(startStepParam)?.value !=
+          startValue) {
+        _startStepController.text = startValue.toString();
+      }
     }
 
     // Initialize end step controller
     final endStepParam = widget.params.endStep;
     if (endStepParam != null && endStepParam < widget.slot.values.length) {
       final endValue = widget.slot.values[endStepParam].value;
-      _endStepController.text = endValue.toString();
+      if (previous?.values.elementAtOrNull(endStepParam)?.value != endValue) {
+        _endStepController.text = endValue.toString();
+      }
     }
   }
 
@@ -170,11 +176,19 @@ class _PlaybackControlsState extends State<PlaybackControls> {
       return;
     }
 
+    final scope = StepSequencerEditScope.capture(
+      context.read<DistingCubit>(),
+      widget.slotIndex,
+      widget.slot,
+    );
+    if (scope == null) return;
+
     if (debounce) {
       // Debounced update for sliders (continuous values)
       _debouncer.schedule('param_$paramNumber', () {
-        context.read<DistingCubit>().updateParameterValue(
-          algorithmIndex: widget.slotIndex,
+        if (!mounted || !scope.isCurrent) return;
+        scope.cubit.updateParameterValue(
+          algorithmIndex: scope.slotIndex,
           parameterNumber: paramNumber,
           value: value,
           userIsChangingTheValue: true,
@@ -182,8 +196,8 @@ class _PlaybackControlsState extends State<PlaybackControls> {
       }, const Duration(milliseconds: 50));
     } else {
       // Immediate update for discrete values (dropdowns, text inputs)
-      context.read<DistingCubit>().updateParameterValue(
-        algorithmIndex: widget.slotIndex,
+      scope.cubit.updateParameterValue(
+        algorithmIndex: scope.slotIndex,
         parameterNumber: paramNumber,
         value: value,
         userIsChangingTheValue: true,
@@ -325,6 +339,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
     final items = _buildEnumDropdownItems(slot, directionParam);
 
     return DropdownButtonFormField<int>(
+      isExpanded: true,
       initialValue: currentValue.clamp(0, items.length - 1),
       decoration: const InputDecoration(
         labelText: 'Direction',
@@ -431,6 +446,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
     final items = _buildEnumDropdownItems(slot, permutationParam);
 
     return DropdownButtonFormField<int>(
+      isExpanded: true,
       initialValue: currentValue.clamp(0, items.length - 1),
       decoration: const InputDecoration(
         labelText: 'Permutation',
@@ -460,6 +476,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
     final items = _buildEnumDropdownItems(slot, gateTypeParam);
 
     return DropdownButtonFormField<int>(
+      isExpanded: true,
       initialValue: currentValue.clamp(0, items.length - 1),
       decoration: const InputDecoration(
         labelText: 'Gate Type',

@@ -30,8 +30,10 @@ class SlotEditorActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final actions = Row(
-      mainAxisSize: MainAxisSize.min,
+    final actions = Wrap(
+      alignment: WrapAlignment.end,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      runSpacing: 4,
       children: [
         ?editorModeSelector,
         if (editorModeSelector != null) const SizedBox(width: 8),
