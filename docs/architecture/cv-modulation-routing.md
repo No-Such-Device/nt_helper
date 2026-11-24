@@ -17,10 +17,14 @@ clear a parameter, toggle Add/Replace, assign a bus, or reorder slots.
 
 The projection resolves preceding Add/Replace contributors at that snapshot,
 including hardware input seeds. It does not assume the selected algorithm is
-the only writer. Same-slot write ordering, later/missing selected slots,
+the only writer. Multiple Add writers in one slot are order-independent; a later
+single Replace starts a new known session even after an ambiguous older one.
+Mixed or multiple-Replace same-slot write ordering, later/missing selected slots,
 invalid buses and contradictory mapping identities retain an inspectable
 bus/snapshot relation without inventing an algorithm cable. Contributor
-attribution is labelled inferred, not measured. Disabled parameters and zero
+attribution is labelled inferred, not measured. The shared records include each
+resolved producer's real slot, algorithm and port name for inspection,
+accessibility and the cached API. Disabled parameters and zero
 mapping depth remain configured topology, not evidence of effective modulation.
 
 Mapping storage is positional. Parameter numbers, page-qualified names and
@@ -55,11 +59,19 @@ clears any previous ordinary cable/bead selection before keyboard Delete.
 Known mapped buses (including zero-depth/disabled/invalid-source mappings)
 are reserved during free-bus allocation and excluded from both sides of AUX
 consolidation/moves. Incomplete mapping coverage cannot authorize these
-optimizations. Consolidation revalidates a queued plan and current mappings
-before writes. Automatic connection creation refuses mapped-bus writer changes.
+optimizations. Known `unit == -1` nonmappable parameters need no mapping reply;
+unknown metadata and missing/failed mappable replies remain incomplete.
+Consolidation revalidates a queued plan and current mappings before writes.
+Automatic connection creation refuses actual mapped-bus writer changes, but
+allows reader-only fanout from unchanged Replace or mode-less writers without
+sending redundant mode writes.
 
-Shared slot-move entry points reject reorders with configured CV mappings:
-retargeting snapshot selectors has not been established safe. MCP composite
+Shared slot-move entry points permit complete, validated Module-input-only
+mappings on physical input buses: their original-input snapshot has no algorithm
+source identity to retarget. Other configured CV snapshots, invalid source/bus
+pairs and incomplete coverage remain conservatively blocked. Raw user-directed
+moves without any known CV mappings retain their existing workflow; automatic
+routing optimizations always require complete mapping evidence. MCP composite
 insert/reorder/notes operations preflight before their first mutation; ordinary
 parameter-only preset edits remain available. UI rejection uses error feedback,
 not a partial optimistic reorder. This feature does not migrate mappings during

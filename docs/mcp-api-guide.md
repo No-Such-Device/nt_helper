@@ -501,7 +501,9 @@ non-sample files such as PDFs do not affect the catalogue.
 Show cached signal routing and CV modulation for every slot, without MIDI requests.
 The existing slot list includes `input_buses`, `output_buses`, and `cv_modulation`.
 Each modulation records its destination `parameter_number`/`parameter_name`, bus,
-source selector and snapshot, inferred `contributor_port_ids`, and caveats.
+source selector and snapshot, `contributor_port_ids`, and caveats. `contributors`
+adds each producer's `slot_index`, `algorithm_name`, `port_name`, and `inferred`
+qualification, matching the visual inspector and screen-reader descriptions.
 `mapping_coverage` distinguishes `complete_cached` from `partial_cached`; neither
 is a live-voltage measurement. CV inspection is read-only. Bus optimization and
 reordering may be refused when mappings cannot safely be preserved.

@@ -554,6 +554,7 @@ class _BusLanesViewState extends State<BusLanesView> {
                 mappings: card.modulations
                     .where((m) => !data.rails.any((r) => r.bus == m.bus))
                     .toList(),
+                onInspect: () => setState(() => _selected = null),
               ),
             ),
           Positioned(

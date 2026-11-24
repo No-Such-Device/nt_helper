@@ -1159,10 +1159,29 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
             distingState.slots[targetAlgorithmIndex].algorithm) {
       throw StateError('Routing changed while connecting');
     }
-    final protectedBuses = cvMappingBuses(liveState.slots);
-    if (protectedBuses.contains(busToUse) ||
-        (sourceBusValue != busToUse &&
-            protectedBuses.contains(sourceBusValue))) {
+    final liveSourceSlot = liveState.slots[sourceAlgorithmIndex];
+    if (!sourceIsFixed &&
+        _parameterValue(liveSourceSlot, sourceOutputPort.parameterNumber!) !=
+            sourceBusValue) {
+      throw StateError('Routing changed while connecting');
+    }
+    final modeParameter = sourceOutputPort.modeParameterNumber;
+    final changesBus = !sourceIsFixed && sourceBusValue != busToUse;
+    final changesMode =
+        modeParameter != null &&
+        _parameterValue(liveSourceSlot, modeParameter) != 1;
+    final changedWriterBuses = <int>{
+      if (changesBus) ...[?sourceBusValue, busToUse],
+      if (changesMode)
+        for (final port
+            in state.algorithms
+                .firstWhere((a) => a.index == sourceAlgorithmIndex)
+                .outputPorts)
+          if (port.modeParameterNumber == modeParameter &&
+              _resolvePortBusValue(port, liveSourceSlot) != null)
+            _resolvePortBusValue(port, liveSourceSlot)!,
+    };
+    if (cvMappingBuses(liveState.slots).any(changedWriterBuses.contains)) {
       throw StateError(
         'Automatic connection changes cannot modify CV-mapped bus writers',
       );
@@ -1190,7 +1209,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     }
 
     // Set output mode to Replace for algorithm-to-algorithm connections
-    if (sourceOutputPort.modeParameterNumber != null) {
+    if (changesMode) {
       await _distingCubit!.updateParameterValue(
         algorithmIndex: sourceAlgorithmIndex,
         parameterNumber: sourceOutputPort.modeParameterNumber!,
@@ -2393,7 +2412,10 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     if (snapshot is! DistingStateSynchronized) {
       throw StateError('Device disconnected');
     }
-    final reason = cvRoutingOptimizationBlockReason(snapshot.slots);
+    final reason = cvRoutingOptimizationBlockReason(
+      snapshot.slots,
+      profile: snapshot.deviceIoProfile,
+    );
     if (reason != null) throw StateError(reason);
 
     for (final step in steps) {

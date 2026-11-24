@@ -14,6 +14,7 @@ import 'package:nt_helper/cubit/routing_editor_cubit.dart';
 import 'package:nt_helper/cubit/routing_editor_state.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/models/firmware_version.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:nt_helper/ui/widgets/routing/algorithm_node_widget.dart';
 import 'package:nt_helper/ui/widgets/routing/accessible_routing_list_view.dart';
@@ -138,6 +139,12 @@ void main() {
               .single;
           expect(painter.endpoints, hasLength(2));
         }
+        expect(
+          find.bySemanticsLabel(
+            RegExp('Inferred producer: Slot 1: Step 0 — Step output 1'),
+          ),
+          findsWidgets,
+        );
         expect(
           find.bySemanticsLabel(RegExp('Inspect CV modulation:')),
           findsWidgets,
@@ -311,6 +318,49 @@ void main() {
         userIsChangingTheValue: any(named: 'userIsChangingTheValue'),
       ),
     );
+  });
+
+  testWidgets('out-of-profile CV inspect also clears the armed ordinary bead', (
+    tester,
+  ) async {
+    snapshot = snapshot.copyWith(
+      deviceIoProfile: DeviceIoProfile.distingLegacy,
+      slots: [
+        cvSlot(0, outputs: [13]),
+        cvSlot(1, cvBuses: [64]),
+      ],
+    );
+    when(
+      () => disting.updateParameterValue(
+        algorithmIndex: any(named: 'algorithmIndex'),
+        parameterNumber: any(named: 'parameterNumber'),
+        value: any(named: 'value'),
+        userIsChangingTheValue: any(named: 'userIsChangingTheValue'),
+      ),
+    ).thenAnswer((_) async {});
+    await pump(tester, views['lanes']!);
+    await tester.tap(find.byWidgetPredicate((w) => w is Draggable).first);
+    await tester.pump();
+    await tester.tap(find.byType(CvModulationButton).first);
+    await tester.pumpAndSettle();
+    expect(find.text('CV modulation'), findsOneWidget);
+    expect(
+      find.textContaining('Bus outside this device profile'),
+      findsOneWidget,
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+    await tester.pumpAndSettle();
+    verifyNever(
+      () => disting.updateParameterValue(
+        algorithmIndex: any(named: 'algorithmIndex'),
+        parameterNumber: any(named: 'parameterNumber'),
+        value: any(named: 'value'),
+        userIsChangingTheValue: any(named: 'userIsChangingTheValue'),
+      ),
+    );
+    verifyZeroInteractions(manager);
   });
 
   testWidgets('CV inspect supports Tab, Enter, Escape and focus return', (

@@ -8,11 +8,18 @@ class _StateHelpersDelegate {
   void ensureCvRoutingOrderChangeSafe() {
     final state = _cubit.state;
     if (state is! DistingStateSynchronized) return;
-    if (state.slots.any(
-      (s) => s.mappings.any((m) => m.packedMappingData.cvInput > 0),
+    // Raw user-directed moves keep their legacy path without configured CV.
+    // The Module-input exception requires complete evidence when CV is known.
+    if (!state.slots.any(
+      (slot) => slot.mappings.any((m) => m.packedMappingData.cvInput > 0),
     )) {
-      throw StateError('Reordering cannot yet preserve CV mapping snapshots');
+      return;
     }
+    final reason = cvRoutingOptimizationBlockReason(
+      state.slots,
+      profile: state.deviceIoProfile,
+    );
+    if (reason != null) throw StateError(reason);
   }
 
   Slot preserveKnownSlotSpecifications({

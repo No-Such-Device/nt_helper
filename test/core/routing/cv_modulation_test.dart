@@ -194,17 +194,155 @@ void main() {
     expect(relation.description, contains('not voltage telemetry'));
   });
 
-  test(
-    'multiple same-slot writes are not assigned a guessed internal order',
-    () {
-      final result = cvProjection([
-        cvSlot(0, outputs: [32, 32]),
-        cvSlot(1, cvBuses: [32]),
+  test('mixed same-slot writes are not assigned a guessed internal order', () {
+    final result = cvProjection([
+      cvSlot(0, outputs: [32, 32], modes: [OutputMode.add, OutputMode.replace]),
+      cvSlot(1, cvBuses: [32]),
+    ]).single;
+    expect(result.contributorPortIds, isEmpty);
+    expect(result.caveats, contains('Same-slot write order unknown'));
+  });
+
+  test('same-slot Add writers are order independent, including a physical input seed', () {
+    for (final bus in [1, 32]) {
+      final relation = cvProjection([
+        cvSlot(0, outputs: [bus, bus], modes: [OutputMode.add, OutputMode.add]),
+        cvSlot(1, cvBuses: [bus]),
       ]).single;
-      expect(result.contributorPortIds, isEmpty);
-      expect(result.caveats, contains('Same-slot write order unknown'));
-    },
-  );
+      expect(
+        relation.contributorPortIds,
+        containsAll(['algo_s0_1_Step_output_1_0', 'algo_s0_1_Step_output_2_2']),
+      );
+      expect(relation.contributorPortIds, hasLength(bus == 1 ? 3 : 2));
+      expect(
+        relation.caveats,
+        isNot(contains('Same-slot write order unknown')),
+      );
+    }
+  });
+
+  test('a later single Replace clears an earlier ambiguous session', () {
+    final relation = cvProjection([
+      cvSlot(0, outputs: [32, 32], modes: [OutputMode.add, OutputMode.replace]),
+      cvSlot(1, outputs: [32], modes: [OutputMode.replace]),
+      cvSlot(2, outputs: [32]),
+      cvSlot(3, cvBuses: [32]),
+    ]).single;
+    expect(relation.contributorPortIds, [
+      'algo_s1_1_Step_output_1_0',
+      'algo_s2_1_Step_output_1_0',
+    ]);
+    expect(relation.caveats, isNot(contains('Same-slot write order unknown')));
+  });
+
+  test('readable producer identity accompanies every resolved endpoint', () {
+    final result = cvProjection([
+      cvSlot(0, outputs: [32]),
+      cvSlot(1, outputs: [32]),
+      cvSlot(2, cvBuses: [32]),
+    ]).single;
+    expect(
+      result.description,
+      contains('Inferred producer: Slot 1: Step 0 — Step output 1'),
+    );
+    expect(
+      result.description,
+      contains('Inferred producer: Slot 2: Step 1 — Step output 1'),
+    );
+    expect(result.toJson()['contributors'], [
+      {
+        'port_id': 'algo_s0_1_Step_output_1_0',
+        'slot_index': 0,
+        'algorithm_name': 'Step 0',
+        'port_name': 'Step output 1',
+        'inferred': true,
+      },
+      {
+        'port_id': 'algo_s1_1_Step_output_1_0',
+        'slot_index': 1,
+        'algorithm_name': 'Step 1',
+        'port_name': 'Step output 1',
+        'inferred': true,
+      },
+    ]);
+    final hardware = cvProjection([
+      cvSlot(0, cvBuses: [1], source: 1),
+    ]).single;
+    expect(hardware.contributors.single.inferred, isFalse);
+    expect(hardware.description, contains('Producer: Module inputs — Input 1'));
+  });
+
+  test('only proven original module input snapshots permit order changes', () {
+    expect(
+      cvRoutingOptimizationBlockReason([
+        cvSlot(0, cvBuses: [1], source: 1),
+      ]),
+      isNull,
+    );
+    for (final source in [0, 2, 99]) {
+      expect(
+        cvRoutingOptimizationBlockReason([
+          cvSlot(0, cvBuses: [1], source: source),
+        ]),
+        contains('CV mapping'),
+      );
+    }
+    final custom = DeviceIoProfile.tryCreate(
+      inputBusCount: 4,
+      outputBusCount: 3,
+      auxBusCount: 5,
+    )!;
+    expect(
+      cvRoutingOptimizationBlockReason([
+        cvSlot(0, cvBuses: [5], source: 1),
+      ], profile: custom),
+      contains('CV mapping'),
+    );
+    expect(
+      cvRoutingOptimizationBlockReason([
+        cvSlot(0, cvBuses: [1], source: 1).copyWith(mappings: []),
+      ]),
+      contains('Refresh'),
+    );
+  });
+
+  test('known nonmappable metadata needs no mapping, but unknown/mappable data does', () {
+    final slot = cvSlot(0, cvBuses: [0]);
+    final nonmappable = ParameterInfo(
+      algorithmIndex: 0,
+      parameterNumber: 0,
+      min: 0,
+      max: 1,
+      defaultValue: 0,
+      unit: -1,
+      name: 'Read only',
+      powerOfTen: 0,
+    );
+    final hydrated = slot.copyWith(
+      parameters: [nonmappable],
+      mappings: [Mapping.filler()],
+    );
+    expect(hasCompleteMappingCoverage([hydrated]), isTrue);
+    expect(cvRoutingOptimizationBlockReason([hydrated]), isNull);
+    expect(
+      hasCompleteMappingCoverage([
+        slot.copyWith(mappings: [Mapping.filler()]),
+      ]),
+      isFalse,
+    );
+    expect(
+      hasCompleteMappingCoverage([
+        hydrated.copyWith(parameters: [ParameterInfo.filler()]),
+      ]),
+      isFalse,
+    );
+    expect(
+      hasCompleteMappingCoverage([
+        hydrated.copyWith(parameterCountFromDevice: false),
+      ]),
+      isFalse,
+    );
+  });
 
   test('ordinary signal discovery is unchanged by mappings', () {
     final slots = [
