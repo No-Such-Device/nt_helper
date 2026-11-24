@@ -327,7 +327,17 @@ void main() {
         'Out',
         'Available output',
       ]);
-      expect(lanes(tester).rails.map((rail) => rail.bus), [13]);
+      expect(lanes(tester).rails.map((rail) => rail.bus), [
+        13,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+      ]);
       expect(
         lanes(tester).metrics.cardHeights.single,
         BusLanesMetrics.cardHeightFor(3),
@@ -379,14 +389,24 @@ void main() {
       expect(blocks(tester).first.ports.single.color, originalColor);
       final writeY =
           collapsed.metrics.cardTops.first + BusLanesMetrics.portRowY(0);
-      expect(collapsed.rails.single.segments.first.bottom, writeY);
-      expect(collapsed.rails.single.segments[1].top, writeY);
+      expect(
+        collapsed.rails
+            .singleWhere((rail) => rail.bus == 13)
+            .segments
+            .first
+            .bottom,
+        writeY,
+      );
+      expect(
+        collapsed.rails.singleWhere((rail) => rail.bus == 13).segments[1].top,
+        writeY,
+      );
       final beadFinder = find
           .byWidgetPredicate((widget) => widget is Draggable)
           .first;
       expect(
         tester.getCenter(beadFinder),
-        Offset(collapsed.rails.single.x, writeY),
+        Offset(collapsed.rails.singleWhere((rail) => rail.bus == 13).x, writeY),
       );
       expect(find.byTooltip('Show unconnected ports: 1. Osc'), findsOneWidget);
       expect(
@@ -436,9 +456,14 @@ void main() {
       await tester.pumpWidget(host());
       await tester.pump();
 
-      // Visible buses are 13 and 14. The second output bead is on bus 14
-      // at column 2, row 1. Dropping it one rail to the right lands on plus.
-      await tester.dragFrom(const Offset(277, 99), const Offset(42, 0));
+      final metrics = lanes(tester).metrics;
+      final currentX = lanes(tester).rails
+          .singleWhere((rail) => rail.bus == 14)
+          .x;
+      await tester.dragFrom(
+        Offset(currentX, 99),
+        Offset(metrics.addX - currentX, 0),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 

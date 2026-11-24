@@ -1,4 +1,7 @@
 import 'dart:math' as math;
+
+import 'package:nt_helper/core/routing/ntx8cv_routing.dart';
+
 import 'ntx8cv_routing_outputs.dart';
 
 import 'package:nt_helper/core/routing/cv_modulation.dart';
@@ -34,57 +37,57 @@ class _RoutingTableViewState extends State<RoutingTableView> {
 
   @override
   Widget build(BuildContext context) {
-    return Ntx8cvRoutingFrame(
-      child: BlocBuilder<RoutingEditorCubit, RoutingEditorState>(
-        buildWhen: (prev, curr) {
-          // Only rebuild when algorithm/connection data actually changes,
-          // not on zoom, pan, focus, or other UI-only state changes.
-          if (prev is! RoutingEditorStateLoaded ||
-              curr is! RoutingEditorStateLoaded) {
-            return true;
-          }
-          return prev.algorithms != curr.algorithms ||
-              prev.connections != curr.connections ||
-              prev.portOutputModes != curr.portOutputModes ||
-              prev.deviceIoProfile != curr.deviceIoProfile;
-        },
-        builder: (context, state) {
-          return state.when(
-            initial: () => const Center(child: Text('Initializing...')),
-            disconnected: () => const Center(child: Text('Disconnected')),
-            loaded:
-                (
-                  deviceIoProfile,
-                  ntx8cvRouting,
-                  physicalInputs,
-                  physicalOutputs,
-                  es5Inputs,
-                  algorithms,
-                  connections,
-                  buses,
-                  portOutputModes,
-                  nodePositions,
-                  zoomLevel,
-                  panOffset,
-                  isHardwareSynced,
-                  isPersistenceEnabled,
-                  lastSyncTime,
-                  lastPersistTime,
-                  lastError,
-                  subState,
-                  focusedAlgorithmIds,
-                  cascadeScrollTarget,
-                  auxBusUsage,
-                  hasExtendedAuxBuses,
-                ) => _buildTable(
-                  context,
-                  algorithms: algorithms,
-                  portOutputModes: portOutputModes,
-                  deviceIoProfile: deviceIoProfile,
-                ),
-          );
-        },
-      ),
+    return BlocBuilder<RoutingEditorCubit, RoutingEditorState>(
+      buildWhen: (prev, curr) {
+        // Only rebuild when algorithm/connection data actually changes,
+        // not on zoom, pan, focus, or other UI-only state changes.
+        if (prev is! RoutingEditorStateLoaded ||
+            curr is! RoutingEditorStateLoaded) {
+          return true;
+        }
+        return prev.algorithms != curr.algorithms ||
+            prev.connections != curr.connections ||
+            prev.portOutputModes != curr.portOutputModes ||
+            prev.deviceIoProfile != curr.deviceIoProfile ||
+            prev.ntx8cvRouting != curr.ntx8cvRouting;
+      },
+      builder: (context, state) {
+        return state.when(
+          initial: () => const Center(child: Text('Initializing...')),
+          disconnected: () => const Center(child: Text('Disconnected')),
+          loaded:
+              (
+                deviceIoProfile,
+                ntx8cvRouting,
+                physicalInputs,
+                physicalOutputs,
+                es5Inputs,
+                algorithms,
+                connections,
+                buses,
+                portOutputModes,
+                nodePositions,
+                zoomLevel,
+                panOffset,
+                isHardwareSynced,
+                isPersistenceEnabled,
+                lastSyncTime,
+                lastPersistTime,
+                lastError,
+                subState,
+                focusedAlgorithmIds,
+                cascadeScrollTarget,
+                auxBusUsage,
+                hasExtendedAuxBuses,
+              ) => _buildTable(
+                context,
+                algorithms: algorithms,
+                portOutputModes: portOutputModes,
+                deviceIoProfile: deviceIoProfile,
+                ntx8cvRouting: ntx8cvRouting,
+              ),
+        );
+      },
     );
   }
 
@@ -93,6 +96,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     required List<RoutingAlgorithm> algorithms,
     required Map<String, OutputMode> portOutputModes,
     required DeviceIoProfile deviceIoProfile,
+    required Ntx8cvRouting? ntx8cvRouting,
   }) {
     final modulations = [
       for (final algorithm in algorithms) ...algorithm.cvModulations,
@@ -102,7 +106,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       portOutputModes,
       deviceIoProfile: deviceIoProfile,
     );
-    if (routing.isEmpty) {
+    if (routing.isEmpty && ntx8cvRouting == null) {
       return Center(
         child: Text(
           'No algorithms loaded.',
@@ -118,10 +122,15 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     );
     final slotCount = routing.length;
     final signals = analyzer.signals;
-    final numBuses = _computeVisibleBusCount(
-      signals,
-      routing,
-      deviceIoProfile: deviceIoProfile,
+    final numBuses = math.max(
+      deviceIoProfile == DeviceIoProfile.distingExtended
+          ? deviceIoProfile.auxStart + 7
+          : 0,
+      _computeVisibleBusCount(
+        signals,
+        routing,
+        deviceIoProfile: deviceIoProfile,
+      ),
     );
 
     final trails = _cvTrailCells(algorithms, routing, modulations, numBuses);
@@ -345,6 +354,50 @@ class _RoutingTableViewState extends State<RoutingTableView> {
         ],
       ),
     );
+
+    if (deviceIoProfile == DeviceIoProfile.distingExtended) {
+      pinnedRows.add(
+        TableRow(
+          children: [
+            SizedBox(
+              height: Ntx8cvBusAssignment.height(context),
+              child: Visibility(
+                visible: ntx8cvRouting != null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Semantics(
+                      header: true,
+                      child: Text('NTX-8CV', style: headerStyle),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+      mainRows.add(
+        TableRow(
+          children: [
+            for (int bus = 1; bus <= numBuses; bus++)
+              if (bus >= deviceIoProfile.auxStart &&
+                  bus < deviceIoProfile.auxStart + 8)
+                Ntx8cvBusAssignment(
+                  key: ValueKey(
+                    'ntx8cv_bus_${bus - deviceIoProfile.auxStart + 1}',
+                  ),
+                  config: ntx8cvRouting,
+                  profile: deviceIoProfile,
+                  jack: bus - deviceIoProfile.auxStart + 1,
+                )
+              else
+                SizedBox(height: Ntx8cvBusAssignment.height(context)),
+          ],
+        ),
+      );
+    }
 
     final scrollBehavior = ScrollConfiguration.of(context)
         .copyWith(overscroll: false);

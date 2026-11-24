@@ -10,6 +10,8 @@ import 'package:nt_helper/ui/widgets/routing/movable_physical_io_node.dart';
 /// From the algorithm perspective, these ES-5 ports act as inputs
 /// (they receive signals from algorithms), so they use input port positioning.
 class ES5Node extends StatelessWidget {
+  static const title = 'ES-5';
+
   /// The list of ports from the routing state to display in this node.
   final List<Port> ports;
 
@@ -101,7 +103,7 @@ class ES5Node extends StatelessWidget {
       child: MovablePhysicalIONode(
         ports: ports,
         connectedPorts: connectedPorts,
-        title: 'ES-5',
+        title: title,
         icon: Icons.memory,
         position: position,
         isInput: false, // From algorithm perspective, these are inputs

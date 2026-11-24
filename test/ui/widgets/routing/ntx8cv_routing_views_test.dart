@@ -1,4 +1,11 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:ui' as ui;
+
+import 'package:flutter/rendering.dart';
+import 'package:nt_helper/models/device_io_profile.dart';
+import 'package:nt_helper/ui/widgets/routing/es5_node.dart';
+import 'package:nt_helper/ui/widgets/routing/bus_lanes_painter.dart';
 
 import 'package:drift/native.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/core/routing/ntx8cv_routing.dart';
+import 'package:nt_helper/core/routing/models/es5_hardware_node.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/cubit/routing_editor_cubit.dart';
@@ -87,7 +95,10 @@ void main() {
             BlocProvider<RoutingEditorCubit>.value(value: cubit),
             BlocProvider<DistingCubit>.value(value: disting),
           ],
-          child: Scaffold(body: view),
+          child: RepaintBoundary(
+            key: const ValueKey('evidence'),
+            child: Scaffold(body: view),
+          ),
         ),
       ),
     );
@@ -148,11 +159,11 @@ void main() {
             isTrue,
           );
           anchor = node;
-        } else if (entry.key == 'lanes') {
+        } else if (entry.key == 'lanes' || entry.key == 'table') {
           for (var i = 1; i <= 8; i++) {
-            expect(find.byKey(ValueKey('ntx8cv_lane_$i')), findsOneWidget);
+            expect(find.byKey(ValueKey('ntx8cv_bus_$i')), findsOneWidget);
           }
-          anchor = find.byKey(const ValueKey('ntx8cv_lane_1'));
+          anchor = find.byKey(const ValueKey('ntx8cv_bus_1'));
         } else {
           for (var i = 1; i <= 8; i++) {
             expect(find.byKey(ValueKey('ntx8cv_summary_$i')), findsOneWidget);
@@ -250,106 +261,249 @@ void main() {
     },
   );
 
-  testWidgets(
-    'actual Signal Flow viewport and headers stay fixed on first settings completion',
-    (tester) async {
-      final initial = (cubit.state as RoutingEditorStateLoaded).copyWith(
-        ntx8cvRouting: null,
-      );
-      cubit.emit(initial);
-      await pump(tester, const RoutingTableView());
-      final frame = tester.widget<Ntx8cvRoutingFrame>(
-        find.byType(Ntx8cvRoutingFrame),
-      );
-      final viewport = tester.getRect(find.byWidget(frame.child));
-      final header = tester.getRect(find.text('Algorithm').first);
-      for (final state in [
-        initial.copyWith(ntx8cvRouting: const Ntx8cvRouting.unresolved()),
-        initial.copyWith(ntx8cvRouting: config),
-        initial.copyWith(ntx8cvRouting: const Ntx8cvRouting.unresolved()),
-        initial,
-      ]) {
-        cubit.emit(state);
-        await tester.pumpAndSettle();
-        expect(tester.getRect(find.byWidget(frame.child)), viewport);
-        expect(tester.getRect(find.text('Algorithm').first), header);
+  for (final entry in <String, Widget>{
+    'table': const RoutingTableView(),
+    'lanes': const BusLanesView(),
+  }.entries) {
+    for (final width in [390.0, 1200.0]) {
+      for (final scale in [1.0, 2.0]) {
+        testWidgets(
+          '${entry.key}: AUX-aligned single row and stable settings geometry ($width, $scale)',
+          (tester) async {
+            final initial = (cubit.state as RoutingEditorStateLoaded).copyWith(
+              ntx8cvRouting: null,
+            );
+            cubit.emit(initial);
+            await pump(tester, entry.value);
+            tester.view.physicalSize = Size(width, 900);
+            tester.platformDispatcher.textScaleFactorTestValue = scale;
+            addTearDown(
+              tester.platformDispatcher.clearTextScaleFactorTestValue,
+            );
+            await tester.pumpAndSettle();
+            final semantics = tester.ensureSemantics();
+            final header = entry.key == 'table'
+                ? tester.getRect(find.text('Algorithm').first)
+                : null;
+            final anchors = [
+              for (var jack = 1; jack <= 8; jack++)
+                tester.getRect(find.byKey(ValueKey('ntx8cv_bus_$jack'))),
+            ];
+            expect(find.bySemanticsLabel(RegExp(r'NTX-8CV 1:')), findsNothing);
+            for (final next in [
+              const Ntx8cvRouting.unresolved(),
+              config,
+              Ntx8cvRouting(
+                mode: config.mode,
+                channelEnables: config.channelEnables,
+                available: false,
+              ),
+              Ntx8cvRouting(
+                mode: Ntx8cvRoutingMode.audio32,
+                channelEnables: BigInt.zero,
+              ),
+              Ntx8cvRouting(
+                mode: Ntx8cvRoutingMode.audio16,
+                channelEnables: BigInt.zero,
+              ),
+              config,
+              null,
+            ]) {
+              cubit.emit(initial.copyWith(ntx8cvRouting: next));
+              await tester.pumpAndSettle();
+              if (header != null) {
+                expect(tester.getRect(find.text('Algorithm').first), header);
+              }
+              expect(find.byType(Ntx8cvRoutingOutputs), findsNothing);
+              expect(
+                find.text('NTX-8CV'),
+                next == null ? findsNothing : findsOneWidget,
+              );
+              final assignments = tester
+                  .widgetList<Ntx8cvBusAssignment>(
+                    find.byType(Ntx8cvBusAssignment),
+                  )
+                  .toList();
+              expect(
+                assignments.map((a) => a.jack),
+                orderedEquals([1, 2, 3, 4, 5, 6, 7, 8]),
+              );
+              for (var jack = 1; jack <= 8; jack++) {
+                final cell = find.byKey(ValueKey('ntx8cv_bus_$jack'));
+                final rect = tester.getRect(cell);
+                expect(rect, anchors[jack - 1]);
+                if (next != null) {
+                  expect(
+                    find.descendant(of: cell, matching: find.text('$jack')),
+                    findsOneWidget,
+                  );
+                  expect(
+                    find.bySemanticsLabel(RegExp('NTX-8CV $jack: Aux $jack,')),
+                    findsOneWidget,
+                  );
+                }
+                if (jack > 1) {
+                  expect(rect.left, greaterThan(anchors[jack - 2].left));
+                }
+                expect(
+                  find.descendant(
+                    of: cell,
+                    matching: find.byIcon(Icons.circle_outlined),
+                  ),
+                  findsOneWidget,
+                );
+                expect(
+                  find.descendant(of: cell, matching: find.byIcon(Icons.south)),
+                  findsNothing,
+                );
+                expect(
+                  find.descendant(of: cell, matching: find.byType(Container)),
+                  findsNothing,
+                );
+                if (entry.key == 'table') {
+                  final label = tester.getRect(find.text('A$jack').last);
+                  // The cell starts immediately after the bottom AUX header row.
+                  expect(rect.top, label.center.dy + 14);
+                  expect(rect.center.dx, label.center.dx);
+                } else {
+                  final painter = tester
+                      .widgetList<CustomPaint>(find.byType(CustomPaint))
+                      .map((p) => p.painter)
+                      .whereType<BusLanesPainter>()
+                      .single;
+                  final rail = painter.rails.singleWhere(
+                    (r) => r.bus == 20 + jack,
+                  );
+                  expect(rect.center.dx, rail.x);
+                  expect(rect.top, painter.metrics.contentHeight);
+                  expect(
+                    rail.segments.every(
+                      (segment) =>
+                          segment.bottom <= painter.metrics.railsBottom,
+                    ),
+                    isTrue,
+                  );
+                  final icon = tester.getRect(
+                    find.descendant(
+                      of: cell,
+                      matching: find.byIcon(Icons.circle_outlined),
+                    ),
+                  );
+                  expect(
+                    icon.top,
+                    greaterThanOrEqualTo(painter.metrics.contentHeight),
+                  );
+                }
+              }
+              expect(tester.takeException(), isNull);
+            }
+            semantics.dispose();
+            verifyZeroInteractions(manager);
+          },
+        );
       }
+    }
+    testWidgets('${entry.key}: assignments survive an empty preset', (
+      tester,
+    ) async {
+      cubit.emit(
+        (cubit.state as RoutingEditorStateLoaded).copyWith(
+          algorithms: const [],
+          connections: const [],
+        ),
+      );
+      await pump(tester, entry.value);
+      expect(find.byType(Ntx8cvBusAssignment), findsNWidgets(8));
+      expect(find.text('NTX-8CV'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+    testWidgets('${entry.key}: visual evidence', (tester) async {
+      const dir = String.fromEnvironment('NTX_EVIDENCE_DIR');
+      if (dir.isNotEmpty) {
+        await tester.runAsync(() async {
+          final loader = FontLoader('Roboto')
+            ..addFont(
+              File(const String.fromEnvironment('NTX_EVIDENCE_FONT'))
+                  .readAsBytes()
+                  .then((bytes) => ByteData.sublistView(bytes)),
+            );
+          await loader.load();
+          final icons = FontLoader('MaterialIcons')
+            ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+          await icons.load();
+        });
+      }
+      await pump(tester, entry.value);
+      expect(find.byType(Ntx8cvBusAssignment), findsNWidgets(8));
+      if (dir.isNotEmpty) {
+        final boundary = tester.renderObject<RenderRepaintBoundary>(
+          find.byKey(const ValueKey('evidence')),
+        );
+        await tester.runAsync(() async {
+          final image = await boundary.toImage();
+          final bytes = (await image.toByteData(
+            format: ui.ImageByteFormat.png,
+          ))!;
+          await Directory(dir).create(recursive: true);
+          await File('$dir/${entry.key}.png')
+              .writeAsBytes(bytes.buffer.asUint8List());
+          image.dispose();
+        });
+      }
+    });
+  }
+
+  testWidgets(
+    'graph title is only NTX-8CV and width matches the existing ES-5 node',
+    (tester) async {
+      await pump(
+        tester,
+        RoutingEditorWidget(
+          loadNtxSettings: false,
+          canvasSize: const Size(1200, 800),
+        ),
+      );
+      final ntx = find.byKey(const ValueKey(Ntx8cvRouting.nodeId));
+      expect(
+        find.descendant(of: ntx, matching: find.text('NTX-8CV')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: ntx, matching: find.textContaining('channels')),
+        findsNothing,
+      );
+      final ntxNode = find.descendant(
+        of: ntx,
+        matching: find.byType(MovablePhysicalIONode),
+      );
+      final ntxSize = tester.getSize(ntxNode);
+      await pump(
+        tester,
+        Center(
+          child: ES5Node(
+            ports: ES5HardwareNode.createInputPorts(
+              deviceIoProfile: DeviceIoProfile.distingExtended,
+            ),
+          ),
+        ),
+      );
+      expect(
+        tester.getSize(find.byType(MovablePhysicalIONode)).width,
+        closeTo(ntxSize.width, 0.001),
+      );
+      expect(config.scopeLabel, contains('channels 1–8'));
+      expect(
+        config.toJson(DeviceIoProfile.distingExtended)['scope'],
+        'first_channel_group',
+      );
     },
   );
-
-  for (final width in [390.0, 960.0]) {
-    for (final scale in [1.0, 2.0]) {
-      testWidgets(
-        'Signal Flow reserves endpoint area before discovery ($width, $scale)',
-        (tester) async {
-          await cubit.close();
-          cubit = RoutingEditorCubit(null);
-          final initial = RoutingEditorStateLoaded(
-            physicalInputs: const [],
-            physicalOutputs: const [],
-            algorithms: const [],
-            connections: const [],
-          );
-          cubit.emit(initial);
-          tester.view.physicalSize = Size(width, 700);
-          tester.view.devicePixelRatio = 1;
-          addTearDown(tester.view.resetPhysicalSize);
-          addTearDown(tester.view.resetDevicePixelRatio);
-          await tester.pumpWidget(
-            MaterialApp(
-              builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(context)
-                    .copyWith(textScaler: TextScaler.linear(scale)),
-                child: child!,
-              ),
-              home: BlocProvider<RoutingEditorCubit>.value(
-                value: cubit,
-                child: Scaffold(
-                  body: Ntx8cvRoutingFrame(
-                    child: Container(key: const ValueKey('flow-viewport')),
-                  ),
-                ),
-              ),
-            ),
-          );
-          await tester.pump();
-          final viewport = tester.getRect(
-            find.byKey(const ValueKey('flow-viewport')),
-          );
-          final semantics = tester.ensureSemantics();
-          expect(find.bySemanticsLabel(RegExp(r'NTX-8CV 1:')), findsNothing);
-          for (final config in [
-            const Ntx8cvRouting.unresolved(),
-            Ntx8cvRouting(
-              mode: Ntx8cvRoutingMode.cv,
-              channelEnables: BigInt.from(255),
-            ),
-            Ntx8cvRouting(
-              mode: Ntx8cvRoutingMode.cv,
-              channelEnables: BigInt.one,
-              available: false,
-            ),
-            null,
-          ]) {
-            cubit.emit(initial.copyWith(ntx8cvRouting: config));
-            await tester.pumpAndSettle();
-            expect(
-              tester.getRect(find.byKey(const ValueKey('flow-viewport'))),
-              viewport,
-            );
-            expect(tester.takeException(), isNull);
-          }
-          semantics.dispose();
-        },
-      );
-    }
-  }
 
   testWidgets('read-only Bus Lanes tap cannot delete a previously armed bead', (
     tester,
   ) async {
     await pump(tester, const BusLanesView());
-    final sink = find.byKey(const ValueKey('ntx8cv_lane_1'));
+    final sink = find.byKey(const ValueKey('ntx8cv_bus_1'));
     await tester.tap(sink);
     await tester.sendKeyEvent(LogicalKeyboardKey.delete);
     verifyZeroInteractions(manager);

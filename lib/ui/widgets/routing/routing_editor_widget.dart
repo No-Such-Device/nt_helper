@@ -2373,9 +2373,10 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
         left: position.dx,
         top: position.dy,
         child: Tooltip(
-          message: config.description,
+          message: '${config.scopeLabel}. ${config.description}',
           child: MovablePhysicalIONode(
-            title: config.scopeLabel,
+            title: 'NTX-8CV',
+            headerWidthReference: ES5Node.title,
             icon: Icons.output_rounded,
             ports: ports,
             position: position,
