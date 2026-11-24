@@ -41,6 +41,7 @@ import 'package:nt_helper/ui/widgets/routing/routing_table_view.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_lanes_view.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 
+import 'bus_label_formatter.dart';
 import 'cv_modulation_view.dart';
 
 enum RoutingEditorViewMode {
@@ -98,6 +99,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
   // Map of node IDs to their positions
   final Map<String, Offset> _nodePositions = {};
   final List<(CvModulation, Offset, Offset)> _cvHitTargets = [];
+  painter.ConnectionPainter? _cvBusPainter;
   final Map<String, Offset> _cvInputPositions = {};
   // Map of node IDs to their actual rendered sizes
   final Map<String, Size> _nodeSizes = {};
@@ -1771,6 +1773,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
             zoomLevel,
             panOffset,
             showBackwardConnections,
+            deviceIoProfile,
           ),
     );
   }
@@ -1811,6 +1814,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     double zoomLevel,
     Offset panOffset,
     bool showBackwardConnections,
+    DeviceIoProfile profile,
   ) {
     final visibleConnections = _visibleCanvasConnections(
       connections,
@@ -2040,7 +2044,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                           stateNodePositions,
                         ),
 
-                        ..._buildCvModulationOverlay(algorithms),
+                        ..._buildCvModulationOverlay(algorithms, profile),
 
                         // 3. Foreground Connections (Tips only, on top of everything)
                         _buildConnections(
@@ -2053,6 +2057,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
 
                         ..._buildCvModulationOverlay(
                           algorithms,
+                          profile,
                           labelsOnly: true,
                         ),
 
@@ -2394,18 +2399,39 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
   }
 
   List<Widget> _buildCvModulationOverlay(
-    List<RoutingAlgorithm> algorithms, {
+    List<RoutingAlgorithm> algorithms,
+    DeviceIoProfile profile, {
     bool labelsOnly = false,
   }) {
     final paths = <(Offset, Offset)>[];
     final sourceHalos = <Offset>{};
     final labels = <Widget>[];
+    final rawBusInputs = <painter.ReadOnlyBusInputStub>[];
     if (!labelsOnly) _cvHitTargets.clear();
     final taps = <String>{};
     for (final algorithm in algorithms) {
       for (final mapping in algorithm.cvModulations) {
         final target = _cvInputPositions[mapping.id];
         if (target == null) continue;
+        final fallback = target - const Offset(60, 0);
+        if (mapping.contributors.isEmpty) {
+          if (labelsOnly) {
+            rawBusInputs.add((
+              id: mapping.id,
+              label:
+                  BusLabelFormatter.formatBusNumber(
+                    mapping.bus,
+                    deviceIoProfile: profile,
+                  ) ??
+                  mapping.busLabel,
+              target: target,
+              color: cvModulationColor(context),
+            ));
+          } else {
+            _cvHitTargets.add((mapping, fallback, target));
+          }
+          continue;
+        }
         final snapshotMappings = [
           for (final a in algorithms)
             for (final m in a.cvModulations)
@@ -2423,7 +2449,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
           sourceHalos.add(namedSource);
         }
         Offset? source = namedSource;
-        if (source == null && mapping.contributors.isNotEmpty) {
+        if (source == null) {
           if (mapping.usesModuleInputSnapshot) {
             source = _getPortPosition(mapping.contributorPortIds.first);
           } else {
@@ -2455,13 +2481,11 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
             }
           }
         }
-        // An unresolved bus is an open stub, never a guessed producer.
-        source ??= target - const Offset(60, 0);
+        source ??= fallback;
         paths.add((source, target));
         if (!labelsOnly) _cvHitTargets.add((mapping, source, target));
-        final tapId = mapping.contributors.isEmpty
-            ? mapping.id
-            : '${mapping.usesOwnInputSnapshot ? mapping.destinationAlgorithmId : 'source'}-${mapping.source}-${mapping.bus}';
+        final tapId =
+            '${mapping.usesOwnInputSnapshot ? mapping.destinationAlgorithmId : 'source'}-${mapping.source}-${mapping.bus}';
         if (namedSource == null && taps.add(tapId)) {
           labels.add(
             Positioned(
@@ -2471,11 +2495,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
               height: 24,
               child: CvModulationButton(
                 key: ValueKey('cv-snapshot-$tapId'),
-                mappings: mapping.contributors.isEmpty
-                    ? [mapping]
-                    : snapshotMappings
-                          .where((m) => m.bus == mapping.bus)
-                          .toList(),
+                mappings: snapshotMappings
+                    .where((m) => m.bus == mapping.bus)
+                    .toList(),
                 displayLabel: mapping.busLabel,
                 onInspect: _clearSelectedConnection,
               ),
@@ -2484,7 +2506,23 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
         }
       }
     }
-    if (labelsOnly) return labels;
+    if (labelsOnly) {
+      final busPainter = rawBusInputs.isEmpty
+          ? null
+          : painter.ConnectionPainter(
+              connections: const [],
+              theme: Theme.of(context),
+              readOnlyBusInputs: rawBusInputs,
+            );
+      _cvBusPainter = busPainter;
+      return [
+        if (busPainter != null)
+          Positioned.fill(
+            child: IgnorePointer(child: CustomPaint(painter: busPainter)),
+          ),
+        ...labels,
+      ];
+    }
     return [
       Positioned.fill(
         child: IgnorePointer(
@@ -3095,16 +3133,16 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
         if (connectionType == ConnectionType.partialOutputToBus) {
           // Source is the actual output port
           sourcePosition = _getPortPosition(connection.sourcePortId);
-          // For destination, create a position 75px to the right for the label
           if (sourcePosition != null) {
-            targetPosition = Offset(sourcePosition.dx + 75, sourcePosition.dy);
+            targetPosition =
+                sourcePosition + painter.ConnectionPainter.partialBusStubOffset;
           }
         } else if (connectionType == ConnectionType.partialBusToInput) {
           // Destination is the actual input port
           targetPosition = _getPortPosition(connection.destinationPortId);
-          // For source, create a position 75px to the left for the label
           if (targetPosition != null) {
-            sourcePosition = Offset(targetPosition.dx - 75, targetPosition.dy);
+            sourcePosition =
+                targetPosition - painter.ConnectionPainter.partialBusStubOffset;
           }
         }
       } else {
@@ -3488,6 +3526,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
   }
 
   void _handleCanvasTap(Offset tapPosition, List<Connection> connections) {
+    if (_cvBusPainter?.hitTestLabel(tapPosition) != null) return;
     _requestCanvasFocus();
     final cvHits = {
       for (final (mapping, start, end) in _cvHitTargets)
