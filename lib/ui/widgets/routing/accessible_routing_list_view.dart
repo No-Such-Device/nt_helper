@@ -7,6 +7,8 @@ import 'package:nt_helper/cubit/routing_editor_cubit.dart';
 import 'package:nt_helper/cubit/routing_editor_state.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
 
+import 'cv_modulation_view.dart';
+
 /// A list-based representation of the routing editor for screen reader users.
 ///
 /// Provides the same information as the visual canvas but in an accessible
@@ -193,6 +195,13 @@ class AccessibleRoutingListView extends StatelessWidget {
                 ),
               ),
             ],
+            SizedBox(
+              height: MediaQuery.textScalerOf(context).scale(20) + 20,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: CvModulationButton(mappings: algo.cvModulations),
+              ),
+            ),
             const SizedBox(height: 8),
           ],
         ),

@@ -1,4 +1,6 @@
 import 'dart:ui' show Offset;
+
+import 'package:nt_helper/core/routing/cv_modulation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/core/routing/models/connection.dart';
@@ -74,6 +76,7 @@ sealed class RoutingAlgorithm with _$RoutingAlgorithm {
 
     /// Output ports for this algorithm
     required List<Port> outputPorts,
+    @Default([]) List<CvModulation> cvModulations,
   }) = _RoutingAlgorithm;
 }
 

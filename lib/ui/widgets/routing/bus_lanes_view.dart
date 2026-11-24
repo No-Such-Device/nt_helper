@@ -1,9 +1,10 @@
+import 'package:flutter/foundation.dart' show listEquals;
+import 'package:nt_helper/core/routing/cv_modulation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:nt_helper/core/routing/algorithm_routing.dart' as core_routing;
 import 'package:nt_helper/core/routing/bus_color_palette.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
@@ -16,6 +17,8 @@ import 'package:nt_helper/ui/widgets/routing/bus_lanes_painter.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_picker_dialog.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_selection_model.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
+
+import 'cv_modulation_view.dart';
 
 /// Graphical, bus-centric routing view. Buses are vertical colored lanes
 /// (tubes). Each algorithm is a block whose individual inputs (top rows) and
@@ -57,6 +60,8 @@ class _BusLanesViewState extends State<BusLanesView> {
   BusLanesMetrics? _lastMetrics;
   List<int> _lastVisibleBuses = const [];
   DeviceIoProfile _lastProfile = DeviceIoProfile.distingExtended;
+  final List<int> _stableBuses = [];
+  List<String> _busRoster = [];
 
   /// Reorder responds to mouse/touch press-drag only. Trackpad two-finger
   /// swipes are reserved for scrolling, so they're excluded here — otherwise
@@ -503,6 +508,54 @@ class _BusLanesViewState extends State<BusLanesView> {
             ),
           ),
           for (final bead in card.beads) _buildBead(context, bead),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: CvModulationCurve(
+                  color: cvModulationColor(context),
+                  endpoints: [
+                    for (final rail in data.rails)
+                      if (card.modulations.any((m) => m.bus == rail.bus))
+                        (
+                          Offset(rail.x, 12),
+                          const Offset(BusLanesMetrics.gutterWidth, 12),
+                        ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          for (final bus in data.rails.map((r) => r.bus))
+            if (card.modulations.any((m) => m.bus == bus))
+              Positioned(
+                left: data.rails.firstWhere((r) => r.bus == bus).x - 19,
+                top: 0,
+                width: 38,
+                height: 24,
+                child: CvModulationButton(
+                  key: ValueKey('cv-lane-${card.id}-$bus'),
+                  compact: true,
+                  mappings: card.modulations
+                      .where((m) => m.bus == bus)
+                      .toList(),
+                  onInspect: () => setState(() => _selected = null),
+                ),
+              ),
+          if (card.modulations.any(
+            (m) => !data.rails.any((r) => r.bus == m.bus),
+          ))
+            Positioned(
+              left: m.noneX - 19,
+              top: 0,
+              width: 38,
+              height: 24,
+              child: CvModulationButton(
+                compact: true,
+                mappings: card.modulations
+                    .where((m) => !data.rails.any((r) => r.bus == m.bus))
+                    .toList(),
+              ),
+            ),
           Positioned(
             right: m.contentWidth - BusLanesMetrics.gutterWidth + 6,
             top: 4,
@@ -669,7 +722,11 @@ class _BusLanesViewState extends State<BusLanesView> {
     );
   }
 
-  void _commitReorder(BuildContext context, _BusLanesData data, int index) {
+  Future<void> _commitReorder(
+    BuildContext context,
+    _BusLanesData data,
+    int index,
+  ) async {
     final id = _draggingId;
     final dy = _dragDy;
     setState(() {
@@ -689,7 +746,13 @@ class _BusLanesViewState extends State<BusLanesView> {
 
     final newOrder = [for (final c in data.cards) c.id]..removeAt(index);
     newOrder.insert(target, id);
-    context.read<RoutingEditorCubit>().applyReorder(newOrder);
+    try {
+      await context.read<RoutingEditorCubit>().applyReorder(newOrder);
+    } on StateError catch (error) {
+      _messengerKey.currentState?.showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
   }
 
   /// A single faint, tappable drop-target hint for the cell under the cursor.
@@ -936,19 +999,29 @@ class _BusLanesViewState extends State<BusLanesView> {
       }
     }
 
-    // Only show buses actually in use (sorted). With nothing used, "＋" is the
-    // first lane; as buses get used they appear in order; when the last user of
-    // a bus is removed it collapses out of the diagram. Any bus is reachable by
-    // dropping a bead on "＋".
-    final visible =
-        usedBuses
+    final roster = slots.map((s) => s.id).toList();
+    if (_lastProfile != deviceIoProfile || !listEquals(_busRoster, roster)) {
+      _stableBuses.clear();
+      _busRoster = roster;
+    }
+    final requested = {
+      ...usedBuses,
+      for (final algo in slots)
+        for (final mapping in algo.cvModulations) mapping.bus,
+    };
+    final newBuses =
+        requested
             .where(
               (bus) =>
-                  deviceIoProfile.contains(bus) ||
-                  deviceIoProfile.contextualEs5Buses.contains(bus),
+                  (deviceIoProfile.contains(bus) ||
+                      deviceIoProfile.contextualEs5Buses.contains(bus)) &&
+                  !_stableBuses.contains(bus),
             )
             .toList()
           ..sort();
+    // Append newly observed lanes without moving existing bead coordinates.
+    _stableBuses.addAll(newBuses);
+    final visible = List<int>.of(_stableBuses);
     final railIndex = {for (var i = 0; i < visible.length; i++) visible[i]: i};
     _lastVisibleBuses = visible;
     _lastProfile = deviceIoProfile;
@@ -1209,6 +1282,7 @@ class _BusLanesViewState extends State<BusLanesView> {
           title: '${algo.index + 1}. ${algo.algorithm.name}',
           ports: ports,
           beads: beads,
+          modulations: algo.cvModulations,
         ),
       );
     }
@@ -1276,6 +1350,7 @@ class _Bead {
 }
 
 class _CardData {
+  final List<CvModulation> modulations;
   final String id;
   final String title;
   final List<PortRowRender> ports;
@@ -1285,6 +1360,7 @@ class _CardData {
     required this.title,
     required this.ports,
     required this.beads,
+    required this.modulations,
   });
 }
 

@@ -5,6 +5,16 @@ class _StateHelpersDelegate {
 
   final DistingCubit _cubit;
 
+  void ensureCvRoutingOrderChangeSafe() {
+    final state = _cubit.state;
+    if (state is! DistingStateSynchronized) return;
+    if (state.slots.any(
+      (s) => s.mappings.any((m) => m.packedMappingData.cvInput > 0),
+    )) {
+      throw StateError('Reordering cannot yet preserve CV mapping snapshots');
+    }
+  }
+
   Slot preserveKnownSlotSpecifications({
     required DistingStateSynchronized previousState,
     required IDistingMidiManager refreshedDisting,

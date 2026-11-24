@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'dart:convert' as convert;
 
+import 'package:nt_helper/core/routing/cv_modulation.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
@@ -12,7 +14,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:nt_helper/core/platform/platform_interaction_service.dart';
 import 'package:nt_helper/core/routing/models/connection.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
@@ -25,7 +26,6 @@ import 'package:nt_helper/services/key_binding_service.dart';
 import 'package:nt_helper/services/settings_service.dart';
 import 'package:nt_helper/services/zoom_hotkey_service.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
-// Haptics can be reintroduced later if needed
 import 'package:nt_helper/ui/widgets/routing/accessible_routing_list_view.dart';
 import 'package:nt_helper/ui/widgets/routing/algorithm_node_widget.dart';
 import 'package:nt_helper/ui/widgets/routing/connection_painter.dart'
@@ -40,6 +40,8 @@ import 'package:nt_helper/ui/widgets/routing/routing_editor_controller.dart';
 import 'package:nt_helper/ui/widgets/routing/routing_table_view.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_lanes_view.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
+
+import 'cv_modulation_view.dart';
 
 enum RoutingEditorViewMode {
   canvas,
@@ -95,6 +97,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     with TickerProviderStateMixin {
   // Map of node IDs to their positions
   final Map<String, Offset> _nodePositions = {};
+  final List<(CvModulation, Offset, Offset)> _cvHitTargets = [];
   // Map of node IDs to their actual rendered sizes
   final Map<String, Size> _nodeSizes = {};
   final Set<String> _selectedNodes = {};
@@ -326,7 +329,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       const double algorithmStartX = centerX - 250;
       const double algorithmSpacing = 300.0;
       const double algorithmRowSpacing = 200.0;
-      for (int i = 0; i < routingState.algorithms.length && i < 8; i++) {
+      for (int i = 0; i < routingState.algorithms.length; i++) {
         final algo = routingState.algorithms[i];
         final savedPos = saved[algo.id];
         _nodePositions[algo.id] = savedPos != null
@@ -1327,7 +1330,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     const double algorithmStartX = centerX - 250;
     const double algorithmSpacing = 300.0;
     const double algorithmRowSpacing = 200.0;
-    for (int i = 0; i < current.algorithms.length && i < 8; i++) {
+    for (int i = 0; i < current.algorithms.length; i++) {
       final algo = current.algorithms[i];
       final savedPos = saved[algo.id];
       _nodePositions.putIfAbsent(algo.id, () {
@@ -1996,6 +1999,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                         ),
 
                         // 2. Nodes (Stacked from bottom to top)
+                        ..._buildCvModulationOverlay(algorithms),
 
                         // Physical Output Nodes (Lowest Z-order)
                         if (widget.showPhysicalPorts)
@@ -2035,6 +2039,11 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                           nodeBoundsMap,
                           zIndexByNodeId,
                           drawEndpointsOnly: true,
+                        ),
+
+                        ..._buildCvModulationOverlay(
+                          algorithms,
+                          labelsOnly: true,
                         ),
 
                         // Temporary connection (dragging)
@@ -2368,6 +2377,65 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
               // Node drag end handler
             },
             onSizeResolved: (size) => _handleNodeSizeResolved('es5_node', size),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildCvModulationOverlay(
+    List<RoutingAlgorithm> algorithms, {
+    bool labelsOnly = false,
+  }) {
+    final paths = <(Offset, Offset)>[];
+    final labels = <Widget>[];
+    final labelHeight = math.max(
+      28.0,
+      MediaQuery.textScalerOf(context).scale(20) + 8,
+    );
+    if (!labelsOnly) _cvHitTargets.clear();
+    for (final algorithm in algorithms) {
+      final mappings = algorithm.cvModulations;
+      final position = _nodePositions[algorithm.id];
+      if (mappings.isEmpty || position == null) continue;
+      final target = position + const Offset(0, 26);
+      for (final mapping in mappings) {
+        final sources = mapping.contributorPortIds
+            .map(_getPortPosition)
+            .whereType<Offset>()
+            .toList();
+        if (sources.isEmpty) sources.add(target - const Offset(90, 0));
+        for (final source in sources) {
+          paths.add((source, target));
+          if (!labelsOnly) _cvHitTargets.add((mapping, source, target));
+        }
+      }
+      labels.add(
+        Positioned(
+          left: position.dx,
+          top: position.dy - labelHeight,
+          width: 260,
+          height: labelHeight,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: CvModulationButton(
+              key: ValueKey('cv-canvas-${algorithm.id}'),
+              mappings: mappings,
+              onInspect: _clearSelectedConnection,
+            ),
+          ),
+        ),
+      );
+    }
+    if (labelsOnly) return labels;
+    return [
+      Positioned.fill(
+        child: IgnorePointer(
+          child: CustomPaint(
+            painter: CvModulationCurve(
+              endpoints: paths,
+              color: cvModulationColor(context),
+            ),
           ),
         ),
       ),
@@ -3341,6 +3409,15 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
 
   void _handleCanvasTap(Offset tapPosition, List<Connection> connections) {
     _requestCanvasFocus();
+    final cvHits = {
+      for (final (mapping, start, end) in _cvHitTargets)
+        if (_distanceFromPointToBezier(tapPosition, start, end) <= 10) mapping,
+    };
+    if (cvHits.isNotEmpty) {
+      _clearSelectedConnection();
+      inspectCvModulations(context, cvHits.toList());
+      return;
+    }
     final hitId = _findConnectionNearPoint(tapPosition, connections);
     if (hitId != null) {
       _setConnectionHighlight(hitId, _ConnectionHighlightSource.selected);
@@ -4083,6 +4160,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       if (i >= previous.algorithms.length) return true;
       final prevAlg = previous.algorithms[i];
       final currAlg = current.algorithms[i];
+      if (!listEquals(prevAlg.cvModulations, currAlg.cvModulations)) {
+        return true;
+      }
       if (prevAlg.index != currAlg.index ||
           prevAlg.algorithm.name != currAlg.algorithm.name) {
         return true;
@@ -4193,14 +4273,20 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
   }
 
   // Algorithm operation handlers
-  void _handleAlgorithmMoveUp(int algorithmIndex) {
-    final cubit = context.read<DistingCubit>();
-    cubit.moveAlgorithmUp(algorithmIndex);
+  Future<void> _handleAlgorithmMoveUp(int algorithmIndex) async {
+    try {
+      await context.read<DistingCubit>().moveAlgorithmUp(algorithmIndex);
+    } on StateError catch (error) {
+      if (mounted) _showError(error.message);
+    }
   }
 
-  void _handleAlgorithmMoveDown(int algorithmIndex) {
-    final cubit = context.read<DistingCubit>();
-    cubit.moveAlgorithmDown(algorithmIndex);
+  Future<void> _handleAlgorithmMoveDown(int algorithmIndex) async {
+    try {
+      await context.read<DistingCubit>().moveAlgorithmDown(algorithmIndex);
+    } on StateError catch (error) {
+      if (mounted) _showError(error.message);
+    }
   }
 
   void _handleAlgorithmDeleted(String algorithmId) {

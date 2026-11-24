@@ -938,6 +938,24 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
     }
   }
 
+  Future<int> _moveAlgorithmWithCvSafety(
+    DistingCubit cubit,
+    int index, {
+    required bool up,
+  }) async {
+    try {
+      return await (up
+          ? cubit.moveAlgorithmUp(index)
+          : cubit.moveAlgorithmDown(index));
+    } on StateError catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.message)));
+      }
+      return index;
+    }
+  }
+
   void _showAlgorithmAddFailedNotification() {
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -1151,7 +1169,11 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                   ? null
                   : (index) async {
                       final cubit = context.read<DistingCubit>();
-                      final newIndex = await cubit.moveAlgorithmUp(index);
+                      final newIndex = await _moveAlgorithmWithCvSafety(
+                        cubit,
+                        index,
+                        up: true,
+                      );
                       setState(() {
                         _selectedIndex = newIndex;
                       });
@@ -1168,7 +1190,11 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                         slotCount = currentState.slots.length;
                       }
                       if (index < slotCount - 1) {
-                        final newIndex = await cubit.moveAlgorithmDown(index);
+                        final newIndex = await _moveAlgorithmWithCvSafety(
+                          cubit,
+                          index,
+                          up: false,
+                        );
                         setState(() {
                           _selectedIndex = newIndex;
                         });
@@ -1531,9 +1557,19 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                                   semanticLabel: 'Reorder Algorithms',
                                 ),
                                 onPressed: () async {
-                                  await context
-                                      .read<RoutingEditorCubit>()
-                                      .autoSolveFlow();
+                                  try {
+                                    await context
+                                        .read<RoutingEditorCubit>()
+                                        .autoSolveFlow();
+                                  } on StateError catch (error) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(content: Text(error.message)),
+                                      );
+                                    }
+                                  }
                                 },
                                 tooltip: 'Reorder algorithms to fix bus flow',
                                 style: buttonStyle,
@@ -2299,8 +2335,10 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
             onPressed: widget.loading
                 ? null
                 : () async {
-                    final newIndex = await cubit.moveAlgorithmUp(
+                    final newIndex = await _moveAlgorithmWithCvSafety(
+                      cubit,
                       _selectedIndex,
+                      up: true,
                     );
                     setState(() {
                       _selectedIndex = newIndex;
@@ -2328,8 +2366,10 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                       slotCount = currentState.slots.length;
                     }
                     if (_selectedIndex < slotCount - 1) {
-                      final newIndex = await cubit.moveAlgorithmDown(
+                      final newIndex = await _moveAlgorithmWithCvSafety(
+                        cubit,
                         _selectedIndex,
+                        up: false,
                       );
                       setState(() {
                         _selectedIndex = newIndex;

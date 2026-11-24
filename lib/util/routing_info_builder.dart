@@ -59,7 +59,10 @@ List<RoutingInformation> buildRoutingInfoFromEditor(
       inputBuses: inputBuses,
       outputBuses: outputBuses,
       replaceBuses: replaceBuses,
-      mappingBuses: const {},
+      mappingBuses: {
+        for (final mapping in algo.cvModulations)
+          if (deviceIoProfile.contains(mapping.bus)) mapping.bus,
+      },
     );
   }).toList();
 }

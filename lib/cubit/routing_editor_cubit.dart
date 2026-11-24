@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 
+import 'package:nt_helper/core/routing/cv_modulation.dart';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -112,21 +113,9 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
   ///
   /// Creates IDs in the format `algo_${guid}_${instanceCounter}` where
   /// instanceCounter increments for duplicate algorithms to ensure uniqueness.
-  /// These IDs remain stable regardless of slot position changes.
+  /// Unique GUIDs stay stable; duplicate occurrences are rebuilt per snapshot.
   List<String> generateStableAlgorithmIds(List<Slot> slots) {
-    final algorithmIds = <String>[];
-    final guidCounters = <String, int>{};
-
-    for (final slot in slots) {
-      final guid = slot.algorithm.guid;
-      final counter = guidCounters[guid] ?? 0;
-      guidCounters[guid] = counter + 1;
-
-      // Create stable ID without slot index
-      algorithmIds.add('algo_${guid}_${counter + 1}');
-    }
-
-    return algorithmIds;
+    return routingAlgorithmIds(slots);
   }
 
   /// Generate a stable port ID using algorithm UUID and parameter number
@@ -144,25 +133,23 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
   void _processDistingState(DistingState distingState) {
     distingState.when(
       initial: () => emit(const RoutingEditorState.initial()),
-      selectDevice:
-          (
-            inputDevices,
-            outputDevices,
-            canWorkOffline,
-            selectedInputDevice,
-            selectedOutputDevice,
-            selectedSysExId,
-          ) => emit(const RoutingEditorState.disconnected()),
-      connected:
-          (
-            disting,
-            inputDevice,
-            outputDevice,
-            offline,
-            loading,
-            syncStatus,
-            syncProgress,
-          ) => emit(const RoutingEditorState.disconnected()),
+      selectDevice: (
+        inputDevices,
+        outputDevices,
+        canWorkOffline,
+        selectedInputDevice,
+        selectedOutputDevice,
+        selectedSysExId,
+      ) => emit(const RoutingEditorState.disconnected()),
+      connected: (
+        disting,
+        inputDevice,
+        outputDevice,
+        offline,
+        loading,
+        syncStatus,
+        syncProgress,
+      ) => emit(const RoutingEditorState.disconnected()),
       synchronized:
           (
             disting,
@@ -284,6 +271,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       // Build algorithm representations with ports determined by AlgorithmRouting
       final algorithms = <RoutingAlgorithm>[];
       final routings = <core_routing.AlgorithmRouting>[];
+      final allRoutings = <core_routing.AlgorithmRouting>[];
 
       // Generate stable UUIDs for each algorithm instance
       final algorithmUuids = generateStableAlgorithmIds(slots);
@@ -308,13 +296,13 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
             if (value.isDisabled) value.parameterNumber,
         };
 
-        // Filter out algorithms with no ports (e.g., the 'note' algorithm)
-        if (inputPorts.isEmpty && outputPorts.isEmpty) {
-          continue;
-        }
+        allRoutings.add(routing);
 
-        // Add routing to list for connection discovery
-        routings.add(routing);
+        // Ordinary discovery keeps its existing roster. Presentation reserves
+        // all slot positions so late CV mappings cannot move other nodes.
+        if (inputPorts.isNotEmpty || outputPorts.isNotEmpty) {
+          routings.add(routing);
+        }
 
         // Create visual representation
         final routingAlgorithm = RoutingAlgorithm(
@@ -362,6 +350,20 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
               .toList(),
         );
         algorithms.add(routingAlgorithm);
+      }
+
+      final modulations = projectCvModulations(
+        slots: slots,
+        routings: allRoutings,
+        algorithmIds: algorithmUuids,
+        profile: deviceIoProfile,
+      );
+      for (var i = 0; i < algorithms.length; i++) {
+        algorithms[i] = algorithms[i].copyWith(
+          cvModulations: modulations
+              .where((m) => m.destinationSlot == i)
+              .toList(),
+        );
       }
 
       // Use the ConnectionDiscoveryService to discover connections from AlgorithmRouting instances
@@ -913,16 +915,14 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     int? channel;
 
     // Try multi-channel format first
-    var channelMatch = RegExp(
-      r'_channel_(\d+)_',
-    ).firstMatch(algorithmOutputPort.id);
+    var channelMatch = RegExp(r'_channel_(\d+)_')
+        .firstMatch(algorithmOutputPort.id);
     if (channelMatch != null) {
       channel = int.parse(channelMatch.group(1)!);
     } else {
       // Try Poly CV voice format
-      channelMatch = RegExp(
-        r'_gate_output_(\d+)',
-      ).firstMatch(algorithmOutputPort.id);
+      channelMatch = RegExp(r'_gate_output_(\d+)')
+          .firstMatch(algorithmOutputPort.id);
       if (channelMatch != null) {
         channel = int.parse(channelMatch.group(1)!);
       }
@@ -1015,9 +1015,8 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     final slot = distingState.slots[algorithmIndex];
 
     // Extract channel number from port ID (format: {uuid}_channel_{N}_output)
-    final channelMatch = RegExp(
-      r'_channel_(\d+)_output',
-    ).firstMatch(algorithmOutputPort.id);
+    final channelMatch = RegExp(r'_channel_(\d+)_output')
+        .firstMatch(algorithmOutputPort.id);
     if (channelMatch == null) {
       return null;
     }
@@ -1150,6 +1149,25 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       busToUse = availableBus.bus;
     }
 
+    final liveState = _distingCubit?.state;
+    if (liveState is! DistingStateSynchronized ||
+        !identical(liveState.disting, distingState.disting) ||
+        liveState.slots.length != distingState.slots.length ||
+        liveState.slots[sourceAlgorithmIndex].algorithm !=
+            distingState.slots[sourceAlgorithmIndex].algorithm ||
+        liveState.slots[targetAlgorithmIndex].algorithm !=
+            distingState.slots[targetAlgorithmIndex].algorithm) {
+      throw StateError('Routing changed while connecting');
+    }
+    final protectedBuses = cvMappingBuses(liveState.slots);
+    if (protectedBuses.contains(busToUse) ||
+        (sourceBusValue != busToUse &&
+            protectedBuses.contains(sourceBusValue))) {
+      throw StateError(
+        'Automatic connection changes cannot modify CV-mapped bus writers',
+      );
+    }
+
     // Update both source output and target input bus parameters
     bool sourceUpdated = false;
     bool targetUpdated = false;
@@ -1262,6 +1280,16 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         info.sourceNames.add(algoName);
       }
 
+      for (final mapping in algorithm.cvModulations) {
+        if (!deviceIoProfile.isAux(mapping.bus)) continue;
+        final info = result.putIfAbsent(
+          mapping.bus,
+          () => AuxBusUsageInfo(busNumber: mapping.bus),
+        );
+        info.algorithmIds.add(algorithm.id);
+        info.destNames.add('$algoName: ${mapping.parameterName} (CV)');
+      }
+
       for (final port in algorithm.inputPorts) {
         final busValue = _resolvePortBusValue(port, slot);
         if (busValue == null) continue;
@@ -1330,6 +1358,12 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     if (distingState is! DistingStateSynchronized) return null;
 
     final deviceIoProfile = state.deviceIoProfile;
+    if (!hasCompleteMappingCoverage(distingState.slots)) {
+      throw StateError(
+        'Refresh all parameter mappings before allocating AUX buses',
+      );
+    }
+    final protectedBuses = cvMappingBuses(distingState.slots);
 
     // Map each AUX bus to the highest slot number that uses it
     final maxSlotPerBus = <int, int>{};
@@ -1354,11 +1388,13 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     }
 
     // Stereo L ports need b+1 to also be a valid aux bus
-    final candidates = needsStereoPartner
-        ? deviceIoProfile.auxBuses.where(
-            (bus) => deviceIoProfile.isAux(bus + 1),
-          )
-        : deviceIoProfile.auxBuses;
+    final candidates = deviceIoProfile.auxBuses.where(
+      (bus) =>
+          !protectedBuses.contains(bus) &&
+          (!needsStereoPartner ||
+              (deviceIoProfile.isAux(bus + 1) &&
+                  !protectedBuses.contains(bus + 1))),
+    );
 
     // Prefer a completely unused AUX bus first
     for (final b in candidates) {
@@ -1391,6 +1427,8 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     if (distingState is! DistingStateSynchronized) return null;
 
     final deviceIoProfile = currentState.deviceIoProfile;
+    if (!hasCompleteMappingCoverage(distingState.slots)) return null;
+    final protectedBuses = cvMappingBuses(distingState.slots);
 
     int? valueOf(Slot slot, int? parameterNumber) {
       if (parameterNumber == null) return null;
@@ -1436,7 +1474,8 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
     final usages = [
       for (final entry in portsByBus.entries)
-        AuxBusUsage(bus: entry.key, ports: entry.value),
+        if (!protectedBuses.contains(entry.key))
+          AuxBusUsage(bus: entry.key, ports: entry.value),
     ];
 
     final plan = planAuxBusConsolidation(usages);
@@ -1493,6 +1532,57 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     void Function(int mergeIndex, int replaceModeIndex)? onReplaceModeSet,
   }) async {
     return runBatched(() async {
+      final snapshot = _distingCubit?.state;
+      if (snapshot is! DistingStateSynchronized ||
+          !hasCompleteMappingCoverage(snapshot.slots)) {
+        throw StateError(
+          'Refresh all parameter mappings before consolidating AUX buses',
+        );
+      }
+      for (final merge in plan.merges) {
+        for (final step in merge.steps) {
+          if (step.algorithmIndex < 0 ||
+              step.algorithmIndex >= snapshot.slots.length ||
+              !snapshot.slots[step.algorithmIndex].values.any(
+                (v) =>
+                    v.parameterNumber == step.parameterNumber &&
+                    v.value == step.fromBus,
+              )) {
+            throw StateError('Routing changed; rebuild the consolidation plan');
+          }
+        }
+      }
+      final protectedBuses = cvMappingBuses(snapshot.slots);
+      if (plan.merges.any(
+        (m) =>
+            protectedBuses.contains(m.keepBus) ||
+            protectedBuses.contains(m.freeBus),
+      )) {
+        throw StateError('CV-mapped buses cannot be consolidated');
+      }
+      void revalidate() {
+        final live = _distingCubit?.state;
+        if (live is! DistingStateSynchronized ||
+            !identical(live.disting, snapshot.disting) ||
+            live.slots.length != snapshot.slots.length ||
+            !hasCompleteMappingCoverage(live.slots)) {
+          throw StateError('Routing changed; rebuild the consolidation plan');
+        }
+        for (var i = 0; i < live.slots.length; i++) {
+          if (live.slots[i].algorithm != snapshot.slots[i].algorithm) {
+            throw StateError(
+              'Algorithms changed; rebuild the consolidation plan',
+            );
+          }
+        }
+        final buses = cvMappingBuses(live.slots);
+        if (plan.merges.any(
+          (m) => buses.contains(m.keepBus) || buses.contains(m.freeBus),
+        )) {
+          throw StateError('CV-mapped buses cannot be consolidated');
+        }
+      }
+
       const paceDelay = Duration(milliseconds: 150);
 
       for (int m = 0; m < plan.merges.length; m++) {
@@ -1500,6 +1590,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
         for (int r = 0; r < merge.replaceModeSteps.length; r++) {
           final rStep = merge.replaceModeSteps[r];
+          revalidate();
           await _distingCubit!.updateParameterValue(
             algorithmIndex: rStep.algorithmIndex,
             parameterNumber: rStep.parameterNumber,
@@ -1512,6 +1603,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
         for (int i = 0; i < merge.steps.length; i++) {
           final step = merge.steps[i];
+          revalidate();
           await _distingCubit!.updateParameterValue(
             algorithmIndex: step.algorithmIndex,
             parameterNumber: step.parameterNumber,
@@ -1641,6 +1733,12 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       if (distingState is! DistingStateSynchronized) return -1;
       final profile = distingState.deviceIoProfile;
       if (!profile.isAux(sourceBus)) return -1;
+      if (!hasCompleteMappingCoverage(distingState.slots)) return -1;
+      final protectedBuses = cvMappingBuses(distingState.slots);
+      if (protectedBuses.contains(sourceBus) ||
+          protectedBuses.contains(destinationBus)) {
+        return -1;
+      }
 
       final references = <({int slotIndex, ParameterInfo parameter})>[];
       var commonMinimum = profile.auxStart;
@@ -1670,7 +1768,8 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       );
       if (assignedDestination == null ||
           !profile.isAux(assignedDestination) ||
-          assignedDestination == sourceBus) {
+          assignedDestination == sourceBus ||
+          protectedBuses.contains(assignedDestination)) {
         return 0;
       }
 
@@ -1685,6 +1784,14 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       var writeCount = 0;
 
       for (final reference in references) {
+        final live = _distingCubit?.state;
+        if (live is! DistingStateSynchronized ||
+            !identical(live.disting, distingState.disting) ||
+            !hasCompleteMappingCoverage(live.slots) ||
+            cvMappingBuses(live.slots)
+                .any((b) => b == sourceBus || b == assignedDestination)) {
+          throw StateError('Routing changed while moving AUX buses');
+        }
         await _distingCubit!.updateParameterValue(
           algorithmIndex: reference.slotIndex,
           parameterNumber: reference.parameter.parameterNumber,
@@ -2281,6 +2388,13 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         changed: false,
       );
     }
+
+    final snapshot = _distingCubit.state;
+    if (snapshot is! DistingStateSynchronized) {
+      throw StateError('Device disconnected');
+    }
+    final reason = cvRoutingOptimizationBlockReason(snapshot.slots);
+    if (reason != null) throw StateError(reason);
 
     for (final step in steps) {
       if (step.direction == SwapDirection.up) {
@@ -3129,7 +3243,12 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       return null;
     }
 
-    final usedBuses = <int>{};
+    if (!hasCompleteMappingCoverage(distingState.slots)) {
+      throw StateError(
+        'Refresh all parameter mappings before allocating buses',
+      );
+    }
+    final usedBuses = cvMappingBuses(distingState.slots);
     for (final algorithm in state.algorithms) {
       if (algorithm.index >= distingState.slots.length) continue;
       final slot = distingState.slots[algorithm.index];
@@ -3174,9 +3293,11 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     // physical output buses.
     for (final b in deviceIoProfile.auxBuses) {
       if (needsStereoPartner && !deviceIoProfile.isAux(b + 1)) continue;
+      if (needsStereoPartner && usedBuses.contains(b + 1)) continue;
       if (inRange(b) && !usedBuses.contains(b)) return b;
     }
     for (final b in deviceIoProfile.inputBuses) {
+      if (needsStereoPartner && usedBuses.contains(b + 1)) continue;
       if (inRange(b) && !usedBuses.contains(b)) return b;
     }
 
@@ -3184,6 +3305,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     // that isn't a physical output bus.
     for (int b = range.min; b <= range.max; b++) {
       if (!deviceIoProfile.contains(b) || deviceIoProfile.isOutput(b)) continue;
+      if (needsStereoPartner && usedBuses.contains(b + 1)) continue;
       if (!usedBuses.contains(b)) return b;
     }
 

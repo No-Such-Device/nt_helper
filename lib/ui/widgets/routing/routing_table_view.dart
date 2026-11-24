@@ -1,3 +1,4 @@
+import 'package:nt_helper/core/routing/cv_modulation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,6 +9,8 @@ import 'package:nt_helper/models/routing_information.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/util/routing_analyzer.dart';
 import 'package:nt_helper/util/routing_info_builder.dart';
+
+import 'cv_modulation_view.dart';
 
 /// OG-style signal flow table visualization for the routing editor.
 ///
@@ -83,6 +86,9 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     required Map<String, OutputMode> portOutputModes,
     required DeviceIoProfile deviceIoProfile,
   }) {
+    final modulations = [
+      for (final algorithm in algorithms) ...algorithm.cvModulations,
+    ];
     final routing = buildRoutingInfoFromEditor(
       algorithms,
       portOutputModes,
@@ -197,11 +203,40 @@ class _RoutingTableViewState extends State<RoutingTableView> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               alignment: Alignment.centerLeft,
               color: slotBg,
-              child: Text(
-                '${info.algorithmIndex + 1}. ${info.algorithmName}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: slotNameStyle,
+              child: Stack(
+                alignment: Alignment.centerLeft,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 32),
+                    child: Text(
+                      '${info.algorithmIndex + 1}. ${info.algorithmName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: slotNameStyle,
+                    ),
+                  ),
+                  if (modulations.any(
+                    (m) =>
+                        m.destinationSlot == info.algorithmIndex &&
+                        !deviceIoProfile.contains(m.bus),
+                  ))
+                    Positioned(
+                      right: 0,
+                      width: 30,
+                      top: 0,
+                      bottom: 0,
+                      child: CvModulationButton(
+                        compact: true,
+                        mappings: modulations
+                            .where(
+                              (m) =>
+                                  m.destinationSlot == info.algorithmIndex &&
+                                  !deviceIoProfile.contains(m.bus),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -220,6 +255,13 @@ class _RoutingTableViewState extends State<RoutingTableView> {
                 unusedBg: unusedBg,
                 cellStyle: cellStyle,
                 deviceIoProfile: deviceIoProfile,
+                modulations: modulations
+                    .where(
+                      (m) =>
+                          m.destinationSlot == info.algorithmIndex &&
+                          m.bus == ch,
+                    )
+                    .toList(),
               ),
           ],
         ),
@@ -371,6 +413,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     required Color unusedBg,
     required TextStyle? cellStyle,
     required DeviceIoProfile deviceIoProfile,
+    required List<CvModulation> modulations,
   }) {
     final levelBefore = ch < signalsBefore.length ? signalsBefore[ch] : 0;
     final isUsed = info.usesBus(ch);
@@ -392,10 +435,13 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       height: _cellHeight,
       alignment: Alignment.center,
       color: bgColor,
-      child: Text(
-        _condensedChannelLabel(ch, deviceIoProfile),
-        style: cellStyle,
-      ),
+      child: modulations.isNotEmpty
+          ? CvModulationButton(
+              key: ValueKey('cv-cell-${info.algorithmIndex}-$ch'),
+              mappings: modulations,
+              compact: true,
+            )
+          : Text(_condensedChannelLabel(ch, deviceIoProfile), style: cellStyle),
     );
   }
 
@@ -430,13 +476,11 @@ class _RoutingTableViewState extends State<RoutingTableView> {
   }) {
     final es5Buses = deviceIoProfile.contextualEs5Buses;
     final maxBus = es5Buses.isEmpty ? deviceIoProfile.maxBus : es5Buses.last;
-    final outputBuses = deviceIoProfile.outputBuses;
-    final inputBuses = deviceIoProfile.inputBuses;
-    int highestUsed = outputBuses.isNotEmpty
-        ? outputBuses.last
-        : inputBuses.isNotEmpty
-        ? inputBuses.last
-        : 0;
+    int highestUsed =
+        deviceIoProfile.outputBuses.lastOrNull ??
+        deviceIoProfile.inputBuses.lastOrNull ??
+        0;
+
     for (final info in routing) {
       for (int ch = maxBus; ch > highestUsed; ch--) {
         if (info.usesBus(ch)) {

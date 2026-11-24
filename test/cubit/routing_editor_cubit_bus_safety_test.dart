@@ -1,4 +1,9 @@
+import 'dart:typed_data';
+
+import 'package:nt_helper/models/packed_mapping_data.dart';
+
 import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
@@ -257,7 +262,20 @@ void main() {
   });
 
   test('Aux moves clamp once to the common parameter range', () async {
-    seed(_slotWithSharedAuxReferences());
+    final slot = _slotWithSharedAuxReferences();
+    seed(
+      slot.copyWith(
+        parameterCountFromDevice: true,
+        mappings: [
+          for (final p in slot.parameters)
+            Mapping(
+              algorithmIndex: 0,
+              parameterNumber: p.parameterNumber,
+              packedMappingData: PackedMappingData.fromBytes(8, Uint8List(25)),
+            ),
+        ],
+      ),
+    );
 
     final writeCount = await routingCubit.moveAuxBus(8, 12);
 

@@ -130,6 +130,8 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
   final Color backwardConnection;
   final Color emptyBus;
 
+  Color get cvModulation => success.color;
+
   /// Fixed high-contrast colours used to simulate the disting NT display.
   static const Color ntDisplaySurface = Color(0xFF101010);
   static const Color ntDisplayForeground = Color(0xFFF5F5F5);

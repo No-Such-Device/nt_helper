@@ -690,6 +690,10 @@ class DistingCubit extends _DistingCubitBase
     return renamePresetImpl(newName);
   }
 
+  @override
+  void ensureCvRoutingOrderChangeSafe() =>
+      _stateHelpersDelegate.ensureCvRoutingOrderChangeSafe();
+
   Future<int> moveAlgorithmUp(int algorithmIndex) async {
     return moveAlgorithmUpImpl(algorithmIndex);
   }

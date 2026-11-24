@@ -162,6 +162,8 @@ hard-coding bus counts: firmware/device responses determine input/output/AUX
 ranges; contextual ES-5 buses are special. `node_positions_persistence_service`
 handles saved positions. Older `util/routing_analyzer.dart` and
 `routing_info_builder.dart` coexist: inspect callers before adding new logic.
+See [CV modulation routing](cv-modulation-routing.md) for the separate read-only
+parameter-mapping projection shared by the four views and cached routing API.
 
 ### Metadata and algorithm shape
 

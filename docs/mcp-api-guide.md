@@ -498,7 +498,13 @@ non-sample files such as PDFs do not affect the catalogue.
 
 #### show_routing
 
-Show the current signal routing state with input/output bus assignments for all slots.
+Show cached signal routing and CV modulation for every slot, without MIDI requests.
+The existing slot list includes `input_buses`, `output_buses`, and `cv_modulation`.
+Each modulation records its destination `parameter_number`/`parameter_name`, bus,
+source selector and snapshot, inferred `contributor_port_ids`, and caveats.
+`mapping_coverage` distinguishes `complete_cached` from `partial_cached`; neither
+is a live-voltage measurement. CV inspection is read-only. Bus optimization and
+reordering may be refused when mappings cannot safely be preserved.
 
 **Parameters**: None
 
@@ -1224,8 +1230,8 @@ report an installed plug-in as `unknown_guid`.
 For hardware control voltage integration and internal modulation.
 
 Fields:
-- `source`: Output index from another algorithm (0=not used)
-- `cv_input`: Physical input (0=disabled, 1-12=inputs)
+- `source`: Bus snapshot selector: 0 = Own inputs, 1 = original Module inputs, 2 + zero-based slot index = that algorithm's output snapshot
+- `cv_input`: Bus in the connected device profile (0=disabled; includes internal AUX buses)
 - `is_unipolar`: True for 0-10V, false for +/-5V
 - `is_gate`: Gate/trigger mode
 - `volts`: Scaling factor (0-127)
@@ -1293,8 +1299,8 @@ Assign parameters to hardware performance pages (1-30, 0=not assigned).
    - MIDI Channel 16 = `"midi_channel": 15`
 
 4. **Confusing cv_input with source**
-   - `source`: Output index from another algorithm
-   - `cv_input`: Physical hardware input (1-12)
+   - `source`: Selects a bus snapshot, not an output port (0 Own, 1 Module, 2 + slot index algorithm outputs)
+   - `cv_input`: Selects a bus at that snapshot; it is not limited to physical inputs
 
 5. **Forgetting nested structure for mappings**
    - Wrong: `{"mapping": {"is_midi_enabled": true}}`
