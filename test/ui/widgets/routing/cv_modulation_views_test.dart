@@ -58,6 +58,26 @@ class _CvCanvas extends Fake implements Canvas {
       circles.add((center, radius));
 }
 
+Future<(int, ByteData)> _captureRouting(
+  WidgetTester tester,
+  RenderRepaintBoundary boundary,
+  String name,
+) async => (await tester.runAsync(() async {
+  final image = await boundary.toImage();
+  try {
+    const evidenceDir = String.fromEnvironment('CV_ROUTING_EVIDENCE_DIR');
+    if (evidenceDir.isNotEmpty) {
+      final png = (await image.toByteData(format: ui.ImageByteFormat.png))!;
+      await File('$evidenceDir/$name.png').writeAsBytes(
+        png.buffer.asUint8List(png.offsetInBytes, png.lengthInBytes),
+      );
+    }
+    return (image.width, (await image.toByteData())!);
+  } finally {
+    image.dispose();
+  }
+}))!;
+
 void main() {
   late _Disting disting;
   late _Manager manager;
@@ -685,24 +705,11 @@ void main() {
       final boundary = tester.renderObject<RenderRepaintBoundary>(
         find.byKey(captureKey),
       );
-      final pixels = (await tester.runAsync(() async {
-        final image = await boundary.toImage();
-        try {
-          const evidenceDir = String.fromEnvironment('CV_ROUTING_EVIDENCE_DIR');
-          if (evidenceDir.isNotEmpty) {
-            final png = (await image.toByteData(
-              format: ui.ImageByteFormat.png,
-            ))!;
-            await File('$evidenceDir/graph-${defaultTargetPlatform.name}.png')
-                .writeAsBytes(
-                  png.buffer.asUint8List(png.offsetInBytes, png.lengthInBytes),
-                );
-          }
-          return (image.width, (await image.toByteData())!);
-        } finally {
-          image.dispose();
-        }
-      }))!;
+      final pixels = await _captureRouting(
+        tester,
+        boundary,
+        'graph-${defaultTargetPlatform.name}',
+      );
       final context = tester.element(find.byKey(captureKey));
       final colors = Theme.of(context).colorScheme;
       final green = cvModulationColor(context);
@@ -1147,29 +1154,117 @@ void main() {
   });
 
   testWidgets(
-    'Signal Flow CV markers occupy the input line above their numbered algorithm',
+    'Signal Flow traces each CV marker to its exact upstream output',
     (tester) async {
+      const captureKey = ValueKey('signal flow capture');
+      await tester.binding.setSurfaceSize(const Size(1500, 520));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       snapshot = snapshot.copyWith(
         slots: [
           cvSlot(0),
           cvSlot(1, outputs: [32, 33]),
-          cvSlot(2),
-          cvSlot(3, cvBuses: [32, 33]),
+          cvSlot(2, outputs: [32]),
+          cvSlot(3, cvBuses: [33, 32, 34], source: 3),
         ],
       );
-      events.add(snapshot);
-      await pump(tester, views['table']!);
+      await pump(tester, views['table']!, captureKey: captureKey);
+      final state = cubit.state as RoutingEditorStateLoaded;
+      final source = state.algorithms.singleWhere((a) => a.index == 1);
+      final mappings = state.algorithms.singleWhere((a) => a.index == 3);
+      final [secondOutput, firstOutput, rawBus] = mappings.cvModulations;
+      expect(firstOutput.contributors.single.portId, source.outputPorts[0].id);
+      expect(secondOutput.contributors.single.portId, source.outputPorts[1].id);
+      expect(rawBus.contributors, isEmpty);
       final algorithm = tester.getRect(find.text('4. MIDI CC Generator 3'));
       final markers = [
-        tester.getRect(find.byKey(const ValueKey('cv-cell-3-32'))),
-        tester.getRect(find.byKey(const ValueKey('cv-cell-3-33'))),
+        for (final bus in [32, 33, 34])
+          tester.getRect(find.byKey(ValueKey('cv-cell-3-$bus'))),
       ];
       for (final marker in markers) {
         expect(marker.center.dy, algorithm.center.dy - 28);
         expect(marker.bottom, lessThanOrEqualTo(algorithm.top));
       }
       expect(markers[1].center.dx - markers[0].center.dx, 32);
+      final producer = tester.getCenter(find.text('2. Step 1'));
+      final decoy = tester.getCenter(find.text('3. Step 2'));
+      final glyphs = find.text('+');
+      final glyphCenters = [
+        for (var i = 0; i < glyphs.evaluate().length; i++)
+          tester.getCenter(glyphs.at(i)),
+      ];
+      final outputs = glyphCenters
+          .where((point) => point.dy == producer.dy + 28)
+          .toList();
+      expect(outputs, hasLength(2));
+      expect(outputs[0].dx, markers[0].center.dx);
+      expect(outputs[1].dx, markers[1].center.dx);
+      expect(glyphCenters, contains(Offset(outputs[0].dx, decoy.dy + 28)));
+
+      final boundary = tester.renderObject<RenderRepaintBoundary>(
+        find.byKey(captureKey),
+      );
+      final (width, pixels) = await _captureRouting(
+        tester,
+        boundary,
+        'signal-flow',
+      );
+      final green =
+          cvModulationColor(tester.element(find.byKey(captureKey))).toARGB32() &
+          0xffffff;
+      List<int> greenRows(Offset from, Offset to) {
+        final start = boundary.globalToLocal(from);
+        final end = boundary.globalToLocal(to);
+        return [
+          for (var y = start.dy.ceil(); y <= end.dy.floor(); y++)
+            if ((pixels.getUint32((y * width + start.dx.floor()) * 4) >> 8) ==
+                green)
+              y - start.dy.ceil(),
+        ];
+      }
+
+      for (var i = 0; i < outputs.length; i++) {
+        final start = outputs[i];
+        final end = markers[i].center;
+        final trail = greenRows(start, end - const Offset(0, 6));
+        final span = (end.dy - start.dy).round();
+        expect(trail, isNotEmpty, reason: 'output ${i + 1} has a green trail');
+        expect(trail.first, inInclusiveRange(6, 9));
+        expect(trail.last, inInclusiveRange(span - 9, span - 6));
+        for (var row = 0; row < span; row += 28) {
+          expect(trail.any((y) => y >= row && y < row + 28), isTrue);
+        }
+        expect(trail, isNot(contains(11)));
+        expect(greenRows(start - const Offset(0, 21), start), isEmpty);
+        expect(
+          greenRows(end + const Offset(0, 10), end + const Offset(0, 28)),
+          isEmpty,
+        );
+      }
+      final rawMarker = markers.last.center;
+      expect(
+        greenRows(
+          Offset(rawMarker.dx, outputs.first.dy),
+          rawMarker - const Offset(0, 7),
+        ),
+        isEmpty,
+      );
+      await tester.tapAt(outputs.first + const Offset(0, 43));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.byType(MappingEditorBottomSheet), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('cv-cell-3-32')));
+      await tester.pumpAndSettle();
+      final sheet = tester.widget<MappingEditorBottomSheet>(
+        find.byType(MappingEditorBottomSheet),
+      );
+      expect(sheet.algorithmIndex, 3);
+      expect(sheet.parameterNumber, 1);
+      expect(sheet.data.cvInput, 32);
+      verifyNever(() => disting.saveMapping(any(), any(), any()));
+      verifyNever(() => disting.saveMappingImmediately(any(), any(), any()));
       expect(tester.takeException(), isNull);
+      verifyZeroInteractions(manager);
     },
   );
 
