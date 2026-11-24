@@ -238,7 +238,15 @@ class BusLanesPainter extends CustomPainter {
 }
 
 /// One port row inside an algorithm block.
+enum PortRowKind { routing, cvModulation }
+
 class PortRowRender {
+  final PortRowKind kind;
+  String get directionGlyph => kind == PortRowKind.cvModulation
+      ? ''
+      : isOutput
+      ? '▶'
+      : '◀';
   final String label;
   final bool isOutput;
   final int row; // overall row index (inputs first, then outputs)
@@ -249,6 +257,7 @@ class PortRowRender {
   final bool unprovided;
 
   const PortRowRender({
+    this.kind = PortRowKind.routing,
     required this.label,
     required this.isOutput,
     required this.row,
@@ -272,8 +281,10 @@ class BusBlockPainter extends CustomPainter {
   final Color mutedColor;
   final Color errorColor;
   final bool selected;
+  final double inputHeight;
 
   BusBlockPainter({
+    this.inputHeight = 0,
     required this.title,
     required this.ports,
     required this.cardColor,
@@ -312,11 +323,25 @@ class BusBlockPainter extends CustomPainter {
     );
 
     for (final port in ports) {
-      final y = BusLanesMetrics.portRowY(port.row);
+      final virtualInput = port.kind == PortRowKind.cvModulation;
+      final y = virtualInput
+          ? BusLanesMetrics.portRowY(port.row)
+          : inputHeight + BusLanesMetrics.portRowY(port.row);
+      if (virtualInput) {
+        canvas.drawRect(
+          Rect.fromLTWH(
+            4,
+            y - BusLanesMetrics.portRowHeight / 2,
+            BusLanesMetrics.gutterWidth - 8,
+            BusLanesMetrics.portRowHeight,
+          ),
+          Paint()..color = port.color.withValues(alpha: 0.1),
+        );
+      }
       final color = port.unprovided ? errorColor : port.color;
 
       // Shunt guide from the gutter label to the bead.
-      if (port.connected) {
+      if (port.connected && !virtualInput) {
         canvas.drawLine(
           Offset(BusLanesMetrics.gutterWidth - 6, y),
           Offset(port.beadX, y),
@@ -339,7 +364,7 @@ class BusBlockPainter extends CustomPainter {
 
       // Direction marker + port label in the gutter. Larger arrow so the
       // read/write direction is obvious at a glance.
-      final arrow = port.isOutput ? '▶' : '◀';
+      final arrow = port.directionGlyph;
       _text(
         canvas,
         arrow,
@@ -389,6 +414,7 @@ class BusBlockPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant BusBlockPainter old) =>
       old.title != title ||
+      old.inputHeight != inputHeight ||
       old.ports != ports ||
       old.selected != selected ||
       old.cardColor != cardColor;

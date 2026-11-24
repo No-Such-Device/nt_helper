@@ -5,6 +5,50 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:nt_helper/ui/widgets/packed_mapping_data_editor.dart';
 
+Future<void> showParameterMappingEditor(
+  BuildContext context, {
+  required int algorithmIndex,
+  required int parameterNumber,
+}) async {
+  final distingCubit = context.read<DistingCubit>();
+  final state = distingCubit.state;
+  if (state is! DistingStateSynchronized ||
+      algorithmIndex < 0 ||
+      algorithmIndex >= state.slots.length) {
+    return;
+  }
+  final slot = state.slots[algorithmIndex];
+  final mapping =
+      slot.mappings
+          .where((m) => m.parameterNumber == parameterNumber)
+          .firstOrNull ??
+      slot.mappings.elementAtOrNull(parameterNumber);
+  if (mapping == null ||
+      (mapping.parameterNumber >= 0 &&
+          mapping.parameterNumber != parameterNumber)) {
+    return;
+  }
+  final parameter = slot.parameters
+      .where((p) => p.parameterNumber == parameterNumber)
+      .firstOrNull;
+  final midiCubit = context.read<MidiListenerCubit>();
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => MappingEditorBottomSheet(
+      myMidiCubit: midiCubit,
+      distingCubit: distingCubit,
+      data: mapping.packedMappingData,
+      slots: state.slots,
+      algorithmIndex: algorithmIndex,
+      parameterNumber: parameterNumber,
+      parameterMin: parameter?.min ?? 0,
+      parameterMax: parameter?.max ?? 0,
+      powerOfTen: parameter?.powerOfTen ?? 0,
+    ),
+  );
+}
+
 class MappingEditorBottomSheet extends StatelessWidget {
   const MappingEditorBottomSheet({
     super.key,

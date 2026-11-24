@@ -183,12 +183,56 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       final rowAfter = signals[s + 1];
 
       // Signal-above row
-      pinnedRows.add(TableRow(children: [SizedBox(height: _cellHeight)]));
+      pinnedRows.add(
+        TableRow(
+          children: [
+            SizedBox(
+              height: _cellHeight,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(
+                  width: 30,
+                  child: Builder(
+                    builder: (buttonContext) {
+                      final mappings = modulations
+                          .where(
+                            (m) =>
+                                m.destinationSlot == info.algorithmIndex &&
+                                !deviceIoProfile.contains(m.bus),
+                          )
+                          .toList();
+                      return CvModulationButton(
+                        compact: true,
+                        mappings: mappings,
+                        onEdit: () =>
+                            editCvModulations(buttonContext, mappings),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
       mainRows.add(
         TableRow(
           children: [
             for (int ch = 1; ch <= numBuses; ch++)
-              _signalAboveCell(ch, rowBefore, info, colours, scheme.error),
+              _signalAboveCell(
+                ch,
+                rowBefore,
+                info,
+                colours,
+                scheme.error,
+                modulations
+                    .where(
+                      (m) =>
+                          m.destinationSlot == info.algorithmIndex &&
+                          m.bus == ch,
+                    )
+                    .toList(),
+              ),
           ],
         ),
       );
@@ -215,27 +259,6 @@ class _RoutingTableViewState extends State<RoutingTableView> {
                       style: slotNameStyle,
                     ),
                   ),
-                  if (modulations.any(
-                    (m) =>
-                        m.destinationSlot == info.algorithmIndex &&
-                        !deviceIoProfile.contains(m.bus),
-                  ))
-                    Positioned(
-                      right: 0,
-                      width: 30,
-                      top: 0,
-                      bottom: 0,
-                      child: CvModulationButton(
-                        compact: true,
-                        mappings: modulations
-                            .where(
-                              (m) =>
-                                  m.destinationSlot == info.algorithmIndex &&
-                                  !deviceIoProfile.contains(m.bus),
-                            )
-                            .toList(),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -255,13 +278,6 @@ class _RoutingTableViewState extends State<RoutingTableView> {
                 unusedBg: unusedBg,
                 cellStyle: cellStyle,
                 deviceIoProfile: deviceIoProfile,
-                modulations: modulations
-                    .where(
-                      (m) =>
-                          m.destinationSlot == info.algorithmIndex &&
-                          m.bus == ch,
-                    )
-                    .toList(),
               ),
           ],
         ),
@@ -379,27 +395,47 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     RoutingInformation info,
     List<Color> colours,
     Color errorColor,
+    List<CvModulation> modulations,
   ) {
     final usesChannel = info.readsBus(ch, signals: true, mappings: false);
     final signalLevel = ch < rowBefore.length ? rowBefore[ch] : 0;
     final bgColor = colours[signalLevel + 3 * (ch & 1)];
 
-    if (!usesChannel) {
-      return Container(width: _cellWidth, height: _cellHeight, color: bgColor);
-    }
     final unprovided = signalLevel == 0;
     return Container(
       width: _cellWidth,
       height: _cellHeight,
       alignment: Alignment.center,
-      color: bgColor,
-      child: Text(
-        '\u2193',
-        style: TextStyle(
-          fontSize: 13,
-          color: unprovided ? errorColor : null,
-          fontWeight: unprovided ? FontWeight.bold : FontWeight.normal,
-        ),
+      color: modulations.isEmpty
+          ? bgColor
+          : Color.alphaBlend(
+              cvModulationColor(context).withValues(alpha: 0.14),
+              bgColor,
+            ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (usesChannel)
+            Text(
+              '\u2193',
+              style: TextStyle(
+                fontSize: 13,
+                color: unprovided ? errorColor : null,
+                fontWeight: unprovided ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          if (modulations.isNotEmpty)
+            Expanded(
+              child: Builder(
+                builder: (buttonContext) => CvModulationButton(
+                  key: ValueKey('cv-cell-${info.algorithmIndex}-$ch'),
+                  mappings: modulations,
+                  onEdit: () => editCvModulations(buttonContext, modulations),
+                  compact: true,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -413,7 +449,6 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     required Color unusedBg,
     required TextStyle? cellStyle,
     required DeviceIoProfile deviceIoProfile,
-    required List<CvModulation> modulations,
   }) {
     final levelBefore = ch < signalsBefore.length ? signalsBefore[ch] : 0;
     final isUsed = info.usesBus(ch);
@@ -435,13 +470,10 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       height: _cellHeight,
       alignment: Alignment.center,
       color: bgColor,
-      child: modulations.isNotEmpty
-          ? CvModulationButton(
-              key: ValueKey('cv-cell-${info.algorithmIndex}-$ch'),
-              mappings: modulations,
-              compact: true,
-            )
-          : Text(_condensedChannelLabel(ch, deviceIoProfile), style: cellStyle),
+      child: Text(
+        _condensedChannelLabel(ch, deviceIoProfile),
+        style: cellStyle,
+      ),
     );
   }
 

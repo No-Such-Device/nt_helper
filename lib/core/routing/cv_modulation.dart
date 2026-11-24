@@ -80,6 +80,9 @@ class CvModulation {
        caveats = List.unmodifiable(caveats);
 
   String get label => 'CV → $parameterName';
+  bool get usesOwnInputSnapshot => source == 0;
+  bool get usesModuleInputSnapshot => source == 1;
+  int? get sourceSlotIndex => source >= 2 ? source - 2 : null;
   String get description => [
     '$busLabel → Slot ${destinationSlot + 1}: $parameterName (parameter $parameterNumber)',
     snapshot,
@@ -179,9 +182,16 @@ List<CvModulation> projectCvModulations({
       final page = slot.pages.pages
           .where((v) => v.parameters.contains(p))
           .firstOrNull;
+      final channel = page == null
+          ? null
+          : RegExp(r'^Channel (\d+)$').firstMatch(page.name)?.group(1);
+      final rawName = metadata?.name ?? '';
+      final parameterName = channel != null && rawName.startsWith('$channel:')
+          ? rawName.substring(channel.length + 1).trimLeft()
+          : rawName;
       final name = metadata == null || metadata.name.isEmpty
           ? 'Parameter $p'
-          : '${page == null || page.name.isEmpty ? '' : '${page.name}: '}${metadata.name}';
+          : '${page == null || page.name.isEmpty ? '' : '${page.name}: '}$parameterName';
       final source = data.version > 0 && data.version < 4 ? 0 : data.source;
       final sourceSlot = source - 2;
       final validBus = profile.contains(data.cvInput);

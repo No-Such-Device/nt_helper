@@ -98,6 +98,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
   // Map of node IDs to their positions
   final Map<String, Offset> _nodePositions = {};
   final List<(CvModulation, Offset, Offset)> _cvHitTargets = [];
+  final Map<String, Offset> _cvInputPositions = {};
   // Map of node IDs to their actual rendered sizes
   final Map<String, Size> _nodeSizes = {};
   final Set<String> _selectedNodes = {};
@@ -519,6 +520,15 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     setState(() {
       _portPositions[portId] = canvasPosition;
     });
+  }
+
+  void _updateCvInputAnchor(String id, Offset globalCenter) {
+    if (!mounted) return;
+    final box = _canvasKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.attached) return;
+    final position = box.globalToLocal(globalCenter);
+    if (_cvInputPositions[id] == position) return;
+    setState(() => _cvInputPositions[id] = position);
   }
 
   // Fit viewport to current content center (no zoom)
@@ -1999,8 +2009,6 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                         ),
 
                         // 2. Nodes (Stacked from bottom to top)
-                        ..._buildCvModulationOverlay(algorithms),
-
                         // Physical Output Nodes (Lowest Z-order)
                         if (widget.showPhysicalPorts)
                           ..._buildPhysicalOutputNodes(
@@ -2031,6 +2039,8 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                           connections,
                           stateNodePositions,
                         ),
+
+                        ..._buildCvModulationOverlay(algorithms),
 
                         // 3. Foreground Connections (Tips only, on top of everything)
                         _buildConnections(
@@ -2388,44 +2398,91 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     bool labelsOnly = false,
   }) {
     final paths = <(Offset, Offset)>[];
+    final sourceHalos = <Offset>{};
     final labels = <Widget>[];
-    final labelHeight = math.max(
-      28.0,
-      MediaQuery.textScalerOf(context).scale(20) + 8,
-    );
     if (!labelsOnly) _cvHitTargets.clear();
+    final taps = <String>{};
     for (final algorithm in algorithms) {
-      final mappings = algorithm.cvModulations;
-      final position = _nodePositions[algorithm.id];
-      if (mappings.isEmpty || position == null) continue;
-      final target = position + const Offset(0, 26);
-      for (final mapping in mappings) {
-        final sources = mapping.contributorPortIds
-            .map(_getPortPosition)
-            .whereType<Offset>()
-            .toList();
-        if (sources.isEmpty) sources.add(target - const Offset(90, 0));
-        for (final source in sources) {
-          paths.add((source, target));
-          if (!labelsOnly) _cvHitTargets.add((mapping, source, target));
+      for (final mapping in algorithm.cvModulations) {
+        final target = _cvInputPositions[mapping.id];
+        if (target == null) continue;
+        final snapshotMappings = [
+          for (final a in algorithms)
+            for (final m in a.cvModulations)
+              if (m.source == mapping.source &&
+                  (!mapping.usesOwnInputSnapshot ||
+                      m.destinationAlgorithmId ==
+                          mapping.destinationAlgorithmId))
+                m,
+        ];
+        final namedSource = mapping.contributors.length == 1
+            ? _getPortPosition(mapping.contributors.single.portId)
+            : null;
+        if (namedSource != null &&
+            mapping.contributors.single.slotIndex != null) {
+          sourceHalos.add(namedSource);
+        }
+        Offset? source = namedSource;
+        if (source == null && mapping.contributors.isNotEmpty) {
+          if (mapping.usesModuleInputSnapshot) {
+            source = _getPortPosition(mapping.contributorPortIds.first);
+          } else {
+            final snapshotNode = mapping.usesOwnInputSnapshot
+                ? algorithm
+                : algorithms
+                      .where((a) => a.index == mapping.sourceSlotIndex)
+                      .firstOrNull;
+            final position = snapshotNode == null
+                ? null
+                : _nodePositions[snapshotNode.id];
+            if (position != null) {
+              final size = _nodeSizes[snapshotNode!.id];
+              final buses =
+                  algorithm.cvModulations
+                      .where((m) => m.source == mapping.source)
+                      .map((m) => m.bus)
+                      .toSet()
+                      .toList()
+                    ..sort();
+              final tapRow = buses.indexOf(mapping.bus) * 26.0;
+              source = mapping.usesOwnInputSnapshot
+                  ? position + Offset(-84, 26 + tapRow)
+                  : position +
+                        Offset(
+                          (size?.width ?? 260) + 24,
+                          (size?.height ?? 80) - 12 - tapRow,
+                        );
+            }
+          }
+        }
+        // An unresolved bus is an open stub, never a guessed producer.
+        source ??= target - const Offset(60, 0);
+        paths.add((source, target));
+        if (!labelsOnly) _cvHitTargets.add((mapping, source, target));
+        final tapId = mapping.contributors.isEmpty
+            ? mapping.id
+            : '${mapping.usesOwnInputSnapshot ? mapping.destinationAlgorithmId : 'source'}-${mapping.source}-${mapping.bus}';
+        if (namedSource == null && taps.add(tapId)) {
+          labels.add(
+            Positioned(
+              left: source.dx - 10,
+              top: source.dy - 12,
+              width: 72,
+              height: 24,
+              child: CvModulationButton(
+                key: ValueKey('cv-snapshot-$tapId'),
+                mappings: mapping.contributors.isEmpty
+                    ? [mapping]
+                    : snapshotMappings
+                          .where((m) => m.bus == mapping.bus)
+                          .toList(),
+                displayLabel: mapping.busLabel,
+                onInspect: _clearSelectedConnection,
+              ),
+            ),
+          );
         }
       }
-      labels.add(
-        Positioned(
-          left: position.dx,
-          top: position.dy - labelHeight,
-          width: 260,
-          height: labelHeight,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: CvModulationButton(
-              key: ValueKey('cv-canvas-${algorithm.id}'),
-              mappings: mappings,
-              onInspect: _clearSelectedConnection,
-            ),
-          ),
-        ),
-      );
     }
     if (labelsOnly) return labels;
     return [
@@ -2434,6 +2491,8 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
           child: CustomPaint(
             painter: CvModulationCurve(
               endpoints: paths,
+              sourceHalos: sourceHalos,
+              graphInput: true,
               color: cvModulationColor(context),
             ),
           ),
@@ -2496,6 +2555,11 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
               isDimmed: _focusedAlgorithmIds.isNotEmpty && !isSelected,
               inputLabels: algorithm.inputPorts.map((p) => p.name).toList(),
               outputLabels: algorithm.outputPorts.map((p) => p.name).toList(),
+              virtualCvInputs: CvVirtualInputs(
+                mappings: algorithm.cvModulations,
+                onInspect: _clearSelectedConnection,
+                onAnchor: _updateCvInputAnchor,
+              ),
               inputPortIds: algorithm.inputPorts.map((p) => p.id).toList(),
               outputPortIds: algorithm.outputPorts.map((p) => p.id).toList(),
               outputChannelNumbers: es5Data != null
@@ -3407,11 +3471,27 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     );
   }
 
+  bool _isOnCvCurve(Offset point, Offset start, Offset end) {
+    for (final metric in CvModulationCurve.pathFor(
+      start,
+      end,
+      graphInput: true,
+    ).computeMetrics()) {
+      for (var distance = 0.0; distance <= metric.length; distance += 5) {
+        final tangent = metric.getTangentForOffset(distance);
+        if (tangent != null && (tangent.position - point).distance <= 10) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   void _handleCanvasTap(Offset tapPosition, List<Connection> connections) {
     _requestCanvasFocus();
     final cvHits = {
       for (final (mapping, start, end) in _cvHitTargets)
-        if (_distanceFromPointToBezier(tapPosition, start, end) <= 10) mapping,
+        if (_isOnCvCurve(tapPosition, start, end)) mapping,
     };
     if (cvHits.isNotEmpty) {
       _clearSelectedConnection();

@@ -11,11 +11,15 @@ import 'package:nt_helper/models/packed_mapping_data.dart';
 Slot cvSlot(
   int index, {
   List<int> outputs = const [],
+  List<String> outputNames = const [],
   List<OutputMode> modes = const [],
   List<int> inputs = const [],
   List<int> cvBuses = const [],
+  List<String> cvNames = const [],
   int source = 0,
   String? guid,
+  String? algorithmName,
+  String pageName = 'Main',
 }) {
   final parameters = <ParameterInfo>[];
   final values = <ParameterValue>[];
@@ -53,7 +57,11 @@ Slot cvSlot(
 
   for (var i = 0; i < outputs.length; i++) {
     final outputNumber = parameters.length;
-    add('Step output ${i + 1}', outputs[i], 2);
+    add(
+      i < outputNames.length ? outputNames[i] : 'Step output ${i + 1}',
+      outputs[i],
+      2,
+    );
     if (i < modes.length) {
       outputModeMap[parameters.length] = [outputNumber];
       add(
@@ -67,20 +75,27 @@ Slot cvSlot(
     add('Input ${i + 1}', inputs[i], 1);
   }
   for (var i = 0; i < cvBuses.length; i++) {
-    add('CC ${i + 1}', 64, 0, cvBus: cvBuses[i]);
+    add(
+      i < cvNames.length ? cvNames[i] : 'CC ${i + 1}',
+      64,
+      0,
+      cvBus: cvBuses[i],
+    );
   }
   return Slot(
     algorithm: Algorithm(
       algorithmIndex: index,
       guid: guid ?? 's$index',
-      name: outputs.isEmpty ? 'MIDI CC Generator $index' : 'Step $index',
+      name:
+          algorithmName ??
+          (outputs.isEmpty ? 'MIDI CC Generator $index' : 'Step $index'),
     ),
     routing: RoutingInfo(algorithmIndex: index, routingInfo: List.filled(6, 0)),
     pages: ParameterPages(
       algorithmIndex: index,
       pages: [
         ParameterPage(
-          name: 'Main',
+          name: pageName,
           parameters: List.generate(parameters.length, (i) => i),
         ),
       ],
