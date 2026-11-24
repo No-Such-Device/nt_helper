@@ -77,4 +77,5 @@ const _$PortRoleEnumMap = {
   PortRole.physicalInputBus: 'physicalInputBus',
   PortRole.physicalOutputBus: 'physicalOutputBus',
   PortRole.es5Bus: 'es5Bus',
+  PortRole.expanderOutputBus: 'expanderOutputBus',
 };

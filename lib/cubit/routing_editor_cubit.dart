@@ -1,3 +1,7 @@
+import 'package:nt_helper/core/routing/ntx8cv_routing.dart';
+import 'package:nt_helper/models/module_settings.dart';
+import 'package:nt_helper/domain/i_disting_midi_manager.dart';
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
@@ -77,6 +81,29 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
   Future<SharedPreferences>? _prefs;
   StreamSubscription<DistingState>? _distingStateSubscription;
   NodeLayoutAlgorithm? _layoutAlgorithm;
+  StreamSubscription<ModuleSettingsState>? _settingsSubscription;
+  int? _requestedSettingsConnection;
+  bool _ntxRoutingRequested = false;
+
+  void ensureNtx8cvRoutingLoaded() {
+    if (_ntxRoutingRequested || isClosed) return;
+    _ntxRoutingRequested = true;
+    scheduleMicrotask(() {
+      if (!isClosed && _distingCubit != null) {
+        _processDistingState(_distingCubit.state);
+      }
+    });
+  }
+
+  Ntx8cvRouting? _lastNtxRouting;
+
+  Set<int> _protectedBuses(List<Slot> slots) => {
+    ...cvMappingBuses(slots),
+    ...?_distingCubit?.ntx8cvRouting?.protectedBuses(
+      _lastProcessedProfile ?? DeviceIoProfile.distingExtended,
+    ),
+  };
+
   List<Slot>? _lastProcessedSlots;
   DeviceIoProfile? _lastProcessedProfile;
   List<AlgorithmInfo>? _lastProcessedAlgorithms;
@@ -172,6 +199,25 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
             isDirty,
             renameConfirmationName,
           ) {
+            if (!offline &&
+                !demo &&
+                firmwareVersion.isModuleSettingsCandidate &&
+                disting is ModuleSettingsTransport) {
+              _settingsSubscription ??= _distingCubit!.moduleSettingsStream
+                  .listen((_) {
+                    scheduleMicrotask(() {
+                      if (!isClosed) _processDistingState(_distingCubit.state);
+                    });
+                  });
+              final settings = _distingCubit!.moduleSettingsState;
+              if (_ntxRoutingRequested &&
+                  _requestedSettingsConnection != settings.connectionId) {
+                _requestedSettingsConnection = settings.connectionId;
+                scheduleMicrotask(() {
+                  if (!isClosed) unawaited(_distingCubit.loadModuleSettings());
+                });
+              }
+            }
             _processSynchronizedState(slots, deviceIoProfile, algorithms);
           },
     );
@@ -234,7 +280,10 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
   ) {
     // Library metadata can arrive after slots, supplying channel-count
     // specification names. Rebuild when it changes even if slots do not.
-    if (identical(slots, _lastProcessedSlots) &&
+    final ntxRouting = _distingCubit?.ntx8cvRouting;
+    if (state is RoutingEditorStateLoaded &&
+        ntxRouting == _lastNtxRouting &&
+        identical(slots, _lastProcessedSlots) &&
         deviceIoProfile == _lastProcessedProfile &&
         identical(algorithmLibrary, _lastProcessedAlgorithms)) {
       return;
@@ -248,6 +297,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       return;
     }
 
+    _lastNtxRouting = ntxRouting;
     _lastProcessedSlots = slots;
     _lastProcessedProfile = deviceIoProfile;
     _lastProcessedAlgorithms = algorithmLibrary;
@@ -374,6 +424,15 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
             hasExtendedAuxBuses: hasExtended,
           );
 
+      discoveredConnections.addAll(
+        ntx8cvConnections(
+          ports: ntxRouting?.ports(deviceIoProfile) ?? const [],
+          algorithms: algorithms.map(
+            (a) => (id: a.id, index: a.index, outputs: a.outputPorts),
+          ),
+        ),
+      );
+
       // Validate connections for slot ordering violations
       final connections = ConnectionValidator.validateConnections(
         discoveredConnections,
@@ -397,6 +456,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       emit(
         RoutingEditorState.loaded(
           deviceIoProfile: deviceIoProfile,
+          ntx8cvRouting: ntxRouting,
           physicalInputs: physicalInputs,
           physicalOutputs: physicalOutputs,
           es5Inputs: es5Inputs,
@@ -404,6 +464,12 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
           connections: connections,
           zoomLevel: zoomLevel,
           panOffset: panOffset,
+          nodePositions: currentState is RoutingEditorStateLoaded
+              ? currentState.nodePositions
+              : const {},
+          focusedAlgorithmIds: currentState is RoutingEditorStateLoaded
+              ? currentState.focusedAlgorithmIds
+              : const {},
           isHardwareSynced: true,
           lastSyncTime: DateTime.now(),
           auxBusUsage: auxBusUsage,
@@ -492,6 +558,13 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
       if (targetPort == null) {
         throw ArgumentError('Target port not found: $targetPortId');
+      }
+
+      if (sourcePort.effectiveRole == PortRole.expanderOutputBus ||
+          targetPort.effectiveRole == PortRole.expanderOutputBus) {
+        throw StateError(
+          'NTX-8CV taps are read only. Edit the algorithm bus assignment.',
+        );
       }
 
       // Validate connection using symmetric ConnectionValidator
@@ -1181,7 +1254,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
               _resolvePortBusValue(port, liveSourceSlot) != null)
             _resolvePortBusValue(port, liveSourceSlot)!,
     };
-    if (cvMappingBuses(liveState.slots).any(changedWriterBuses.contains)) {
+    if (_protectedBuses(liveState.slots).any(changedWriterBuses.contains)) {
       throw StateError(
         'Automatic connection changes cannot modify CV-mapped bus writers',
       );
@@ -1282,6 +1355,15 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
   ) {
     final result = <int, AuxBusUsageInfo>{};
 
+    for (final port
+        in _distingCubit?.ntx8cvRouting?.ports(deviceIoProfile) ?? <Port>[]) {
+      if (!port.isActive) continue;
+      final bus = port.busValue!;
+      result
+          .putIfAbsent(bus, () => AuxBusUsageInfo(busNumber: bus))
+          .destNames
+          .add('NTX-8CV ${port.hardwareIndex}');
+    }
     for (final algorithm in algorithms) {
       if (algorithm.index >= slots.length) continue;
       final slot = slots[algorithm.index];
@@ -1382,7 +1464,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         'Refresh all parameter mappings before allocating AUX buses',
       );
     }
-    final protectedBuses = cvMappingBuses(distingState.slots);
+    final protectedBuses = _protectedBuses(distingState.slots);
 
     // Map each AUX bus to the highest slot number that uses it
     final maxSlotPerBus = <int, int>{};
@@ -1447,7 +1529,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
     final deviceIoProfile = currentState.deviceIoProfile;
     if (!hasCompleteMappingCoverage(distingState.slots)) return null;
-    final protectedBuses = cvMappingBuses(distingState.slots);
+    final protectedBuses = _protectedBuses(distingState.slots);
 
     int? valueOf(Slot slot, int? parameterNumber) {
       if (parameterNumber == null) return null;
@@ -1571,7 +1653,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
           }
         }
       }
-      final protectedBuses = cvMappingBuses(snapshot.slots);
+      final protectedBuses = _protectedBuses(snapshot.slots);
       if (plan.merges.any(
         (m) =>
             protectedBuses.contains(m.keepBus) ||
@@ -1594,7 +1676,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
             );
           }
         }
-        final buses = cvMappingBuses(live.slots);
+        final buses = _protectedBuses(live.slots);
         if (plan.merges.any(
           (m) => buses.contains(m.keepBus) || buses.contains(m.freeBus),
         )) {
@@ -1650,6 +1732,10 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         orElse: () =>
             throw ArgumentError('Connection not found: $connectionId'),
       );
+
+      if (connectionToDelete.destinationPortId.startsWith('ntx8cv_out_')) {
+        return;
+      }
 
       // Clear the bus assignments in hardware
       await _clearBusAssignmentsForConnection(connectionToDelete, currentState);
@@ -1753,7 +1839,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       final profile = distingState.deviceIoProfile;
       if (!profile.isAux(sourceBus)) return -1;
       if (!hasCompleteMappingCoverage(distingState.slots)) return -1;
-      final protectedBuses = cvMappingBuses(distingState.slots);
+      final protectedBuses = _protectedBuses(distingState.slots);
       if (protectedBuses.contains(sourceBus) ||
           protectedBuses.contains(destinationBus)) {
         return -1;
@@ -1807,7 +1893,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         if (live is! DistingStateSynchronized ||
             !identical(live.disting, distingState.disting) ||
             !hasCompleteMappingCoverage(live.slots) ||
-            cvMappingBuses(live.slots)
+            _protectedBuses(live.slots)
                 .any((b) => b == sourceBus || b == assignedDestination)) {
           throw StateError('Routing changed while moving AUX buses');
         }
@@ -1838,6 +1924,10 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     final currentState = state;
     if (currentState is! RoutingEditorStateLoaded) {
       return null;
+    }
+
+    if (connection.destinationPortId.startsWith('ntx8cv_out_')) {
+      return 'NTX-8CV taps are read only. Edit the algorithm bus assignment.';
     }
 
     // Output→physical-output connections are always "deletable" from the editor
@@ -1947,6 +2037,10 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       if (port.id == portId) return port;
     }
 
+    for (final port in state.ntx8cvOutputs) {
+      if (port.id == portId) return port;
+    }
+
     // Check ES-5 inputs
     for (final port in state.es5Inputs) {
       if (port.id == portId) return port;
@@ -1977,6 +2071,10 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
     // Check physical outputs (no algorithm index)
     for (final port in state.physicalOutputs) {
+      if (port.id == portId) return (port, null);
+    }
+
+    for (final port in state.ntx8cvOutputs) {
       if (port.id == portId) return (port, null);
     }
 
@@ -2856,6 +2954,9 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
     try {
       await _distingCubit?.refreshRouting();
+      if (_settingsSubscription != null) {
+        await _distingCubit?.loadModuleSettings(force: true);
+      }
       // State will be updated through the stream subscription
     } catch (e) {
       // Intentionally empty
@@ -3163,6 +3264,12 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     if (_distingCubit == null) return;
     if (port.parameterNumber == null) return;
     if (port.isBus) return; // Physical/ES-5 ports don't have parameters
+    final live = _distingCubit.state;
+    if (live is DistingStateSynchronized &&
+        port.isBusWriter &&
+        _protectedBuses(live.slots).contains(port.busValue)) {
+      return;
+    }
 
     for (final algorithm in state.algorithms) {
       final match = [
@@ -3270,7 +3377,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         'Refresh all parameter mappings before allocating buses',
       );
     }
-    final usedBuses = cvMappingBuses(distingState.slots);
+    final usedBuses = _protectedBuses(distingState.slots);
     for (final algorithm in state.algorithms) {
       if (algorithm.index >= distingState.slots.length) continue;
       final slot = distingState.slots[algorithm.index];
@@ -3794,6 +3901,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
   @override
   Future<void> close() {
     _distingStateSubscription?.cancel();
+    _settingsSubscription?.cancel();
     _lastProcessedSlots = null;
     return super.close();
   }

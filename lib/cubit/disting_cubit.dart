@@ -1,3 +1,7 @@
+import 'package:nt_helper/core/routing/ntx8cv_routing.dart';
+import 'package:nt_helper/core/routing/algorithm_routing.dart' as routing;
+import 'package:nt_helper/core/routing/models/port.dart' as routing_port;
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -351,6 +355,19 @@ class DistingCubit extends _DistingCubitBase
 
   Future<void> updateScreenshot() async {
     return _hardwareCommandsDelegate.updateScreenshot();
+  }
+
+  Ntx8cvRouting? get ntx8cvRouting {
+    final current = state;
+    if (current is! DistingStateSynchronized ||
+        current.offline ||
+        current.demo) {
+      return null;
+    }
+    return Ntx8cvRouting.fromSettings(
+      moduleSettingsState,
+      current.deviceIoProfile,
+    );
   }
 
   ModuleSettingsState get moduleSettingsState => _moduleSettingsDelegate.state;

@@ -8,6 +8,29 @@ class _StateHelpersDelegate {
   void ensureCvRoutingOrderChangeSafe() {
     final state = _cubit.state;
     if (state is! DistingStateSynchronized) return;
+    final taps =
+        _cubit.ntx8cvRouting?.protectedBuses(state.deviceIoProfile) ?? <int>{};
+    final writers = <int, Set<int>>{};
+    final replaceBuses = <int>{};
+    for (var i = 0; i < state.slots.length && taps.isNotEmpty; i++) {
+      final slotRouting = routing.AlgorithmRouting.fromSlot(
+        state.slots[i],
+        deviceIoProfile: state.deviceIoProfile,
+      );
+      for (final port in slotRouting.outputPorts) {
+        final bus = port.busValue;
+        if (!port.isActive || bus == null || !taps.contains(bus)) continue;
+        writers.putIfAbsent(bus, () => {}).add(i);
+        if (port.outputMode == routing_port.OutputMode.replace) {
+          replaceBuses.add(bus);
+        }
+      }
+    }
+    if (replaceBuses.any((bus) => writers[bus]!.length > 1)) {
+      throw StateError(
+        'Reordering shared NTX-8CV bus writers could change the expander output.',
+      );
+    }
     // Raw user-directed moves keep their legacy path without configured CV.
     // The Module-input exception requires complete evidence when CV is known.
     if (!state.slots.any(

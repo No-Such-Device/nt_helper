@@ -266,9 +266,9 @@ class _MovablePhysicalIONodeState extends State<MovablePhysicalIONode> {
           : PortLabelPosition.right,
       style: PortStyle.jack,
       isConnected:
-          port.isConnected ||
-          (widget.connectedPorts?.contains(port.id) ??
-              false), // Check both port's connection status and connectedPorts
+          port.isActive &&
+          (port.isConnected ||
+              (widget.connectedPorts?.contains(port.id) ?? false)), // Check both port's connection status and connectedPorts
       isHighlighted: port.id == widget.highlightedPortId,
       isFocused: portIndex == _focusedPortIndex,
       onPortPositionResolved: widget.onPortPositionResolved != null
@@ -299,7 +299,20 @@ class _MovablePhysicalIONodeState extends State<MovablePhysicalIONode> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: inner,
+      child: port.effectiveRole == PortRole.expanderOutputBus
+          ? Semantics(
+              label: port.description,
+              child: Tooltip(
+                message: port.description ?? port.name,
+                child: ExcludeSemantics(
+                  child: Opacity(
+                    opacity: port.isActive ? 1 : 0.5,
+                    child: inner,
+                  ),
+                ),
+              ),
+            )
+          : inner,
     );
   }
 
