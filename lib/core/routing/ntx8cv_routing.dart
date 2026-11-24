@@ -17,6 +17,11 @@ class Ntx8cvRouting {
     this.available = true,
   });
 
+  const Ntx8cvRouting.unresolved()
+    : mode = null,
+      channelEnables = null,
+      available = false;
+
   static const nodeId = 'ntx8cv_outputs';
   final Ntx8cvRoutingMode? mode;
   final BigInt? channelEnables;

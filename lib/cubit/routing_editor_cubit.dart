@@ -97,12 +97,26 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
   Ntx8cvRouting? _lastNtxRouting;
 
-  Set<int> _protectedBuses(List<Slot> slots) => {
-    ...cvMappingBuses(slots),
-    ...?_distingCubit?.ntx8cvRouting?.protectedBuses(
-      _lastProcessedProfile ?? DeviceIoProfile.distingExtended,
-    ),
-  };
+  Set<int> _protectedBuses(List<Slot> slots) {
+    final live = _distingCubit?.state;
+    final config = _distingCubit?.ntx8cvRouting;
+    final profile = live is DistingStateSynchronized
+        ? live.deviceIoProfile
+        : _lastProcessedProfile ?? DeviceIoProfile.distingExtended;
+    final unresolvedCandidate =
+        live is DistingStateSynchronized &&
+        !live.offline &&
+        !live.demo &&
+        live.firmwareVersion.isModuleSettingsCandidate &&
+        live.disting is ModuleSettingsTransport &&
+        profile == DeviceIoProfile.distingExtended;
+    return {
+      ...cvMappingBuses(slots),
+      ...?(config ??
+              (unresolvedCandidate ? const Ntx8cvRouting.unresolved() : null))
+          ?.protectedBuses(profile),
+    };
+  }
 
   List<Slot>? _lastProcessedSlots;
   DeviceIoProfile? _lastProcessedProfile;
@@ -1257,6 +1271,27 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     if (_protectedBuses(liveState.slots).any(changedWriterBuses.contains)) {
       throw StateError(
         'Automatic connection changes cannot modify CV-mapped bus writers',
+      );
+    }
+
+    bool acceptsBus(Slot slot, Port port) {
+      final parameter = slot.parameters
+          .where((p) => p.parameterNumber == port.parameterNumber)
+          .firstOrNull;
+      return parameter != null &&
+          busToUse >= parameter.min &&
+          busToUse <= parameter.max;
+    }
+
+    if (changesBus && !acceptsBus(liveSourceSlot, sourceOutputPort) ||
+        !targetIsVirtual &&
+            targetBusValue != busToUse &&
+            !acceptsBus(
+              liveState.slots[targetAlgorithmIndex],
+              targetInputPort,
+            )) {
+      throw StateError(
+        'No compatible unreserved AUX bus for these parameters.',
       );
     }
 

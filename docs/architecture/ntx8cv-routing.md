@@ -42,8 +42,12 @@ The Canvas reuses the movable physical-output renderer and existing cable
 renderer. Bus Lanes has eight fixed endpoint junctions on the existing AUX rails.
 Signal Flow and Accessible List expose the same eight-port configuration. Ports
 remain in place when disabled or during same-session reads/uncertain writes;
-uncertain routes are not presented as active. Disconnect, offline/demo, old
-firmware and new connections cannot retain authoritative old-device routes.
+uncertain routes are not presented as active. Supported connections start with
+an explicitly unresolved configuration, never an assumed unused first group.
+Disconnect, offline/demo, old firmware and new connections cannot retain
+authoritative old-device routes. Signal Flow reserves its endpoint area before
+discovery, including when content is hidden, so the viewport and headers do not
+move on initial completion or failure.
 
 Per-slot cached API records gain `ntx8cv_outputs` for that slot's active output
 bus taps. Slot-list shape and the empty-preset `[]` response are unchanged. The
@@ -52,15 +56,26 @@ API reports first-group scope and does not claim hardware presence.
 ## Mutation safety
 
 Tap edges are derived, not independently editable cables. They cannot be
-created/deleted by dragging, Delete, or ordinary bus-port actions. Algorithm bus
+created/deleted by dragging, Delete, or ordinary bus-port actions. Tap cable
+labels have no output-mode callback or interactive overlay; the source port's
+own ordinary mode editing remains available. Algorithm bus
 assignments remain editable through existing controls. No setting/mode/mask
 write, flash action, reset, reboot or direct NTX request is triggered by routing.
 
 Configured tap buses join CV-reserved buses for AUX allocation, consolidation,
-bus moves and smart deletion. Reader-only fanout is retained where no writer bus
-or mode changes. Shared NTX writers with Replace semantics prevent automatic
-slot movement that could change the final output; single writers and independent
-Add-only writers retain ordinary move behavior. Disabled channels are not
+bus moves and smart deletion. While a supported first-group configuration is
+unresolved (including initial discovery, failed reads or reconnect), AUX 1–8
+remain conservatively reserved without claiming active routes. Confirmed unused
+channels can be reused; old unsupported firmware keeps its legacy allocation.
+Automatic assignments validate both endpoint ranges before their first write,
+so firmware clamping cannot redirect an allocated bus onto a protected channel.
+Reader-only fanout is retained where no writer bus or mode changes.
+
+Move guards compare the actual proposed slot permutation. They reject changed
+relative writer order involving Replace or changed writer/reader ordering on
+protected buses, not unrelated slot moves. Add-only pairs can commute. Existing
+CV snapshot protections remain unchanged. Composite operations without a known
+permutation retain conservative checks. Disabled channels are not
 reported as active voltages; their actual analog behavior is unspecified.
 
 ## Sources and limits

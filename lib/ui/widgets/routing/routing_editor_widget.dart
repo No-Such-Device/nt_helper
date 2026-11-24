@@ -3255,7 +3255,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
               .busLabel, // Pass through bus label for partial connections
           onLabelHover:
               null, // Label hover is handled by the overlay widgets, not here
-          onLabelTap: () => _toggleConnectionOutputMode(connection.id),
+          onLabelTap: connection.destinationPortId.startsWith('ntx8cv_out_')
+              ? null
+              : () => _toggleConnectionOutputMode(connection.id),
           sourceNodeBounds: nodeBoundsMap[sourceNodeId],
           destinationNodeBounds: nodeBoundsMap[destinationNodeId],
           sourceOccluderBounds: buildOccluderBoundsForNode(sourceNodeId),
@@ -4766,7 +4768,10 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
           connectionType: ConnectionType.algorithmToAlgorithm,
         ),
       );
-      if (!visibleConnectionIds.contains(connection.id)) continue;
+      if (!visibleConnectionIds.contains(connection.id) ||
+          connection.destinationPortId.startsWith('ntx8cv_out_')) {
+        continue;
+      }
 
       // Find the source port to check for mode parameter
       // Collect all ports from algorithms
@@ -4794,6 +4799,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       final hasModeParameter = sourcePort.modeParameterNumber != null;
 
       Widget overlay = GestureDetector(
+        key: ValueKey('connection-mode-$connectionId'),
         behavior: HitTestBehavior.opaque, // Capture all taps in this area
         onTap: () {
           _requestCanvasFocus();
@@ -4911,6 +4917,8 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       (conn) => conn.id == connectionId,
       orElse: () => throw ArgumentError('Connection not found: $connectionId'),
     );
+
+    if (connection.destinationPortId.startsWith('ntx8cv_out_')) return;
 
     // Toggle the output mode for the source port
     context.read<RoutingEditorCubit>().togglePortOutputMode(

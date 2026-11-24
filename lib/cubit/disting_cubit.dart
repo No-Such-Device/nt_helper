@@ -361,13 +361,17 @@ class DistingCubit extends _DistingCubitBase
     final current = state;
     if (current is! DistingStateSynchronized ||
         current.offline ||
-        current.demo) {
+        current.demo ||
+        !current.firmwareVersion.isModuleSettingsCandidate ||
+        current.disting is! ModuleSettingsTransport ||
+        current.deviceIoProfile != DeviceIoProfile.distingExtended) {
       return null;
     }
     return Ntx8cvRouting.fromSettings(
-      moduleSettingsState,
-      current.deviceIoProfile,
-    );
+          moduleSettingsState,
+          current.deviceIoProfile,
+        ) ??
+        const Ntx8cvRouting.unresolved();
   }
 
   ModuleSettingsState get moduleSettingsState => _moduleSettingsDelegate.state;
@@ -710,8 +714,11 @@ class DistingCubit extends _DistingCubitBase
   }
 
   @override
-  void ensureCvRoutingOrderChangeSafe() =>
-      _stateHelpersDelegate.ensureCvRoutingOrderChangeSafe();
+  void ensureCvRoutingOrderChangeSafe({int? fromSlot, int? toSlot}) =>
+      _stateHelpersDelegate.ensureCvRoutingOrderChangeSafe(
+        fromSlot: fromSlot,
+        toSlot: toSlot,
+      );
 
   Future<int> moveAlgorithmUp(int algorithmIndex) async {
     return moveAlgorithmUpImpl(algorithmIndex);

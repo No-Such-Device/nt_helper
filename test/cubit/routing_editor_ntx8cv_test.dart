@@ -1,6 +1,9 @@
 import 'package:nt_helper/core/routing/models/port.dart';
 
 import 'dart:async';
+
+import 'package:fake_async/fake_async.dart';
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -62,11 +65,13 @@ void main() {
   );
   Future<void> settled() async {
     if (routing.state is RoutingEditorStateLoaded &&
-        (routing.state as RoutingEditorStateLoaded).ntx8cvRouting != null) {
+        (routing.state as RoutingEditorStateLoaded).ntx8cvRouting?.available ==
+            true) {
       return;
     }
     await routing.stream.firstWhere(
-      (s) => s is RoutingEditorStateLoaded && s.ntx8cvRouting != null,
+      (s) =>
+          s is RoutingEditorStateLoaded && s.ntx8cvRouting?.available == true,
     );
   }
 
@@ -105,8 +110,8 @@ void main() {
     routing.ensureNtx8cvRoutingLoaded();
   });
   tearDown(() async {
-    await routing.close();
-    await disting.close();
+    if (!routing.isClosed) await routing.close();
+    if (!disting.isClosed) await disting.close();
   });
 
   test(
@@ -152,6 +157,147 @@ void main() {
     expect(disting.ensureCvRoutingOrderChangeSafe, throwsStateError);
     await expectLater(disting.moveAlgorithmUp(1), throwsStateError);
     verifyZeroInteractions(live);
+  });
+
+  for (final up in [true, false]) {
+    test(
+      'unrelated ${up ? 'up' : 'down'} move preserves NTX writer order across no-I/O slots',
+      () async {
+        await settled();
+        final state = disting.state as DistingStateSynchronized;
+        final slots = [
+          cvSlot(0, outputs: [21], modes: [OutputMode.replace]),
+          cvSlot(1, outputs: [21], modes: [OutputMode.add]),
+          cvSlot(2),
+          cvSlot(3),
+        ];
+        disting.emit(state.copyWith(slots: slots));
+        when(() => live.requestMoveAlgorithmUp(any())).thenAnswer((_) async {});
+        when(() => live.requestMoveAlgorithmDown(any()))
+            .thenAnswer((_) async {});
+        clearInteractions(live);
+        fakeAsync((clock) {
+          int? result;
+          final operation = up
+              ? disting.moveAlgorithmUp(3)
+              : disting.moveAlgorithmDown(2);
+          unawaited(operation.then((value) => result = value));
+          clock.flushMicrotasks();
+          expect(result, up ? 2 : 3);
+          final moved = (disting.state as DistingStateSynchronized).slots;
+          expect(moved.map((s) => s.algorithm.guid), [
+            slots[0].algorithm.guid,
+            slots[1].algorithm.guid,
+            slots[3].algorithm.guid,
+            slots[2].algorithm.guid,
+          ]);
+          if (up) {
+            verify(() => live.requestMoveAlgorithmUp(3)).called(1);
+          } else {
+            verify(() => live.requestMoveAlgorithmDown(2)).called(1);
+          }
+          disting.emit(const DistingState.initial());
+          clock.elapse(const Duration(seconds: 2));
+          clock.flushMicrotasks();
+        });
+      },
+    );
+  }
+
+  test(
+    'move guards compare the actual writer and reader permutation',
+    () async {
+      await settled();
+      final state = disting.state as DistingStateSynchronized;
+      disting.emit(
+        state.copyWith(
+          slots: [
+            cvSlot(0, outputs: [21], modes: [OutputMode.replace]),
+            cvSlot(1),
+            cvSlot(2, outputs: [21], modes: [OutputMode.add]),
+            cvSlot(3),
+          ],
+        ),
+      );
+      expect(
+        () => disting.ensureCvRoutingOrderChangeSafe(fromSlot: 3, toSlot: 2),
+        returnsNormally,
+      );
+      expect(
+        () => disting.ensureCvRoutingOrderChangeSafe(fromSlot: 1, toSlot: 0),
+        returnsNormally,
+      );
+      expect(
+        () => disting.ensureCvRoutingOrderChangeSafe(fromSlot: 2, toSlot: 0),
+        throwsStateError,
+      );
+      expect(
+        () => disting.ensureCvRoutingOrderChangeSafe(fromSlot: 0, toSlot: 2),
+        throwsStateError,
+      );
+      disting.emit(
+        state.copyWith(
+          slots: [
+            cvSlot(0, outputs: [21], modes: [OutputMode.replace]),
+            cvSlot(1, outputs: [21], modes: [OutputMode.add]),
+            cvSlot(2, outputs: [21], modes: [OutputMode.add]),
+          ],
+        ),
+      );
+      expect(
+        () => disting.ensureCvRoutingOrderChangeSafe(fromSlot: 2, toSlot: 1),
+        returnsNormally,
+      );
+      disting.emit(
+        state.copyWith(
+          slots: [
+            cvSlot(0, outputs: [21]),
+            cvSlot(1),
+            cvSlot(2, inputs: [21]),
+            cvSlot(3),
+          ],
+        ),
+      );
+      expect(
+        () => disting.ensureCvRoutingOrderChangeSafe(fromSlot: 3, toSlot: 2),
+        returnsNormally,
+      );
+      expect(
+        () => disting.ensureCvRoutingOrderChangeSafe(fromSlot: 0, toSlot: 2),
+        throwsStateError,
+      );
+    },
+  );
+
+  test('reconnect discards known settings and marks initial or failed discovery unresolved', () async {
+    await settled();
+    final old = disting.moduleSettingsState.connectionId;
+    disting.emit(const DistingState.initial());
+    final pending = Completer<ModuleSettingsTree>();
+    when(() => live.discoverModuleSettings(any()))
+        .thenAnswer((_) => pending.future);
+    disting.emit(snapshot());
+    expect(disting.ntx8cvRouting!.mode, isNull);
+    expect(disting.ntx8cvRouting!.available, isFalse);
+    expect(disting.moduleSettingsState.connectionId, isNot(old));
+    await disting.moduleSettingsStream.firstWhere((s) => s.busy);
+    expect(
+      disting.ntx8cvRouting!.protectedBuses(
+        (disting.state as DistingStateSynchronized).deviceIoProfile,
+      ),
+      hasLength(8),
+    );
+    pending.completeError(StateError('This earlier beta did not reply'));
+    await disting.moduleSettingsStream.firstWhere(
+      (s) => !s.busy && s.actionUncertain,
+    );
+    expect(disting.ntx8cvRouting!.mode, isNull);
+    expect(
+      disting.ntx8cvRouting!
+          .ports((disting.state as DistingStateSynchronized).deviceIoProfile)
+          .any((p) => p.isActive),
+      isFalse,
+    );
   });
 
   test('routing demand loads once; cached API reuses settings without hardware I/O', () async {
@@ -280,7 +426,7 @@ void main() {
       await Future<void>.value();
       expect(
         (routing.state as RoutingEditorStateLoaded).ntx8cvOutputs,
-        isEmpty,
+        hasLength(8),
       );
       verify(() => live.discoverModuleSettings(any())).called(1);
       final reopened = RoutingEditorCubit(disting);

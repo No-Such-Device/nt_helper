@@ -20,12 +20,32 @@ class Ntx8cvRoutingFrame extends StatelessWidget {
         builder: (context, state) => Column(
           children: [
             Expanded(child: child),
-            if (state is RoutingEditorStateLoaded &&
-                state.ntx8cvRouting != null)
-              Ntx8cvRoutingOutputs(
-                config: state.ntx8cvRouting!,
-                profile: state.deviceIoProfile,
+            ExcludeFocus(
+              excluding:
+                  state is! RoutingEditorStateLoaded ||
+                  state.ntx8cvRouting == null,
+              child: Visibility(
+                visible:
+                    state is RoutingEditorStateLoaded &&
+                    state.ntx8cvRouting != null,
+                maintainSize: true,
+                maintainState: true,
+                maintainAnimation: true,
+                child: Ntx8cvRoutingOutputs(
+                  config: state is RoutingEditorStateLoaded
+                      ? state.ntx8cvRouting ?? const Ntx8cvRouting.unresolved()
+                      : const Ntx8cvRouting.unresolved(),
+                  profile:
+                      state is RoutingEditorStateLoaded &&
+                          state.ntx8cvRouting != null
+                      ? state.deviceIoProfile
+                      : DeviceIoProfile.distingExtended,
+                  reserveOnly:
+                      state is! RoutingEditorStateLoaded ||
+                      state.ntx8cvRouting == null,
+                ),
               ),
+            ),
           ],
         ),
       );
@@ -36,7 +56,11 @@ class Ntx8cvRoutingOutputs extends StatelessWidget {
     super.key,
     required this.config,
     required this.profile,
+    this.reserveOnly = false,
   });
+
+  /// Measures the same row height without creating hidden scroll targets.
+  final bool reserveOnly;
   final Ntx8cvRouting config;
   final DeviceIoProfile profile;
 
@@ -61,48 +85,56 @@ class Ntx8cvRoutingOutputs extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final port in config.ports(profile))
-                    Semantics(
-                      label: port.description,
-                      child: Focus(
-                        child: Tooltip(
-                          message: port.description!,
-                          child: Container(
-                            key: ValueKey(
-                              'ntx8cv_summary_${port.hardwareIndex}',
-                            ),
-                            width: 116,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: theme.colorScheme.outlineVariant,
+            Builder(
+              builder: (context) {
+                final row = Row(
+                  children: [
+                    for (final port
+                        in config.ports(profile).take(reserveOnly ? 1 : 8))
+                      Semantics(
+                        label: port.description,
+                        child: Focus(
+                          child: Tooltip(
+                            message: port.description!,
+                            child: Container(
+                              key: ValueKey(
+                                'ntx8cv_summary_${port.hardwareIndex}',
                               ),
-                            ),
-                            child: ExcludeSemantics(
-                              child: Text(
-                                '${port.name} · ${profile.labelForBus(port.busValue!)}${!config.available
-                                    ? ' ?'
-                                    : !port.isActive
-                                    ? ' —'
-                                    : ''}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall,
+                              width: 116,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant,
+                                ),
+                              ),
+                              child: ExcludeSemantics(
+                                child: Text(
+                                  '${port.name} · ${profile.labelForBus(port.busValue!)}${!config.available
+                                      ? ' ?'
+                                      : !port.isActive
+                                      ? ' —'
+                                      : ''}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
-              ),
+                  ],
+                );
+                return reserveOnly
+                    ? row
+                    : SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: row,
+                      );
+              },
             ),
           ],
         ),

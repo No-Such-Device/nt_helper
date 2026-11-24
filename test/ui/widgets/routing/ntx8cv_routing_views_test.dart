@@ -22,6 +22,7 @@ import 'package:nt_helper/ui/widgets/routing/movable_physical_io_node.dart';
 import 'package:nt_helper/ui/widgets/routing/port_widget.dart';
 import 'package:nt_helper/ui/widgets/routing/routing_editor_widget.dart';
 import 'package:nt_helper/ui/widgets/routing/routing_table_view.dart';
+import 'package:nt_helper/ui/widgets/routing/ntx8cv_routing_outputs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../test_helpers/cv_routing_fixture.dart';
@@ -180,6 +181,170 @@ void main() {
       },
     );
   }
+  testWidgets(
+    'NTX cable has no mode callback or label overlay; source editing remains available',
+    (tester) async {
+      snapshot = snapshot.copyWith(
+        slots: [
+          cvSlot(0, outputs: [21], modes: [OutputMode.add]),
+          cvSlot(1, inputs: [21]),
+        ],
+      );
+      events.add(snapshot);
+      final writes = <int>[];
+      when(
+        () => disting.updateParameterValue(
+          algorithmIndex: any(named: 'algorithmIndex'),
+          parameterNumber: any(named: 'parameterNumber'),
+          value: any(named: 'value'),
+          userIsChangingTheValue: any(named: 'userIsChangingTheValue'),
+        ),
+      ).thenAnswer(
+        (invocation) async =>
+            writes.add(invocation.namedArguments[#value] as int),
+      );
+      await pump(
+        tester,
+        RoutingEditorWidget(
+          loadNtxSettings: false,
+          canvasSize: const Size(1200, 800),
+        ),
+      );
+      var taps = 0;
+      for (final paint in tester.widgetList<CustomPaint>(
+        find.byType(CustomPaint),
+      )) {
+        final painter = paint.painter;
+        if (painter.runtimeType.toString() != '_ConnectionPainterWithBounds') {
+          continue;
+        }
+        for (final dynamic data in (painter as dynamic).connections as List) {
+          if (data.connection.destinationPortId == 'ntx8cv_out_1') {
+            taps++;
+            expect(data.onLabelTap, isNull);
+          }
+        }
+      }
+      expect(taps, greaterThan(0));
+      final loaded = cubit.state as RoutingEditorStateLoaded;
+      final tap = loaded.connections.firstWhere(
+        (c) => c.destinationPortId == 'ntx8cv_out_1',
+      );
+      final ordinary = loaded.connections.firstWhere(
+        (c) => c.destinationPortId == loaded.algorithms[1].inputPorts.first.id,
+      );
+      expect(find.byKey(ValueKey('connection-mode-${tap.id}')), findsNothing);
+      expect(
+        find.byKey(ValueKey('connection-mode-${ordinary.id}')),
+        findsOneWidget,
+      );
+      expect(writes, isEmpty);
+      final port = (cubit.state as RoutingEditorStateLoaded)
+          .algorithms
+          .first
+          .outputPorts
+          .first;
+      await cubit.togglePortOutputMode(portId: port.id);
+      expect(writes, [1]);
+      verifyZeroInteractions(manager);
+    },
+  );
+
+  testWidgets(
+    'actual Signal Flow viewport and headers stay fixed on first settings completion',
+    (tester) async {
+      final initial = (cubit.state as RoutingEditorStateLoaded).copyWith(
+        ntx8cvRouting: null,
+      );
+      cubit.emit(initial);
+      await pump(tester, const RoutingTableView());
+      final frame = tester.widget<Ntx8cvRoutingFrame>(
+        find.byType(Ntx8cvRoutingFrame),
+      );
+      final viewport = tester.getRect(find.byWidget(frame.child));
+      final header = tester.getRect(find.text('Algorithm').first);
+      for (final state in [
+        initial.copyWith(ntx8cvRouting: const Ntx8cvRouting.unresolved()),
+        initial.copyWith(ntx8cvRouting: config),
+        initial.copyWith(ntx8cvRouting: const Ntx8cvRouting.unresolved()),
+        initial,
+      ]) {
+        cubit.emit(state);
+        await tester.pumpAndSettle();
+        expect(tester.getRect(find.byWidget(frame.child)), viewport);
+        expect(tester.getRect(find.text('Algorithm').first), header);
+      }
+    },
+  );
+
+  for (final width in [390.0, 960.0]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets(
+        'Signal Flow reserves endpoint area before discovery ($width, $scale)',
+        (tester) async {
+          await cubit.close();
+          cubit = RoutingEditorCubit(null);
+          final initial = RoutingEditorStateLoaded(
+            physicalInputs: const [],
+            physicalOutputs: const [],
+            algorithms: const [],
+            connections: const [],
+          );
+          cubit.emit(initial);
+          tester.view.physicalSize = Size(width, 700);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          await tester.pumpWidget(
+            MaterialApp(
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: TextScaler.linear(scale)),
+                child: child!,
+              ),
+              home: BlocProvider<RoutingEditorCubit>.value(
+                value: cubit,
+                child: Scaffold(
+                  body: Ntx8cvRoutingFrame(
+                    child: Container(key: const ValueKey('flow-viewport')),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+          final viewport = tester.getRect(
+            find.byKey(const ValueKey('flow-viewport')),
+          );
+          final semantics = tester.ensureSemantics();
+          expect(find.bySemanticsLabel(RegExp(r'NTX-8CV 1:')), findsNothing);
+          for (final config in [
+            const Ntx8cvRouting.unresolved(),
+            Ntx8cvRouting(
+              mode: Ntx8cvRoutingMode.cv,
+              channelEnables: BigInt.from(255),
+            ),
+            Ntx8cvRouting(
+              mode: Ntx8cvRoutingMode.cv,
+              channelEnables: BigInt.one,
+              available: false,
+            ),
+            null,
+          ]) {
+            cubit.emit(initial.copyWith(ntx8cvRouting: config));
+            await tester.pumpAndSettle();
+            expect(
+              tester.getRect(find.byKey(const ValueKey('flow-viewport'))),
+              viewport,
+            );
+            expect(tester.takeException(), isNull);
+          }
+          semantics.dispose();
+        },
+      );
+    }
+  }
+
   testWidgets('read-only Bus Lanes tap cannot delete a previously armed bead', (
     tester,
   ) async {
