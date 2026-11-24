@@ -1,3 +1,6 @@
+import 'package:nt_helper/core/routing/ntx8cv_routing.dart';
+import 'package:nt_helper/ui/widgets/routing/movable_physical_io_node.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -66,6 +69,7 @@ class RoutingEditorWidget extends StatefulWidget {
   final Object? routingFactory; // ignored (decisions in cubit)
   final Size canvasSize;
   final bool showPhysicalPorts;
+  final bool loadNtxSettings;
   final bool showBusLabels;
   final Function(String nodeId)? onNodeSelected;
   final Function(String sourcePortId, String targetPortId)? onConnectionCreated;
@@ -80,6 +84,7 @@ class RoutingEditorWidget extends StatefulWidget {
     this.routingFactory,
     this.canvasSize = const Size(1200, 800),
     this.showPhysicalPorts = true,
+    this.loadNtxSettings = true,
     bool? showBusLabels,
     this.onNodeSelected,
     this.onConnectionCreated,
@@ -550,7 +555,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
 
       // Estimate node dimensions based on type
       final bool isPhysical =
-          id == 'physical_inputs' || id == 'physical_outputs';
+          id == 'physical_inputs' ||
+          id == 'physical_outputs' ||
+          id == Ntx8cvRouting.nodeId;
       final double nodeWidth = isPhysical
           ? 180
           : 340; // Physical nodes are narrower
@@ -771,7 +778,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
         final id = e.key;
         final p = e.value;
         final bool isPhysical =
-            id == 'physical_inputs' || id == 'physical_outputs';
+            id == 'physical_inputs' ||
+            id == 'physical_outputs' ||
+            id == Ntx8cvRouting.nodeId;
         final double w = isPhysical ? 180 : 340; // slightly wider algo node
         final double h = isPhysical ? 320 : 200; // include title/ports
         if (p.dx < minX) minX = p.dx;
@@ -852,7 +861,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
         final id = entry.key;
         final p = entry.value;
         final bool isPhysical =
-            id == 'physical_inputs' || id == 'physical_outputs';
+            id == 'physical_inputs' ||
+            id == 'physical_outputs' ||
+            id == Ntx8cvRouting.nodeId;
         final double w = isPhysical ? 180 : 300;
         final double h = isPhysical ? 300 : 180;
         if (p.dx < minX) minX = p.dx;
@@ -977,7 +988,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       final id = e.key;
       final p = e.value;
       final bool isPhysical =
-          id == 'physical_inputs' || id == 'physical_outputs';
+          id == 'physical_inputs' ||
+          id == 'physical_outputs' ||
+          id == Ntx8cvRouting.nodeId;
       final double w = isPhysical ? 180 : 340; // slightly wider algo node
       final double h = isPhysical ? 320 : 200; // include title/ports
       if (p.dx < minX) minX = p.dx;
@@ -1054,6 +1067,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
 
   @override
   Widget build(BuildContext context) {
+    if (widget.loadNtxSettings) {
+      context.read<RoutingEditorCubit>().ensureNtx8cvRoutingLoaded();
+    }
     return ValueListenableBuilder<bool>(
       valueListenable: SettingsService().showBackwardConnectionsNotifier,
       builder: (context, showBackwardConnections, _) {
@@ -1315,6 +1331,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     final allowedKeys = <String>{
       'physical_inputs',
       'physical_outputs',
+      if (current.ntx8cvRouting != null) Ntx8cvRouting.nodeId,
       ...current.algorithms.map((a) => a.id),
     };
 
@@ -1742,6 +1759,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       loaded:
           (
             deviceIoProfile,
+            ntx8cvRouting,
             physicalInputs,
             physicalOutputs,
             es5Inputs,
@@ -1764,6 +1782,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
             hasExtendedAuxBuses,
           ) => _buildLoadedCanvas(
             context,
+            ntx8cvRouting,
             physicalInputs,
             physicalOutputs,
             es5Inputs,
@@ -1805,6 +1824,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
 
   Widget _buildLoadedCanvas(
     BuildContext context,
+    Ntx8cvRouting? ntxRouting,
     List<Port> physicalInputs,
     List<Port> physicalOutputs,
     List<Port> es5Inputs,
@@ -1816,6 +1836,10 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     bool showBackwardConnections,
     DeviceIoProfile profile,
   ) {
+    final profile =
+        (context.read<RoutingEditorCubit>().state as RoutingEditorStateLoaded)
+            .deviceIoProfile;
+    final ntxPorts = ntxRouting?.ports(profile) ?? <Port>[];
     final visibleConnections = _visibleCanvasConnections(
       connections,
       showBackwardConnections,
@@ -1834,7 +1858,8 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       ..clear()
       ..addEntries(physicalInputs.map((p) => MapEntry(p.id, p)))
       ..addEntries(physicalOutputs.map((p) => MapEntry(p.id, p)))
-      ..addEntries(es5Inputs.map((p) => MapEntry(p.id, p)));
+      ..addEntries(es5Inputs.map((p) => MapEntry(p.id, p)))
+      ..addEntries(ntxPorts.map((p) => MapEntry(p.id, p)));
     for (final algo in algorithms) {
       for (final p in algo.inputPorts) {
         _portById[p.id] = p;
@@ -1855,6 +1880,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     for (final port in physicalOutputs) {
       portToNodeIdMap[port.id] = 'physical_outputs';
     }
+    for (final port in ntxPorts) {
+      portToNodeIdMap[port.id] = Ntx8cvRouting.nodeId;
+    }
     for (final port in es5Inputs) {
       portToNodeIdMap[port.id] = 'es5_node';
     }
@@ -1874,6 +1902,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
     if (widget.showPhysicalPorts) {
       if (physicalOutputs.isNotEmpty) {
         zIndexByNodeId['physical_outputs'] = zIndex++;
+      }
+      if (ntxPorts.isNotEmpty) {
+        zIndexByNodeId[Ntx8cvRouting.nodeId] = zIndex++;
       }
       if (physicalInputs.isNotEmpty) {
         zIndexByNodeId['physical_inputs'] = zIndex++;
@@ -2017,6 +2048,14 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
                         if (widget.showPhysicalPorts)
                           ..._buildPhysicalOutputNodes(
                             physicalOutputs,
+                            connections,
+                            stateNodePositions,
+                          ),
+
+                        if (widget.showPhysicalPorts && ntxRouting != null)
+                          ..._buildNtx8cvNode(
+                            ntxRouting,
+                            ntxPorts,
                             connections,
                             stateNodePositions,
                           ),
@@ -2309,6 +2348,50 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
             },
             onSizeResolved: (size) =>
                 _handleNodeSizeResolved('physical_outputs', size),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildNtx8cvNode(
+    Ntx8cvRouting config,
+    List<Port> ports,
+    List<Connection> connections,
+    Map<String, NodePosition> positions,
+  ) {
+    const id = Ntx8cvRouting.nodeId;
+    final saved = positions[id];
+    final position = saved != null
+        ? Offset(saved.x, saved.y)
+        : _nodePositions[id] ??
+              const Offset(_canvasWidth / 2 + 600, _canvasHeight / 2 + 100);
+    _nodePositions[id] = position;
+    return [
+      Positioned(
+        key: const ValueKey(id),
+        left: position.dx,
+        top: position.dy,
+        child: Tooltip(
+          message: config.description,
+          child: MovablePhysicalIONode(
+            title: config.scopeLabel,
+            icon: Icons.output_rounded,
+            ports: ports,
+            position: position,
+            isInput: false,
+            connectedPorts: _getConnectedPortIds(connections).toSet(),
+            onPositionChanged: (value) {
+              setState(() => _nodePositions[id] = value);
+              context.read<RoutingEditorCubit>().updateNodePosition(
+                id,
+                value.dx,
+                value.dy,
+              );
+            },
+            onPortPositionResolved: (port, center) =>
+                _updatePortAnchor(port.id, center, true),
+            onSizeResolved: (size) => _handleNodeSizeResolved(id, size),
           ),
         ),
       ),
@@ -3210,7 +3293,9 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
               .busLabel, // Pass through bus label for partial connections
           onLabelHover:
               null, // Label hover is handled by the overlay widgets, not here
-          onLabelTap: () => _toggleConnectionOutputMode(connection.id),
+          onLabelTap: connection.destinationPortId.startsWith('ntx8cv_out_')
+              ? null
+              : () => _toggleConnectionOutputMode(connection.id),
           sourceNodeBounds: nodeBoundsMap[sourceNodeId],
           destinationNodeBounds: nodeBoundsMap[destinationNodeId],
           sourceOccluderBounds: buildOccluderBoundsForNode(sourceNodeId),
@@ -3385,7 +3470,10 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       // Determine node size based on type
       // Physical nodes: 180x320
       // Algorithm nodes: Dynamic height based on ports
-      final isPhysical = id == 'physical_inputs' || id == 'physical_outputs';
+      final isPhysical =
+          id == 'physical_inputs' ||
+          id == 'physical_outputs' ||
+          id == Ntx8cvRouting.nodeId;
 
       // Skip physical nodes for obstacle avoidance if desired, but we need them for clipping
       // For clipping we need ALL nodes. For obstacles we might filter.
@@ -4163,6 +4251,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       final allPorts = [
         ...routingState.physicalInputs,
         ...routingState.physicalOutputs,
+        ...routingState.ntx8cvOutputs,
         for (final algo in routingState.algorithms) ...[
           ...algo.inputPorts,
           ...algo.outputPorts,
@@ -4257,6 +4346,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
   ) {
     /* same as RoutingCanvas */
     if (previous.physicalInputs.length != current.physicalInputs.length ||
+        previous.ntx8cvRouting != current.ntx8cvRouting ||
         previous.physicalOutputs.length != current.physicalOutputs.length ||
         previous.algorithms.length != current.algorithms.length ||
         previous.connections.length != current.connections.length ||
@@ -4384,6 +4474,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
 
     // Physical ports structure changed
     if (previous.physicalInputs.length != current.physicalInputs.length ||
+        previous.ntx8cvRouting != current.ntx8cvRouting ||
         previous.physicalOutputs.length != current.physicalOutputs.length) {
       return true;
     }
@@ -4468,6 +4559,16 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       final yOffset =
           headerHeight + (portIndex * portHeight) + (portHeight / 2);
       return Offset(nodePos.dx, nodePos.dy + yOffset);
+    }
+
+    if (portId.startsWith('ntx8cv_out_')) {
+      final index = routingState.ntx8cvOutputs.indexWhere(
+        (p) => p.id == portId,
+      );
+      final pos = _nodePositions[Ntx8cvRouting.nodeId];
+      if (index >= 0 && pos != null) {
+        return Offset(pos.dx, pos.dy + 48 + index * 32 + 16);
+      }
     }
 
     // Algorithm ports
@@ -4706,13 +4807,17 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
           connectionType: ConnectionType.algorithmToAlgorithm,
         ),
       );
-      if (!visibleConnectionIds.contains(connection.id)) continue;
+      if (!visibleConnectionIds.contains(connection.id) ||
+          connection.destinationPortId.startsWith('ntx8cv_out_')) {
+        continue;
+      }
 
       // Find the source port to check for mode parameter
       // Collect all ports from algorithms
       final allPorts = [
         ...routingState.physicalInputs,
         ...routingState.physicalOutputs,
+        ...routingState.ntx8cvOutputs,
         for (final algo in routingState.algorithms) ...[
           ...algo.inputPorts,
           ...algo.outputPorts,
@@ -4733,6 +4838,7 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       final hasModeParameter = sourcePort.modeParameterNumber != null;
 
       Widget overlay = GestureDetector(
+        key: ValueKey('connection-mode-$connectionId'),
         behavior: HitTestBehavior.opaque, // Capture all taps in this area
         onTap: () {
           _requestCanvasFocus();
@@ -4850,6 +4956,8 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       (conn) => conn.id == connectionId,
       orElse: () => throw ArgumentError('Connection not found: $connectionId'),
     );
+
+    if (connection.destinationPortId.startsWith('ntx8cv_out_')) return;
 
     // Toggle the output mode for the source port
     context.read<RoutingEditorCubit>().togglePortOutputMode(

@@ -1,3 +1,5 @@
+import 'ntx8cv_routing_outputs.dart';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -26,6 +28,7 @@ class AccessibleRoutingListView extends StatelessWidget {
           loaded:
               (
                 deviceIoProfile,
+                ntx8cvRouting,
                 physicalInputs,
                 physicalOutputs,
                 es5Inputs,
@@ -73,6 +76,9 @@ class AccessibleRoutingListView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if ((cubit.state as RoutingEditorStateLoaded).ntx8cvRouting
+            case final config?)
+          Ntx8cvRoutingOutputs(config: config, profile: deviceIoProfile),
         // Algorithms section
         Semantics(
           header: true,
@@ -324,6 +330,9 @@ class AccessibleRoutingListView extends StatelessWidget {
     if (portId.startsWith('hw_in_')) {
       final num = portId.replaceFirst('hw_in_', '');
       return 'Input $num';
+    }
+    if (portId.startsWith('ntx8cv_out_')) {
+      return 'NTX-8CV output ${portId.replaceFirst('ntx8cv_out_', '')}';
     }
     if (portId.startsWith('hw_out_')) {
       final num = portId.replaceFirst('hw_out_', '');

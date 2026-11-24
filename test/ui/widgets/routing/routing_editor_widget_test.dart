@@ -30,6 +30,7 @@ void main() {
     setUp(() {
       mockRoutingCubit = MockRoutingEditorCubit();
       mockDistingCubit = MockDistingCubit();
+      when(mockRoutingCubit.ensureNtx8cvRoutingLoaded()).thenAnswer((_) {});
     });
 
     testWidgets(

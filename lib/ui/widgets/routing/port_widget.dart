@@ -140,7 +140,8 @@ class _PortWidgetState extends State<PortWidget> {
   final GlobalKey _defaultDotKey = GlobalKey();
   GlobalKey get _dotKey => widget.anchorKey ?? _defaultDotKey;
   bool get _readOnly =>
-      widget.interactionKind == PortInteractionKind.cvModulation;
+      widget.interactionKind == PortInteractionKind.cvModulation ||
+      widget.port?.effectiveRole == PortRole.expanderOutputBus;
   bool _inspectFocused = false;
   bool get _isFocused => widget.isFocused || _inspectFocused;
   Timer? _hoverTimer;
@@ -300,7 +301,9 @@ class _PortWidgetState extends State<PortWidget> {
         ? (widget.port!.type == PortType.audio ? 'Audio' : 'CV')
         : '';
     final typePrefix = portTypeLabel.isNotEmpty ? '$portTypeLabel ' : '';
-    final hintText = _readOnly
+    final hintText = widget.port?.effectiveRole == PortRole.expanderOutputBus
+        ? 'Configured NTX-8CV output tap. Read only.'
+        : _readOnly
         ? 'Read-only CV input. Press Enter or Space to inspect.'
         : widget.isConnected
         ? 'Long press to delete connections. Press Space to start connection.'
@@ -310,7 +313,7 @@ class _PortWidgetState extends State<PortWidget> {
       label:
           '${widget.label}, $typePrefix$directionLabel, $connectionLabel$shadowLabel',
       hint: hintText,
-      button: true,
+      button: widget.port?.effectiveRole != PortRole.expanderOutputBus,
       child: portWidget,
     );
   }

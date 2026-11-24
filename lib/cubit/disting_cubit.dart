@@ -1,3 +1,7 @@
+import 'package:nt_helper/core/routing/ntx8cv_routing.dart';
+import 'package:nt_helper/core/routing/algorithm_routing.dart' as routing;
+import 'package:nt_helper/core/routing/models/port.dart' as routing_port;
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -353,6 +357,23 @@ class DistingCubit extends _DistingCubitBase
     return _hardwareCommandsDelegate.updateScreenshot();
   }
 
+  Ntx8cvRouting? get ntx8cvRouting {
+    final current = state;
+    if (current is! DistingStateSynchronized ||
+        current.offline ||
+        current.demo ||
+        !current.firmwareVersion.isModuleSettingsCandidate ||
+        current.disting is! ModuleSettingsTransport ||
+        current.deviceIoProfile != DeviceIoProfile.distingExtended) {
+      return null;
+    }
+    return Ntx8cvRouting.fromSettings(
+          moduleSettingsState,
+          current.deviceIoProfile,
+        ) ??
+        const Ntx8cvRouting.unresolved();
+  }
+
   ModuleSettingsState get moduleSettingsState => _moduleSettingsDelegate.state;
   Stream<ModuleSettingsState> get moduleSettingsStream =>
       _moduleSettingsDelegate.stream;
@@ -693,8 +714,11 @@ class DistingCubit extends _DistingCubitBase
   }
 
   @override
-  void ensureCvRoutingOrderChangeSafe() =>
-      _stateHelpersDelegate.ensureCvRoutingOrderChangeSafe();
+  void ensureCvRoutingOrderChangeSafe({int? fromSlot, int? toSlot}) =>
+      _stateHelpersDelegate.ensureCvRoutingOrderChangeSafe(
+        fromSlot: fromSlot,
+        toSlot: toSlot,
+      );
 
   Future<int> moveAlgorithmUp(int algorithmIndex) async {
     return moveAlgorithmUpImpl(algorithmIndex);

@@ -600,12 +600,13 @@ void main() {
 
   group('PortRole Tests', () {
     test('PortRole enum has expected values', () {
-      expect(PortRole.values, hasLength(5));
+      expect(PortRole.values, hasLength(6));
       expect(PortRole.values, contains(PortRole.busReader));
       expect(PortRole.values, contains(PortRole.busWriter));
       expect(PortRole.values, contains(PortRole.physicalInputBus));
       expect(PortRole.values, contains(PortRole.physicalOutputBus));
       expect(PortRole.values, contains(PortRole.es5Bus));
+      expect(PortRole.values, contains(PortRole.expanderOutputBus));
     });
 
     group('effectiveRole derivation from legacy fields', () {
