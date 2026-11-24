@@ -17,6 +17,10 @@ class ConnectionValidator {
   /// - Two bus ports (physical/ES-5) cannot connect directly
   /// - Two busReaders or two busWriters cannot connect directly
   static bool isValidConnection(Port portA, Port portB) {
+    if (portA.effectiveRole == PortRole.expanderOutputBus ||
+        portB.effectiveRole == PortRole.expanderOutputBus) {
+      return false;
+    }
     // Prevent same-node connections
     if (_isSameNode(portA, portB)) return false;
 

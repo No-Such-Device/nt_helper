@@ -215,6 +215,7 @@ class _TestLayoutButtonWidget extends StatelessWidget {
           loaded:
               (
                 deviceIoProfile,
+                ntx8cvRouting,
                 physicalInputs,
                 physicalOutputs,
                 es5Inputs,
@@ -288,6 +289,7 @@ class _TestButtonsRowWidget extends StatelessWidget {
               loaded:
                   (
                     deviceIoProfile,
+                    ntx8cvRouting,
                     physicalInputs,
                     physicalOutputs,
                     es5Inputs,

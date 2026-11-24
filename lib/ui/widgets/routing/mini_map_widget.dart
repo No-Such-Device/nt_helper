@@ -556,7 +556,7 @@ class _MiniMapPainter extends CustomPainter {
         isPhysicalNode = true;
         nodeWidth = 12.0; // Larger for physical nodes
         nodeHeight = 8.0;
-      } else if (nodeId == 'physical_outputs') {
+      } else if (nodeId == 'physical_outputs' || nodeId == 'ntx8cv_outputs') {
         nodeColor = theme.colorScheme.tertiary;
         isPhysicalNode = true;
         nodeWidth = 12.0;

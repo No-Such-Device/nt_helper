@@ -618,6 +618,9 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
     }
 
     final workspaceIndex = _currentMode == EditMode.routing ? 1 : 0;
+    if (_currentMode != EditMode.parameters) {
+      routingCubit.ensureNtx8cvRoutingLoaded();
+    }
 
     // Use a conditional widget based on screen width
     if (isWideScreen && widget.slots.isNotEmpty) {
@@ -1370,6 +1373,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                           loaded:
                               (
                                 deviceIoProfile,
+                                ntx8cvRouting,
                                 physicalInputs,
                                 physicalOutputs,
                                 es5Inputs,
@@ -1405,6 +1409,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                           loaded:
                               (
                                 deviceIoProfile,
+                                ntx8cvRouting,
                                 physicalInputs,
                                 physicalOutputs,
                                 es5Inputs,
@@ -1464,6 +1469,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                         loaded:
                             (
                               deviceIoProfile,
+                              ntx8cvRouting,
                               physicalInputs,
                               physicalOutputs,
                               es5Inputs,
@@ -1521,6 +1527,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
                         loaded:
                             (
                               deviceIoProfile,
+                              ntx8cvRouting,
                               physicalInputs,
                               physicalOutputs,
                               es5Inputs,
@@ -1626,6 +1633,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
               builder: (context, constraints) {
                 return RoutingEditorWidget(
                   controller: _editorController,
+                  loadNtxSettings: false,
                   canvasSize: Size(constraints.maxWidth, constraints.maxHeight),
                   showPhysicalPorts: true,
                   onViewModeChanged: (mode) {

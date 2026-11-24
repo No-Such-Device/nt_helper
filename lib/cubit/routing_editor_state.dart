@@ -1,3 +1,5 @@
+import 'package:nt_helper/core/routing/ntx8cv_routing.dart';
+
 import 'dart:ui' show Offset;
 
 import 'package:nt_helper/core/routing/cv_modulation.dart';
@@ -93,6 +95,7 @@ sealed class RoutingEditorState with _$RoutingEditorState {
   /// State when routing data is loaded and ready for visualization
   const factory RoutingEditorState.loaded({
     @Default(DeviceIoProfile.distingExtended) DeviceIoProfile deviceIoProfile,
+    Ntx8cvRouting? ntx8cvRouting,
     required List<Port> physicalInputs, // 12 physical input ports
     required List<Port> physicalOutputs, // 8 physical output ports
     @Default([])
@@ -120,4 +123,9 @@ sealed class RoutingEditorState with _$RoutingEditorState {
     Map<int, AuxBusUsageInfo> auxBusUsage, // Per-AUX-bus usage info
     @Default(false) bool hasExtendedAuxBuses, // Firmware 1.15+ extended AUX
   }) = RoutingEditorStateLoaded;
+}
+
+extension Ntx8cvRoutingState on RoutingEditorStateLoaded {
+  List<Port> get ntx8cvOutputs =>
+      ntx8cvRouting?.ports(deviceIoProfile) ?? const [];
 }

@@ -1,3 +1,5 @@
+import 'ntx8cv_routing_outputs.dart';
+
 import 'package:nt_helper/core/routing/cv_modulation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
@@ -29,54 +31,57 @@ class _RoutingTableViewState extends State<RoutingTableView> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<RoutingEditorCubit, RoutingEditorState>(
-      buildWhen: (prev, curr) {
-        // Only rebuild when algorithm/connection data actually changes,
-        // not on zoom, pan, focus, or other UI-only state changes.
-        if (prev is! RoutingEditorStateLoaded ||
-            curr is! RoutingEditorStateLoaded) {
-          return true;
-        }
-        return prev.algorithms != curr.algorithms ||
-            prev.connections != curr.connections ||
-            prev.portOutputModes != curr.portOutputModes ||
-            prev.deviceIoProfile != curr.deviceIoProfile;
-      },
-      builder: (context, state) {
-        return state.when(
-          initial: () => const Center(child: Text('Initializing...')),
-          disconnected: () => const Center(child: Text('Disconnected')),
-          loaded:
-              (
-                deviceIoProfile,
-                physicalInputs,
-                physicalOutputs,
-                es5Inputs,
-                algorithms,
-                connections,
-                buses,
-                portOutputModes,
-                nodePositions,
-                zoomLevel,
-                panOffset,
-                isHardwareSynced,
-                isPersistenceEnabled,
-                lastSyncTime,
-                lastPersistTime,
-                lastError,
-                subState,
-                focusedAlgorithmIds,
-                cascadeScrollTarget,
-                auxBusUsage,
-                hasExtendedAuxBuses,
-              ) => _buildTable(
-                context,
-                algorithms: algorithms,
-                portOutputModes: portOutputModes,
-                deviceIoProfile: deviceIoProfile,
-              ),
-        );
-      },
+    return Ntx8cvRoutingFrame(
+      child: BlocBuilder<RoutingEditorCubit, RoutingEditorState>(
+        buildWhen: (prev, curr) {
+          // Only rebuild when algorithm/connection data actually changes,
+          // not on zoom, pan, focus, or other UI-only state changes.
+          if (prev is! RoutingEditorStateLoaded ||
+              curr is! RoutingEditorStateLoaded) {
+            return true;
+          }
+          return prev.algorithms != curr.algorithms ||
+              prev.connections != curr.connections ||
+              prev.portOutputModes != curr.portOutputModes ||
+              prev.deviceIoProfile != curr.deviceIoProfile;
+        },
+        builder: (context, state) {
+          return state.when(
+            initial: () => const Center(child: Text('Initializing...')),
+            disconnected: () => const Center(child: Text('Disconnected')),
+            loaded:
+                (
+                  deviceIoProfile,
+                  ntx8cvRouting,
+                  physicalInputs,
+                  physicalOutputs,
+                  es5Inputs,
+                  algorithms,
+                  connections,
+                  buses,
+                  portOutputModes,
+                  nodePositions,
+                  zoomLevel,
+                  panOffset,
+                  isHardwareSynced,
+                  isPersistenceEnabled,
+                  lastSyncTime,
+                  lastPersistTime,
+                  lastError,
+                  subState,
+                  focusedAlgorithmIds,
+                  cascadeScrollTarget,
+                  auxBusUsage,
+                  hasExtendedAuxBuses,
+                ) => _buildTable(
+                  context,
+                  algorithms: algorithms,
+                  portOutputModes: portOutputModes,
+                  deviceIoProfile: deviceIoProfile,
+                ),
+          );
+        },
+      ),
     );
   }
 

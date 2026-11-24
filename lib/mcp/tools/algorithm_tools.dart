@@ -302,6 +302,24 @@ class MCPAlgorithmTools {
 
       slotDataList.add({
         'slotIndex': i,
+        if (_distingCubit.ntx8cvRouting case final ntx?)
+          'ntx8cv_outputs': [
+            for (final port in ntx.ports(state.deviceIoProfile))
+              if (port.isActive &&
+                  routing.outputPorts.any(
+                    (p) => p.isActive && p.busValue == port.busValue,
+                  ))
+                {
+                  'jack': port.hardwareIndex,
+                  'bus': port.busValue,
+                  'bus_name': state.deviceIoProfile.labelForBus(port.busValue!),
+                  'scope': 'first_channel_group',
+                  'hardware_presence': 'not_detected',
+                  'local_audio_enable': ntx.mode?.name == 'cv'
+                      ? 'not_applicable'
+                      : 'unknown',
+                },
+          ],
         'algorithmName': slot.algorithm.name,
         'cv_modulation': modulations
             .where((m) => m.destinationSlot == i)

@@ -71,6 +71,9 @@ enum PortRole {
   /// ES-5 expansion port that IS a bus.
   /// L = bus 29, R = bus 30, direct outputs 1-8.
   es5Bus,
+
+  /// Read-only NTX-8CV tap of an existing bus.
+  expanderOutputBus,
 }
 
 /// Immutable data class representing a port in the routing system.
@@ -229,7 +232,8 @@ sealed class Port with _$Port {
   bool get isBus =>
       effectiveRole == PortRole.physicalInputBus ||
       effectiveRole == PortRole.physicalOutputBus ||
-      effectiveRole == PortRole.es5Bus;
+      effectiveRole == PortRole.es5Bus ||
+      effectiveRole == PortRole.expanderOutputBus;
 
   /// Whether this port is an algorithm parameter that reads from a bus.
   bool get isBusReader => effectiveRole == PortRole.busReader;

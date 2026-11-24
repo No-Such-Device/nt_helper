@@ -1,3 +1,7 @@
+import 'package:nt_helper/core/routing/ntx8cv_routing.dart';
+
+import 'ntx8cv_routing_outputs.dart';
+
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:nt_helper/core/routing/cv_modulation.dart';
 import 'package:flutter/gestures.dart';
@@ -161,6 +165,7 @@ class _BusLanesViewState extends State<BusLanesView> {
                 prev.connections != curr.connections ||
                 prev.portOutputModes != curr.portOutputModes ||
                 prev.deviceIoProfile != curr.deviceIoProfile ||
+                prev.ntx8cvRouting != curr.ntx8cvRouting ||
                 prev.hasExtendedAuxBuses != curr.hasExtendedAuxBuses;
           },
           builder: (context, state) {
@@ -184,13 +189,24 @@ class _BusLanesViewState extends State<BusLanesView> {
               isDark,
             );
             if (data == null) {
-              return Center(
-                child: Text(
-                  'No algorithms loaded.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+              return Column(
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        'No algorithms loaded.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  if (state.ntx8cvRouting case final config?)
+                    Ntx8cvRoutingOutputs(
+                      config: config,
+                      profile: state.deviceIoProfile,
+                    ),
+                ],
               );
             }
 
@@ -254,7 +270,9 @@ class _BusLanesViewState extends State<BusLanesView> {
                           child: SizedBox(
                             key: _contentKey,
                             width: m.contentWidth,
-                            height: m.contentHeight,
+                            height:
+                                m.contentHeight +
+                                (state.ntx8cvRouting == null ? 0 : 64),
                             child: Semantics(
                               label:
                                   'Bus lanes canvas with $blockCount algorithm $blockLabel',
@@ -280,6 +298,13 @@ class _BusLanesViewState extends State<BusLanesView> {
                                           ),
                                         ),
                                       ),
+                                      if (state.ntx8cvRouting
+                                          case final config?)
+                                        ..._ntxTerminals(
+                                          config,
+                                          state.deviceIoProfile,
+                                          data,
+                                        ),
                                       for (final i in order)
                                         _buildBlock(
                                           context,
@@ -412,6 +437,82 @@ class _BusLanesViewState extends State<BusLanesView> {
         ),
       ),
     );
+  }
+
+  List<Widget> _ntxTerminals(
+    Ntx8cvRouting config,
+    DeviceIoProfile profile,
+    _BusLanesData data,
+  ) {
+    final theme = Theme.of(context);
+    final m = data.metrics;
+    return [
+      Positioned(
+        left: 8,
+        top: m.railsBottom + 30,
+        width: BusLanesMetrics.gutterWidth - 12,
+        child: Semantics(
+          header: true,
+          child: Tooltip(
+            message: config.description,
+            child: Text('NTX-8CV', style: theme.textTheme.titleSmall),
+          ),
+        ),
+      ),
+      for (final port in config.ports(profile))
+        if (data.rails.where((rail) => rail.bus == port.busValue).firstOrNull
+            case final rail?)
+          Positioned(
+            left: rail.x - 20,
+            top: m.railsBottom,
+            width: 40,
+            height: 64,
+            child: Semantics(
+              label: port.description,
+              child: Focus(
+                onFocusChange: (focused) {
+                  if (focused && _selected != null) {
+                    setState(() => _selected = null);
+                  }
+                },
+                onKeyEvent: (_, event) =>
+                    event is KeyDownEvent &&
+                        (event.logicalKey == LogicalKeyboardKey.delete ||
+                            event.logicalKey == LogicalKeyboardKey.backspace)
+                    ? KeyEventResult.handled
+                    : KeyEventResult.ignored,
+                child: GestureDetector(
+                  onTap: () => setState(() => _selected = null),
+                  child: Tooltip(
+                    message: port.description!,
+                    child: ExcludeSemantics(
+                      child: Column(
+                        children: [
+                          Container(
+                            width: port.isActive ? 3 : 1,
+                            height: 28,
+                            color: port.isActive
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.outlineVariant,
+                          ),
+                          Icon(
+                            Icons.circle_outlined,
+                            key: ValueKey('ntx8cv_lane_${port.hardwareIndex}'),
+                            size: 14,
+                            color: port.isActive
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.outlineVariant,
+                          ),
+                          Text(port.name, style: theme.textTheme.labelSmall),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+    ];
   }
 
   /// Per-frame vertical positions for each block. While a block is being
@@ -1094,6 +1195,9 @@ class _BusLanesViewState extends State<BusLanesView> {
     }
     final requested = {
       ...usedBuses,
+      if (context.read<RoutingEditorCubit>().state
+          case RoutingEditorStateLoaded(:final ntx8cvRouting))
+        ...?ntx8cvRouting?.ports(deviceIoProfile).map((p) => p.busValue!),
       for (final algo in slots)
         for (final mapping in algo.cvModulations) mapping.bus,
     };
