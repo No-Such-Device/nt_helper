@@ -1,3 +1,4 @@
+import 'package:nt_helper/core/routing/cv_modulation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,6 +9,8 @@ import 'package:nt_helper/models/routing_information.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/util/routing_analyzer.dart';
 import 'package:nt_helper/util/routing_info_builder.dart';
+
+import 'cv_modulation_view.dart';
 
 /// OG-style signal flow table visualization for the routing editor.
 ///
@@ -83,6 +86,9 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     required Map<String, OutputMode> portOutputModes,
     required DeviceIoProfile deviceIoProfile,
   }) {
+    final modulations = [
+      for (final algorithm in algorithms) ...algorithm.cvModulations,
+    ];
     final routing = buildRoutingInfoFromEditor(
       algorithms,
       portOutputModes,
@@ -177,12 +183,56 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       final rowAfter = signals[s + 1];
 
       // Signal-above row
-      pinnedRows.add(TableRow(children: [SizedBox(height: _cellHeight)]));
+      pinnedRows.add(
+        TableRow(
+          children: [
+            SizedBox(
+              height: _cellHeight,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(
+                  width: 30,
+                  child: Builder(
+                    builder: (buttonContext) {
+                      final mappings = modulations
+                          .where(
+                            (m) =>
+                                m.destinationSlot == info.algorithmIndex &&
+                                !deviceIoProfile.contains(m.bus),
+                          )
+                          .toList();
+                      return CvModulationButton(
+                        compact: true,
+                        mappings: mappings,
+                        onEdit: () =>
+                            editCvModulations(buttonContext, mappings),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
       mainRows.add(
         TableRow(
           children: [
             for (int ch = 1; ch <= numBuses; ch++)
-              _signalAboveCell(ch, rowBefore, info, colours, scheme.error),
+              _signalAboveCell(
+                ch,
+                rowBefore,
+                info,
+                colours,
+                scheme.error,
+                modulations
+                    .where(
+                      (m) =>
+                          m.destinationSlot == info.algorithmIndex &&
+                          m.bus == ch,
+                    )
+                    .toList(),
+              ),
           ],
         ),
       );
@@ -197,11 +247,19 @@ class _RoutingTableViewState extends State<RoutingTableView> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               alignment: Alignment.centerLeft,
               color: slotBg,
-              child: Text(
-                '${info.algorithmIndex + 1}. ${info.algorithmName}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: slotNameStyle,
+              child: Stack(
+                alignment: Alignment.centerLeft,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 32),
+                    child: Text(
+                      '${info.algorithmIndex + 1}. ${info.algorithmName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: slotNameStyle,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -337,27 +395,47 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     RoutingInformation info,
     List<Color> colours,
     Color errorColor,
+    List<CvModulation> modulations,
   ) {
     final usesChannel = info.readsBus(ch, signals: true, mappings: false);
     final signalLevel = ch < rowBefore.length ? rowBefore[ch] : 0;
     final bgColor = colours[signalLevel + 3 * (ch & 1)];
 
-    if (!usesChannel) {
-      return Container(width: _cellWidth, height: _cellHeight, color: bgColor);
-    }
     final unprovided = signalLevel == 0;
     return Container(
       width: _cellWidth,
       height: _cellHeight,
       alignment: Alignment.center,
-      color: bgColor,
-      child: Text(
-        '\u2193',
-        style: TextStyle(
-          fontSize: 13,
-          color: unprovided ? errorColor : null,
-          fontWeight: unprovided ? FontWeight.bold : FontWeight.normal,
-        ),
+      color: modulations.isEmpty
+          ? bgColor
+          : Color.alphaBlend(
+              cvModulationColor(context).withValues(alpha: 0.14),
+              bgColor,
+            ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (usesChannel)
+            Text(
+              '\u2193',
+              style: TextStyle(
+                fontSize: 13,
+                color: unprovided ? errorColor : null,
+                fontWeight: unprovided ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          if (modulations.isNotEmpty)
+            Expanded(
+              child: Builder(
+                builder: (buttonContext) => CvModulationButton(
+                  key: ValueKey('cv-cell-${info.algorithmIndex}-$ch'),
+                  mappings: modulations,
+                  onEdit: () => editCvModulations(buttonContext, modulations),
+                  compact: true,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -430,13 +508,11 @@ class _RoutingTableViewState extends State<RoutingTableView> {
   }) {
     final es5Buses = deviceIoProfile.contextualEs5Buses;
     final maxBus = es5Buses.isEmpty ? deviceIoProfile.maxBus : es5Buses.last;
-    final outputBuses = deviceIoProfile.outputBuses;
-    final inputBuses = deviceIoProfile.inputBuses;
-    int highestUsed = outputBuses.isNotEmpty
-        ? outputBuses.last
-        : inputBuses.isNotEmpty
-        ? inputBuses.last
-        : 0;
+    int highestUsed =
+        deviceIoProfile.outputBuses.lastOrNull ??
+        deviceIoProfile.inputBuses.lastOrNull ??
+        0;
+
     for (final info in routing) {
       for (int ch = maxBus; ch > highestUsed; ch--) {
         if (info.usesBus(ch)) {

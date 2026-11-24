@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:nt_helper/utils/plugin_installation_path.dart';
+import 'package:nt_helper/core/routing/cv_modulation.dart'
+    show cvRoutingOptimizationBlockReason;
 
 import 'package:async/async.dart';
 import 'package:bloc/bloc.dart';
@@ -689,6 +691,10 @@ class DistingCubit extends _DistingCubitBase
   Future<void> renamePresetAndSave(String newName) {
     return renamePresetImpl(newName);
   }
+
+  @override
+  void ensureCvRoutingOrderChangeSafe() =>
+      _stateHelpersDelegate.ensureCvRoutingOrderChangeSafe();
 
   Future<int> moveAlgorithmUp(int algorithmIndex) async {
     return moveAlgorithmUpImpl(algorithmIndex);

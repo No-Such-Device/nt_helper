@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:nt_helper/core/routing/cv_modulation.dart';
 import 'package:nt_helper/models/algorithm_metadata.dart';
 import 'package:nt_helper/models/memory_usage.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
@@ -252,16 +253,25 @@ class MCPAlgorithmTools {
     final routings = <AlgorithmRouting>[];
     final infoByGuid = {for (final info in state.algorithms) info.guid: info};
 
-    for (final slot in slots) {
+    final ids = routingAlgorithmIds(slots);
+    for (var index = 0; index < slots.length; index++) {
+      final slot = slots[index];
       routings.add(
         AlgorithmRouting.fromSlot(
           slot,
+          algorithmUuid: ids[index],
           deviceIoProfile: state.deviceIoProfile,
           algorithmInfo: infoByGuid[slot.algorithm.guid],
         ),
       );
     }
 
+    final modulations = projectCvModulations(
+      slots: slots,
+      routings: routings,
+      algorithmIds: ids,
+      profile: state.deviceIoProfile,
+    );
     // Discover connections (not needed for bus lists, but validates the data)
     // We extract bus usage directly from ports
     final slotDataList = <Map<String, dynamic>>[];
@@ -293,6 +303,13 @@ class MCPAlgorithmTools {
       slotDataList.add({
         'slotIndex': i,
         'algorithmName': slot.algorithm.name,
+        'cv_modulation': modulations
+            .where((m) => m.destinationSlot == i)
+            .map((m) => m.toJson())
+            .toList(),
+        'mapping_coverage': hasCompleteMappingCoverage([slot])
+            ? 'complete_cached'
+            : 'partial_cached',
         'inputBuses': sortedInputs
             .map(
               (b) => BusMapping.busToName(

@@ -305,7 +305,7 @@ mixin _$RoutingAlgorithm {
  int get index;/// The algorithm definition
  Algorithm get algorithm;/// Input ports for this algorithm
  List<Port> get inputPorts;/// Output ports for this algorithm
- List<Port> get outputPorts;
+ List<Port> get outputPorts; List<CvModulation> get cvModulations;
 /// Create a copy of RoutingAlgorithm
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -317,20 +317,20 @@ $RoutingAlgorithmCopyWith<RoutingAlgorithm> get copyWith => _$RoutingAlgorithmCo
 @override
 bool operator ==(Object other) {
   final _this = this as RoutingAlgorithm;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingAlgorithm&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.index, _this.index) || other.index == _this.index)&&(identical(other.algorithm, _this.algorithm) || other.algorithm == _this.algorithm)&&const DeepCollectionEquality().equals(other.inputPorts, _this.inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, _this.outputPorts));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RoutingAlgorithm&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.index, _this.index) || other.index == _this.index)&&(identical(other.algorithm, _this.algorithm) || other.algorithm == _this.algorithm)&&const DeepCollectionEquality().equals(other.inputPorts, _this.inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, _this.outputPorts)&&const DeepCollectionEquality().equals(other.cvModulations, _this.cvModulations));
 }
 
 
 @override
 int get hashCode {
   final _this = this as RoutingAlgorithm;
-  return Object.hash(runtimeType,_this.id,_this.index,_this.algorithm,const DeepCollectionEquality().hash(_this.inputPorts),const DeepCollectionEquality().hash(_this.outputPorts));
+  return Object.hash(runtimeType,_this.id,_this.index,_this.algorithm,const DeepCollectionEquality().hash(_this.inputPorts),const DeepCollectionEquality().hash(_this.outputPorts),const DeepCollectionEquality().hash(_this.cvModulations));
 }
 
 @override
 String toString() {
   final _this = this as RoutingAlgorithm;
-  return 'RoutingAlgorithm(id: ${_this.id}, index: ${_this.index}, algorithm: ${_this.algorithm}, inputPorts: ${_this.inputPorts}, outputPorts: ${_this.outputPorts})';
+  return 'RoutingAlgorithm(id: ${_this.id}, index: ${_this.index}, algorithm: ${_this.algorithm}, inputPorts: ${_this.inputPorts}, outputPorts: ${_this.outputPorts}, cvModulations: ${_this.cvModulations})';
 }
 
 
@@ -341,7 +341,7 @@ abstract mixin class $RoutingAlgorithmCopyWith<$Res>  {
   factory $RoutingAlgorithmCopyWith(RoutingAlgorithm value, $Res Function(RoutingAlgorithm) _then) = _$RoutingAlgorithmCopyWithImpl;
 @useResult
 $Res call({
- String id, int index, Algorithm algorithm, List<Port> inputPorts, List<Port> outputPorts
+ String id, int index, Algorithm algorithm, List<Port> inputPorts, List<Port> outputPorts, List<CvModulation> cvModulations
 });
 
 
@@ -358,14 +358,15 @@ class _$RoutingAlgorithmCopyWithImpl<$Res>
 
 /// Create a copy of RoutingAlgorithm
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? index = null,Object? algorithm = null,Object? inputPorts = null,Object? outputPorts = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? index = null,Object? algorithm = null,Object? inputPorts = null,Object? outputPorts = null,Object? cvModulations = null,}) {
   return _then(RoutingAlgorithm(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,index: null == index ? _self.index : index // ignore: cast_nullable_to_non_nullable
 as int,algorithm: null == algorithm ? _self.algorithm : algorithm // ignore: cast_nullable_to_non_nullable
 as Algorithm,inputPorts: null == inputPorts ? _self.inputPorts : inputPorts // ignore: cast_nullable_to_non_nullable
 as List<Port>,outputPorts: null == outputPorts ? _self.outputPorts : outputPorts // ignore: cast_nullable_to_non_nullable
-as List<Port>,
+as List<Port>,cvModulations: null == cvModulations ? _self.cvModulations : cvModulations // ignore: cast_nullable_to_non_nullable
+as List<CvModulation>,
   ));
 }
 
@@ -447,10 +448,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  int index,  Algorithm algorithm,  List<Port> inputPorts,  List<Port> outputPorts)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  int index,  Algorithm algorithm,  List<Port> inputPorts,  List<Port> outputPorts,  List<CvModulation> cvModulations)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _RoutingAlgorithm() when $default != null:
-return $default(_that.id,_that.index,_that.algorithm,_that.inputPorts,_that.outputPorts);case _:
+return $default(_that.id,_that.index,_that.algorithm,_that.inputPorts,_that.outputPorts,_that.cvModulations);case _:
   return orElse();
 
 }
@@ -468,10 +469,10 @@ return $default(_that.id,_that.index,_that.algorithm,_that.inputPorts,_that.outp
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  int index,  Algorithm algorithm,  List<Port> inputPorts,  List<Port> outputPorts)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  int index,  Algorithm algorithm,  List<Port> inputPorts,  List<Port> outputPorts,  List<CvModulation> cvModulations)  $default,) {final _that = this;
 switch (_that) {
 case _RoutingAlgorithm():
-return $default(_that.id,_that.index,_that.algorithm,_that.inputPorts,_that.outputPorts);}
+return $default(_that.id,_that.index,_that.algorithm,_that.inputPorts,_that.outputPorts,_that.cvModulations);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -485,10 +486,10 @@ return $default(_that.id,_that.index,_that.algorithm,_that.inputPorts,_that.outp
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  int index,  Algorithm algorithm,  List<Port> inputPorts,  List<Port> outputPorts)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  int index,  Algorithm algorithm,  List<Port> inputPorts,  List<Port> outputPorts,  List<CvModulation> cvModulations)?  $default,) {final _that = this;
 switch (_that) {
 case _RoutingAlgorithm() when $default != null:
-return $default(_that.id,_that.index,_that.algorithm,_that.inputPorts,_that.outputPorts);case _:
+return $default(_that.id,_that.index,_that.algorithm,_that.inputPorts,_that.outputPorts,_that.cvModulations);case _:
   return null;
 
 }
@@ -500,7 +501,7 @@ return $default(_that.id,_that.index,_that.algorithm,_that.inputPorts,_that.outp
 
 
 class _RoutingAlgorithm implements RoutingAlgorithm {
-  const _RoutingAlgorithm({required this.id, required this.index, required this.algorithm, required  List<Port> inputPorts, required  List<Port> outputPorts}): _inputPorts = inputPorts,_outputPorts = outputPorts;
+  const _RoutingAlgorithm({required this.id, required this.index, required this.algorithm, required  List<Port> inputPorts, required  List<Port> outputPorts,  List<CvModulation> cvModulations = const []}): _inputPorts = inputPorts,_outputPorts = outputPorts,_cvModulations = cvModulations;
 
 
 /// Stable unique identifier for this algorithm instance
@@ -527,6 +528,13 @@ class _RoutingAlgorithm implements RoutingAlgorithm {
   return EqualUnmodifiableListView(_outputPorts);
 }
 
+ final  List<CvModulation> _cvModulations;
+@override@JsonKey() List<CvModulation> get cvModulations {
+  if (_cvModulations is EqualUnmodifiableListView) return _cvModulations;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_cvModulations);
+}
+
 
 /// Create a copy of RoutingAlgorithm
 /// with the given fields replaced by the non-null parameter values.
@@ -538,18 +546,18 @@ _$RoutingAlgorithmCopyWith<_RoutingAlgorithm> get copyWith => __$RoutingAlgorith
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoutingAlgorithm&&(identical(other.id, id) || other.id == id)&&(identical(other.index, index) || other.index == index)&&(identical(other.algorithm, algorithm) || other.algorithm == algorithm)&&const DeepCollectionEquality().equals(other.inputPorts, _inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, _outputPorts));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RoutingAlgorithm&&(identical(other.id, id) || other.id == id)&&(identical(other.index, index) || other.index == index)&&(identical(other.algorithm, algorithm) || other.algorithm == algorithm)&&const DeepCollectionEquality().equals(other.inputPorts, _inputPorts)&&const DeepCollectionEquality().equals(other.outputPorts, _outputPorts)&&const DeepCollectionEquality().equals(other.cvModulations, _cvModulations));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,index,algorithm,const DeepCollectionEquality().hash(_inputPorts),const DeepCollectionEquality().hash(_outputPorts));
+    return Object.hash(runtimeType,id,index,algorithm,const DeepCollectionEquality().hash(_inputPorts),const DeepCollectionEquality().hash(_outputPorts),const DeepCollectionEquality().hash(_cvModulations));
 }
 
 @override
 String toString() {
-    return 'RoutingAlgorithm(id: $id, index: $index, algorithm: $algorithm, inputPorts: $inputPorts, outputPorts: $outputPorts)';
+    return 'RoutingAlgorithm(id: $id, index: $index, algorithm: $algorithm, inputPorts: $inputPorts, outputPorts: $outputPorts, cvModulations: $cvModulations)';
 }
 
 
@@ -560,7 +568,7 @@ abstract mixin class _$RoutingAlgorithmCopyWith<$Res> implements $RoutingAlgorit
   factory _$RoutingAlgorithmCopyWith(_RoutingAlgorithm value, $Res Function(_RoutingAlgorithm) _then) = __$RoutingAlgorithmCopyWithImpl;
 @override @useResult
 $Res call({
- String id, int index, Algorithm algorithm, List<Port> inputPorts, List<Port> outputPorts
+ String id, int index, Algorithm algorithm, List<Port> inputPorts, List<Port> outputPorts, List<CvModulation> cvModulations
 });
 
 
@@ -577,14 +585,15 @@ class __$RoutingAlgorithmCopyWithImpl<$Res>
 
 /// Create a copy of RoutingAlgorithm
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? index = null,Object? algorithm = null,Object? inputPorts = null,Object? outputPorts = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? index = null,Object? algorithm = null,Object? inputPorts = null,Object? outputPorts = null,Object? cvModulations = null,}) {
   return _then(_RoutingAlgorithm(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,index: null == index ? _self.index : index // ignore: cast_nullable_to_non_nullable
 as int,algorithm: null == algorithm ? _self.algorithm : algorithm // ignore: cast_nullable_to_non_nullable
 as Algorithm,inputPorts: null == inputPorts ? _self._inputPorts : inputPorts // ignore: cast_nullable_to_non_nullable
 as List<Port>,outputPorts: null == outputPorts ? _self._outputPorts : outputPorts // ignore: cast_nullable_to_non_nullable
-as List<Port>,
+as List<Port>,cvModulations: null == cvModulations ? _self._cvModulations : cvModulations // ignore: cast_nullable_to_non_nullable
+as List<CvModulation>,
   ));
 }
 

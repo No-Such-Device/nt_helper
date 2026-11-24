@@ -5,6 +5,23 @@ class _StateHelpersDelegate {
 
   final DistingCubit _cubit;
 
+  void ensureCvRoutingOrderChangeSafe() {
+    final state = _cubit.state;
+    if (state is! DistingStateSynchronized) return;
+    // Raw user-directed moves keep their legacy path without configured CV.
+    // The Module-input exception requires complete evidence when CV is known.
+    if (!state.slots.any(
+      (slot) => slot.mappings.any((m) => m.packedMappingData.cvInput > 0),
+    )) {
+      return;
+    }
+    final reason = cvRoutingOptimizationBlockReason(
+      state.slots,
+      profile: state.deviceIoProfile,
+    );
+    if (reason != null) throw StateError(reason);
+  }
+
   Slot preserveKnownSlotSpecifications({
     required DistingStateSynchronized previousState,
     required IDistingMidiManager refreshedDisting,

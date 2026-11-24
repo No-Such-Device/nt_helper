@@ -624,6 +624,12 @@ class DistingTools {
         specifications: specValues,
       );
 
+      final beforeAdd = _distingCubit.state;
+      if (slotIndex != null &&
+          beforeAdd is DistingStateSynchronized &&
+          slotIndex < beforeAdd.slots.length) {
+        _distingCubit.ensureCvRoutingOrderChangeSafe();
+      }
       // Add the algorithm and verify it was accepted
       final addedSlotIndex = await _addAlgorithmAndVerify(algoStub);
 
@@ -1854,6 +1860,12 @@ class DistingTools {
         );
       }
 
+      final beforeNotes = _distingCubit.state;
+      if (beforeNotes is DistingStateSynchronized &&
+          (beforeNotes.slots.isEmpty ||
+              beforeNotes.slots.first.algorithm.guid != 'note')) {
+        _distingCubit.ensureCvRoutingOrderChangeSafe();
+      }
       // Find existing Notes algorithm or add one
       final notesSlotIndex = await _findOrAddNotesAlgorithm();
 
@@ -3259,6 +3271,18 @@ class DistingTools {
         return jsonEncode(convertToSnakeCaseKeys(validationError));
       }
 
+      if (!isNameOnlyChange &&
+          (desiredSlots.length !=
+                  currentSlotAlgorithms.values.whereType<Algorithm>().length ||
+              desiredSlots.entries.any((entry) {
+                final current = currentSlotAlgorithms[entry.key];
+                return current == null ||
+                    (entry.value.guid != null
+                        ? current.guid != entry.value.guid
+                        : current.name != entry.value.name);
+              }))) {
+        _distingCubit.ensureCvRoutingOrderChangeSafe();
+      }
       // Step 6: Apply diff changes
       final applyError = await _applyDiff(
         currentSlotAlgorithms,

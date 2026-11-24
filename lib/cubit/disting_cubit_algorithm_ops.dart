@@ -20,6 +20,7 @@ class AlgorithmAddBypassFailedException implements Exception {
 }
 
 mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
+  void ensureCvRoutingOrderChangeSafe();
   static const _bypassParameterNumber = 0;
   static const _bypassEnabledValue = 1;
   static const _addAlgorithmInitialSettleDelay = Duration(seconds: 1);
@@ -487,9 +488,8 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
         continue;
       }
 
-      final match = RegExp(
-        '^${RegExp.escape(baseName)}\\((\\d+)\\)\$',
-      ).firstMatch(a.name);
+      final match = RegExp('^${RegExp.escape(baseName)}\\((\\d+)\\)\$')
+          .firstMatch(a.name);
       if (match == null) continue;
       final n = int.tryParse(match.group(1) ?? '');
       if (n != null && n >= 2) {
@@ -920,6 +920,8 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
     if (currentState is! DistingStateSynchronized) return algorithmIndex;
     if (algorithmIndex == 0) return 0;
 
+    ensureCvRoutingOrderChangeSafe();
+
     // Cancel any pending verification from a previous move
     _moveVerificationOperation?.cancel();
 
@@ -1059,6 +1061,8 @@ mixin _DistingCubitAlgorithmOps on _DistingCubitBase {
     final syncstate = currentState;
     final slots = syncstate.slots;
     if (algorithmIndex >= slots.length - 1) return algorithmIndex;
+
+    ensureCvRoutingOrderChangeSafe();
 
     // Cancel any pending verification from a previous move
     _moveVerificationOperation?.cancel();

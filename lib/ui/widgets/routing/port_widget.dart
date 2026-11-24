@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
 import 'package:nt_helper/ui/widgets/routing/accessibility_colors.dart';
 
@@ -14,6 +15,8 @@ enum PortLabelPosition {
 }
 
 /// Enum for port rendering style
+enum PortInteractionKind { routing, cvModulation }
+
 enum PortStyle {
   /// Simple circular dot style used in algorithm nodes
   dot,
@@ -30,6 +33,8 @@ enum PortStyle {
 class PortWidget extends StatefulWidget {
   /// The text label for the port
   final String label;
+  final PortInteractionKind interactionKind;
+  final GlobalKey? anchorKey;
 
   /// Whether this is an input port (affects visual styling)
   final bool isInput;
@@ -101,6 +106,8 @@ class PortWidget extends StatefulWidget {
   const PortWidget({
     super.key,
     required this.label,
+    this.interactionKind = PortInteractionKind.routing,
+    this.anchorKey,
     required this.isInput,
     this.portId,
     this.port,
@@ -130,7 +137,12 @@ class PortWidget extends StatefulWidget {
 }
 
 class _PortWidgetState extends State<PortWidget> {
-  late final GlobalKey _dotKey;
+  final GlobalKey _defaultDotKey = GlobalKey();
+  GlobalKey get _dotKey => widget.anchorKey ?? _defaultDotKey;
+  bool get _readOnly =>
+      widget.interactionKind == PortInteractionKind.cvModulation;
+  bool _inspectFocused = false;
+  bool get _isFocused => widget.isFocused || _inspectFocused;
   Timer? _hoverTimer;
   bool _showDeleteHint = false;
   bool _suppressDeleteHint = false;
@@ -141,7 +153,6 @@ class _PortWidgetState extends State<PortWidget> {
   @override
   void initState() {
     super.initState();
-    _dotKey = GlobalKey();
   }
 
   @override
@@ -155,7 +166,10 @@ class _PortWidgetState extends State<PortWidget> {
     // Check both onLongPress (mobile) and onLongPressStart (desktop animated)
     final hasLongPressHandler =
         widget.onLongPress != null || widget.onLongPressStart != null;
-    if (!widget.isConnected || !hasLongPressHandler || _suppressDeleteHint) {
+    if (_readOnly ||
+        !widget.isConnected ||
+        !hasLongPressHandler ||
+        _suppressDeleteHint) {
       return;
     }
 
@@ -204,13 +218,39 @@ class _PortWidgetState extends State<PortWidget> {
         break;
     }
 
+    if (_readOnly) {
+      portWidget = Focus(
+        onFocusChange: (focused) => setState(() => _inspectFocused = focused),
+        onKeyEvent: (_, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          if (event.logicalKey == LogicalKeyboardKey.enter ||
+              event.logicalKey == LogicalKeyboardKey.space) {
+            widget.onTap?.call();
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.delete ||
+              event.logicalKey == LogicalKeyboardKey.backspace) {
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          onPanStart: (_) {},
+          onLongPress: () {},
+          child: portWidget,
+        ),
+      );
+    }
     // Add gesture detection for interaction callbacks
-    if (widget.onTap != null ||
-        widget.onLongPress != null ||
-        widget.onLongPressStart != null ||
-        widget.onDragStart != null ||
-        widget.onDragUpdate != null ||
-        widget.onDragEnd != null) {
+    if (!_readOnly &&
+        (widget.onTap != null ||
+            widget.onLongPress != null ||
+            widget.onLongPressStart != null ||
+            widget.onDragStart != null ||
+            widget.onDragUpdate != null ||
+            widget.onDragEnd != null)) {
       portWidget = GestureDetector(
         // Include row padding and the label gap so near-dot drags do not
         // fall through to the surrounding algorithm node's move gesture.
@@ -260,7 +300,9 @@ class _PortWidgetState extends State<PortWidget> {
         ? (widget.port!.type == PortType.audio ? 'Audio' : 'CV')
         : '';
     final typePrefix = portTypeLabel.isNotEmpty ? '$portTypeLabel ' : '';
-    final hintText = widget.isConnected
+    final hintText = _readOnly
+        ? 'Read-only CV input. Press Enter or Space to inspect.'
+        : widget.isConnected
         ? 'Long press to delete connections. Press Space to start connection.'
         : 'Press Space to start a connection.';
 
@@ -301,14 +343,14 @@ class _PortWidgetState extends State<PortWidget> {
         shape: BoxShape.circle,
         color: portColor,
         border: Border.all(
-          color: widget.isFocused
+          color: _isFocused
               ? theme.colorScheme.primary
               : widget.isHighlighted
               ? portColor.withValues(alpha: 0.8)
               : theme.colorScheme.outline,
-          width: (widget.isFocused || widget.isHighlighted) ? 3 : 2,
+          width: (_isFocused || widget.isHighlighted) ? 3 : 2,
         ),
-        boxShadow: widget.isFocused
+        boxShadow: _isFocused
             ? [
                 BoxShadow(
                   color: theme.colorScheme.primary.withValues(alpha: 0.4),
@@ -329,7 +371,7 @@ class _PortWidgetState extends State<PortWidget> {
     );
 
     // Add hover detection only to the jack dot when routing action callback is provided
-    if (widget.onRoutingAction != null) {
+    if (!_readOnly && widget.onRoutingAction != null) {
       jackDot = MouseRegion(
         onEnter: (_) {
           widget.onHoverEnter?.call();
@@ -458,12 +500,12 @@ class _PortWidgetState extends State<PortWidget> {
         shape: BoxShape.circle,
         color: _getPortColor(theme),
         border: Border.all(
-          color: widget.isFocused
+          color: _isFocused
               ? theme.colorScheme.primary
               : theme.colorScheme.outline,
-          width: widget.isFocused ? 2 : 1,
+          width: _isFocused ? 2 : 1,
         ),
-        boxShadow: widget.isFocused
+        boxShadow: _isFocused
             ? [
                 BoxShadow(
                   color: theme.colorScheme.primary.withValues(alpha: 0.4),
@@ -501,7 +543,7 @@ class _PortWidgetState extends State<PortWidget> {
         : base;
 
     // Add hover detection only when routing action callback is provided
-    if (widget.onRoutingAction != null) {
+    if (!_readOnly && widget.onRoutingAction != null) {
       Widget result = MouseRegion(
         onEnter: (_) {
           widget.onHoverEnter?.call();

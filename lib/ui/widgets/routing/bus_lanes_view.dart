@@ -1,9 +1,10 @@
+import 'package:flutter/foundation.dart' show listEquals;
+import 'package:nt_helper/core/routing/cv_modulation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import 'package:nt_helper/core/routing/algorithm_routing.dart' as core_routing;
 import 'package:nt_helper/core/routing/bus_color_palette.dart';
 import 'package:nt_helper/core/routing/models/port.dart';
@@ -16,6 +17,8 @@ import 'package:nt_helper/ui/widgets/routing/bus_lanes_painter.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_picker_dialog.dart';
 import 'package:nt_helper/ui/widgets/routing/bus_selection_model.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
+
+import 'cv_modulation_view.dart';
 
 /// Graphical, bus-centric routing view. Buses are vertical colored lanes
 /// (tubes). Each algorithm is a block whose individual inputs (top rows) and
@@ -57,6 +60,8 @@ class _BusLanesViewState extends State<BusLanesView> {
   BusLanesMetrics? _lastMetrics;
   List<int> _lastVisibleBuses = const [];
   DeviceIoProfile _lastProfile = DeviceIoProfile.distingExtended;
+  final List<int> _stableBuses = [];
+  List<String> _busRoster = [];
 
   /// Reorder responds to mouse/touch press-drag only. Trackpad two-finger
   /// swipes are reserved for scrolling, so they're excluded here — otherwise
@@ -447,6 +452,139 @@ class _BusLanesViewState extends State<BusLanesView> {
     return tops;
   }
 
+  List<Widget> _buildCvRows(
+    BuildContext context,
+    _CardData card,
+    _BusLanesData data,
+    Map<String, double> tops,
+    double top,
+  ) {
+    final paths = <(Offset, Offset)>[];
+    final sourceHalos = <Offset>{};
+    final widgets = <Widget>[];
+    final groups = cvInputGroups(card.modulations);
+    for (var i = 0; i < groups.length; i++) {
+      final group = groups[i];
+      final y = BusLanesMetrics.portRowY(i);
+      for (final mapping in group) {
+        final rail = data.rails.where((r) => r.bus == mapping.bus).firstOrNull;
+        final x = rail?.x ?? data.metrics.noneX;
+        Offset? source;
+        if (mapping.contributors.length == 1 &&
+            mapping.contributors.single.slotIndex != null) {
+          for (final sourceCard in data.cards) {
+            final bead = sourceCard.beads
+                .where(
+                  (b) => b.ref.portId == mapping.contributors.single.portId,
+                )
+                .firstOrNull;
+            if (bead != null) {
+              source = Offset(
+                bead.x,
+                (tops[sourceCard.id] ?? 0) + bead.y - top,
+              );
+              sourceHalos.add(source);
+              break;
+            }
+          }
+        }
+        if (source == null) {
+          var sourceY = top + y - 16;
+          if (mapping.contributors.isNotEmpty) {
+            if (mapping.usesOwnInputSnapshot) {
+              sourceY = top;
+            } else if (mapping.usesModuleInputSnapshot) {
+              sourceY = data.metrics.railsTop;
+            } else {
+              final sourceCard = data.cards
+                  .where((c) => c.slotIndex == mapping.sourceSlotIndex)
+                  .firstOrNull;
+              if (sourceCard != null) {
+                sourceY =
+                    (tops[sourceCard.id] ?? 0) +
+                    sourceCard.inputHeight +
+                    BusLanesMetrics.titleHeight +
+                    BusLanesMetrics.padV +
+                    sourceCard.beads.length * BusLanesMetrics.portRowHeight;
+              }
+            }
+          }
+          source = Offset(x, sourceY - top);
+        }
+        paths.add((source, Offset(x, y)));
+        paths.add((Offset(x, y), Offset(BusLanesMetrics.gutterWidth - 6, y)));
+        widgets.add(
+          Positioned(
+            left: x - 12,
+            top: y - 12,
+            width: 24,
+            height: 24,
+            child: CvModulationButton(
+              key: ValueKey('cv-lane-${mapping.id}'),
+              mappings: [mapping],
+              onEdit: () => editCvModulations(context, [mapping]),
+              visual: Center(
+                child: _beadVisual(
+                  cvModulationColor(context),
+                  Theme.of(context).colorScheme.surface,
+                  Theme.of(context).colorScheme.shadow,
+                  filled: true,
+                ),
+              ),
+              onInspect: () => setState(() => _selected = null),
+            ),
+          ),
+        );
+      }
+      widgets.add(
+        Positioned(
+          left: 4,
+          top: y - 12,
+          width: BusLanesMetrics.gutterWidth - 8,
+          height: 24,
+          child: CvModulationButton(
+            mappings: group,
+            onEdit: () => editCvModulations(context, group),
+            displayLabel: cvInputLabel(card.modulations, group.first),
+            endpointKey: ValueKey(
+              'cv-lane-target-${card.id}-${group.first.parameterNumber}',
+            ),
+            visual: const SizedBox.expand(),
+            onInspect: () => setState(() => _selected = null),
+          ),
+        ),
+      );
+      widgets.add(
+        Positioned(
+          left: BusLanesMetrics.gutterWidth - 6 - 0.5,
+          top: y - 0.5,
+          width: 1,
+          height: 1,
+          child: SizedBox(
+            key: ValueKey(
+              'cv-lane-target-${card.id}-${group.first.parameterNumber}',
+            ),
+          ),
+        ),
+      );
+    }
+    return [
+      Positioned.fill(
+        child: IgnorePointer(
+          child: CustomPaint(
+            painter: CvModulationCurve(
+              color: cvModulationColor(context),
+              endpoints: paths,
+              sourceHalos: sourceHalos,
+              sourceHaloRadius: 9,
+            ),
+          ),
+        ),
+      ),
+      ...widgets,
+    ];
+  }
+
   Widget _buildBlock(
     BuildContext context,
     int index,
@@ -471,6 +609,7 @@ class _BusLanesViewState extends State<BusLanesView> {
               painter: BusBlockPainter(
                 title: card.title,
                 ports: card.ports,
+                inputHeight: card.inputHeight,
                 cardColor: colors.card,
                 borderColor: colors.border,
                 textColor: colors.text,
@@ -503,6 +642,7 @@ class _BusLanesViewState extends State<BusLanesView> {
             ),
           ),
           for (final bead in card.beads) _buildBead(context, bead),
+          ..._buildCvRows(context, card, data, tops, top),
           Positioned(
             right: m.contentWidth - BusLanesMetrics.gutterWidth + 6,
             top: 4,
@@ -669,7 +809,11 @@ class _BusLanesViewState extends State<BusLanesView> {
     );
   }
 
-  void _commitReorder(BuildContext context, _BusLanesData data, int index) {
+  Future<void> _commitReorder(
+    BuildContext context,
+    _BusLanesData data,
+    int index,
+  ) async {
     final id = _draggingId;
     final dy = _dragDy;
     setState(() {
@@ -689,7 +833,13 @@ class _BusLanesViewState extends State<BusLanesView> {
 
     final newOrder = [for (final c in data.cards) c.id]..removeAt(index);
     newOrder.insert(target, id);
-    context.read<RoutingEditorCubit>().applyReorder(newOrder);
+    try {
+      await context.read<RoutingEditorCubit>().applyReorder(newOrder);
+    } on StateError catch (error) {
+      _messengerKey.currentState?.showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
   }
 
   /// A single faint, tappable drop-target hint for the cell under the cursor.
@@ -713,6 +863,7 @@ class _BusLanesViewState extends State<BusLanesView> {
       final row =
           ((hover.dy -
                       blockTop -
+                      data.cards[bi].inputHeight -
                       BusLanesMetrics.titleHeight -
                       BusLanesMetrics.padV) /
                   BusLanesMetrics.portRowHeight)
@@ -752,7 +903,7 @@ class _BusLanesViewState extends State<BusLanesView> {
         return const SizedBox.shrink();
       }
 
-      final portY = blockTop + BusLanesMetrics.portRowY(row);
+      final portY = blockTop + card.inputHeight + BusLanesMetrics.portRowY(row);
       final accent = Theme.of(context).colorScheme.primary;
       return Stack(
         children: [
@@ -936,26 +1087,47 @@ class _BusLanesViewState extends State<BusLanesView> {
       }
     }
 
-    // Only show buses actually in use (sorted). With nothing used, "＋" is the
-    // first lane; as buses get used they appear in order; when the last user of
-    // a bus is removed it collapses out of the diagram. Any bus is reachable by
-    // dropping a bead on "＋".
-    final visible =
-        usedBuses
+    final roster = slots.map((s) => s.id).toList();
+    if (_lastProfile != deviceIoProfile || !listEquals(_busRoster, roster)) {
+      _stableBuses.clear();
+      _busRoster = roster;
+    }
+    final requested = {
+      ...usedBuses,
+      for (final algo in slots)
+        for (final mapping in algo.cvModulations) mapping.bus,
+    };
+    final newBuses =
+        requested
             .where(
               (bus) =>
-                  deviceIoProfile.contains(bus) ||
-                  deviceIoProfile.contextualEs5Buses.contains(bus),
+                  (deviceIoProfile.contains(bus) ||
+                      deviceIoProfile.contextualEs5Buses.contains(bus)) &&
+                  !_stableBuses.contains(bus),
             )
             .toList()
           ..sort();
+    // Append newly observed lanes without moving existing bead coordinates.
+    _stableBuses.addAll(newBuses);
+    final visible = List<int>.of(_stableBuses);
     final railIndex = {for (var i = 0; i < visible.length; i++) visible[i]: i};
     _lastVisibleBuses = visible;
     _lastProfile = deviceIoProfile;
 
+    final cvHeights = [
+      for (final algo in slots)
+        cvInputGroups(algo.cvModulations).length *
+            BusLanesMetrics.portRowHeight,
+    ];
     final cardHeights = [
       for (var s = 0; s < n; s++)
-        BusLanesMetrics.cardHeightFor(inputs[s].length + outputs[s].length),
+        cvHeights[s] +
+            BusLanesMetrics.titleHeight +
+            BusLanesMetrics.padV * 2 +
+            ((inputs[s].isEmpty && outputs[s].isEmpty && cvHeights[s] == 0)
+                    ? 1
+                    : inputs[s].length + outputs[s].length) *
+                BusLanesMetrics.portRowHeight,
     ];
     final cardTops = <double>[];
     var y = BusLanesMetrics.headerHeight;
@@ -998,7 +1170,7 @@ class _BusLanesViewState extends State<BusLanesView> {
         final row = nIn + visibleOutput++;
         if (b != null && b > 0 && railIndex.containsKey(b)) {
           (writeYsByBus[b] ??= []).add((
-            y: cardTops[s] + BusLanesMetrics.portRowY(row),
+            y: cardTops[s] + cvHeights[s] + BusLanesMetrics.portRowY(row),
             replace: modeOf(p) == OutputMode.replace,
             origin: origin,
           ));
@@ -1136,7 +1308,7 @@ class _BusLanesViewState extends State<BusLanesView> {
         final connected = bus > 0 && railIndex.containsKey(bus);
         final column = connected ? railIndex[bus]! + 1 : 0;
         final beadX = metrics.columnX(column);
-        final beadY = BusLanesMetrics.portRowY(row);
+        final beadY = cvHeights[s] + BusLanesMetrics.portRowY(row);
         final globalY = cardTops[s] + beadY;
 
         Color color;
@@ -1203,12 +1375,29 @@ class _BusLanesViewState extends State<BusLanesView> {
         addPort(p, true, row++);
       }
 
+      final groups = cvInputGroups(algo.cvModulations);
+      ports.insertAll(0, [
+        for (var i = 0; i < groups.length; i++)
+          PortRowRender(
+            kind: PortRowKind.cvModulation,
+            label: cvInputLabel(algo.cvModulations, groups[i].first),
+            isOutput: false,
+            row: i,
+            beadX: 0,
+            connected: true,
+            color: cvModulationColor(context),
+            write: BandWrite.none,
+            unprovided: false,
+          ),
+      ]);
       cards.add(
         _CardData(
           id: algo.id,
+          slotIndex: algo.index,
           title: '${algo.index + 1}. ${algo.algorithm.name}',
           ports: ports,
           beads: beads,
+          modulations: algo.cvModulations,
         ),
       );
     }
@@ -1276,15 +1465,21 @@ class _Bead {
 }
 
 class _CardData {
+  double get inputHeight =>
+      cvInputGroups(modulations).length * BusLanesMetrics.portRowHeight;
+  final int slotIndex;
+  final List<CvModulation> modulations;
   final String id;
   final String title;
   final List<PortRowRender> ports;
   final List<_Bead> beads;
   const _CardData({
+    required this.slotIndex,
     required this.id,
     required this.title,
     required this.ports,
     required this.beads,
+    required this.modulations,
   });
 }
 

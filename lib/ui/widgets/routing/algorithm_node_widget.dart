@@ -5,7 +5,6 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/models/packed_mapping_data.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
-import 'package:nt_helper/ui/midi_listener/midi_listener_cubit.dart';
 import 'package:nt_helper/cubit/routing_editor_cubit.dart';
 import 'package:nt_helper/ui/widgets/mapping_editor_bottom_sheet.dart';
 
@@ -39,6 +38,7 @@ class AlgorithmNodeWidget extends StatefulWidget {
   final VoidCallback? onTap;
   final List<String> inputLabels;
   final List<String> outputLabels;
+  final Widget? virtualCvInputs;
   // Port IDs aligned with labels, used for accurate connection anchors
   final List<String>? inputPortIds;
   final List<String>? outputPortIds;
@@ -106,6 +106,7 @@ class AlgorithmNodeWidget extends StatefulWidget {
     this.onTap,
     this.inputLabels = const [],
     this.outputLabels = const [],
+    this.virtualCvInputs,
     this.inputPortIds,
     this.outputPortIds,
     this.outputChannelNumbers,
@@ -647,6 +648,7 @@ class _AlgorithmNodeWidgetState extends State<AlgorithmNodeWidget> {
                   portId: input.portId,
                   focusIndex: portFocusIndex++,
                 ),
+              if (widget.virtualCvInputs != null) widget.virtualCvInputs!,
             ],
           ),
           const SizedBox(width: 16),
@@ -927,46 +929,12 @@ class _AlgorithmNodeWidgetState extends State<AlgorithmNodeWidget> {
     }
   }
 
-  Future<void> _handleMappingEdit(int parameterNumber) async {
-    final cubit = context.read<DistingCubit>();
-    final state = cubit.state;
-
-    if (state is! DistingStateSynchronized) return;
-
-    final slotIndex = widget.slotNumber - 1;
-    if (slotIndex < 0 || slotIndex >= state.slots.length) return;
-
-    final slot = state.slots[slotIndex];
-    final mapping = slot.mappings
-        .where((m) => m.parameterNumber == parameterNumber)
-        .firstOrNull;
-
-    if (mapping == null) return;
-
-    final data = mapping.packedMappingData;
-    final myMidiCubit = context.read<MidiListenerCubit>();
-    final distingCubit = context.read<DistingCubit>();
-
-    final paramInfo = slot.parameters
-        .where((p) => p.parameterNumber == parameterNumber)
-        .firstOrNull;
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => MappingEditorBottomSheet(
-        myMidiCubit: myMidiCubit,
-        distingCubit: distingCubit,
-        data: data,
-        slots: state.slots,
-        algorithmIndex: slotIndex,
+  Future<void> _handleMappingEdit(int parameterNumber) =>
+      showParameterMappingEditor(
+        context,
+        algorithmIndex: widget.slotNumber - 1,
         parameterNumber: parameterNumber,
-        parameterMin: paramInfo?.min ?? 0,
-        parameterMax: paramInfo?.max ?? 0,
-        powerOfTen: paramInfo?.powerOfTen ?? 0,
-      ),
-    );
-  }
+      );
 
   void _showFeedback(String message, {bool isError = false}) {
     if (!mounted || !isError) return;

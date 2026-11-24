@@ -23,18 +23,16 @@ CV (Control Voltage) mappings allow hardware control voltage inputs to modulate 
 ### CV Fields
 
 #### `source` (integer)
-- **Range**: 0 or algorithm output index
-- **Purpose**: Observe another algorithm's output as modulation source (advanced usage)
-- **Default**: 0 (not used)
-- **Explanation**: This is an advanced feature that lets you use the output of one algorithm to modulate a parameter in another algorithm. Set to the algorithm index whose output you want to observe. For example, if you have an LFO in slot 0 and want its output to modulate filter cutoff in slot 1, set `source: 0`.
+- **Purpose**: Select the bus snapshot used by this CV mapping.
+- **Values**: `0` = Own inputs (before the destination algorithm), `1` = Module inputs (original physical inputs), `2 + slot_index` = the selected algorithm's output snapshot.
+- **Default**: `0`. Mapping versions 1–3 always use Own inputs.
+- **Example**: To sample the output snapshot of an LFO in zero-based slot 0, set `source: 2`, then choose its bus using `cv_input`. The selector identifies a snapshot, not an output port; Add/Replace contributors may include other algorithms.
 
 #### `cv_input` (integer)
-- **Range**: 0-12
-- **Purpose**: Physical CV input number for hardware control voltage
-- **Values**:
-  - 0 = disabled (no CV input)
-  - 1-12 = physical CV input number
-- **Explanation**: Connect your CV source to one of the Disting NT's 12 CV inputs, then specify which input controls this parameter.
+- **Purpose**: Select a bus at that snapshot, not necessarily a physical input.
+- **Values**: `0` = disabled; other values follow the connected device's bus profile (inputs, outputs, then AUX).
+- **Example**: On a standard extended disting NT, Aux 12 and Aux 13 are buses 32 and 33. Use profile-aware bus names rather than assuming every device has the same boundaries.
+- Module inputs refers to physical inputs; pairing that selector with an AUX bus does not establish an algorithm contributor.
 
 #### `is_unipolar` (boolean)
 - **Type**: boolean

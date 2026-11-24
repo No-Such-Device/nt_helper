@@ -55,27 +55,36 @@ class _ConsolidateBusesDialogState extends State<ConsolidateBusesDialog> {
         if (_enabledMerges.contains(i)) i,
     ];
 
-    await widget.cubit.executeConsolidationPlan(
-      enabledPlan,
-      onReplaceModeSet: (filteredIndex, replaceModeIndex) {
-        if (mounted) {
-          setState(() {
-            final origIdx = originalIndices[filteredIndex];
-            _replaceModesDone
-                .putIfAbsent(origIdx, () => {})
-                .add(replaceModeIndex);
-          });
-        }
-      },
-      onStepComplete: (filteredIndex, stepIndex) {
-        if (mounted) {
-          setState(() {
-            final origIdx = originalIndices[filteredIndex];
-            _completedSteps.putIfAbsent(origIdx, () => {}).add(stepIndex);
-          });
-        }
-      },
-    );
+    try {
+      await widget.cubit.executeConsolidationPlan(
+        enabledPlan,
+        onReplaceModeSet: (filteredIndex, replaceModeIndex) {
+          if (mounted) {
+            setState(() {
+              final origIdx = originalIndices[filteredIndex];
+              _replaceModesDone
+                  .putIfAbsent(origIdx, () => {})
+                  .add(replaceModeIndex);
+            });
+          }
+        },
+        onStepComplete: (filteredIndex, stepIndex) {
+          if (mounted) {
+            setState(() {
+              final origIdx = originalIndices[filteredIndex];
+              _completedSteps.putIfAbsent(origIdx, () => {}).add(stepIndex);
+            });
+          }
+        },
+      );
+    } on StateError catch (error) {
+      if (mounted) {
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        Navigator.of(context).pop();
+        messenger?.showSnackBar(SnackBar(content: Text(error.message)));
+      }
+      return;
+    }
     if (mounted) {
       setState(() {
         _isExecuting = false;
