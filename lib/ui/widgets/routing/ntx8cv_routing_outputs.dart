@@ -1,55 +1,7 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
 import 'package:nt_helper/core/routing/ntx8cv_routing.dart';
-import 'package:nt_helper/cubit/routing_editor_cubit.dart';
-import 'package:nt_helper/cubit/routing_editor_state.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
-
-class Ntx8cvRoutingFrame extends StatelessWidget {
-  const Ntx8cvRoutingFrame({super.key, required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) =>
-      BlocBuilder<RoutingEditorCubit, RoutingEditorState>(
-        buildWhen: (a, b) =>
-            a is! RoutingEditorStateLoaded ||
-            b is! RoutingEditorStateLoaded ||
-            a.ntx8cvRouting != b.ntx8cvRouting ||
-            a.deviceIoProfile != b.deviceIoProfile,
-        builder: (context, state) => Column(
-          children: [
-            Expanded(child: child),
-            ExcludeFocus(
-              excluding:
-                  state is! RoutingEditorStateLoaded ||
-                  state.ntx8cvRouting == null,
-              child: Visibility(
-                visible:
-                    state is RoutingEditorStateLoaded &&
-                    state.ntx8cvRouting != null,
-                maintainSize: true,
-                maintainState: true,
-                maintainAnimation: true,
-                child: Ntx8cvRoutingOutputs(
-                  config: state is RoutingEditorStateLoaded
-                      ? state.ntx8cvRouting ?? const Ntx8cvRouting.unresolved()
-                      : const Ntx8cvRouting.unresolved(),
-                  profile:
-                      state is RoutingEditorStateLoaded &&
-                          state.ntx8cvRouting != null
-                      ? state.deviceIoProfile
-                      : DeviceIoProfile.distingExtended,
-                  reserveOnly:
-                      state is! RoutingEditorStateLoaded ||
-                      state.ntx8cvRouting == null,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-}
 
 class Ntx8cvRoutingOutputs extends StatelessWidget {
   const Ntx8cvRoutingOutputs({
@@ -137,6 +89,91 @@ class Ntx8cvRoutingOutputs extends StatelessWidget {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A read-only physical output aligned beneath its AUX bus label.
+class Ntx8cvBusAssignment extends StatelessWidget {
+  const Ntx8cvBusAssignment({
+    super.key,
+    required this.config,
+    required this.profile,
+    required this.jack,
+    this.onFocus,
+  });
+
+  final Ntx8cvRouting? config;
+  final DeviceIoProfile profile;
+  final int jack;
+  final VoidCallback? onFocus;
+
+  static double height(BuildContext context) {
+    final painter = TextPainter(
+      text: TextSpan(text: '8', style: Theme.of(context).textTheme.labelSmall),
+      textDirection: TextDirection.ltr,
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    final height = 14 + painter.height + 8;
+    painter.dispose();
+    return height;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final port = (config ?? const Ntx8cvRouting.unresolved()).ports(
+      profile,
+    )[jack - 1];
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: height(context),
+      child: Visibility(
+        visible: config != null,
+        maintainSize: true,
+        maintainAnimation: true,
+        maintainState: true,
+        child: ExcludeFocus(
+          excluding: config == null,
+          child: Semantics(
+            label: port.description,
+            child: Focus(
+              onKeyEvent: (_, event) =>
+                  event is KeyDownEvent &&
+                      (event.logicalKey == LogicalKeyboardKey.delete ||
+                          event.logicalKey == LogicalKeyboardKey.backspace)
+                  ? KeyEventResult.handled
+                  : KeyEventResult.ignored,
+              onFocusChange: (focused) {
+                if (focused) onFocus?.call();
+              },
+              child: GestureDetector(
+                onTap: onFocus,
+                child: Tooltip(
+                  message: port.description!,
+                  child: ExcludeSemantics(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.circle_outlined,
+                          size: 14,
+                          color: port.isActive
+                              ? scheme.primary
+                              : scheme.outlineVariant,
+                        ),
+                        Text(
+                          port.name,
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

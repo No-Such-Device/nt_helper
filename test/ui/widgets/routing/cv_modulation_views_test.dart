@@ -314,7 +314,7 @@ void main() {
         .map((w) => w.painter)
         .whereType<BusLanesPainter>()
         .single;
-    final x = before.rails.single.x;
+    final x = before.rails.singleWhere((rail) => rail.bus == 13).x;
     snapshot = snapshot.copyWith(slots: [snapshot.slots.first, target]);
     events.add(snapshot);
     expect(
@@ -330,7 +330,19 @@ void main() {
         .single;
     expect(after.rails.firstWhere((r) => r.bus == 13).x, x);
     expect(after.metrics.cardTops, before.metrics.cardTops);
-    expect(after.rails.map((r) => r.bus), [13, 32, 33]);
+    expect(after.rails.map((r) => r.bus), [
+      13,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      32,
+      33,
+    ]);
   });
 
   testWidgets(

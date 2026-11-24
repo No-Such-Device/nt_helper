@@ -189,24 +189,13 @@ class _BusLanesViewState extends State<BusLanesView> {
               isDark,
             );
             if (data == null) {
-              return Column(
-                children: [
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        'No algorithms loaded.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
+              return Center(
+                child: Text(
+                  'No algorithms loaded.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  if (state.ntx8cvRouting case final config?)
-                    Ntx8cvRoutingOutputs(
-                      config: config,
-                      profile: state.deviceIoProfile,
-                    ),
-                ],
+                ),
               );
             }
 
@@ -272,7 +261,10 @@ class _BusLanesViewState extends State<BusLanesView> {
                             width: m.contentWidth,
                             height:
                                 m.contentHeight +
-                                (state.ntx8cvRouting == null ? 0 : 64),
+                                (state.deviceIoProfile ==
+                                        DeviceIoProfile.distingExtended
+                                    ? Ntx8cvBusAssignment.height(context)
+                                    : 0),
                             child: Semantics(
                               label:
                                   'Bus lanes canvas with $blockCount algorithm $blockLabel',
@@ -298,10 +290,10 @@ class _BusLanesViewState extends State<BusLanesView> {
                                           ),
                                         ),
                                       ),
-                                      if (state.ntx8cvRouting
-                                          case final config?)
+                                      if (state.deviceIoProfile ==
+                                          DeviceIoProfile.distingExtended)
                                         ..._ntxTerminals(
-                                          config,
+                                          state.ntx8cvRouting,
                                           state.deviceIoProfile,
                                           data,
                                         ),
@@ -440,76 +432,49 @@ class _BusLanesViewState extends State<BusLanesView> {
   }
 
   List<Widget> _ntxTerminals(
-    Ntx8cvRouting config,
+    Ntx8cvRouting? config,
     DeviceIoProfile profile,
     _BusLanesData data,
   ) {
-    final theme = Theme.of(context);
     final m = data.metrics;
+    final height = Ntx8cvBusAssignment.height(context);
     return [
       Positioned(
         left: 8,
-        top: m.railsBottom + 30,
+        top: m.contentHeight,
         width: BusLanesMetrics.gutterWidth - 12,
-        child: Semantics(
-          header: true,
-          child: Tooltip(
-            message: config.description,
-            child: Text('NTX-8CV', style: theme.textTheme.titleSmall),
+        height: height,
+        child: Visibility(
+          visible: config != null,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Semantics(
+              header: true,
+              child: Text(
+                'NTX-8CV',
+                style: Theme.of(context).textTheme.labelSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
           ),
         ),
       ),
-      for (final port in config.ports(profile))
+      for (final port in (config ?? const Ntx8cvRouting.unresolved()).ports(
+        profile,
+      ))
         if (data.rails.where((rail) => rail.bus == port.busValue).firstOrNull
             case final rail?)
           Positioned(
-            left: rail.x - 20,
-            top: m.railsBottom,
-            width: 40,
-            height: 64,
-            child: Semantics(
-              label: port.description,
-              child: Focus(
-                onFocusChange: (focused) {
-                  if (focused && _selected != null) {
-                    setState(() => _selected = null);
-                  }
-                },
-                onKeyEvent: (_, event) =>
-                    event is KeyDownEvent &&
-                        (event.logicalKey == LogicalKeyboardKey.delete ||
-                            event.logicalKey == LogicalKeyboardKey.backspace)
-                    ? KeyEventResult.handled
-                    : KeyEventResult.ignored,
-                child: GestureDetector(
-                  onTap: () => setState(() => _selected = null),
-                  child: Tooltip(
-                    message: port.description!,
-                    child: ExcludeSemantics(
-                      child: Column(
-                        children: [
-                          Container(
-                            width: port.isActive ? 3 : 1,
-                            height: 28,
-                            color: port.isActive
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.outlineVariant,
-                          ),
-                          Icon(
-                            Icons.circle_outlined,
-                            key: ValueKey('ntx8cv_lane_${port.hardwareIndex}'),
-                            size: 14,
-                            color: port.isActive
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.outlineVariant,
-                          ),
-                          Text(port.name, style: theme.textTheme.labelSmall),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            left: rail.x - BusLanesMetrics.railWidth / 2,
+            top: m.contentHeight,
+            width: BusLanesMetrics.railWidth,
+            height: height,
+            child: Ntx8cvBusAssignment(
+              key: ValueKey('ntx8cv_bus_${port.hardwareIndex}'),
+              config: config,
+              profile: profile,
+              jack: port.hardwareIndex!,
+              onFocus: () => setState(() => _selected = null),
             ),
           ),
     ];
@@ -1162,7 +1127,12 @@ class _BusLanesViewState extends State<BusLanesView> {
   ) {
     final slots = List<RoutingAlgorithm>.from(algorithms)
       ..sort((a, b) => a.index.compareTo(b.index));
-    if (slots.isEmpty) return null;
+    if (slots.isEmpty &&
+        (context.read<RoutingEditorCubit>().state as RoutingEditorStateLoaded)
+                .ntx8cvRouting ==
+            null) {
+      return null;
+    }
     final n = slots.length;
 
     OutputMode modeOf(Port p) =>
@@ -1195,9 +1165,8 @@ class _BusLanesViewState extends State<BusLanesView> {
     }
     final requested = {
       ...usedBuses,
-      if (context.read<RoutingEditorCubit>().state
-          case RoutingEditorStateLoaded(:final ntx8cvRouting))
-        ...?ntx8cvRouting?.ports(deviceIoProfile).map((p) => p.busValue!),
+      if (deviceIoProfile == DeviceIoProfile.distingExtended)
+        for (var jack = 0; jack < 8; jack++) deviceIoProfile.auxStart + jack,
       for (final algo in slots)
         for (final mapping in algo.cvModulations) mapping.bus,
     };

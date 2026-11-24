@@ -14,6 +14,9 @@ class MovablePhysicalIONode extends StatefulWidget {
   /// The title to display in the header.
   final String title;
 
+  /// Reuses another physical node header’s intrinsic width.
+  final String? headerWidthReference;
+
   /// The icon to display in the header.
   final IconData icon;
 
@@ -74,6 +77,7 @@ class MovablePhysicalIONode extends StatefulWidget {
     super.key,
     required this.ports,
     required this.title,
+    this.headerWidthReference,
     required this.icon,
     required this.position,
     required this.isInput,
@@ -215,24 +219,63 @@ class _MovablePhysicalIONodeState extends State<MovablePhysicalIONode> {
             topRight: Radius.circular(12.0),
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(widget.icon, size: 16.0, color: colorScheme.primary),
-            const SizedBox(width: 8.0),
-            Text(
-              widget.title,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
+        child: widget.headerWidthReference == null
+            ? _headerContents(widget.title, colorScheme, theme)
+            : Stack(
+                children: [
+                  ExcludeSemantics(
+                    child: Visibility(
+                      visible: false,
+                      maintainSize: true,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      child: _headerContents(
+                        widget.headerWidthReference!,
+                        colorScheme,
+                        theme,
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: _headerContents(
+                        widget.title,
+                        colorScheme,
+                        theme,
+                        showIcon: false,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
       ),
     );
   }
+
+  Widget _headerContents(
+    String title,
+    ColorScheme colorScheme,
+    ThemeData theme, {
+    bool showIcon = true,
+  }) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (showIcon) ...[
+        Icon(widget.icon, size: 16.0, color: colorScheme.primary),
+        const SizedBox(width: 8.0),
+      ],
+      Text(
+        title,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+    ],
+  );
 
   /// Builds the list of port widgets using the shared PortWidget.
   Widget _buildPortList() {

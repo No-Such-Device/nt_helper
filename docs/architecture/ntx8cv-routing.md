@@ -8,7 +8,8 @@ NT's observed Module Settings. It does not configure or connect to the NTX.
 This first implementation supports **one NTX on Channel Group 1–8**. The owner
 confirmed that configuration. The NT does not report the NTX's independent
 Channel Group: this is an explicit supported/default-group convention, not
-hardware autodetection. The node is labelled with its channel group.
+hardware autodetection. The graph title is `NTX-8CV`; its tooltip, the model
+scope label and cached API retain the first-channel-group qualification.
 
 The observed NT 1.20.0beta hierarchy is Menu / Settings / Engine / NTX-8CV.
 Groups, setting IDs and the Mode enumeration are matched from the discovered
@@ -39,8 +40,10 @@ The existing Refresh Routing action refreshes settings after discovery has been
 requested. Cached `show_routing` never discovers or refreshes settings.
 
 The Canvas reuses the movable physical-output renderer and existing cable
-renderer. Bus Lanes has eight fixed endpoint junctions on the existing AUX rails.
-Signal Flow and Accessible List expose the same eight-port configuration. Ports
+renderer and ES-5 intrinsic header sizing. Bus Lanes and Signal Flow share one
+circle-and-number assignment row immediately below the bottom AUX bus labels,
+inside the scrolled content. There are no stems crossing those labels and no
+separate footer/legend. Accessible List exposes the same eight-port configuration. Ports
 remain in place when disabled or during same-session reads/uncertain writes;
 uncertain routes are not presented as active. Supported connections start with
 an explicitly unresolved configuration, never an assumed unused first group.
