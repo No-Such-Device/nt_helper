@@ -67,13 +67,23 @@ class ConnectionData {
   bool get isPartial => connection.isPartial;
 }
 
+typedef ReadOnlyBusInputStub = ({
+  String id,
+  String label,
+  Offset target,
+  Color color,
+});
+
 /// Custom painter for efficiently rendering multiple connection lines
 ///
 /// This painter is optimized for rendering many connections in a single
 /// paint operation, with support for overlap avoidance, connection types,
 /// bus labeling, and animated flow effects for ghost connections.
 class ConnectionPainter extends CustomPainter {
+  static const partialBusStubOffset = Offset(75, 0);
+
   final List<ConnectionData> connections;
+  final List<ReadOnlyBusInputStub> readOnlyBusInputs;
   final ThemeData theme;
   final ConnectionStateManager? connectionStateManager;
   final bool enableAntiOverlap;
@@ -101,6 +111,7 @@ class ConnectionPainter extends CustomPainter {
   ConnectionPainter({
     required this.connections,
     required this.theme,
+    this.readOnlyBusInputs = const [],
     this.connectionStateManager,
     this.enableAntiOverlap = true,
     this.showLabels = true,
@@ -134,7 +145,7 @@ class ConnectionPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (connections.isEmpty) return;
+    if (connections.isEmpty && readOnlyBusInputs.isEmpty) return;
 
     // Clear previous label bounds
     _labelBounds.clear();
@@ -190,11 +201,24 @@ class ConnectionPainter extends CustomPainter {
 
     // Draw labels for regular connections only
     // Partial connections get their bus label drawn at the endpoint
-    // via _drawPartialConnectionBusLabel, not at the midpoint
+    // via _drawPartialBusStub, not at the midpoint
     if (showLabels) {
       for (final conn in regularConnections) {
         _drawConnectionLabel(canvas, conn);
       }
+    }
+
+    for (final (:id, :label, :target, :color) in readOnlyBusInputs) {
+      final source = target - partialBusStubOffset;
+      _drawPartialBusStub(
+        canvas,
+        source: source,
+        target: target,
+        labelId: id,
+        label: label,
+        labelCenter: source,
+        color: color,
+      );
     }
   }
 
@@ -212,34 +236,20 @@ class ConnectionPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
 
     for (final conn in batch) {
-      // Calculate path - special handling for partial connections
-      Path path;
       if (type == ConnectionVisualType.partial) {
-        // For partial connections, create a short straight line to the label
-        path = _createPartialConnectionPath(conn);
-      } else {
-        // Regular path calculation for other connection types
-        path = enableAntiOverlap
-            ? _createRoutedPath(
-                conn,
-                connections,
-              ) // Use ALL connections for routing
-            : _createDirectPath(conn.sourcePosition, conn.destinationPosition);
+        _drawPartialConnection(canvas, conn);
+        continue;
       }
 
-      // Apply visual style based on connection type
+      final path = enableAntiOverlap
+          ? _createRoutedPath(conn, connections)
+          : _createDirectPath(conn.sourcePosition, conn.destinationPosition);
       _applyConnectionStyle(paint, conn, type);
 
-      // Draw the connection
       if (type == ConnectionVisualType.ghost) {
         _drawDashedPath(canvas, path, paint);
       } else if (type == ConnectionVisualType.invalid) {
         _drawDottedPath(canvas, path, paint);
-      } else if (type == ConnectionVisualType.partial) {
-        _drawDashedPath(canvas, path, paint);
-
-        // Draw bus label at the endpoint for partial connections
-        _drawPartialConnectionBusLabel(canvas, conn);
       } else {
         // Draw the path
         if (drawEndpointsOnly) {
@@ -272,11 +282,8 @@ class ConnectionPainter extends CustomPainter {
         }
       }
 
-      // Draw endpoints (skip for partial and invalid connections; the latter
-      // because port-color circles over an orange dot read as a
-      // "double-ended broken connection").
-      if (type != ConnectionVisualType.partial &&
-          type != ConnectionVisualType.invalid) {
+      // Port-color circles would obscure the ends of the dotted warning.
+      if (type != ConnectionVisualType.invalid) {
         _drawEndpoints(canvas, conn);
       }
     }
@@ -385,19 +392,10 @@ class ConnectionPainter extends CustomPainter {
     return path;
   }
 
-  /// Create a short straight path for partial connections
-  Path _createPartialConnectionPath(ConnectionData conn) {
-    final path = Path();
+  static const _partialBusWidth = 2.0;
 
-    // For partial connections, we already have the correct positions:
-    // - sourcePosition is the port (or label for inputs)
-    // - destinationPosition is the label (or port for inputs)
-    // Just draw a straight line between them
-    path.moveTo(conn.sourcePosition.dx, conn.sourcePosition.dy);
-    path.lineTo(conn.destinationPosition.dx, conn.destinationPosition.dy);
-
-    return path;
-  }
+  Color get _partialBusColor =>
+      theme.colorScheme.onSurface.withValues(alpha: 0.6);
 
   /// Apply visual style to paint based on connection properties
   void _applyConnectionStyle(
@@ -415,11 +413,10 @@ class ConnectionPainter extends CustomPainter {
       return;
     }
 
-    // Handle partial connections with distinctive styling
     if (type == ConnectionVisualType.partial) {
       paint
-        ..strokeWidth = 2.0
-        ..color = theme.colorScheme.onSurface.withValues(alpha: 0.6);
+        ..strokeWidth = _partialBusWidth
+        ..color = _partialBusColor;
       return;
     }
 
@@ -864,28 +861,51 @@ class ConnectionPainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// Draw bus label at the endpoint of a partial connection
-  void _drawPartialConnectionBusLabel(Canvas canvas, ConnectionData conn) {
-    if (conn.busLabel == null || conn.busLabel!.isEmpty) {
-      return;
-    }
-
+  void _drawPartialConnection(Canvas canvas, ConnectionData conn) {
     final isBeingDeleted =
         deletingPortId != null &&
         (conn.connection.sourcePortId == deletingPortId ||
             conn.connection.destinationPortId == deletingPortId);
-    final labelAlpha = isBeingDeleted
-        ? (1.0 - fadeOutProgress).clamp(0.0, 1.0)
-        : 1.0;
+    final labelAtTarget =
+        conn.connection.connectionType == ConnectionType.partialOutputToBus;
+    _drawPartialBusStub(
+      canvas,
+      source: conn.sourcePosition,
+      target: conn.destinationPosition,
+      labelId: 'partial_${conn.connection.id}',
+      label: conn.busLabel,
+      labelCenter: labelAtTarget
+          ? conn.destinationPosition
+          : conn.sourcePosition,
+      labelAlpha: isBeingDeleted
+          ? (1.0 - fadeOutProgress).clamp(0.0, 1.0)
+          : 1.0,
+    );
+  }
 
-    // Determine which end has the label
-    final connectionType = conn.connection.connectionType;
-    final isOutputTobus = connectionType == ConnectionType.partialOutputToBus;
-
-    // The label position is at the destination for outputs, source for inputs
-    final labelCenter = isOutputTobus
-        ? conn.destinationPosition
-        : conn.sourcePosition;
+  void _drawPartialBusStub(
+    Canvas canvas, {
+    required Offset source,
+    required Offset target,
+    required String labelId,
+    required String? label,
+    required Offset labelCenter,
+    double labelAlpha = 1.0,
+    Color? color,
+  }) {
+    _drawDashedPath(
+      canvas,
+      Path()
+        ..moveTo(source.dx, source.dy)
+        ..lineTo(target.dx, target.dy),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..strokeWidth = _partialBusWidth
+        ..color = color ?? _partialBusColor,
+    );
+    if (label == null || label.isEmpty) return;
 
     // Create text painter for bus label
     final textStyle = TextStyle(
@@ -894,7 +914,7 @@ class ConnectionPainter extends CustomPainter {
       color: theme.colorScheme.onSurface.withValues(alpha: labelAlpha),
     );
 
-    final textPainter = createLabelTextPainter(conn.busLabel!, textStyle);
+    final textPainter = createLabelTextPainter(label, textStyle);
     textPainter.layout();
 
     // Calculate label position centered at the endpoint
@@ -912,9 +932,7 @@ class ConnectionPainter extends CustomPainter {
     );
     labelRect = _resolveOverlap(labelRect);
 
-    // Store bounds for partial connection bus labels to enable tap handling
-    // Use a special prefix to distinguish from regular connection labels
-    _labelBounds['partial_${conn.connection.id}'] = labelRect;
+    _labelBounds[labelId] = labelRect;
 
     // Draw label background with subtle styling
     final backgroundPaint = Paint()
@@ -1089,6 +1107,7 @@ class ConnectionPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant ConnectionPainter oldDelegate) {
     return oldDelegate.connections != connections ||
+        oldDelegate.readOnlyBusInputs != readOnlyBusInputs ||
         oldDelegate.connectionStateManager != connectionStateManager ||
         oldDelegate.enableAntiOverlap != enableAntiOverlap ||
         oldDelegate.showLabels != showLabels ||

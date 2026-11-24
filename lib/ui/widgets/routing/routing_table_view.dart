@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'ntx8cv_routing_outputs.dart';
 
 import 'package:nt_helper/core/routing/cv_modulation.dart';
@@ -28,6 +29,8 @@ class RoutingTableView extends StatefulWidget {
 class _RoutingTableViewState extends State<RoutingTableView> {
   static const double _cellWidth = 32;
   static const double _cellHeight = 28;
+  static const int _slotRowCount = 3;
+  static const int _firstSignalRow = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +124,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       deviceIoProfile: deviceIoProfile,
     );
 
+    final trails = _cvTrailCells(algorithms, routing, modulations, numBuses);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final colours = [
@@ -237,6 +241,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
                           m.bus == ch,
                     )
                     .toList(),
+                trail: trails[(mainRows.length, ch)],
               ),
           ],
         ),
@@ -283,6 +288,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
                 unusedBg: unusedBg,
                 cellStyle: cellStyle,
                 deviceIoProfile: deviceIoProfile,
+                trail: trails[(mainRows.length, ch)],
               ),
           ],
         ),
@@ -294,7 +300,14 @@ class _RoutingTableViewState extends State<RoutingTableView> {
         TableRow(
           children: [
             for (int ch = 1; ch <= numBuses; ch++)
-              _signalBelowCell(ch, rowAfter, info, colours, symbolStyle),
+              _signalBelowCell(
+                ch,
+                rowAfter,
+                info,
+                colours,
+                symbolStyle,
+                trail: trails[(mainRows.length, ch)],
+              ),
           ],
         ),
       );
@@ -394,23 +407,98 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     );
   }
 
+  Map<(int, int), (double, double)> _cvTrailCells(
+    List<RoutingAlgorithm> algorithms,
+    List<RoutingInformation> routing,
+    List<CvModulation> modulations,
+    int numBuses,
+  ) {
+    final slotRows = {
+      for (final (i, slot) in routing.indexed)
+        slot.algorithmIndex: _firstSignalRow + i * _slotRowCount,
+    };
+    final outputs = {
+      for (final algorithm in algorithms)
+        for (final output in algorithm.outputPorts)
+          if (output.isActive)
+            output.id: (
+              row: slotRows[algorithm.index]! + 2,
+              bus: output.busValue,
+            ),
+    };
+    final trails = <(int, int), (double, double)>{};
+    for (final mapping in modulations) {
+      final output = outputs[mapping.contributors.singleOrNull?.portId];
+      final targetRow = slotRows[mapping.destinationSlot];
+      if (output == null ||
+          targetRow == null ||
+          output.row >= targetRow ||
+          output.bus != mapping.bus ||
+          mapping.bus < 1 ||
+          mapping.bus > numBuses) {
+        continue;
+      }
+
+      for (var row = output.row; row <= targetRow; row++) {
+        final cell = (row, mapping.bus);
+        // Leave room for the output glyph and CV text at the endpoints.
+        final start = row == output.row ? _cellHeight * .75 : 0.0;
+        final end = row == targetRow ? _cellHeight / 2 - 5 : _cellHeight;
+        final existing = trails[cell];
+        trails[cell] = existing == null
+            ? (start, end)
+            : (math.min(existing.$1, start), math.max(existing.$2, end));
+      }
+    }
+    return trails;
+  }
+
+  Widget _signalCell({
+    required Color color,
+    required (double, double)? trail,
+    Widget? child,
+  }) {
+    const x = _cellWidth / 2;
+    return Container(
+      width: _cellWidth,
+      height: _cellHeight,
+      alignment: Alignment.center,
+      color: color,
+      child: trail == null
+          ? child
+          : Stack(
+              fit: StackFit.expand,
+              children: [
+                IgnorePointer(
+                  child: CustomPaint(
+                    painter: CvModulationCurve(
+                      color: cvModulationColor(context),
+                      endpoints: [(Offset(x, trail.$1), Offset(x, trail.$2))],
+                    ),
+                  ),
+                ),
+                if (child != null) Center(child: child),
+              ],
+            ),
+    );
+  }
+
   Widget _signalAboveCell(
     int ch,
     List<int> rowBefore,
     RoutingInformation info,
     List<Color> colours,
     Color errorColor,
-    List<CvModulation> modulations,
-  ) {
+    List<CvModulation> modulations, {
+    required (double, double)? trail,
+  }) {
     final usesChannel = info.readsBus(ch, signals: true, mappings: false);
     final signalLevel = ch < rowBefore.length ? rowBefore[ch] : 0;
     final bgColor = colours[signalLevel + 3 * (ch & 1)];
 
     final unprovided = signalLevel == 0;
-    return Container(
-      width: _cellWidth,
-      height: _cellHeight,
-      alignment: Alignment.center,
+    return _signalCell(
+      trail: trail,
       color: modulations.isEmpty
           ? bgColor
           : Color.alphaBlend(
@@ -454,6 +542,7 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     required Color unusedBg,
     required TextStyle? cellStyle,
     required DeviceIoProfile deviceIoProfile,
+    required (double, double)? trail,
   }) {
     final levelBefore = ch < signalsBefore.length ? signalsBefore[ch] : 0;
     final isUsed = info.usesBus(ch);
@@ -467,18 +556,12 @@ class _RoutingTableViewState extends State<RoutingTableView> {
       bgColor = unusedBg;
     }
 
-    if (!isUsed) {
-      return Container(width: _cellWidth, height: _cellHeight, color: bgColor);
-    }
-    return Container(
-      width: _cellWidth,
-      height: _cellHeight,
-      alignment: Alignment.center,
+    return _signalCell(
+      trail: trail,
       color: bgColor,
-      child: Text(
-        _condensedChannelLabel(ch, deviceIoProfile),
-        style: cellStyle,
-      ),
+      child: isUsed
+          ? Text(_condensedChannelLabel(ch, deviceIoProfile), style: cellStyle)
+          : null,
     );
   }
 
@@ -487,22 +570,20 @@ class _RoutingTableViewState extends State<RoutingTableView> {
     List<int> rowAfter,
     RoutingInformation info,
     List<Color> colours,
-    TextStyle? symbolStyle,
-  ) {
+    TextStyle? symbolStyle, {
+    required (double, double)? trail,
+  }) {
     final signalLevel = ch < rowAfter.length ? rowAfter[ch] : 0;
     final bgColor = colours[signalLevel + 3 * (ch & 1)];
     final hasOutput = info.writesBus(ch);
 
-    if (!hasOutput) {
-      return Container(width: _cellWidth, height: _cellHeight, color: bgColor);
-    }
     final replaced = info.replacesBus(ch);
-    return Container(
-      width: _cellWidth,
-      height: _cellHeight,
-      alignment: Alignment.center,
+    return _signalCell(
+      trail: trail,
       color: bgColor,
-      child: Text(replaced ? '\u2533' : '+', style: symbolStyle),
+      child: hasOutput
+          ? Text(replaced ? '\u2533' : '+', style: symbolStyle)
+          : null,
     );
   }
 
