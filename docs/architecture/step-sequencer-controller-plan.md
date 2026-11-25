@@ -30,13 +30,22 @@ surface owns a header and its Bypass focus node; headers are not retained in
 hidden editor bodies.
 
 Lane, snap/scale/root, quantize undo and grid scroll survive those mode toggles.
-Already accepted 50ms grid/playback edits are allowed to settle exactly once
-when a user switches modes, rather than being silently lost on disposal.
-Pending writes and delayed operations are scoped to the original manager,
-slot index, Algorithm object identity and sequence. Disposal, disconnect, slot
-replacement/removal or connection changes cannot send a trailing write into a
-different context. An Algorithm object replacement conservatively resets the
-native subtree; an immutable Slot value update retaining that object does not.
+Accepted grid/playback edits are debounced while editing, then explicitly
+flushed by the mode-selection event before exposing the other editor. Thus an
+older native debounce cannot overwrite a newer Standard/Spreadsheet edit.
+Disposal only cancels work; it never flushes MIDI writes.
+
+Pending writes are anchored to the displayed sequence, not a newer snapshot
+that happened to arrive before repaint. Each short-lived edit scope observes
+state departures and latches cancellation, so sequence 1 → 2 → 1, a disconnect
+or a reorder cannot revive old work. Completion, replacement and disposal
+release its subscription. Ordinary value readback is not treated as user input.
+
+Editor/write identity includes manager, real slot index, a local algorithm
+instance token and the parameter/specification schema. `Algorithm.copyWith`
+retains that token for rename/style changes; fresh Algorithm construction gets
+another token, including same-GUID replacement or full rehydration. Schema
+changes invalidate work even when the token is retained.
 No polling is introduced for hidden editors. Latest immutable slot data still
 updates the retained body. Retention is not disk persistence and does not
 promise preservation across parent layout reparenting, preset reloads or
@@ -44,7 +53,10 @@ reconnects. Existing index/GUID keys cannot distinguish every same-GUID
 instance replacement; this feature does not invent that guarantee.
 
 Sequence changes invalidate sequence-specific undo and pending step edits;
-accepted old-sequence edits must not run against the new sequence. The native
+accepted old-sequence edits must not run against the new sequence. Randomise
+pulse cleanup is algorithm/session-bound instead: after an accepted high edge,
+its low edge still runs across a sequence change, but never on a replacement
+algorithm or after reconnect. The native
 Sequence selection uses the parameter's actual min/max, including 1..32 and
 legacy 0..31, rather than an assumed 0..31 range.
 
@@ -71,9 +83,10 @@ legacy 0..31, rather than an assumed 0..31 range.
   caused merely by selecting a mode.
 - Same-slot lane/quantize/undo retained; hidden fields absent from traversal and
   semantics; one visible Bypass/header; selector focus retained.
-- Pending grid/playback input settles once on a mode toggle; disconnect,
-  replacement, removal and sequence change cancel stale work. Async sequence
-  and randomize continuations never target a replacement session.
+- Pending grid/playback input settles before a mode toggle exposes another
+  editor. Newer intent wins in both directions, with hidden keyboard activity
+  excluded. Disconnect, replacement, removal and sequence departure cancel
+  stale work permanently. Randomise cleanup still follows its original instance.
 - Fresh parameter values and Sequence 32 render after hidden updates; legacy
   zero-based Sequence remains valid.
 - Standard contains full parameter pages; retained native complementary
@@ -90,13 +103,18 @@ legacy 0..31, rather than an assumed 0..31 range.
 
 ## Review and delivery boundary
 
-The new integration file exercises 25 cases using all 215 parameters from
-bundled `spsq` metadata. The final full default suite passed 4,828 tests with one
-existing hardware opt-in skip. Analyzer, formatting, diff checks and a separate
-unsigned macOS Debug build passed. These are automated checks, not a claim of
-physical NT, VoiceOver or launched-app acceptance.
+The independent review identified four lifecycle/order defects; their seven
+characterization probes are now permanent positive regressions. Additional
+scope and debouncer tests cover stable presentation copies, same-GUID
+replacement, schema/specification changes, reorder/disconnect round trips,
+readback-versus-intent, cancellation resources and explicit flush ordering.
+The reviewed implementation passed the full default suite: 4,849 tests with
+one existing hardware opt-in skip, clean analysis/formatting/diff checks and an
+unsigned macOS Debug build. These automated checks do not claim physical NT,
+VoiceOver or launched-app acceptance. Full rehydration/reconnect may reset editor-local state; the local
+instance token is intentionally not persisted or sent over MIDI.
 
-Commit implementation and verification evidence on this worktree branch, then
-return to the coordinator for independent review and cleanup. Open a PR only
-after that review. No merge, release, app reload/restart or hardware operations
+Commit implementation and verification evidence on this worktree branch.
+Independent review is complete; publish the PR after fixing and validating its
+findings. No merge, release, app reload/restart or hardware operations
 are part of this implementation job. The active demo is left untouched.

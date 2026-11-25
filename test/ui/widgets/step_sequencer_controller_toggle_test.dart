@@ -17,16 +17,19 @@ import 'package:nt_helper/ui/step_sequencer_view.dart';
 import 'package:nt_helper/ui/widgets/algorithm_controller/algorithm_controller_section_controller.dart';
 import 'package:nt_helper/ui/widgets/algorithm_controller/lua_algorithm_controller_view.dart';
 import 'package:nt_helper/ui/widgets/parameter_spreadsheet_view.dart';
+import 'package:nt_helper/ui/widgets/parameter_view_row.dart';
 import 'package:nt_helper/ui/widgets/section_parameter_controller.dart';
 import 'package:nt_helper/ui/widgets/section_parameter_list_view.dart';
 import 'package:nt_helper/ui/widgets/slot_detail_view.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_action_bar.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/playback_controls.dart';
+import 'package:nt_helper/ui/widgets/step_sequencer/bit_pattern_editor.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/quantize_controls.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/sequence_selector.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/step_column_widget.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/step_grid_view.dart';
+import 'package:nt_helper/ui/widgets/step_sequencer/step_sequencer_edit_scope.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../test_helpers/step_sequencer_slot_fixture.dart';
@@ -325,7 +328,7 @@ void main() {
   );
 
   testWidgets(
-    'accepted playback debounce settles once after hiding the native editor',
+    'accepted playback input settles before another editor is enabled',
     (tester) async {
       await open(tester);
       final playback = find.byType(PlaybackControls);
@@ -334,9 +337,6 @@ void main() {
       );
       slider.onChanged!(42);
       await tester.tap(find.byKey(_standard));
-      await tester.pump(const Duration(milliseconds: 49));
-      noWrites();
-      await tester.pump(const Duration(milliseconds: 2));
       final parameter = slot.parameters.indexWhere((p) => p.name == 'Glide');
       verify(
         () => cubit.updateParameterValue(
@@ -779,4 +779,313 @@ void main() {
       },
     );
   }
+  Slot sequenceValue(Slot value, int sequence) => value.copyWith(
+    values: [
+      for (final p in value.values)
+        p.parameterNumber == 207
+            ? ParameterValue(
+                algorithmIndex: p.algorithmIndex,
+                parameterNumber: 207,
+                value: sequence,
+              )
+            : p,
+    ],
+  );
+
+  void startGrid(WidgetTester tester) {
+    final drag = tester.widget<GestureDetector>(
+      find
+          .descendant(
+            of: find.byType(StepGridView),
+            matching: find.byWidgetPredicate(
+              (w) => w is GestureDetector && w.onPanStart != null,
+            ),
+          )
+          .first,
+    );
+    drag.onPanStart!(
+      DragStartDetails(
+        globalPosition: tester.getCenter(find.byType(StepColumnWidget).first),
+      ),
+    );
+  }
+
+  test('stale displayed sequence cannot acquire a current edit scope', () {
+    final oldUi = slot;
+    emit(synchronized([sequenceValue(slot, 2)]));
+    final scope = StepSequencerEditScope.capture(cubit, 0, oldUi);
+    expect(scope, isNull);
+    expect(oldUi.values[207].value, 1);
+  });
+
+  testWidgets('stale grid callback cannot write to a newer sequence', (
+    tester,
+  ) async {
+    await open(tester);
+    emit(synchronized([sequenceValue(slot, 2)]));
+    // No pump: the displayed grid still belongs to sequence 1.
+    startGrid(tester);
+    await tester.pump(const Duration(milliseconds: 51));
+    noWrites();
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  test('scope invalidation is permanent after a sequence round trip', () {
+    final scope = StepSequencerEditScope.capture(cubit, 0, slot)!;
+    emit(synchronized([sequenceValue(slot, 2)]));
+    expect(scope.isCurrent, isFalse);
+    emit(synchronized([slot]));
+    expect(scope.isCurrent, isFalse);
+    scope.dispose();
+    expect(states.hasListener, isFalse);
+  });
+
+  testWidgets(
+    'pending grid edit is cancelled by departure even if its sequence returns',
+    (tester) async {
+      await open(tester);
+      startGrid(tester);
+      emit(synchronized([sequenceValue(slot, 2)]));
+      emit(synchronized([slot]));
+      await tester.pump(const Duration(milliseconds: 51));
+      noWrites();
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
+    'Randomise cleanup follows algorithm lifetime rather than sequence',
+    (tester) async {
+      await open(tester);
+      tester
+          .widget<PopupMenuButton<String>>(
+            find
+                .descendant(
+                  of: find.byType(StepSequencerView),
+                  matching: find.byType(PopupMenuButton<String>),
+                )
+                .first,
+          )
+          .onSelected!('randomize');
+      await tester.pump();
+      verify(
+        () => cubit.updateParameterValue(
+          algorithmIndex: 0,
+          parameterNumber: 171,
+          value: 1,
+          userIsChangingTheValue: true,
+        ),
+      ).called(1);
+      slot = sequenceValue(slot, 2).copyWith(
+        values: [
+          for (final p in sequenceValue(slot, 2).values)
+            p.parameterNumber == 171
+                ? ParameterValue(
+                    algorithmIndex: 0,
+                    parameterNumber: 171,
+                    value: 1,
+                  )
+                : p,
+        ],
+      );
+      emit(synchronized([slot]));
+      await tester.pump(const Duration(milliseconds: 101));
+      verify(
+        () => cubit.updateParameterValue(
+          algorithmIndex: 0,
+          parameterNumber: 171,
+          value: 0,
+          userIsChangingTheValue: true,
+        ),
+      ).called(1);
+      noWrites();
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('visual style copies retain drafts and accepted grid input', (
+    tester,
+  ) async {
+    await open(tester);
+    final oldState = tester.state(find.byType(StepSequencerView));
+    tester
+        .widget<QuantizeControls>(find.byType(QuantizeControls))
+        .onScaleChanged('Minor');
+    await tester.pump();
+    startGrid(tester);
+    slot = slot.copyWith(
+      algorithm: slot.algorithm.copyWith(
+        visualStyle: const AlgorithmVisualStyle(leftIndent: 1),
+      ),
+    );
+    emit(synchronized([slot]));
+    await tester.pumpWidget(app());
+    await tester.pump(const Duration(milliseconds: 51));
+    expect(tester.state(find.byType(StepSequencerView)), same(oldState));
+    expect(
+      tester
+          .widget<QuantizeControls>(find.byType(QuantizeControls))
+          .selectedScale,
+      'Minor',
+    );
+    verify(
+      () => cubit.updateParameterValue(
+        algorithmIndex: 0,
+        parameterNumber: 1,
+        value: any(named: 'value'),
+        userIsChangingTheValue: true,
+      ),
+    ).called(1);
+    noWrites();
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('newer Standard intent follows the flushed native edit', (
+    tester,
+  ) async {
+    await open(tester);
+    final nativeSlider = tester.widget<Slider>(
+      find
+          .descendant(
+            of: find.byType(PlaybackControls),
+            matching: find.byType(Slider),
+          )
+          .last,
+    );
+    nativeSlider.onChanged!(42);
+    await tester.tap(find.byKey(_standard));
+    await tester.pump();
+    final row = find.byWidgetPredicate(
+      (w) => w is ParameterViewRow && w.name == 'Glide',
+    );
+    expect(row, findsOneWidget);
+    final standardSlider = tester.widget<Slider>(
+      find.descendant(of: row, matching: find.byType(Slider)),
+    );
+    standardSlider.onChangeStart!(0);
+    standardSlider.onChanged!(55);
+    await tester.pump(const Duration(milliseconds: 51));
+    final parameter = slot.parameters.indexWhere((p) => p.name == 'Glide');
+    final sent = verify(
+      () => cubit.updateParameterValue(
+        algorithmIndex: 0,
+        parameterNumber: parameter,
+        value: captureAny(named: 'value'),
+        userIsChangingTheValue: true,
+      ),
+    ).captured;
+    expect(sent, [42, 55]);
+    noWrites();
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+  testWidgets(
+    'switching Standard to native and back keeps the latest intent last',
+    (tester) async {
+      await tester.pumpWidget(app());
+      void editStandard(int value) {
+        final row = find.byWidgetPredicate(
+          (w) => w is ParameterViewRow && w.name == 'Glide',
+        );
+        final slider = tester.widget<Slider>(
+          find.descendant(of: row, matching: find.byType(Slider)),
+        );
+        slider.onChangeStart!(0);
+        slider.onChanged!(value.toDouble());
+      }
+
+      editStandard(55);
+      await tester.tap(find.byKey(_controller));
+      await tester.pump();
+      tester
+          .widget<Slider>(
+            find
+                .descendant(
+                  of: find.byType(PlaybackControls),
+                  matching: find.byType(Slider),
+                )
+                .last,
+          )
+          .onChanged!(42);
+      await tester.tap(find.byKey(_standard));
+      await tester.pump();
+      editStandard(66);
+      await tester.pump(const Duration(milliseconds: 51));
+      final parameter = slot.parameters.indexWhere((p) => p.name == 'Glide');
+      final sent = verify(
+        () => cubit.updateParameterValue(
+          algorithmIndex: 0,
+          parameterNumber: parameter,
+          value: captureAny(named: 'value'),
+          userIsChangingTheValue: true,
+        ),
+      ).captured;
+      expect(sent, [55, 42, 66]);
+      noWrites();
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+  testWidgets(
+    'fresh grid render accepts its displayed sequence before parent props update',
+    (tester) async {
+      await open(tester);
+      emit(synchronized([sequenceValue(slot, 2)]));
+      await tester.pump();
+      startGrid(tester);
+      await tester.pump(const Duration(milliseconds: 51));
+      verify(
+        () => cubit.updateParameterValue(
+          algorithmIndex: 0,
+          parameterNumber: 1,
+          value: any(named: 'value'),
+          userIsChangingTheValue: true,
+        ),
+      ).called(1);
+      noWrites();
+    },
+  );
+
+  testWidgets(
+    'bit editor cannot submit a callback from the departed sequence',
+    (tester) async {
+      await open(tester);
+      await tester.tap(find.text('Pattern').first);
+      await tester.pumpAndSettle();
+      final bit = tester.widget<BitPatternEditor>(
+        find.byType(BitPatternEditor).first,
+      );
+      emit(synchronized([sequenceValue(slot, 2)]));
+      bit.onChanged(0);
+      noWrites();
+    },
+  );
+
+  testWidgets(
+    'fresh playback controls accept their displayed sequence before parent props update',
+    (tester) async {
+      await open(tester);
+      emit(synchronized([sequenceValue(slot, 2)]));
+      await tester.pump();
+      tester
+          .widget<Slider>(
+            find
+                .descendant(
+                  of: find.byType(PlaybackControls),
+                  matching: find.byType(Slider),
+                )
+                .last,
+          )
+          .onChanged!(42);
+      await tester.pump(const Duration(milliseconds: 51));
+      final glide = slot.parameters.indexWhere((p) => p.name == 'Glide');
+      verify(
+        () => cubit.updateParameterValue(
+          algorithmIndex: 0,
+          parameterNumber: glide,
+          value: 42,
+          userIsChangingTheValue: true,
+        ),
+      ).called(1);
+      noWrites();
+    },
+  );
 }

@@ -6,6 +6,7 @@ import 'package:nt_helper/services/step_sequencer_params.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/bit_pattern_editor.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/pitch_bar_painter.dart';
+import 'package:nt_helper/ui/widgets/step_sequencer/step_sequencer_edit_scope.dart';
 import 'package:nt_helper/util/ui_helpers.dart';
 
 /// Step parameter types for editing (GLOBAL mode, not per-step)
@@ -279,13 +280,22 @@ class _StepColumnWidgetState extends State<StepColumnWidget> {
     final params = StepSequencerParams.fromSlot(widget.slot);
     int? paramIndex = _getParameterIndex(params, widget.activeParameter);
 
-    if (paramIndex != null) {
-      context.read<DistingCubit>().updateParameterValue(
-        algorithmIndex: widget.slotIndex,
+    if (paramIndex == null) return;
+    final scope = StepSequencerEditScope.capture(
+      context.read<DistingCubit>(),
+      widget.slotIndex,
+      widget.slot,
+    );
+    if (scope == null) return;
+    try {
+      scope.cubit.updateParameterValue(
+        algorithmIndex: scope.slotIndex,
         parameterNumber: paramIndex,
         value: newValue,
         userIsChangingTheValue: true,
       );
+    } finally {
+      scope.dispose();
     }
   }
 

@@ -4,10 +4,17 @@ import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/ui/notes_algorithm_view.dart';
 import 'package:nt_helper/ui/patch_map/patch_map_editor.dart';
 import 'package:nt_helper/ui/step_sequencer_view.dart';
+import 'package:nt_helper/util/parameter_write_debouncer.dart';
 
 class NativeAlgorithmAlternate {
   final String name;
-  final Widget Function(Slot, int, FirmwareVersion) builder;
+  final Widget Function(
+    Slot,
+    int,
+    FirmwareVersion, {
+    ParameterWriteDebouncer? pendingWrites,
+  })
+  builder;
 
   const NativeAlgorithmAlternate({required this.name, required this.builder});
 }
@@ -15,11 +22,13 @@ class NativeAlgorithmAlternate {
 class AlgorithmViewRegistry {
   static final _stepSequencer = NativeAlgorithmAlternate(
     name: 'Step Sequencer editor',
-    builder: (slot, slotIndex, firmwareVersion) => StepSequencerView(
-      slot: slot,
-      slotIndex: slotIndex,
-      firmwareVersion: firmwareVersion,
-    ),
+    builder: (slot, slotIndex, firmwareVersion, {pendingWrites}) =>
+        StepSequencerView(
+          slot: slot,
+          slotIndex: slotIndex,
+          firmwareVersion: firmwareVersion,
+          pendingWrites: pendingWrites,
+        ),
   );
 
   static NativeAlgorithmAlternate? findAlternateForGuid(String guid) =>

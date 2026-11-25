@@ -15,6 +15,8 @@ import 'package:nt_helper/ui/widgets/slot_bypass_control.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_action_bar.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode_selector.dart';
+import 'package:nt_helper/ui/widgets/step_sequencer/step_sequencer_edit_scope.dart';
+import 'package:nt_helper/util/parameter_write_debouncer.dart';
 
 /// Presents the current slot snapshot supplied by [DistingStateSynchronized].
 ///
@@ -63,6 +65,7 @@ class _SlotDetailViewState extends State<SlotDetailView>
     for (final mode in SlotEditorMode.values)
       mode: FocusNode(debugLabel: 'SlotDetailView.${mode.name}'),
   };
+  final _nativePendingWrites = ParameterWriteDebouncer();
   Object? _nativeIdentity;
   bool _nativeOpened = false;
 
@@ -99,6 +102,7 @@ class _SlotDetailViewState extends State<SlotDetailView>
   void dispose() {
     _sectionControllerSub?.cancel();
     _bypassFocusNode.dispose();
+    _nativePendingWrites.dispose();
     for (final node in _modeFocusNodes.values) {
       node.dispose();
     }
@@ -153,7 +157,11 @@ class _SlotDetailViewState extends State<SlotDetailView>
         final state = cubit.state;
         return state is DistingStateSynchronized ? state.disting : null;
       });
-      final identity = (manager, widget.slotIndex, widget.slot.algorithm);
+      final identity = StepSequencerEditIdentity(
+        manager,
+        widget.slotIndex,
+        widget.slot,
+      );
       if (_nativeIdentity != identity) {
         _nativeIdentity = identity;
         _nativeOpened = false;
@@ -190,6 +198,7 @@ class _SlotDetailViewState extends State<SlotDetailView>
                               widget.slot,
                               widget.slotIndex,
                               widget.firmwareVersion,
+                              pendingWrites: _nativePendingWrites,
                             ),
                           ),
                         ),
@@ -328,6 +337,7 @@ class _SlotDetailViewState extends State<SlotDetailView>
         mode == SlotEditorMode.controller && !controllerAvailable) {
       return;
     }
+    _nativePendingWrites.flush();
     widget.onEditorModeChanged(mode);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.editorMode == mode) {

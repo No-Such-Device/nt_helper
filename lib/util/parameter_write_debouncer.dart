@@ -24,6 +24,8 @@ import 'dart:async';
 /// ```
 class ParameterWriteDebouncer {
   final Map<String, Timer> _timers = {};
+  final Map<String, void Function()> _callbacks = {};
+  final Map<String, void Function()> _cancellations = {};
 
   /// Schedules a callback to run after the specified delay
   ///
@@ -34,26 +36,44 @@ class ParameterWriteDebouncer {
   /// [key] Unique identifier for this debounced operation (e.g., 'pitch_5')
   /// [callback] Function to execute after delay
   /// [delay] How long to wait before executing (typically 50ms)
-  void schedule(String key, void Function() callback, Duration delay) {
-    // Cancel any pending timer for this key
-    _timers[key]?.cancel();
-
-    // Schedule new timer
+  void schedule(
+    String key,
+    void Function() callback,
+    Duration delay, {
+    void Function()? onCancel,
+  }) {
+    cancel(key);
+    _callbacks[key] = callback;
+    if (onCancel != null) _cancellations[key] = onCancel;
     _timers[key] = Timer(delay, () {
-      callback();
       _timers.remove(key);
+      _callbacks.remove(key);
+      _cancellations.remove(key);
+      callback();
     });
   }
 
-  /// Cancels all pending timers and clears the map
-  ///
-  /// Must be called in widget dispose() to prevent memory leaks and ensure
-  /// pending callbacks don't execute after widget is destroyed.
-  void dispose() {
-    for (final timer in _timers.values) {
-      timer.cancel();
+  void cancel(String key) {
+    _timers.remove(key)?.cancel();
+    _callbacks.remove(key);
+    _cancellations.remove(key)?.call();
+  }
+
+  /// Settle accepted input before exposing another editor for the same values.
+  void flush() {
+    for (final key in _callbacks.keys.toList()) {
+      final callback = _callbacks.remove(key);
+      _timers.remove(key)?.cancel();
+      _cancellations.remove(key);
+      callback?.call();
     }
-    _timers.clear();
+  }
+
+  /// Cancel, never send, work belonging to a disposed editor.
+  void dispose() {
+    for (final key in _timers.keys.toList()) {
+      cancel(key);
+    }
   }
 
   /// Returns the number of currently pending timers (useful for debugging)

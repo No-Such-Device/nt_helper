@@ -97,5 +97,109 @@ void main() {
         expect(debouncer.pendingCount, 0);
       });
     });
+
+    test(
+      'flush sends the latest accepted inputs once before another editor acts',
+      () {
+        fakeAsync((async) {
+          final values = <int>[];
+          debouncer.schedule(
+            'pitch',
+            () => values.add(1),
+            const Duration(milliseconds: 50),
+          );
+          debouncer.schedule(
+            'pitch',
+            () => values.add(2),
+            const Duration(milliseconds: 50),
+          );
+          debouncer.schedule(
+            'glide',
+            () => values.add(3),
+            const Duration(milliseconds: 50),
+          );
+          debouncer.flush();
+          expect(values, [2, 3]);
+          expect(debouncer.pendingCount, 0);
+          expect(async.pendingTimers, isEmpty);
+          async.elapse(const Duration(milliseconds: 100));
+          expect(values, [2, 3]);
+        });
+      },
+    );
+
+    test(
+      'cancellation releases replaced and disposed work but not completed work',
+      () {
+        fakeAsync((async) {
+          final cancelled = <String>[];
+          debouncer.schedule(
+            'pitch',
+            () {},
+            const Duration(milliseconds: 50),
+            onCancel: () => cancelled.add('old'),
+          );
+          debouncer.schedule(
+            'pitch',
+            () {},
+            const Duration(milliseconds: 50),
+            onCancel: () => cancelled.add('new'),
+          );
+          expect(cancelled, ['old']);
+          debouncer.flush();
+          expect(cancelled, ['old']);
+          debouncer.schedule(
+            'glide',
+            () {},
+            const Duration(milliseconds: 50),
+            onCancel: () => cancelled.add('disposed'),
+          );
+          debouncer.dispose();
+          expect(cancelled, ['old', 'disposed']);
+          expect(async.pendingTimers, isEmpty);
+        });
+      },
+    );
+
+    test('cancelling one component leaves another component pending', () {
+      fakeAsync((async) {
+        final values = <int>[];
+        debouncer.schedule(
+          'step_0',
+          () => values.add(1),
+          const Duration(milliseconds: 50),
+        );
+        debouncer.schedule(
+          'param_2',
+          () => values.add(2),
+          const Duration(milliseconds: 50),
+        );
+        debouncer.cancel('step_0');
+        async.elapse(const Duration(milliseconds: 50));
+        expect(values, [2]);
+      });
+    });
+
+    test('failed flush leaves unsubmitted work cancellable, not orphaned', () {
+      fakeAsync((async) {
+        var cancelled = false;
+        debouncer.schedule(
+          'failing',
+          () => throw StateError('send failed'),
+          const Duration(milliseconds: 50),
+        );
+        debouncer.schedule(
+          'pending',
+          () {},
+          const Duration(milliseconds: 50),
+          onCancel: () => cancelled = true,
+        );
+        expect(debouncer.flush, throwsStateError);
+        expect(debouncer.pendingCount, 1);
+        debouncer.dispose();
+        expect(cancelled, isTrue);
+        expect(async.pendingTimers, isEmpty);
+      });
+    });
   });
 }

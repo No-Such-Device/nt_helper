@@ -29,12 +29,14 @@ class StepSequencerView extends StatefulWidget {
   final Slot slot;
   final FirmwareVersion firmwareVersion;
   final int slotIndex;
+  final ParameterWriteDebouncer? pendingWrites;
 
   const StepSequencerView({
     super.key,
     required this.slot,
     required this.firmwareVersion,
     required this.slotIndex,
+    this.pendingWrites,
   });
 
   @override
@@ -79,7 +81,9 @@ class _StepSequencerViewState extends State<StepSequencerView> {
   bool _isLoadingSequence = false;
 
   // Sync status tracking
-  final _debouncer = ParameterWriteDebouncer();
+  final _ownWrites = ParameterWriteDebouncer();
+  ParameterWriteDebouncer get _pendingWrites =>
+      widget.pendingWrites ?? _ownWrites;
   SyncStatus _syncStatus = SyncStatus.synced;
   String? _lastError;
 
@@ -116,7 +120,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
 
   @override
   void dispose() {
-    _debouncer.dispose();
+    _ownWrites.dispose();
     super.dispose();
   }
 
@@ -274,6 +278,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
                         selectedScale: _selectedScale,
                         rootNote: _rootNote,
                         activeParameter: _activeParameter,
+                        pendingWrites: _pendingWrites,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -324,6 +329,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
                             params: params,
                             slot: widget.slot,
                             compact: isMobile,
+                            pendingWrites: _pendingWrites,
                           );
                         },
                       ),
@@ -442,6 +448,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
         });
       }
     } finally {
+      scope.dispose();
       if (mounted) {
         setState(() {
           _isLoadingSequence = false;
@@ -529,6 +536,8 @@ class _StepSequencerViewState extends State<StepSequencerView> {
           _lastError = 'Error quantizing steps: $e';
         });
       }
+    } finally {
+      scope.dispose();
     }
   }
 
@@ -574,6 +583,8 @@ class _StepSequencerViewState extends State<StepSequencerView> {
           _lastError = 'Error undoing changes: $e';
         });
       }
+    } finally {
+      scope.dispose();
     }
   }
 
@@ -649,7 +660,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
       return;
     }
 
-    final scope = _captureEditScope();
+    final scope = _captureEditScope(checkSequence: false);
     if (scope == null) return;
     final cubit = scope.cubit;
 
@@ -675,6 +686,8 @@ class _StepSequencerViewState extends State<StepSequencerView> {
       );
     } catch (e) {
       // Error triggering randomize - silently fail
+    } finally {
+      scope.dispose();
     }
   }
 
