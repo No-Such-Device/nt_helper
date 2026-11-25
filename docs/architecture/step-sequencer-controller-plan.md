@@ -17,8 +17,9 @@ Patch Map (`ThPh`), bundled Lua controllers, or the demo-only `seq ` identity.
   same native descriptor lookup; Lua definitions remain real Lua definitions.
 - The workspace's global, in-memory requested mode remains authoritative.
   Unsupported slots locally fall back without clearing that requested mode.
-- Lua section navigation/collapse remains Lua-only. Native Parameter Pages,
-  Randomize, randomize settings, quantization and playback controls remain.
+- Lua section navigation/collapse remains Lua-only. Native Randomize,
+  randomize settings, quantization and playback controls remain. Parameter
+  pages are available through Standard, not a separate native dialog.
 
 ## State and lifetime decision
 
@@ -89,8 +90,8 @@ legacy 0..31, rather than an assumed 0..31 range.
   stale work permanently. Randomise cleanup still follows its original instance.
 - Fresh parameter values and Sequence 32 render after hidden updates; legacy
   zero-based Sequence remains valid.
-- Standard contains full parameter pages; retained native complementary
-  Parameter Pages and other native controls remain in the native editor.
+- Standard contains full parameter pages; the redundant native Parameter
+  Pages menu/dialog is removed. Other native controls remain in the native editor.
 - Offline/demo synchronized snapshots use the same dispatcher; unavailable
   offline algorithms retain their existing fallback.
 - Global requested Controller selection survives unsupported-slot fallback;
