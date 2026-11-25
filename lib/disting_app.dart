@@ -294,6 +294,7 @@ class _DistingPageState extends State<DistingPage> {
                 selectedInputDevice: state.selectedInputDevice,
                 selectedOutputDevice: state.selectedOutputDevice,
                 selectedSysExId: state.selectedSysExId,
+                connectionStatus: state.connectionStatus,
                 onSelectionChanged: (inputDevice, outputDevice, sysExId) {
                   context.read<DistingCubit>().updateDeviceSelection(
                     inputDevice: inputDevice,
@@ -439,6 +440,7 @@ class _DeviceSelectionView extends StatelessWidget {
   final MidiDevice? selectedInputDevice;
   final MidiDevice? selectedOutputDevice;
   final int selectedSysExId;
+  final String? connectionStatus;
   final void Function(MidiDevice?, MidiDevice?, int) onSelectionChanged;
   final void Function(MidiDevice, MidiDevice, int) onDeviceSelected;
   final VoidCallback onRefresh;
@@ -461,6 +463,7 @@ class _DeviceSelectionView extends StatelessWidget {
     required this.selectedInputDevice,
     required this.selectedOutputDevice,
     required this.selectedSysExId,
+    this.connectionStatus,
     required this.onSelectionChanged,
     required this.onDeviceSelected,
     required this.onRefresh,
@@ -524,7 +527,28 @@ class _DeviceSelectionView extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(
+                  height: 24,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Semantics(
+                      liveRegion: true,
+                      child: connectionStatus == null
+                          ? const SizedBox.shrink()
+                          : Tooltip(
+                              message: connectionStatus!,
+                              child: Text(
+                                connectionStatus!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.error,
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
                 Row(
                   children: [
                     DropdownMenu<String>(

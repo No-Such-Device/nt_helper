@@ -48,6 +48,7 @@ sealed class DistingState with _$DistingState {
     @Default(null) MidiDevice? selectedInputDevice,
     @Default(null) MidiDevice? selectedOutputDevice,
     @Default(0) int selectedSysExId,
+    @Default(null) String? connectionStatus,
   }) = DistingStateSelectDevice;
 
   const factory DistingState.connected({

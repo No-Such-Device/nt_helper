@@ -181,6 +181,7 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
         selectedInputDevice,
         selectedOutputDevice,
         selectedSysExId,
+        connectionStatus,
       ) => emit(const RoutingEditorState.disconnected()),
       connected: (
         disting,

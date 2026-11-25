@@ -286,6 +286,7 @@ class DistingCubit extends _DistingCubitBase
   @override
   Future<void> close() async {
     _cancelRespecificationForConnectionChange();
+    _connectionDelegate.dispose();
     await _remoteDelegate.dispose();
     await _moduleSettingsDelegate.dispose();
     _ccNotificationDelegate.stop();
@@ -302,8 +303,6 @@ class DistingCubit extends _DistingCubitBase
     _midiCommand.dispose();
 
     _parameterRefreshDelegate.dispose();
-
-    _midiSetupSubscription?.cancel();
 
     await _monitoringDelegate.dispose();
 
@@ -1358,6 +1357,7 @@ class DistingCubit extends _DistingCubitBase
     MidiDevice inputDevice,
     MidiDevice outputDevice,
   ) {
+    _connectionDelegate.clearConnectionTracking();
     _ccNotificationDelegate.stop();
     _monitoringDelegate.pauseCpuMonitoring();
     if (identical(disting(), manager)) {

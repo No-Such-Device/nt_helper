@@ -524,6 +524,7 @@ class DistingMessageScheduler {
 
   // State management
   _SchedulerState _state = _SchedulerState.idle;
+  bool _disposed = false;
   final Queue<_ScheduledRequest> _queue = Queue();
   _ScheduledRequest? _currentRequest;
   Timer? _nextProcessTimer;
@@ -698,6 +699,7 @@ class DistingMessageScheduler {
 
   /// Attempts to re-establish the MIDI subscription if it's dead.
   void tryReconnectSubscription() {
+    if (_disposed) return;
     _subscription?.cancel();
     _subscriptionActive = false;
 
@@ -718,6 +720,7 @@ class DistingMessageScheduler {
   /// Clears buffers, resets counters, and re-subscribes to the stream.
   /// Does NOT affect the current request - caller is responsible for that.
   void _resetInternalState() {
+    if (_disposed) return;
     // Clear any partial SysEx data
     _sysExBuffer.clear();
     _isBufferingSysEx = false;
@@ -751,8 +754,10 @@ class DistingMessageScheduler {
   /// This is used to recover from corrupted MIDI state caused by rogue
   /// non-SysEx bytes that break CoreMIDI/flutter_midi_command.
   Future<void> forceDeviceReconnect() async {
+    if (_disposed) return;
     // Cancel current subscription first (safe operation)
     _subscription?.cancel();
+    _subscription = null;
     _subscriptionActive = false;
 
     // On Windows (and some other platforms), input and output are separate devices
@@ -784,6 +789,7 @@ class DistingMessageScheduler {
 
     // Brief delay to let the system settle
     await Future.delayed(const Duration(milliseconds: 500));
+    if (_disposed) return;
 
     // Try to reconnect the devices
     try {
@@ -801,6 +807,7 @@ class DistingMessageScheduler {
 
     // Re-establish subscription
     await Future.delayed(const Duration(milliseconds: 200));
+    if (_disposed) return;
     _subscription = _midi.onMidiPacketReceived?.listen(
       _handleIncomingPacket,
       onError: _handleSubscriptionError,
@@ -912,6 +919,9 @@ class DistingMessageScheduler {
     void Function()? preflight,
     bool Function(Uint8List)? rawResponseMatcher,
   }) {
+    if (_disposed) {
+      return Future<T?>.error(StateError('Scheduler disposed'));
+    }
     final completer = Completer<T?>();
     final request = _ScheduledRequest(
       id: ++_nextRequestId,
@@ -949,9 +959,17 @@ class DistingMessageScheduler {
   }
 
   void dispose() {
+    if (_disposed) return;
+    _disposed = true;
     _subscription?.cancel();
+    _subscription = null;
+    _subscriptionActive = false;
     _nextProcessTimer?.cancel();
+    _nextProcessTimer = null;
     _retryTimer?.cancel();
+    _retryTimer = null;
+    _sysExBuffer.clear();
+    _isBufferingSysEx = false;
     _demux.clear();
     final current = _currentRequest;
     _finishResponseAttribution(current);
@@ -977,6 +995,7 @@ class DistingMessageScheduler {
   // ---------------------------------------------------------------------------
 
   void _processNext() {
+    if (_disposed) return;
     // Cancel any pending timer
     _nextProcessTimer?.cancel();
     _nextProcessTimer = null;
@@ -991,6 +1010,7 @@ class DistingMessageScheduler {
   }
 
   void _sendCurrentRequest() {
+    if (_disposed) return;
     _retryTimer?.cancel();
     _retryTimer = null;
 
@@ -1223,6 +1243,7 @@ class DistingMessageScheduler {
   }
 
   void _onTimeout() {
+    if (_disposed) return;
     final request = _currentRequest;
 
     // Clear any partial SysEx buffer on timeout to prevent stale data
@@ -1407,6 +1428,7 @@ class DistingMessageScheduler {
   }
 
   void _handleIncomingPacket(dynamic packet) {
+    if (_disposed) return;
     _totalPacketsReceived++;
     _lastPacketTime = clock.now();
 

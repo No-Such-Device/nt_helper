@@ -222,6 +222,7 @@ class _AlgorithmLibraryDelegate {
 
     // Load all algorithms with prioritization (factory first, then community)
     for (int i = 0; i < numAlgorithms; i++) {
+      if (!identical(_cubit.disting(), manager)) return;
       try {
         final algorithmInfo = await manager.requestAlgorithmInfo(i);
         if (algorithmInfo != null) {
@@ -289,6 +290,7 @@ class _AlgorithmLibraryDelegate {
     final List<AlgorithmInfo> communityResults = [];
 
     for (int i in communityIndices) {
+      if (!identical(_cubit.disting(), manager)) return;
       try {
         // Single attempt to fetch community plugin
         final algorithmInfo = await manager.requestAlgorithmInfo(i);

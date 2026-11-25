@@ -33,17 +33,140 @@ bool firmwareMidiEndpointsAvailable(
   return hasInput && hasOutput;
 }
 
+class _SelectedMidiTarget {
+  const _SelectedMidiTarget({
+    required this.inputId,
+    required this.inputName,
+    required this.outputId,
+    required this.outputName,
+    required this.sysExId,
+  });
+
+  final String inputId;
+  final String inputName;
+  final String outputId;
+  final String outputName;
+  final int sysExId;
+
+  String get displayLabel {
+    final trimmedInput = inputName.trim();
+    final trimmedOutput = outputName.trim();
+    if (trimmedInput.isNotEmpty &&
+        trimmedInput.toLowerCase() == trimmedOutput.toLowerCase()) {
+      return trimmedInput;
+    }
+    if (trimmedInput.isNotEmpty && trimmedOutput.isNotEmpty) {
+      return '$trimmedInput / $trimmedOutput';
+    }
+    return trimmedInput.isNotEmpty ? trimmedInput : trimmedOutput;
+  }
+}
+
 class _ConnectionDelegate {
   _ConnectionDelegate(this._cubit);
 
   final DistingCubit _cubit;
   int _syncGeneration = 0;
   bool _firmwareProbeBusy = false;
+  bool _openingConnection = false;
+  bool _setupCheckInFlight = false;
+  bool _setupCheckPending = false;
+  bool _activeDeviceDisconnected = false;
+  MidiCommand? _subscribedMidiCommand;
+  _SelectedMidiTarget? _activeTarget;
+  _SelectedMidiTarget? _lastOnlineTarget;
+  _SelectedMidiTarget? _pendingReconnectTarget;
+  StreamSubscription<MidiConnectionState>? _inputDeviceStateSub;
+  StreamSubscription<MidiConnectionState>? _outputDeviceStateSub;
+
   int get firmwareSysExId {
     final manager = _cubit.disting();
     if (manager is DistingMidiManager) return manager.sysExId;
     final state = _cubit.state;
     return state is DistingStateSelectDevice ? state.selectedSysExId : 0;
+  }
+
+  void dispose() {
+    clearConnectionTracking();
+    stopMidiSetupListener();
+  }
+
+  void clearConnectionTracking() {
+    _syncGeneration++;
+    _clearActiveDeviceListeners();
+    _activeTarget = null;
+    _pendingReconnectTarget = null;
+    _activeDeviceDisconnected = false;
+    _setupCheckPending = false;
+  }
+
+  void _clearActiveDeviceListeners() {
+    _inputDeviceStateSub?.cancel();
+    _inputDeviceStateSub = null;
+    _outputDeviceStateSub?.cancel();
+    _outputDeviceStateSub = null;
+  }
+
+  void _watchActiveDevices(
+    MidiDevice inputDevice,
+    MidiDevice outputDevice,
+    IDistingMidiManager manager,
+  ) {
+    _clearActiveDeviceListeners();
+    _activeDeviceDisconnected = false;
+
+    void onConnectionState(MidiConnectionState state) {
+      if (state != MidiConnectionState.disconnected) return;
+      if (_cubit.isClosed || _openingConnection) return;
+      if (!identical(_cubit.disting(), manager)) return;
+      _activeDeviceDisconnected = true;
+      _triggerSetupCheck();
+    }
+
+    _inputDeviceStateSub = inputDevice.onConnectionStateChanged.listen(
+      onConnectionState,
+    );
+    if (outputDevice.id != inputDevice.id) {
+      _outputDeviceStateSub = outputDevice.onConnectionStateChanged.listen(
+        onConnectionState,
+      );
+    }
+  }
+
+  ({MidiDevice? device, bool ambiguous}) _matchReturningEndpoint(
+    List<MidiDevice> devices, {
+    required String expectedId,
+    required String expectedName,
+    required bool input,
+  }) {
+    final directional = devices.where(
+      (device) =>
+          input ? device.inputPorts.isNotEmpty : device.outputPorts.isNotEmpty,
+    );
+
+    final idMatches = directional
+        .where((device) => device.id == expectedId)
+        .toList();
+    if (idMatches.length == 1) {
+      return (device: idMatches.single, ambiguous: false);
+    }
+    if (devices.any((device) => device.id == expectedId)) {
+      return (device: null, ambiguous: false);
+    }
+
+    final normalizedExpected = expectedName.trim().toLowerCase();
+    if (normalizedExpected.isEmpty) {
+      return (device: null, ambiguous: false);
+    }
+    final nameMatches = directional
+        .where(
+          (device) => device.name.trim().toLowerCase() == normalizedExpected,
+        )
+        .toList();
+    if (nameMatches.length == 1) {
+      return (device: nameMatches.single, ambiguous: false);
+    }
+    return (device: null, ambiguous: nameMatches.length > 1);
   }
 
   MidiDevice? _resolveSelection(
@@ -72,11 +195,13 @@ class _ConnectionDelegate {
   }) {
     final currentState = _cubit.state;
     if (currentState is! DistingStateSelectDevice) return;
+    _pendingReconnectTarget = null;
     _cubit._emitState(
       currentState.copyWith(
         selectedInputDevice: inputDevice,
         selectedOutputDevice: outputDevice,
         selectedSysExId: sysExId,
+        connectionStatus: null,
       ),
     );
   }
@@ -149,6 +274,10 @@ class _ConnectionDelegate {
   }
 
   Future<void> loadDevices() async {
+    if (_pendingReconnectTarget != null) {
+      await _checkPendingReconnect(_pendingReconnectTarget!);
+      return;
+    }
     StartupLogService.log(
       'DistingCubit.loadDevices: refreshing MIDI device list',
     );
@@ -210,7 +339,7 @@ class _ConnectionDelegate {
       );
 
       // Start listening for MIDI device connection changes
-      startMidiSetupListener();
+      _ensureMidiSetupListener();
     } catch (e, stackTrace) {
       StartupLogService.logError(
         'DistingCubit.loadDevices: failed to refresh MIDI device list',
@@ -221,7 +350,7 @@ class _ConnectionDelegate {
       final currentState = _cubit.state;
       if (previousState is DistingStateSelectDevice) {
         if (currentState is DistingStateSelectDevice) {
-          startMidiSetupListener();
+          _ensureMidiSetupListener();
         }
         return;
       }
@@ -237,37 +366,312 @@ class _ConnectionDelegate {
       );
 
       // Still start listening even on error
-      startMidiSetupListener();
+      _ensureMidiSetupListener();
     }
   }
 
   /// Starts listening for MIDI setup changes (device connections/disconnections).
-  /// Automatically refreshes device list when changes are detected.
   void startMidiSetupListener() {
     // Cancel any existing subscription to avoid duplicates
     _cubit._midiSetupSubscription?.cancel();
     _cubit._midiSetupSubscription = null;
+    _subscribedMidiCommand = null;
+
+    if (_cubit.isClosed) return;
 
     // Subscribe to MIDI setup changes
-    _cubit._midiSetupSubscription = _cubit._midiCommand.onMidiSetupChanged
-        ?.listen((_) {
-          StartupLogService.log('DistingCubit: MIDI setup changed');
-          // Only refresh if we're still in the device selection state
-          if (_cubit.state is DistingStateInitial ||
-              _cubit.state is DistingStateSelectDevice) {
-            loadDevices();
-          }
-        });
+    final command = _cubit._midiCommand;
+    _cubit._midiSetupSubscription = command.onMidiSetupChanged?.listen((_) {
+      StartupLogService.log('DistingCubit: MIDI setup changed');
+      _triggerSetupCheck();
+    });
+    if (_cubit._midiSetupSubscription != null) {
+      _subscribedMidiCommand = command;
+    }
     StartupLogService.log(
       'DistingCubit: MIDI setup listener '
       '${_cubit._midiSetupSubscription == null ? 'not available' : 'started'}',
     );
   }
 
+  void _ensureMidiSetupListener() {
+    if (_cubit.isClosed) return;
+    if (_cubit._midiSetupSubscription != null &&
+        identical(_subscribedMidiCommand, _cubit._midiCommand)) {
+      return;
+    }
+    startMidiSetupListener();
+  }
+
   /// Stops listening for MIDI setup changes.
   void stopMidiSetupListener() {
     _cubit._midiSetupSubscription?.cancel();
     _cubit._midiSetupSubscription = null;
+    _subscribedMidiCommand = null;
+  }
+
+  void _triggerSetupCheck() {
+    if (_cubit.isClosed) return;
+    if (_setupCheckInFlight || _openingConnection) {
+      _setupCheckPending = true;
+      return;
+    }
+    unawaited(_drainSetupChecks());
+  }
+
+  Future<void> _drainSetupChecks() async {
+    if (_setupCheckInFlight) return;
+    _setupCheckInFlight = true;
+    try {
+      do {
+        _setupCheckPending = false;
+        if (_cubit.isClosed || _openingConnection) return;
+        await _handleMidiSetupChange();
+      } while (_setupCheckPending && !_cubit.isClosed && !_openingConnection);
+    } finally {
+      _setupCheckInFlight = false;
+    }
+  }
+
+  Future<void> _handleMidiSetupChange() async {
+    if (_cubit.isClosed || _openingConnection) return;
+    final state = _cubit.state;
+
+    if (state is DistingStateInitial || state is DistingStateSelectDevice) {
+      final pendingTarget = _pendingReconnectTarget;
+      if (pendingTarget != null) {
+        await _checkPendingReconnect(pendingTarget);
+      } else {
+        await loadDevices();
+      }
+      return;
+    }
+
+    MidiDevice? inputDevice;
+    MidiDevice? outputDevice;
+    IDistingMidiManager? manager;
+    if (state is DistingStateConnected && !state.offline) {
+      inputDevice = state.inputDevice;
+      outputDevice = state.outputDevice;
+      manager = state.disting;
+    } else if (state is DistingStateSynchronized &&
+        !state.offline &&
+        !state.demo) {
+      inputDevice = state.inputDevice;
+      outputDevice = state.outputDevice;
+      manager = state.disting;
+    } else {
+      return;
+    }
+
+    if (inputDevice == null || outputDevice == null) return;
+
+    final target =
+        _activeTarget ??
+        _SelectedMidiTarget(
+          inputId: inputDevice.id,
+          inputName: inputDevice.name,
+          outputId: outputDevice.id,
+          outputName: outputDevice.name,
+          sysExId: manager is DistingMidiManager
+              ? manager.sysExId
+              : (_cubit._lastOnlineSysExId ?? 0),
+        );
+
+    final List<MidiDevice> rawDevices;
+    try {
+      rawDevices = await _cubit._midiCommand.devices ?? <MidiDevice>[];
+    } catch (_) {
+      return;
+    }
+    if (_cubit.isClosed ||
+        _openingConnection ||
+        !identical(_cubit.disting(), manager)) {
+      return;
+    }
+
+    final hasInput = rawDevices.any(
+      (device) => device.id == inputDevice!.id && device.inputPorts.isNotEmpty,
+    );
+    final hasOutput = rawDevices.any(
+      (device) =>
+          device.id == outputDevice!.id && device.outputPorts.isNotEmpty,
+    );
+    final lost = _activeDeviceDisconnected || !hasInput || !hasOutput;
+    if (!lost) return;
+
+    _teardownOnlineConnection(
+      inputDevice: inputDevice,
+      outputDevice: outputDevice,
+      manager: manager,
+    );
+
+    final matchedInput = _matchReturningEndpoint(
+      rawDevices,
+      expectedId: target.inputId,
+      expectedName: target.inputName,
+      input: true,
+    );
+    final matchedOutput = _matchReturningEndpoint(
+      rawDevices,
+      expectedId: target.outputId,
+      expectedName: target.outputName,
+      input: false,
+    );
+    if (matchedInput.device != null && matchedOutput.device != null) {
+      unawaited(
+        _connectToDevices(
+          matchedInput.device!,
+          matchedOutput.device!,
+          target.sysExId,
+          reconnectTarget: target,
+        ),
+      );
+      return;
+    }
+
+    _pendingReconnectTarget = target;
+    await _emitWaitingSelectDevice(
+      rawDevices,
+      target,
+      ambiguous: matchedInput.ambiguous || matchedOutput.ambiguous,
+    );
+  }
+
+  Future<void> _checkPendingReconnect(_SelectedMidiTarget target) async {
+    if (_cubit.isClosed || _openingConnection) return;
+    final List<MidiDevice> rawDevices;
+    try {
+      rawDevices = await _cubit._midiCommand.devices ?? <MidiDevice>[];
+    } catch (_) {
+      _ensureMidiSetupListener();
+      return;
+    }
+    if (_cubit.isClosed ||
+        _openingConnection ||
+        !identical(_pendingReconnectTarget, target)) {
+      return;
+    }
+    final state = _cubit.state;
+    if (state is! DistingStateInitial && state is! DistingStateSelectDevice) {
+      return;
+    }
+
+    final matchedInput = _matchReturningEndpoint(
+      rawDevices,
+      expectedId: target.inputId,
+      expectedName: target.inputName,
+      input: true,
+    );
+    final matchedOutput = _matchReturningEndpoint(
+      rawDevices,
+      expectedId: target.outputId,
+      expectedName: target.outputName,
+      input: false,
+    );
+    if (matchedInput.device != null && matchedOutput.device != null) {
+      unawaited(
+        _connectToDevices(
+          matchedInput.device!,
+          matchedOutput.device!,
+          target.sysExId,
+          reconnectTarget: target,
+        ),
+      );
+      return;
+    }
+
+    await _emitWaitingSelectDevice(
+      rawDevices,
+      target,
+      ambiguous: matchedInput.ambiguous || matchedOutput.ambiguous,
+    );
+  }
+
+  Future<void> _emitWaitingSelectDevice(
+    List<MidiDevice> rawDevices,
+    _SelectedMidiTarget target, {
+    bool ambiguous = false,
+  }) async {
+    final sorted = List<MidiDevice>.of(rawDevices)
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final inputDevices = sorted
+        .where((device) => device.inputPorts.isNotEmpty)
+        .toList();
+    final outputDevices = sorted
+        .where((device) => device.outputPorts.isNotEmpty)
+        .toList();
+
+    bool canWorkOffline = false;
+    try {
+      canWorkOffline = await _cubit._metadataDao.hasCachedAlgorithms();
+    } catch (_) {}
+
+    if (_cubit.isClosed || !identical(_pendingReconnectTarget, target)) {
+      return;
+    }
+    final matchedInput = _matchReturningEndpoint(
+      sorted,
+      expectedId: target.inputId,
+      expectedName: target.inputName,
+      input: true,
+    ).device;
+    final matchedOutput = _matchReturningEndpoint(
+      sorted,
+      expectedId: target.outputId,
+      expectedName: target.outputName,
+      input: false,
+    ).device;
+    final status = ambiguous
+        ? 'MIDI connection lost. Multiple "${target.displayLabel}" devices found — select ports and connect.'
+        : 'MIDI connection lost. Waiting for ${target.displayLabel} to reconnect.';
+
+    _cubit._emitState(
+      DistingState.selectDevice(
+        inputDevices: inputDevices,
+        outputDevices: outputDevices,
+        canWorkOffline: canWorkOffline,
+        selectedInputDevice: matchedInput,
+        selectedOutputDevice: matchedOutput,
+        selectedSysExId: target.sysExId,
+        connectionStatus: status,
+      ),
+    );
+    _ensureMidiSetupListener();
+  }
+
+  void _teardownOnlineConnection({
+    required MidiDevice? inputDevice,
+    required MidiDevice? outputDevice,
+    required IDistingMidiManager? manager,
+  }) {
+    _syncGeneration++;
+    _clearActiveDeviceListeners();
+    _activeTarget = null;
+    _activeDeviceDisconnected = false;
+    _cubit._remoteDelegate.clearConnection();
+    _cubit._memoryDelegate.clearConnection();
+    _cubit._cancelRespecificationForConnectionChange();
+    _cubit._checkpointDelegate.clearCheckpoints();
+    _cubit._ccNotificationDelegate.stop();
+    _cubit._monitoringDelegate.pauseCpuMonitoring();
+    _cubit._parameterRefreshDelegate.dispose();
+    _cubit._parameterQueue?.dispose();
+    _cubit._parameterQueue = null;
+
+    if (inputDevice != null) {
+      try {
+        _cubit._midiCommand.disconnectDevice(inputDevice);
+      } catch (_) {}
+    }
+    if (outputDevice != null && outputDevice.id != inputDevice?.id) {
+      try {
+        _cubit._midiCommand.disconnectDevice(outputDevice);
+      } catch (_) {}
+    }
+    try {
+      manager?.dispose();
+    } catch (_) {}
   }
 
   Future<IDistingMidiManager> createFirmwareMidiManager(
@@ -326,8 +730,7 @@ class _ConnectionDelegate {
   }
 
   void disconnect() {
-    _cubit._remoteDelegate.clearConnection();
-    _cubit._memoryDelegate.clearConnection();
+    _pendingReconnectTarget = null;
 
     MidiDevice? inputDevice;
     MidiDevice? outputDevice;
@@ -349,28 +752,14 @@ class _ConnectionDelegate {
         break;
     }
 
-    // Stop CC notification processing before disconnecting
-    _cubit._ccNotificationDelegate.stop();
-
-    // Disconnect MIDI devices FIRST (closes ALSA ports and stops isolate)
-    // Must happen before manager.dispose() to avoid read/write on closed ports
-    if (inputDevice != null) {
-      _cubit._midiCommand.disconnectDevice(inputDevice);
-    }
-    if (outputDevice != null && outputDevice.id != inputDevice?.id) {
-      _cubit._midiCommand.disconnectDevice(outputDevice);
-    }
-
-    // Now dispose the manager (safe since devices are already disconnected)
-    manager?.dispose();
-
-    // The Windows plugin owns a process-wide NativeCallable for WinMM input.
-    // Tearing MidiCommand down closes it, and later discovery reuses the closed
-    // callback address, leaving the device list empty until process restart.
-    if (!_cubit._isWindows) {
-      _cubit._midiCommand.dispose();
-      _cubit._midiCommand = _cubit._midiCommandFactory();
-    }
+    // Do not dispose MidiCommand here: in flutter_midi_command 1.4.x its
+    // dispose() calls platform teardown(), which permanently closes RX/setup
+    // streams on Linux/Windows and unregisters Android's device callback.
+    _teardownOnlineConnection(
+      inputDevice: inputDevice,
+      outputDevice: outputDevice,
+      manager: manager,
+    );
   }
 
   static const _syncTimeout = Duration(minutes: 3);
@@ -460,6 +849,9 @@ class _ConnectionDelegate {
           }
         } catch (e, stackTrace) {
           debugPrintStack(stackTrace: stackTrace);
+        }
+        if (!_isCurrentSync(generation, currentState, distingManager)) {
+          return;
         }
 
         _emitSyncProgress(
@@ -638,6 +1030,13 @@ class _ConnectionDelegate {
         stackTrace,
       );
       debugPrintStack(stackTrace: stackTrace);
+      // Release the failed connection before refreshing device selection so no
+      // manager or native stream subscription leaks.
+      _teardownOnlineConnection(
+        inputDevice: inputDevice,
+        outputDevice: outputDevice,
+        manager: distingManager,
+      );
       // Do NOT store connection details if sync fails
       await loadDevices();
       return false;
@@ -673,15 +1072,40 @@ class _ConnectionDelegate {
     MidiDevice inputDevice,
     MidiDevice outputDevice,
     int sysExId,
-  ) async {
-    _cubit._remoteDelegate.clearConnection();
-    _cubit._memoryDelegate.clearConnection();
+  ) => _connectToDevices(inputDevice, outputDevice, sysExId);
+
+  Future<void> _connectToDevices(
+    MidiDevice inputDevice,
+    MidiDevice outputDevice,
+    int sysExId, {
+    _SelectedMidiTarget? reconnectTarget,
+  }) async {
+    if (_openingConnection || _cubit.isClosed) return;
+    _openingConnection = true;
+    _pendingReconnectTarget = null;
+
+    final target = _SelectedMidiTarget(
+      inputId: inputDevice.id,
+      inputName:
+          reconnectTarget?.inputName ??
+          (_lastOnlineTarget?.inputId == inputDevice.id
+              ? _lastOnlineTarget!.inputName
+              : inputDevice.name),
+      outputId: outputDevice.id,
+      outputName:
+          reconnectTarget?.outputName ??
+          (_lastOnlineTarget?.outputId == outputDevice.id
+              ? _lastOnlineTarget!.outputName
+              : outputDevice.name),
+      sysExId: sysExId,
+    );
+
     StartupLogService.log(
       'DistingCubit.connectToDevices: attempting connection to '
-      'input="${inputDevice.name}" (${inputDevice.id}), '
-      'output="${outputDevice.name}" (${outputDevice.id}), sysExId=$sysExId',
+      'input="${target.inputName}" (${inputDevice.id}), '
+      'output="${target.outputName}" (${outputDevice.id}), sysExId=$sysExId',
     );
-    // Get the potentially existing manager AND devices from the CURRENT state
+
     final currentState = _cubit.state;
     MidiDevice? existingInputDevice;
     MidiDevice? existingOutputDevice;
@@ -692,61 +1116,83 @@ class _ConnectionDelegate {
       existingInputDevice = currentState.inputDevice;
       existingOutputDevice = currentState.outputDevice;
     }
-    final existingManager = _cubit.disting(); // Get manager separately
+    final existingManager = _cubit.disting();
 
-    // Stop listening for MIDI setup changes while connecting
-    stopMidiSetupListener();
+    var openedInput = false;
+    var openedOutput = false;
+    DistingMidiManager? newDistingManager;
 
     try {
-      // Stop CC notifications before disconnecting (avoids callbacks on disposed manager)
-      _cubit._ccNotificationDelegate.stop();
-
-      // Disconnect and dispose any existing managers first
-      if (existingManager != null) {
-        // Explicitly disconnect devices using devices read from the state
-        if (existingInputDevice != null) {
-          _cubit._midiCommand.disconnectDevice(existingInputDevice);
-        }
-        // Avoid disconnecting same device twice
-        if (existingOutputDevice != null &&
-            existingOutputDevice.id != existingInputDevice?.id) {
-          _cubit._midiCommand.disconnectDevice(existingOutputDevice);
-        }
-        existingManager.dispose(); // Dispose the old manager
-      }
-      _cubit._offlineManager
-          ?.dispose(); // Explicitly dispose offline if it exists
+      _teardownOnlineConnection(
+        inputDevice: existingInputDevice,
+        outputDevice: existingOutputDevice,
+        manager: existingManager,
+      );
+      _cubit._offlineManager?.dispose();
       _cubit._offlineManager = null;
 
-      // Connect to the selected device
       StartupLogService.log(
-        'DistingCubit.connectToDevices: opening input MIDI device "${inputDevice.name}"',
+        'DistingCubit.connectToDevices: opening input MIDI device "${target.inputName}"',
       );
       await _cubit._midiCommand.connectToDevice(inputDevice);
-      if (inputDevice != outputDevice) {
+      openedInput = true;
+      if (_cubit.isClosed) {
+        try {
+          _cubit._midiCommand.disconnectDevice(inputDevice);
+        } catch (_) {}
+        return;
+      }
+
+      if (inputDevice.id != outputDevice.id) {
         StartupLogService.log(
-          'DistingCubit.connectToDevices: opening output MIDI device "${outputDevice.name}"',
+          'DistingCubit.connectToDevices: opening output MIDI device "${target.outputName}"',
         );
         await _cubit._midiCommand.connectToDevice(outputDevice);
+        openedOutput = true;
+        if (_cubit.isClosed) {
+          try {
+            _cubit._midiCommand.disconnectDevice(inputDevice);
+          } catch (_) {}
+          try {
+            _cubit._midiCommand.disconnectDevice(outputDevice);
+          } catch (_) {}
+          return;
+        }
       }
+
       final prefs = await _cubit._prefs;
-      await prefs.setString('selectedInputMidiDevice', inputDevice.name);
-      await prefs.setString('selectedOutputMidiDevice', outputDevice.name);
+      if (_cubit.isClosed) {
+        try {
+          _cubit._midiCommand.disconnectDevice(inputDevice);
+        } catch (_) {}
+        if (openedOutput) {
+          try {
+            _cubit._midiCommand.disconnectDevice(outputDevice);
+          } catch (_) {}
+        }
+        return;
+      }
+      await prefs.setString('selectedInputMidiDevice', target.inputName);
+      await prefs.setString('selectedOutputMidiDevice', target.outputName);
       await prefs.setInt('selectedSysExId', sysExId);
 
-      // Create the NEW online manager
-      final newDistingManager = DistingMidiManager(
+      newDistingManager = DistingMidiManager(
         midiCommand: _cubit._midiCommand,
         inputDevice: inputDevice,
         outputDevice: outputDevice,
         sysExId: sysExId,
       );
 
-      // Emit Connected state WITH the new manager AND devices
+      _activeTarget = target;
+      _lastOnlineTarget = target;
+      _cubit._lastOnlineInputDevice = inputDevice;
+      _cubit._lastOnlineOutputDevice = outputDevice;
+      _cubit._lastOnlineSysExId = sysExId;
+
       _cubit._emitState(
         DistingState.connected(
           disting: newDistingManager,
-          inputDevice: inputDevice, // Store connected devices
+          inputDevice: inputDevice,
           outputDevice: outputDevice,
           offline: false,
         ),
@@ -755,52 +1201,9 @@ class _ConnectionDelegate {
         'DistingCubit.connectToDevices: MIDI ports opened; querying Disting NT next',
       );
 
-      // Create parameter queue for the new manager
       _cubit._createParameterQueue();
-
-      // Store these details as the last successful ONLINE connection
-      // BEFORE starting the full sync.
-      _cubit._lastOnlineInputDevice = inputDevice;
-      _cubit._lastOnlineOutputDevice = outputDevice;
-      _cubit._lastOnlineSysExId =
-          sysExId; // Use the parameter passed to this method
-
-      // Synchronize device clock with local time
-      // The device has no timezone info — it stamps FAT files directly from
-      // the value we send, so we must send local time, not UTC.
-      try {
-        final now = DateTime.now();
-        final localAsUtc = DateTime.utc(
-          now.year,
-          now.month,
-          now.day,
-          now.hour,
-          now.minute,
-          now.second,
-        );
-        final localEpoch = localAsUtc.millisecondsSinceEpoch ~/ 1000;
-        await newDistingManager.requestSetRealTimeClock(localEpoch);
-        StartupLogService.log(
-          'DistingCubit.connectToDevices: device clock synchronized',
-        );
-      } catch (e, stackTrace) {
-        StartupLogService.logError(
-          'DistingCubit.connectToDevices: device clock sync failed; continuing',
-          e,
-          stackTrace,
-        );
-        // Continue with connection even if clock sync fails
-      }
-
-      final syncSucceeded =
-          await performSyncAndEmit(); // Sync with the new connection
-      if (syncSucceeded) {
-        _cubit._monitoringDelegate.resumeCpuMonitoring();
-      }
-      StartupLogService.log(
-        'DistingCubit.connectToDevices: connection flow completed; '
-        'syncSucceeded=$syncSucceeded',
-      );
+      _watchActiveDevices(inputDevice, outputDevice, newDistingManager);
+      _ensureMidiSetupListener();
     } catch (e, stackTrace) {
       StartupLogService.logError(
         'DistingCubit.connectToDevices: connection failed',
@@ -808,21 +1211,94 @@ class _ConnectionDelegate {
         stackTrace,
       );
       debugPrintStack(stackTrace: stackTrace);
-      // Clear last connection details if connection/sync fails
-      _cubit._lastOnlineInputDevice = null;
-      _cubit._lastOnlineOutputDevice = null;
-      _cubit._lastOnlineSysExId = null;
-      // Attempt to clean up MIDI connection on error too
+      _openingConnection = false;
+      _setupCheckPending = false;
+      _clearActiveDeviceListeners();
+      _activeTarget = null;
+      _activeDeviceDisconnected = false;
       try {
-        _cubit._midiCommand.disconnectDevice(inputDevice);
-        if (inputDevice != outputDevice) {
-          _cubit._midiCommand.disconnectDevice(outputDevice);
-        }
-      } catch (disconnectError) {
-        // Intentionally empty
+        newDistingManager?.dispose();
+      } catch (_) {}
+      if (openedInput) {
+        try {
+          _cubit._midiCommand.disconnectDevice(inputDevice);
+        } catch (_) {}
       }
-      await loadDevices();
+      if (openedOutput) {
+        try {
+          _cubit._midiCommand.disconnectDevice(outputDevice);
+        } catch (_) {}
+      }
+      if (_cubit.isClosed) return;
+
+      if (reconnectTarget != null) {
+        _pendingReconnectTarget = reconnectTarget;
+        List<MidiDevice> rawDevices = const [];
+        try {
+          rawDevices = await _cubit._midiCommand.devices ?? const [];
+        } catch (_) {}
+        await _emitWaitingSelectDevice(rawDevices, reconnectTarget);
+      } else {
+        _cubit._lastOnlineInputDevice = null;
+        _cubit._lastOnlineOutputDevice = null;
+        _cubit._lastOnlineSysExId = null;
+        _lastOnlineTarget = null;
+        await loadDevices();
+      }
+      return;
+    } finally {
+      _openingConnection = false;
     }
+
+    if (_setupCheckPending && !_cubit.isClosed) {
+      _triggerSetupCheck();
+    }
+
+    if (_cubit.isClosed || !identical(_cubit.disting(), newDistingManager)) {
+      return;
+    }
+
+    // Synchronize device clock with local time
+    // The device has no timezone info — it stamps FAT files directly from
+    // the value we send, so we must send local time, not UTC.
+    try {
+      final now = DateTime.now();
+      final localAsUtc = DateTime.utc(
+        now.year,
+        now.month,
+        now.day,
+        now.hour,
+        now.minute,
+        now.second,
+      );
+      final localEpoch = localAsUtc.millisecondsSinceEpoch ~/ 1000;
+      await newDistingManager.requestSetRealTimeClock(localEpoch);
+      StartupLogService.log(
+        'DistingCubit.connectToDevices: device clock synchronized',
+      );
+    } catch (e, stackTrace) {
+      StartupLogService.logError(
+        'DistingCubit.connectToDevices: device clock sync failed; continuing',
+        e,
+        stackTrace,
+      );
+      // Continue with connection even if clock sync fails
+    }
+
+    if (_cubit.isClosed || !identical(_cubit.disting(), newDistingManager)) {
+      return;
+    }
+
+    final syncSucceeded = await performSyncAndEmit();
+    if (syncSucceeded &&
+        !_cubit.isClosed &&
+        identical(_cubit.disting(), newDistingManager)) {
+      _cubit._monitoringDelegate.resumeCpuMonitoring();
+    }
+    StartupLogService.log(
+      'DistingCubit.connectToDevices: connection flow completed; '
+      'syncSucceeded=$syncSucceeded',
+    );
   }
 
   Future<Map<String, List<MidiDevice>>> _fetchDeviceLists() async {
