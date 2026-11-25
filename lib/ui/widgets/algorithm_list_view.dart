@@ -51,7 +51,7 @@ class AlgorithmListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+      padding: const EdgeInsets.fromLTRB(4, 8, 0, 8),
       itemCount: slots.length,
       itemBuilder: (context, index) {
         return _AlgorithmListTile(
@@ -297,7 +297,7 @@ class _AlgorithmListTileState extends State<_AlgorithmListTile>
                     ListTile(
                       contentPadding: const EdgeInsets.only(
                         left: 12,
-                        right: 16,
+                        right: 12,
                       ),
                       title: ExcludeSemantics(
                         child: Column(

@@ -31,6 +31,7 @@ void main() {
     required List<Slot> slots,
     required String firmwareVersion,
     required bool offline,
+    int selectedIndex = 0,
   }) {
     final cubit = _MockDistingCubit();
     final state = DistingState.synchronized(
@@ -50,11 +51,14 @@ void main() {
       home: BlocProvider<DistingCubit>.value(
         value: cubit,
         child: Scaffold(
-          body: SizedBox(
-            width: 280,
+          body: Container(
+            width: 250,
+            decoration: const BoxDecoration(
+              border: Border(right: BorderSide(width: 1)),
+            ),
             child: AlgorithmListView(
               slots: slots,
-              selectedIndex: 0,
+              selectedIndex: selectedIndex,
               onSelectionChanged: (_) {},
             ),
           ),
@@ -117,6 +121,58 @@ void main() {
     final decoration = box.decoration as BoxDecoration;
     expect(decoration.color, isNotNull);
     expect(decoration.border, isNotNull);
+  });
+
+  testWidgets('sidebar boxes keep their left edge and a 12px divider gap', (
+    tester,
+  ) async {
+    final slots = [_slot(0, 'Alpha'), _slot(1, 'Beta')];
+    final initialBoxRects = <Rect>[];
+
+    for (final selectedIndex in [0, 1]) {
+      await tester.pumpWidget(
+        buildWidget(
+          slots: slots,
+          firmwareVersion: '1.18.0',
+          offline: false,
+          selectedIndex: selectedIndex,
+        ),
+      );
+
+      final list = find.byType(ListView);
+      final listRect = tester.getRect(list);
+      expect(listRect.width, 249);
+      expect(
+        tester.widget<ListView>(list).padding,
+        const EdgeInsets.fromLTRB(4, 8, 0, 8),
+      );
+      for (var index = 0; index < slots.length; index++) {
+        final preview = find.byKey(ValueKey('algorithm-style-preview-$index'));
+        final boxRect = tester.getRect(
+          find.descendant(
+            of: preview,
+            matching: find.byKey(const ValueKey('algorithm-style-box')),
+          ),
+        );
+        final tile = tester.widget<ListTile>(
+          find.descendant(of: preview, matching: find.byType(ListTile)),
+        );
+        expect(tile.selected, index == selectedIndex);
+        expect(tile.contentPadding, const EdgeInsets.symmetric(horizontal: 12));
+        expect(boxRect.left - listRect.left, 8);
+        expect(listRect.right - boxRect.right, 12);
+        expect(
+          tester.getRect(find.text(slots[index].algorithm.name)).left,
+          boxRect.left + 12,
+        );
+        if (selectedIndex == 0) {
+          initialBoxRects.add(boxRect);
+        } else {
+          expect(boxRect, initialBoxRects[index]);
+        }
+      }
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('offline style is simulated in the desktop algorithm list', (
