@@ -26,6 +26,7 @@ import 'package:nt_helper/ui/widgets/slot_editor_mode.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/playback_controls.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/bit_pattern_editor.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/quantize_controls.dart';
+import 'package:nt_helper/ui/widgets/step_sequencer/randomize_settings_dialog.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/sequence_selector.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/step_column_widget.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/step_grid_view.dart';
@@ -251,6 +252,111 @@ void main() {
       noWrites();
     },
   );
+
+  for (final (width, index) in [(500.0, 0), (1200.0, 1)]) {
+    testWidgets(
+      'native menu keeps randomize actions and uses Standard for pages at ${width}px',
+      (tester) async {
+        final semantics = tester.ensureSemantics();
+        try {
+          tester.view.physicalSize = Size(width, 1000);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+          slot = stepSequencerSlot(index: index);
+          emit(synchronized([if (index > 0) stepSequencerSlot(), slot]));
+          await tester.pumpWidget(app(index: index));
+          await tester.tap(find.byKey(_controller));
+          await tester.pumpAndSettle();
+          final menu = find.descendant(
+            of: find.byType(StepSequencerView),
+            matching: find.byType(PopupMenuButton<String>),
+          );
+
+          await tester.tap(menu);
+          await tester.pumpAndSettle();
+          expect(find.byType(PopupMenuItem<String>), findsNWidgets(2));
+          expect(find.text('Parameter Pages...'), findsNothing);
+          expect(find.bySemanticsLabel('Parameter Pages...'), findsNothing);
+          expect(find.text('Randomize'), findsOneWidget);
+          expect(find.text('Randomize Settings...'), findsOneWidget);
+          await tester.tap(find.text('Randomize'));
+          await tester.pumpAndSettle();
+          final randomise = slot.parameters.indexWhere(
+            (parameter) => parameter.name == 'Randomise',
+          );
+          expect(
+            verify(
+              () => cubit.updateParameterValue(
+                algorithmIndex: index,
+                parameterNumber: randomise,
+                value: captureAny(named: 'value'),
+                userIsChangingTheValue: true,
+              ),
+            ).captured,
+            [1, 0],
+          );
+
+          await tester.tap(menu);
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Randomize Settings...'));
+          await tester.pumpAndSettle();
+          expect(find.byType(RandomizeSettingsDialog), findsOneWidget);
+          await tester.tap(find.bySemanticsLabel('Close randomize settings'));
+          await tester.pumpAndSettle();
+          expect(find.byType(RandomizeSettingsDialog), findsNothing);
+          expect(
+            find.bySemanticsLabel('Show standard parameter editor'),
+            findsOneWidget,
+          );
+          tester
+              .widget<IconButton>(find.byKey(_standard))
+              .focusNode!
+              .requestFocus();
+          await tester.pump();
+          await tester.sendKeyEvent(LogicalKeyboardKey.space);
+          await tester.pumpAndSettle();
+          expect(find.byType(StepSequencerView), findsNothing);
+          final standard = tester.widget<SectionParameterListView>(
+            find.byType(SectionParameterListView),
+          );
+          expect(standard.slotIndex, index);
+          expect(standard.slot, slot);
+          expect(standard.pages, slot.pages);
+          sections.goToPage(
+            index,
+            slot.pages.pages.indexWhere((page) => page.name == 'MIDI'),
+          );
+          await tester.pumpAndSettle();
+          final midiChannel = find.byWidgetPredicate(
+            (widget) =>
+                widget is ParameterViewRow &&
+                widget.name == 'MIDI channel (in)',
+          );
+          await tester.scrollUntilVisible(
+            midiChannel,
+            400,
+            scrollable: find
+                .descendant(
+                  of: find.byType(SectionParameterListView),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          );
+          await tester.pumpAndSettle();
+          expect(midiChannel, findsOneWidget);
+          expect(
+            tester.widget<ParameterViewRow>(midiChannel).algorithmIndex,
+            index,
+          );
+          noWrites();
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(const SizedBox.shrink());
+        } finally {
+          semantics.dispose();
+        }
+      },
+    );
+  }
 
   testWidgets(
     'same-slot toggles retain native lane and quantize settings but exclude hidden focus and semantics',

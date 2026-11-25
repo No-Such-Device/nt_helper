@@ -9,7 +9,6 @@ import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/services/scale_quantizer.dart';
 import 'package:nt_helper/services/step_sequencer_params.dart';
 import 'package:nt_helper/ui/theme/app_theme.dart';
-import 'package:nt_helper/ui/widgets/step_sequencer/parameter_pages_view.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/playback_controls.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/quantize_controls.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/randomize_settings_dialog.dart';
@@ -229,23 +228,12 @@ class _StepSequencerViewState extends State<StepSequencerView> {
                                     contentPadding: EdgeInsets.zero,
                                   ),
                                 ),
-                                const PopupMenuItem(
-                                  value: 'parameter_pages',
-                                  child: ListTile(
-                                    leading: Icon(Icons.view_list),
-                                    title: Text('Parameter Pages...'),
-                                    dense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
                               ],
                               onSelected: (value) {
                                 if (value == 'randomize') {
                                   _triggerRandomize();
                                 } else if (value == 'settings') {
                                   _showRandomizeSettingsDialog();
-                                } else if (value == 'parameter_pages') {
-                                  _showParameterPages();
                                 }
                               },
                             ),
@@ -704,43 +692,6 @@ class _StepSequencerViewState extends State<StepSequencerView> {
         ),
       ),
     );
-  }
-
-  /// Shows the Parameter Pages view
-  ///
-  /// Opens a dialog (desktop) or full-screen view (mobile) displaying
-  /// parameters not covered by the custom Step Sequencer UI.
-  void _showParameterPages() {
-    final width = MediaQuery.of(context).size.width;
-    final isMobile = width < 600;
-    final cubit = context.read<DistingCubit>();
-
-    if (isMobile) {
-      // Mobile: Full-screen navigation
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => BlocProvider.value(
-            value: cubit,
-            child: ParameterPagesView(
-              slot: widget.slot,
-              slotIndex: widget.slotIndex,
-            ),
-          ),
-        ),
-      );
-    } else {
-      // Desktop: Dialog
-      showDialog(
-        context: context,
-        builder: (context) => BlocProvider.value(
-          value: cubit,
-          child: ParameterPagesView(
-            slot: widget.slot,
-            slotIndex: widget.slotIndex,
-          ),
-        ),
-      );
-    }
   }
 
   /// Build global parameter mode selector
