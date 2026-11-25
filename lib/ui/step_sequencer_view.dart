@@ -16,6 +16,7 @@ import 'package:nt_helper/ui/widgets/step_sequencer/randomize_settings_dialog.da
 import 'package:nt_helper/ui/widgets/step_sequencer/sequence_selector.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/step_column_widget.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/step_grid_view.dart';
+import 'package:nt_helper/ui/widgets/step_sequencer/step_sequencer_edit_scope.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/sync_status_indicator.dart';
 import 'package:nt_helper/util/parameter_write_debouncer.dart';
 
@@ -28,12 +29,14 @@ class StepSequencerView extends StatefulWidget {
   final Slot slot;
   final FirmwareVersion firmwareVersion;
   final int slotIndex;
+  final ParameterWriteDebouncer? pendingWrites;
 
   const StepSequencerView({
     super.key,
     required this.slot,
     required this.firmwareVersion,
     required this.slotIndex,
+    this.pendingWrites,
   });
 
   @override
@@ -78,7 +81,9 @@ class _StepSequencerViewState extends State<StepSequencerView> {
   bool _isLoadingSequence = false;
 
   // Sync status tracking
-  final _debouncer = ParameterWriteDebouncer();
+  final _ownWrites = ParameterWriteDebouncer();
+  ParameterWriteDebouncer get _pendingWrites =>
+      widget.pendingWrites ?? _ownWrites;
   SyncStatus _syncStatus = SyncStatus.synced;
   String? _lastError;
 
@@ -87,18 +92,35 @@ class _StepSequencerViewState extends State<StepSequencerView> {
     final params = StepSequencerParams.fromSlot(slot);
     final sequenceParamNum = params.currentSequence;
 
-    if (sequenceParamNum != null && sequenceParamNum < slot.values.length) {
-      final sequenceValue = slot.values[sequenceParamNum].value;
-      if (sequenceValue >= 0 && sequenceValue < 32) {
-        return sequenceValue;
-      }
+    if (sequenceParamNum == null) return 0;
+    final info = slot.parameters.elementAtOrNull(sequenceParamNum);
+    final value = slot.values.elementAtOrNull(sequenceParamNum)?.value;
+    if (info != null) {
+      return (value ?? info.defaultValue).clamp(info.min, info.max);
     }
-    return 0; // Default to sequence 0
+    return 0;
   }
 
   @override
+  void didUpdateWidget(covariant StepSequencerView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_getCurrentSequence(oldWidget.slot) !=
+        _getCurrentSequence(widget.slot)) {
+      _undoHistory.clear();
+    }
+  }
+
+  StepSequencerEditScope? _captureEditScope({bool checkSequence = true}) =>
+      StepSequencerEditScope.capture(
+        context.read<DistingCubit>(),
+        widget.slotIndex,
+        widget.slot,
+        checkSequence: checkSequence,
+      );
+
+  @override
   void dispose() {
-    _debouncer.dispose();
+    _ownWrites.dispose();
     super.dispose();
   }
 
@@ -163,9 +185,16 @@ class _StepSequencerViewState extends State<StepSequencerView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Step Sequencer',
-                          style: Theme.of(context).textTheme.titleLarge,
+                        Expanded(
+                          child: Semantics(
+                            header: true,
+                            child: Text(
+                              'Step Sequencer',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
                         ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -249,6 +278,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
                         selectedScale: _selectedScale,
                         rootNote: _rootNote,
                         activeParameter: _activeParameter,
+                        pendingWrites: _pendingWrites,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -299,6 +329,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
                             params: params,
                             slot: widget.slot,
                             compact: isMobile,
+                            pendingWrites: _pendingWrites,
                           );
                         },
                       ),
@@ -364,6 +395,8 @@ class _StepSequencerViewState extends State<StepSequencerView> {
   /// Updates hardware parameter and triggers slot data refresh to load new sequence
   Future<void> _handleSequenceChange(int newSequence) async {
     if (_isLoadingSequence) return; // Prevent concurrent operations
+    final scope = _captureEditScope(checkSequence: false);
+    if (scope == null) return;
 
     setState(() {
       _isLoadingSequence = true;
@@ -384,8 +417,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
         return;
       }
 
-      // Update hardware parameter (0-31 value)
-      final cubit = context.read<DistingCubit>();
+      final cubit = scope.cubit;
       await cubit.updateParameterValue(
         algorithmIndex: widget.slotIndex,
         parameterNumber: sequenceParamNum,
@@ -398,7 +430,8 @@ class _StepSequencerViewState extends State<StepSequencerView> {
 
       // Request fresh parameter values from hardware after sequence change
       // This ensures we get updated disabled states and parameter values
-      cubit.scheduleParameterRefresh(widget.slotIndex);
+      if (!mounted || !scope.isCurrent) return;
+      cubit.scheduleParameterRefresh(scope.slotIndex);
 
       // Update sync status
       if (mounted) {
@@ -415,6 +448,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
         });
       }
     } finally {
+      scope.dispose();
       if (mounted) {
         setState(() {
           _isLoadingSequence = false;
@@ -425,6 +459,8 @@ class _StepSequencerViewState extends State<StepSequencerView> {
 
   Future<void> _quantizeAllSteps() async {
     if (!mounted) return;
+    final scope = _captureEditScope();
+    if (scope == null) return;
 
     try {
       final params = StepSequencerParams.fromSlot(widget.slot);
@@ -433,8 +469,9 @@ class _StepSequencerViewState extends State<StepSequencerView> {
       final changes = <_ParameterChange>[];
 
       // Quantize all 16 steps
-      final cubit = context.read<DistingCubit>();
+      final cubit = scope.cubit;
       for (int step = 1; step <= 16; step++) {
+        if (!mounted || !scope.isCurrent) return;
         final pitchParamNum = params.getPitch(step);
         if (pitchParamNum != null) {
           // Get current pitch value
@@ -476,7 +513,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
         }
       }
 
-      if (mounted) {
+      if (mounted && scope.isCurrent) {
         setState(() {
           // Add to undo history if any changes were made
           if (changes.isNotEmpty) {
@@ -493,12 +530,14 @@ class _StepSequencerViewState extends State<StepSequencerView> {
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && scope.isCurrent) {
         setState(() {
           _syncStatus = SyncStatus.error;
           _lastError = 'Error quantizing steps: $e';
         });
       }
+    } finally {
+      scope.dispose();
     }
   }
 
@@ -506,6 +545,8 @@ class _StepSequencerViewState extends State<StepSequencerView> {
   Future<void> _undoLastChange() async {
     if (_undoHistory.isEmpty || !mounted) return;
 
+    final scope = _captureEditScope();
+    if (scope == null) return;
     try {
       // Get last history entry
       final entry = _undoHistory.removeLast();
@@ -515,8 +556,9 @@ class _StepSequencerViewState extends State<StepSequencerView> {
       });
 
       // Restore old values
-      final cubit = context.read<DistingCubit>();
+      final cubit = scope.cubit;
       for (final change in entry.changes) {
+        if (!mounted || !scope.isCurrent) return;
         cubit.updateParameterValue(
           algorithmIndex: widget.slotIndex,
           parameterNumber: change.parameterNumber,
@@ -528,19 +570,21 @@ class _StepSequencerViewState extends State<StepSequencerView> {
         await Future.delayed(const Duration(milliseconds: 10));
       }
 
-      if (mounted) {
+      if (mounted && scope.isCurrent) {
         setState(() {
           _syncStatus = SyncStatus.synced;
           _lastError = null;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && scope.isCurrent) {
         setState(() {
           _syncStatus = SyncStatus.error;
           _lastError = 'Error undoing changes: $e';
         });
       }
+    } finally {
+      scope.dispose();
     }
   }
 
@@ -616,7 +660,9 @@ class _StepSequencerViewState extends State<StepSequencerView> {
       return;
     }
 
-    final cubit = context.read<DistingCubit>();
+    final scope = _captureEditScope(checkSequence: false);
+    if (scope == null) return;
+    final cubit = scope.cubit;
 
     try {
       // Set trigger to 1
@@ -630,6 +676,7 @@ class _StepSequencerViewState extends State<StepSequencerView> {
       // Wait 100ms (allow hardware to process)
       await Future.delayed(const Duration(milliseconds: 100));
 
+      if (!mounted || !scope.isCurrent) return;
       // Reset trigger to 0
       await cubit.updateParameterValue(
         algorithmIndex: widget.slotIndex,
@@ -639,6 +686,8 @@ class _StepSequencerViewState extends State<StepSequencerView> {
       );
     } catch (e) {
       // Error triggering randomize - silently fail
+    } finally {
+      scope.dispose();
     }
   }
 

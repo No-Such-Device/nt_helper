@@ -61,16 +61,15 @@ class QuantizeControls extends StatelessWidget {
   }
 
   Widget _buildDesktopLayout(BuildContext context) {
-    return Row(
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _buildSnapCheckbox(context),
-        const SizedBox(width: 12),
         SizedBox(width: 150, child: _buildScaleDropdown(context)),
-        const SizedBox(width: 12),
         SizedBox(width: 100, child: _buildRootNoteDropdown(context)),
-        const SizedBox(width: 12),
         _buildQuantizeAllButton(context),
-        const SizedBox(width: 12),
         _buildUndoButton(context),
       ],
     );

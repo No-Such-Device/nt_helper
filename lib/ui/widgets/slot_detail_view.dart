@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nt_helper/algorithm_controller/algorithm_controller.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/models/firmware_version.dart';
@@ -14,6 +15,8 @@ import 'package:nt_helper/ui/widgets/slot_bypass_control.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_action_bar.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode.dart';
 import 'package:nt_helper/ui/widgets/slot_editor_mode_selector.dart';
+import 'package:nt_helper/ui/widgets/step_sequencer/step_sequencer_edit_scope.dart';
+import 'package:nt_helper/util/parameter_write_debouncer.dart';
 
 /// Presents the current slot snapshot supplied by [DistingStateSynchronized].
 ///
@@ -58,6 +61,14 @@ class _SlotDetailViewState extends State<SlotDetailView>
     debugLabel: 'SlotDetailView.bypass',
   );
 
+  final _modeFocusNodes = {
+    for (final mode in SlotEditorMode.values)
+      mode: FocusNode(debugLabel: 'SlotDetailView.${mode.name}'),
+  };
+  final _nativePendingWrites = ParameterWriteDebouncer();
+  Object? _nativeIdentity;
+  bool _nativeOpened = false;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -91,6 +102,10 @@ class _SlotDetailViewState extends State<SlotDetailView>
   void dispose() {
     _sectionControllerSub?.cancel();
     _bypassFocusNode.dispose();
+    _nativePendingWrites.dispose();
+    for (final node in _modeFocusNodes.values) {
+      node.dispose();
+    }
     widget.algorithmControllerSections.removeListener(
       _handleControllerSectionsChanged,
     );
@@ -120,16 +135,83 @@ class _SlotDetailViewState extends State<SlotDetailView>
     final definition = AlgorithmControllerRegistry.bundled.findForGuid(
       widget.slot.algorithm.guid,
     );
+    final nativeAlternate = AlgorithmViewRegistry.findAlternateForGuid(
+      widget.slot.algorithm.guid,
+    );
+    final controllerAvailable = definition != null || nativeAlternate != null;
     final mode =
-        widget.editorMode == SlotEditorMode.controller && definition == null
+        widget.editorMode == SlotEditorMode.controller && !controllerAvailable
         ? SlotEditorMode.standard
         : widget.editorMode;
     final modeSelector = SlotEditorModeSelector(
       mode: mode,
-      controllerName: definition?.name,
+      controllerName: nativeAlternate?.name ?? definition?.name,
+      focusNodes: _modeFocusNodes,
       enabled: widget.editorModeEnabled,
-      onSelected: (selectedMode) => _selectMode(selectedMode, definition),
+      onSelected: (selectedMode) =>
+          _selectMode(selectedMode, controllerAvailable),
     );
+
+    if (nativeAlternate != null) {
+      final manager = context.select((DistingCubit cubit) {
+        final state = cubit.state;
+        return state is DistingStateSynchronized ? state.disting : null;
+      });
+      final identity = StepSequencerEditIdentity(
+        manager,
+        widget.slotIndex,
+        widget.slot,
+      );
+      if (_nativeIdentity != identity) {
+        _nativeIdentity = identity;
+        _nativeOpened = false;
+      }
+      final visible = mode == SlotEditorMode.controller;
+      _nativeOpened = _nativeOpened || visible;
+      return SafeArea(
+        child: Column(
+          children: [
+            if (visible)
+              SlotEditorActionBar(
+                slot: widget.slot,
+                editorModeSelector: modeSelector,
+                sectionsCollapsed: false,
+                bypassFocusNode: _bypassFocusNode,
+              )
+            else
+              const SizedBox.shrink(),
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (_nativeOpened)
+                    Visibility(
+                      visible: visible,
+                      maintainState: true,
+                      child: ExcludeFocus(
+                        excluding: !visible,
+                        child: TickerMode(
+                          enabled: visible,
+                          child: KeyedSubtree(
+                            key: ValueKey(identity),
+                            child: nativeAlternate.builder(
+                              widget.slot,
+                              widget.slotIndex,
+                              widget.firmwareVersion,
+                              pendingWrites: _nativePendingWrites,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (!visible) _parameterList(mode, modeSelector),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (mode == SlotEditorMode.controller && definition != null) {
       return SafeArea(
@@ -184,8 +266,11 @@ class _SlotDetailViewState extends State<SlotDetailView>
     // Create a set of list sections for the parameters of the
     // algorithm initially based off Os' organization on the module firmware.
 
-    return SafeArea(
-      child: SectionParameterListView(
+    return SafeArea(child: _parameterList(mode, modeSelector));
+  }
+
+  Widget _parameterList(SlotEditorMode mode, Widget modeSelector) =>
+      SectionParameterListView(
         slot: widget.slot,
         slotIndex: widget.slotIndex,
         units: widget.units,
@@ -194,9 +279,7 @@ class _SlotDetailViewState extends State<SlotDetailView>
         spreadsheetEditingMode: mode == SlotEditorMode.spreadsheet,
         editorModeSelector: modeSelector,
         bypassFocusNode: _bypassFocusNode,
-      ),
-    );
-  }
+      );
 
   void _toggleControllerSections() {
     widget.algorithmControllerSections.toggleAll();
@@ -248,16 +331,19 @@ class _SlotDetailViewState extends State<SlotDetailView>
     if (mounted) setState(() {});
   }
 
-  void _selectMode(
-    SlotEditorMode mode,
-    AlgorithmControllerDefinition? definition,
-  ) {
+  void _selectMode(SlotEditorMode mode, bool controllerAvailable) {
     if (!widget.editorModeEnabled ||
         mode == widget.editorMode ||
-        mode == SlotEditorMode.controller && definition == null) {
+        mode == SlotEditorMode.controller && !controllerAvailable) {
       return;
     }
+    _nativePendingWrites.flush();
     widget.onEditorModeChanged(mode);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.editorMode == mode) {
+        _modeFocusNodes[mode]?.requestFocus();
+      }
+    });
   }
 
   void _handleControllerError(String message) {

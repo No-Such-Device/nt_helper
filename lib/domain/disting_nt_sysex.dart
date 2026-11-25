@@ -483,6 +483,9 @@ class Algorithm {
   final int algorithmIndex;
   final String guid;
   final String name;
+
+  /// Local instance identity survives presentation copies, not fresh hydration.
+  final Object instanceIdentity;
   final List<int> specifications;
 
   /// Whether [specifications] came from a complete extended 0x40 response.
@@ -499,7 +502,8 @@ class Algorithm {
     this.specifications = const [],
     this.hasAuthoritativeSpecifications = false,
     this.visualStyle,
-  });
+    Object? instanceIdentity,
+  }) : instanceIdentity = instanceIdentity ?? Object();
 
   Algorithm copyWith({
     int? algorithmIndex,
@@ -510,6 +514,7 @@ class Algorithm {
   }) {
     return Algorithm(
       algorithmIndex: algorithmIndex ?? this.algorithmIndex,
+      instanceIdentity: instanceIdentity,
       guid: guid,
       name: name ?? this.name,
       specifications: specifications ?? this.specifications,

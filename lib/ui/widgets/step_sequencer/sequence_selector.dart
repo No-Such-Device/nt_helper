@@ -39,15 +39,16 @@ class SequenceSelector extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: _buildSequenceDropdown(context, isMobile)),
-        if (isLoading)
-          const Padding(
-            padding: EdgeInsets.only(left: 8),
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+        Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: isLoading
+                ? const CircularProgressIndicator(strokeWidth: 2)
+                : null,
           ),
+        ),
       ],
     );
   }

@@ -7,6 +7,7 @@ import 'package:nt_helper/services/scale_quantizer.dart';
 import 'package:nt_helper/services/step_sequencer_params.dart';
 import 'package:nt_helper/ui/widgets/step_sequencer/step_column_widget.dart';
 import 'package:nt_helper/util/parameter_write_debouncer.dart';
+import 'package:nt_helper/ui/widgets/step_sequencer/step_sequencer_edit_scope.dart';
 
 /// Grid view displaying all 16 steps of the step sequencer
 ///
@@ -21,6 +22,7 @@ class StepGridView extends StatefulWidget {
   final bool snapEnabled;
   final String selectedScale;
   final int rootNote;
+  final ParameterWriteDebouncer? pendingWrites;
   final StepParameter activeParameter; // Global parameter mode
 
   const StepGridView({
@@ -31,6 +33,7 @@ class StepGridView extends StatefulWidget {
     required this.selectedScale,
     required this.rootNote,
     required this.activeParameter,
+    this.pendingWrites,
   });
 
   @override
@@ -40,7 +43,8 @@ class StepGridView extends StatefulWidget {
 class _StepGridViewState extends State<StepGridView> {
   bool _isDragging = false;
   int? _lastPaintedStep;
-  final _debouncer = ParameterWriteDebouncer();
+  final _ownWrites = ParameterWriteDebouncer();
+  ParameterWriteDebouncer get _debouncer => widget.pendingWrites ?? _ownWrites;
   final _rowKey = GlobalKey(); // Key to get Row's position
   late List<FocusNode> _stepFocusNodes;
   int _focusedStepIndex = -1;
@@ -65,7 +69,10 @@ class _StepGridViewState extends State<StepGridView> {
 
   @override
   void dispose() {
-    _debouncer.dispose();
+    for (var step = 0; step < 16; step++) {
+      _debouncer.cancel('step_$step');
+    }
+    _ownWrites.dispose();
     for (final node in _stepFocusNodes) {
       node.dispose();
     }
@@ -263,20 +270,30 @@ class _StepGridViewState extends State<StepGridView> {
     final newValue = (currentValue + delta).clamp(paramInfo.min, paramInfo.max);
 
     if (newValue != currentValue) {
-      _updateStepParameter(stepIndex, newValue, params);
+      _updateStepParameter(stepIndex, newValue, slot, params);
     }
   }
 
   void _setStepToMin(int stepIndex, Slot slot, StepSequencerParams params) {
     final paramIndex = _getParameterIndexForStep(stepIndex, params);
     if (paramIndex == null || paramIndex >= slot.parameters.length) return;
-    _updateStepParameter(stepIndex, slot.parameters[paramIndex].min, params);
+    _updateStepParameter(
+      stepIndex,
+      slot.parameters[paramIndex].min,
+      slot,
+      params,
+    );
   }
 
   void _setStepToMax(int stepIndex, Slot slot, StepSequencerParams params) {
     final paramIndex = _getParameterIndexForStep(stepIndex, params);
     if (paramIndex == null || paramIndex >= slot.parameters.length) return;
-    _updateStepParameter(stepIndex, slot.parameters[paramIndex].max, params);
+    _updateStepParameter(
+      stepIndex,
+      slot.parameters[paramIndex].max,
+      slot,
+      params,
+    );
   }
 
   /// Build individual step column widget
@@ -424,7 +441,7 @@ class _StepGridViewState extends State<StepGridView> {
     }
 
     // Update the parameter
-    _updateStepParameter(stepIndex, value, params);
+    _updateStepParameter(stepIndex, value, slot, params);
   }
 
   /// Calculate which step column is under the cursor based on X position
@@ -553,6 +570,7 @@ class _StepGridViewState extends State<StepGridView> {
   void _updateStepParameter(
     int stepIndex,
     int value,
+    Slot displayedSlot,
     StepSequencerParams params,
   ) {
     final paramIndex = _getParameterIndexForStep(stepIndex, params);
@@ -560,16 +578,30 @@ class _StepGridViewState extends State<StepGridView> {
       return;
     }
 
-    // Debounce parameter writes to prevent flooding hardware
-    _debouncer.schedule('step_$stepIndex', () {
-      if (mounted) {
-        context.read<DistingCubit>().updateParameterValue(
-          algorithmIndex: widget.slotIndex,
-          parameterNumber: paramIndex,
-          value: value,
-          userIsChangingTheValue: true,
-        );
-      }
-    }, const Duration(milliseconds: 50));
+    final scope = StepSequencerEditScope.capture(
+      context.read<DistingCubit>(),
+      widget.slotIndex,
+      displayedSlot,
+    );
+    if (scope == null) return;
+    _debouncer.schedule(
+      'step_$stepIndex',
+      () {
+        try {
+          if (mounted && scope.isCurrent) {
+            scope.cubit.updateParameterValue(
+              algorithmIndex: scope.slotIndex,
+              parameterNumber: paramIndex,
+              value: value,
+              userIsChangingTheValue: true,
+            );
+          }
+        } finally {
+          scope.dispose();
+        }
+      },
+      const Duration(milliseconds: 50),
+      onCancel: scope.dispose,
+    );
   }
 }

@@ -8,12 +8,14 @@ class SlotEditorModeSelector extends StatelessWidget {
     required this.onSelected,
     this.controllerName,
     this.enabled = true,
+    this.focusNodes,
   });
 
   final SlotEditorMode mode;
   final ValueChanged<SlotEditorMode> onSelected;
   final String? controllerName;
   final bool enabled;
+  final Map<SlotEditorMode, FocusNode>? focusNodes;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +49,7 @@ class SlotEditorModeSelector extends StatelessWidget {
               mode: SlotEditorMode.controller,
               label: controllerName!,
               semanticsLabel: 'Show ${controllerName!}',
-              hint: 'Shows the installed algorithm controller',
+              hint: 'Shows the alternate editor for this algorithm',
               icon: Icons.extension_rounded,
             ),
           ],
@@ -74,6 +76,7 @@ class SlotEditorModeSelector extends StatelessWidget {
       child: ExcludeSemantics(
         child: IconButton.filledTonal(
           key: key,
+          focusNode: focusNodes?[mode],
           tooltip: label,
           isSelected: selected,
           onPressed: enabled ? () => onSelected(mode) : null,

@@ -5,6 +5,7 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/services/step_sequencer_params.dart';
 import 'package:nt_helper/ui/widgets/digit_shortcut_blocker.dart';
 import 'package:nt_helper/util/parameter_write_debouncer.dart';
+import 'package:nt_helper/ui/widgets/step_sequencer/step_sequencer_edit_scope.dart';
 
 /// Playback controls for Step Sequencer algorithm
 ///
@@ -26,6 +27,7 @@ class PlaybackControls extends StatefulWidget {
   final StepSequencerParams params;
   final Slot slot;
   final bool compact;
+  final ParameterWriteDebouncer? pendingWrites;
 
   const PlaybackControls({
     super.key,
@@ -33,6 +35,7 @@ class PlaybackControls extends StatefulWidget {
     required this.params,
     required this.slot,
     this.compact = false,
+    this.pendingWrites,
   });
 
   @override
@@ -40,7 +43,9 @@ class PlaybackControls extends StatefulWidget {
 }
 
 class _PlaybackControlsState extends State<PlaybackControls> {
-  final _debouncer = ParameterWriteDebouncer();
+  final _ownWrites = ParameterWriteDebouncer();
+  final _writeKeys = <String>{};
+  ParameterWriteDebouncer get _debouncer => widget.pendingWrites ?? _ownWrites;
   final _startStepController = TextEditingController();
   final _endStepController = TextEditingController();
 
@@ -59,24 +64,29 @@ class _PlaybackControlsState extends State<PlaybackControls> {
   void didUpdateWidget(PlaybackControls oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.slot != widget.slot) {
-      _initializeControllers();
+      _initializeControllers(previous: oldWidget.slot);
       _refreshParameterStates();
     }
   }
 
-  void _initializeControllers() {
+  void _initializeControllers({Slot? previous}) {
     // Initialize start step controller
     final startStepParam = widget.params.startStep;
     if (startStepParam != null && startStepParam < widget.slot.values.length) {
       final startValue = widget.slot.values[startStepParam].value;
-      _startStepController.text = startValue.toString();
+      if (previous?.values.elementAtOrNull(startStepParam)?.value !=
+          startValue) {
+        _startStepController.text = startValue.toString();
+      }
     }
 
     // Initialize end step controller
     final endStepParam = widget.params.endStep;
     if (endStepParam != null && endStepParam < widget.slot.values.length) {
       final endValue = widget.slot.values[endStepParam].value;
-      _endStepController.text = endValue.toString();
+      if (previous?.values.elementAtOrNull(endStepParam)?.value != endValue) {
+        _endStepController.text = endValue.toString();
+      }
     }
   }
 
@@ -111,7 +121,10 @@ class _PlaybackControlsState extends State<PlaybackControls> {
 
   @override
   void dispose() {
-    _debouncer.dispose();
+    for (final key in _writeKeys) {
+      _debouncer.cancel(key);
+    }
+    _ownWrites.dispose();
     _startStepController.dispose();
     _endStepController.dispose();
     super.dispose();
@@ -165,29 +178,55 @@ class _PlaybackControlsState extends State<PlaybackControls> {
   }
 
   /// Updates a parameter with optional debouncing
-  void _updateParameter(int? paramNumber, int value, {bool debounce = false}) {
+  void _updateParameter(
+    int? paramNumber,
+    int value, {
+    required Slot displayedSlot,
+    bool debounce = false,
+  }) {
     if (paramNumber == null || paramNumber >= widget.slot.values.length) {
       return;
     }
 
+    final scope = StepSequencerEditScope.capture(
+      context.read<DistingCubit>(),
+      widget.slotIndex,
+      displayedSlot,
+    );
+    if (scope == null) return;
+
     if (debounce) {
-      // Debounced update for sliders (continuous values)
-      _debouncer.schedule('param_$paramNumber', () {
-        context.read<DistingCubit>().updateParameterValue(
-          algorithmIndex: widget.slotIndex,
+      final key = 'param_$paramNumber';
+      _writeKeys.add(key);
+      _debouncer.schedule(
+        key,
+        () {
+          try {
+            if (!mounted || !scope.isCurrent) return;
+            scope.cubit.updateParameterValue(
+              algorithmIndex: scope.slotIndex,
+              parameterNumber: paramNumber,
+              value: value,
+              userIsChangingTheValue: true,
+            );
+          } finally {
+            scope.dispose();
+          }
+        },
+        const Duration(milliseconds: 50),
+        onCancel: scope.dispose,
+      );
+    } else {
+      try {
+        scope.cubit.updateParameterValue(
+          algorithmIndex: scope.slotIndex,
           parameterNumber: paramNumber,
           value: value,
           userIsChangingTheValue: true,
         );
-      }, const Duration(milliseconds: 50));
-    } else {
-      // Immediate update for discrete values (dropdowns, text inputs)
-      context.read<DistingCubit>().updateParameterValue(
-        algorithmIndex: widget.slotIndex,
-        parameterNumber: paramNumber,
-        value: value,
-        userIsChangingTheValue: true,
-      );
+      } finally {
+        scope.dispose();
+      }
     }
   }
 
@@ -209,6 +248,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
         final currSlot = curr.slots[widget.slotIndex];
 
         final playbackParamNumbers = [
+          widget.params.currentSequence,
           widget.params.direction,
           widget.params.startStep,
           widget.params.endStep,
@@ -325,6 +365,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
     final items = _buildEnumDropdownItems(slot, directionParam);
 
     return DropdownButtonFormField<int>(
+      isExpanded: true,
       initialValue: currentValue.clamp(0, items.length - 1),
       decoration: const InputDecoration(
         labelText: 'Direction',
@@ -334,7 +375,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
       items: items,
       onChanged: (value) {
         if (value != null) {
-          _updateParameter(directionParam, value);
+          _updateParameter(directionParam, value, displayedSlot: slot);
 
           // Request fresh parameter values from hardware after Direction change
           context.read<DistingCubit>().scheduleParameterRefresh(
@@ -364,7 +405,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
         onFieldSubmitted: (value) {
           final intValue = int.tryParse(value);
           if (intValue != null && intValue >= 1 && intValue <= 16) {
-            _updateParameter(startStepParam, intValue);
+            _updateParameter(startStepParam, intValue, displayedSlot: slot);
           } else {
             final current = startStepParam < slot.values.length
                 ? slot.values[startStepParam].value
@@ -404,7 +445,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
               intValue >= 1 &&
               intValue <= 16 &&
               intValue >= startValue) {
-            _updateParameter(endStepParam, intValue);
+            _updateParameter(endStepParam, intValue, displayedSlot: slot);
           } else {
             final current = endStepParam < slot.values.length
                 ? slot.values[endStepParam].value
@@ -431,6 +472,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
     final items = _buildEnumDropdownItems(slot, permutationParam);
 
     return DropdownButtonFormField<int>(
+      isExpanded: true,
       initialValue: currentValue.clamp(0, items.length - 1),
       decoration: const InputDecoration(
         labelText: 'Permutation',
@@ -440,7 +482,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
       items: items,
       onChanged: (value) {
         if (value != null) {
-          _updateParameter(permutationParam, value);
+          _updateParameter(permutationParam, value, displayedSlot: slot);
         }
       },
     );
@@ -460,6 +502,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
     final items = _buildEnumDropdownItems(slot, gateTypeParam);
 
     return DropdownButtonFormField<int>(
+      isExpanded: true,
       initialValue: currentValue.clamp(0, items.length - 1),
       decoration: const InputDecoration(
         labelText: 'Gate Type',
@@ -469,7 +512,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
       items: items,
       onChanged: (value) {
         if (value != null) {
-          _updateParameter(gateTypeParam, value);
+          _updateParameter(gateTypeParam, value, displayedSlot: slot);
 
           // Request fresh parameter values from hardware after Gate Type change
           // This ensures we get updated disabled states for dependent parameters
@@ -526,6 +569,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
                         _updateParameter(
                           gateLengthParam,
                           value.toInt(),
+                          displayedSlot: slot,
                           debounce: true,
                         );
                       },
@@ -583,6 +627,7 @@ class _PlaybackControlsState extends State<PlaybackControls> {
                         _updateParameter(
                           triggerLengthParam,
                           value.toInt(),
+                          displayedSlot: slot,
                           debounce: true,
                         );
                       },
@@ -624,7 +669,12 @@ class _PlaybackControlsState extends State<PlaybackControls> {
             label: '${currentValue}ms',
             semanticFormatterCallback: (v) => '${v.round()} milliseconds',
             onChanged: (value) {
-              _updateParameter(glideTimeParam, value.toInt(), debounce: true);
+              _updateParameter(
+                glideTimeParam,
+                value.toInt(),
+                displayedSlot: slot,
+                debounce: true,
+              );
             },
           ),
         ],
