@@ -6,6 +6,7 @@ class _OfflineDemoDelegate {
   _OfflineDemoDelegate(this._cubit);
 
   Future<void> onDemo() async {
+    _cubit._connectionDelegate.onLeavingOnlineSession();
     _cubit._remoteDelegate.clearConnection();
     _cubit._memoryDelegate.clearConnection();
 
@@ -14,6 +15,8 @@ class _OfflineDemoDelegate {
 
     // Stop CC notifications before replacing manager
     _cubit._ccNotificationDelegate.stop();
+    _cubit._parameterRefreshDelegate.stopForConnectionChange();
+    _cubit._disposeParameterQueue();
 
     // --- Create Mock Manager and Fetch State ---
     final mockManager = MockDistingMidiManager();
@@ -49,6 +52,7 @@ class _OfflineDemoDelegate {
   }
 
   Future<void> goOffline() async {
+    _cubit._connectionDelegate.onLeavingOnlineSession();
     _cubit._remoteDelegate.clearConnection();
     _cubit._memoryDelegate.clearConnection();
     final currentState = _cubit.state;
@@ -61,6 +65,8 @@ class _OfflineDemoDelegate {
 
     // Stop CC notifications before disconnecting (avoids callbacks on disposed manager)
     _cubit._ccNotificationDelegate.stop();
+    _cubit._parameterRefreshDelegate.stopForConnectionChange();
+    _cubit._disposeParameterQueue();
 
     // Get devices and manager from CURRENT state before changing it
     MidiDevice? currentInputDevice;

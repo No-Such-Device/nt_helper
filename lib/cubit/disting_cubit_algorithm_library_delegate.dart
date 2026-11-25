@@ -210,7 +210,9 @@ class _AlgorithmLibraryDelegate {
     if (cachedAlgorithms != null && cachedAlgorithms.length == numAlgorithms) {
       // Cache hit - update state with cached data
       final currentState = _cubit.state;
-      if (currentState is DistingStateSynchronized && !currentState.offline) {
+      if (currentState is DistingStateSynchronized &&
+          !currentState.offline &&
+          identical(currentState.disting, manager)) {
         _cubit._emitState(currentState.copyWith(algorithms: cachedAlgorithms));
       }
       return;
@@ -222,8 +224,14 @@ class _AlgorithmLibraryDelegate {
 
     // Load all algorithms with prioritization (factory first, then community)
     for (int i = 0; i < numAlgorithms; i++) {
+      if (_cubit.isClosed || !identical(_cubit.disting(), manager)) {
+        return;
+      }
       try {
         final algorithmInfo = await manager.requestAlgorithmInfo(i);
+        if (_cubit.isClosed || !identical(_cubit.disting(), manager)) {
+          return;
+        }
         if (algorithmInfo != null) {
           if (_isFactoryAlgorithm(algorithmInfo.guid)) {
             factoryResults.add(algorithmInfo);
@@ -231,7 +239,8 @@ class _AlgorithmLibraryDelegate {
             // Update state immediately when we get factory algorithms
             final currentState = _cubit.state;
             if (currentState is DistingStateSynchronized &&
-                !currentState.offline) {
+                !currentState.offline &&
+                identical(currentState.disting, manager)) {
               final currentAlgorithms = [
                 ...factoryResults,
                 ...communityResults,
@@ -246,7 +255,8 @@ class _AlgorithmLibraryDelegate {
             // Update state when we get community plugins too
             final currentState = _cubit.state;
             if (currentState is DistingStateSynchronized &&
-                !currentState.offline) {
+                !currentState.offline &&
+                identical(currentState.disting, manager)) {
               final currentAlgorithms = [
                 ...factoryResults,
                 ...communityResults,
@@ -304,12 +314,14 @@ class _AlgorithmLibraryDelegate {
     if (communityResults.isNotEmpty) {
       final mergedResults = [...baseResults, ...communityResults];
 
-      // Only update state if we're still in synchronized mode and not offline
+      // Only update state if we're still in synchronized mode on the same manager
       final currentState = _cubit.state;
-      if (currentState is DistingStateSynchronized && !currentState.offline) {
+      if (currentState is DistingStateSynchronized &&
+          !currentState.offline &&
+          identical(currentState.disting, manager)) {
         _cubit._emitState(currentState.copyWith(algorithms: mergedResults));
       }
-    } else {}
+    }
   }
 
   // Helper method to determine if algorithm library should be refreshed

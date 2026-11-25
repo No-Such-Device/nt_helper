@@ -13,6 +13,7 @@ import 'package:nt_helper/core/routing/cv_modulation.dart'
 
 import 'package:async/async.dart';
 import 'package:bloc/bloc.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
@@ -22,6 +23,7 @@ import 'package:nt_helper/db/daos/presets_dao.dart'; // Added
 import 'package:nt_helper/db/database.dart'; // Added
 import 'package:nt_helper/domain/cc_reverse_lookup.dart';
 import 'package:nt_helper/domain/disting_limits.dart';
+import 'package:nt_helper/domain/disting_message_scheduler.dart';
 import 'package:nt_helper/domain/disting_midi_manager.dart';
 import 'package:nt_helper/domain/disting_request_control.dart';
 import 'package:nt_helper/domain/midi_command_factory.dart';
@@ -212,6 +214,7 @@ class DistingCubit extends _DistingCubitBase
     MidiCommand? midiCommand,
     MidiCommand Function()? midiCommandFactory,
     bool? isWindowsOverride,
+    this.recoveryConfig = const OnlineRecoveryConfig(),
   }) : _prefs = SharedPreferences.getInstance(),
        _midiCommandFactory = midiCommandFactory ?? createNativeMidiCommand,
        _isWindows = isWindowsOverride ?? Platform.isWindows,
@@ -231,7 +234,15 @@ class DistingCubit extends _DistingCubitBase
 
   final MidiCommand Function() _midiCommandFactory;
   final bool _isWindows;
+  final OnlineRecoveryConfig recoveryConfig;
   late MidiCommand _midiCommand;
+
+  ConnectionHealthState get connectionHealth => _connectionDelegate.healthState;
+  int get connectionEpoch => _connectionDelegate.connectionEpoch;
+
+  /// Explicitly retries bounded recovery for the last active online target
+  /// after recovery exhaustion or connection loss.
+  Future<void> retryReconnect() => _connectionDelegate.retryReconnect();
 
   // MIDI setup change subscription for auto-detecting device connections
   StreamSubscription<MidiSetupChange>? _midiSetupSubscription;
@@ -285,6 +296,7 @@ class DistingCubit extends _DistingCubitBase
 
   @override
   Future<void> close() async {
+    _connectionDelegate.dispose();
     _cancelRespecificationForConnectionChange();
     await _remoteDelegate.dispose();
     await _moduleSettingsDelegate.dispose();
@@ -293,7 +305,7 @@ class DistingCubit extends _DistingCubitBase
     await _memoryDelegate.dispose();
     disting()?.dispose();
     _offlineManager?.dispose();
-    _parameterQueue?.dispose();
+    _disposeParameterQueue();
     try {
       _midiCommand.teardown();
     } on MissingPluginException {
@@ -555,13 +567,24 @@ class DistingCubit extends _DistingCubitBase
   void _createParameterQueue() {
     final manager = disting();
     if (manager != null) {
-      _parameterQueue?.dispose();
+      _disposeParameterQueue();
       _parameterQueue = ParameterUpdateQueue(
         midiManager: manager,
-        onParameterStringUpdated:
-            _parameterStringDelegate.onParameterStringUpdated,
+        onParameterStringUpdated: (algorithmIndex, parameterNumber, value) {
+          if (isClosed || !identical(disting(), manager)) return;
+          _parameterStringDelegate.onParameterStringUpdated(
+            algorithmIndex,
+            parameterNumber,
+            value,
+          );
+        },
       );
     }
+  }
+
+  void _disposeParameterQueue() {
+    _parameterQueue?.dispose();
+    _parameterQueue = null;
   }
 
   void refreshAlgorithms() {
@@ -1358,16 +1381,20 @@ class DistingCubit extends _DistingCubitBase
     MidiDevice inputDevice,
     MidiDevice outputDevice,
   ) {
+    _connectionDelegate.onFirmwareHandoffStarted();
     _ccNotificationDelegate.stop();
     _monitoringDelegate.pauseCpuMonitoring();
+    _parameterRefreshDelegate.stopForConnectionChange();
     if (identical(disting(), manager)) {
       _remoteDelegate.clearConnection();
       _memoryDelegate.clearConnection();
     }
-    _parameterQueue?.dispose();
-    _parameterQueue = null;
+    _disposeParameterQueue();
     if (identical(disting(), manager)) {
       _emitState(const DistingState.initial());
+    }
+    if (manager is DistingMidiManager) {
+      manager.markConnectionLost(reason: SchedulerTerminationReason.disposed);
     }
     try {
       _midiCommand.disconnectDevice(inputDevice);

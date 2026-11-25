@@ -21,8 +21,16 @@ class _ParameterRefreshDelegate {
   final Map<String, _PollingTask> _pollingTasks = {};
 
   void dispose() {
+    stopForConnectionChange();
+  }
+
+  void stopForConnectionChange() {
     _programRefreshTimer?.cancel();
+    _programRefreshTimer = null;
+    _programRefreshSlot = null;
+    _programRefreshRetries = 0;
     _parameterRefreshTimer?.cancel();
+    _parameterRefreshTimer = null;
     _pollingTasks.clear();
   }
 
@@ -35,39 +43,45 @@ class _ParameterRefreshDelegate {
     if (syncState is! DistingStateSynchronized) {
       return; // Only schedule refresh when synchronized
     }
+    final expectedManager = syncState.disting;
 
     // Cancel any pending timer
     _parameterRefreshTimer?.cancel();
 
     // Schedule a new refresh after the debounce delay
     _parameterRefreshTimer = Timer(_parameterRefreshDebounceDelay, () async {
+      _parameterRefreshTimer = null;
+      if (_cubit.isClosed) return;
       final manager = _cubit.disting();
-      if (manager != null) {
-        final allParameterValues = await manager.requestAllParameterValues(
-          algorithmIndex,
-        );
+      if (manager != null && identical(manager, expectedManager)) {
+        try {
+          final allParameterValues = await manager.requestAllParameterValues(
+            algorithmIndex,
+          );
+          if (_cubit.isClosed) return;
 
-        if (allParameterValues != null) {
-          // Get current state (might have changed since timer was scheduled)
-          final currentState = _cubit.state;
-          if (currentState is DistingStateSynchronized &&
-              algorithmIndex < currentState.slots.length) {
-            // Update the slot with the refreshed parameter values
-            final currentSlot = currentState.slots[algorithmIndex];
-            final updatedSlot = currentSlot.copyWith(
-              values: allParameterValues.values,
-            );
+          if (allParameterValues != null) {
+            // Get current state (might have changed since timer was scheduled)
+            final currentState = _cubit.state;
+            if (currentState is DistingStateSynchronized &&
+                identical(currentState.disting, expectedManager) &&
+                algorithmIndex < currentState.slots.length) {
+              // Update the slot with the refreshed parameter values
+              final currentSlot = currentState.slots[algorithmIndex];
+              final updatedSlot = currentSlot.copyWith(
+                values: allParameterValues.values,
+              );
 
-            // Create new slots list with the updated slot
-            final updatedSlots = List<Slot>.from(currentState.slots);
-            updatedSlots[algorithmIndex] = updatedSlot;
+              // Create new slots list with the updated slot
+              final updatedSlots = List<Slot>.from(currentState.slots);
+              updatedSlots[algorithmIndex] = updatedSlot;
 
-            // Emit the updated state
-            _cubit._emitState(currentState.copyWith(slots: updatedSlots));
+              // Emit the updated state
+              _cubit._emitState(currentState.copyWith(slots: updatedSlots));
+            }
           }
-        }
+        } catch (_) {}
       }
-      _parameterRefreshTimer = null; // Clear timer reference
     });
   }
 
@@ -221,7 +235,8 @@ class _ParameterRefreshDelegate {
       // End Anomaly Check
 
       final currentState = _cubit.state;
-      if (currentState is DistingStateSynchronized) {
+      if (currentState is DistingStateSynchronized &&
+          identical(currentState.disting, disting)) {
         // Add boundary checks before accessing slots and values
         if (mapped.parameter.algorithmIndex >= currentState.slots.length) {
           _pollingTasks.remove(key); // Remove task to stop polling
@@ -297,7 +312,8 @@ class _ParameterRefreshDelegate {
       if (newValue == null) return;
 
       final currentState = _cubit.state;
-      if (currentState is DistingStateSynchronized) {
+      if (currentState is DistingStateSynchronized &&
+          identical(currentState.disting, disting)) {
         if (item.slotIndex >= currentState.slots.length) {
           _pollingTasks.remove(key);
           return;
