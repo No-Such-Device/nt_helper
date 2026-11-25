@@ -62,9 +62,8 @@ _createScheduler({
   final device = _makeDevice('test-device');
 
   when(() => midi.onMidiPacketReceived).thenAnswer((_) => incoming.stream);
-  when(
-    () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
-  ).thenAnswer((_) {});
+  when(() => midi.sendData(any(), deviceId: any(named: 'deviceId')))
+      .thenAnswer((_) {});
 
   final scheduler = DistingMessageScheduler(
     midiCommand: midi,
@@ -136,16 +135,14 @@ void main() {
       incoming.add(MidiPacket(reply, 0, _makeDevice('other-device')));
       await Future<void>.delayed(Duration.zero);
       expect(completed, isFalse);
-      verify(
-        () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
-      ).called(1);
+      verify(() => midi.sendData(any(), deviceId: any(named: 'deviceId')))
+          .called(1);
       incoming.add(MidiPacket(reply.sublist(0, 2), 0, device));
       incoming.add(MidiPacket(reply.sublist(2), 0, device));
       expect(await first, reply);
       await second;
-      verify(
-        () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
-      ).called(1);
+      verify(() => midi.sendData(any(), deviceId: any(named: 'deviceId')))
+          .called(1);
     });
 
     test('plug-in writes are never replayed after a receive error', () async {
@@ -156,9 +153,8 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       incoming.addError(StateError('Interrupted USB packet'));
       await expectation;
-      verify(
-        () => midi.sendData(any(), deviceId: any(named: 'deviceId')),
-      ).called(1);
+      verify(() => midi.sendData(any(), deviceId: any(named: 'deviceId')))
+          .called(1);
     }, tags: ['regression']);
 
     test('basic request/response cycle — happy path', () async {
@@ -205,7 +201,7 @@ void main() {
         final future = scheduler.sendRequest<FileChunk>(
           request,
           key,
-          maxRetries: 1,
+          maxRetries: 2,
           timeout: const Duration(milliseconds: 100),
         );
         await Future.microtask(() {});
@@ -242,7 +238,8 @@ void main() {
           ),
         );
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('repeated split transfer errors do not replay indefinitely', () async {
       final key = RequestKey(
@@ -261,7 +258,7 @@ void main() {
       final future = scheduler.sendRequest<FileChunk>(
         _buildSysEx(DistingNTRespMessageType.respDirectoryListing, const []),
         key,
-        maxRetries: 1,
+        maxRetries: 2,
         timeout: const Duration(milliseconds: 20),
       );
       await Future.microtask(() {});
@@ -277,6 +274,40 @@ void main() {
       await expectLater(future, throwsA(isA<TimeoutException>()));
       verify(() => midi.sendData(any(), deviceId: device.id)).called(2);
     }, tags: ['regression']);
+
+    test(
+      'split transfer error respects maxRetries=1 total attempt budget',
+      () async {
+        final key = RequestKey(
+          sysExId: _testSysExId,
+          messageType: DistingNTRespMessageType.respDirectoryListing,
+          sdCardOperation: SdCardOperation.fileDownload,
+        );
+        final response = _buildSysEx(
+          DistingNTRespMessageType.respDirectoryListing,
+          [0, SdCardOperation.fileDownload.code, 0x01, 0x02],
+        );
+        final partial = Uint8List.fromList(
+          response.sublist(0, response.length ~/ 2),
+        );
+
+        final future = scheduler.sendRequest<FileChunk>(
+          _buildSysEx(DistingNTRespMessageType.respDirectoryListing, const []),
+          key,
+          maxRetries: 1,
+          timeout: const Duration(milliseconds: 20),
+        );
+        await Future.microtask(() {});
+
+        incoming.add(MidiPacket(partial, 0, device));
+        await Future.microtask(() {});
+        incoming.addError(StateError('transfer failure at budget limit'));
+
+        await expectLater(future, throwsA(isA<TimeoutException>()));
+        verify(() => midi.sendData(any(), deviceId: device.id)).called(1);
+      },
+      tags: ['regression'],
+    );
 
     test('stream error outside a split transfer does not replay', () async {
       final key = RequestKey(
@@ -334,7 +365,8 @@ void main() {
         final diag = scheduler.getDiagnostics();
         expect(diag['unmatchedResponsesDiscarded'], 1);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'directory listing waiter ignores a file upload acknowledgement',
@@ -372,7 +404,8 @@ void main() {
         final diagnostics = scheduler.getDiagnostics();
         expect(diagnostics['unmatchedResponsesDiscarded'], 1);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('file upload waiter ignores a directory listing response', () async {
       final key = RequestKey(
@@ -567,7 +600,8 @@ void main() {
         final diag = scheduler.getDiagnostics();
         expect(diag['staleResponsesAbsorbed'], 2);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test(
       'fire-and-forget completes immediately without handler registration',
@@ -638,7 +672,8 @@ void main() {
         expect(diag['staleResponsesAbsorbed'], 0);
         expect(diag['expiredHandlerCount'], 0);
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     testWidgets(
       'consecutive timeout recovery — auto-reset after 3 consecutive timeouts',
@@ -696,53 +731,51 @@ void main() {
         final result = await future;
         expect(result, isNotNull);
       },
-    tags: ['regression']);
-
-    test(
-      'expired handler cleanup — handlers older than 30s are removed',
-      () async {
-        // This tests the lazy cleanup in _cleanupExpiredHandlers.
-        // We can't easily simulate 30s passage, so we test the cap at 20 entries.
-        final setup = _createScheduler(defaultMaxRetries: 1);
-        final sched = setup.scheduler;
-        final inc = setup.incoming;
-
-        addTearDown(() {
-          sched.dispose();
-          inc.close();
-        });
-
-        // Create 25 expired handlers by timing out 25 requests
-        for (var i = 0; i < 25; i++) {
-          final key = RequestKey(
-            sysExId: _testSysExId,
-            messageType: DistingNTRespMessageType.respNumAlgorithms,
-          );
-          final future = sched.sendRequest(
-            _buildSysEx(DistingNTRespMessageType.respNumAlgorithms, []),
-            key,
-            responseExpectation: ResponseExpectation.optional,
-            maxRetries: 1,
-            timeout: const Duration(milliseconds: 20),
-          );
-          await future;
-        }
-
-        // Trigger cleanup by dispatching an unmatched message
-        _injectResponse(
-          inc,
-          setup.device,
-          DistingNTRespMessageType.respPresetName,
-          [0x41, 0x00],
-        );
-
-        await Future.microtask(() {});
-
-        final diag = sched.getDiagnostics();
-        // Expired handler count should be capped at 20
-        expect(diag['expiredHandlerCount'] as int, lessThanOrEqualTo(20));
-      },
+      tags: ['regression'],
     );
+
+    test('expired handler cleanup — handlers older than 30s are removed', () async {
+      // This tests the lazy cleanup in _cleanupExpiredHandlers.
+      // We can't easily simulate 30s passage, so we test the cap at 20 entries.
+      final setup = _createScheduler(defaultMaxRetries: 1);
+      final sched = setup.scheduler;
+      final inc = setup.incoming;
+
+      addTearDown(() {
+        sched.dispose();
+        inc.close();
+      });
+
+      // Create 25 expired handlers by timing out 25 requests
+      for (var i = 0; i < 25; i++) {
+        final key = RequestKey(
+          sysExId: _testSysExId,
+          messageType: DistingNTRespMessageType.respNumAlgorithms,
+        );
+        final future = sched.sendRequest(
+          _buildSysEx(DistingNTRespMessageType.respNumAlgorithms, []),
+          key,
+          responseExpectation: ResponseExpectation.optional,
+          maxRetries: 1,
+          timeout: const Duration(milliseconds: 20),
+        );
+        await future;
+      }
+
+      // Trigger cleanup by dispatching an unmatched message
+      _injectResponse(
+        inc,
+        setup.device,
+        DistingNTRespMessageType.respPresetName,
+        [0x41, 0x00],
+      );
+
+      await Future.microtask(() {});
+
+      final diag = sched.getDiagnostics();
+      // Expired handler count should be capped at 20
+      expect(diag['expiredHandlerCount'] as int, lessThanOrEqualTo(20));
+    });
 
     test(
       'dispose while requests pending — all completers get errors',
@@ -774,7 +807,8 @@ void main() {
           expect(future, throwsA(isA<StateError>()));
         }
       },
-    tags: ['regression']);
+      tags: ['regression'],
+    );
 
     test('message observer receives all messages', () async {
       final observed = <DistingNTRespMessageType>[];

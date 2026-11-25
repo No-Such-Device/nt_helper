@@ -27,6 +27,7 @@ class RequestKey {
   factory RequestKey.fromDistingNTParsedMessage(DistingNTParsedMessage msg) {
     int? algorithmIndex;
     int? parameterNumber;
+    int? libraryIndex;
     int? settingId;
     SdCardOperation? sdCardOperation;
 
@@ -35,6 +36,11 @@ class RequestKey {
       case DistingNTRespMessageType.respSettingValue:
         if (msg.payload.length >= 3 && msg.payload[0] <= 3) {
           settingId = decode16(msg.payload, 0);
+        }
+        break;
+      case DistingNTRespMessageType.respAlgorithmInfo:
+        if (msg.payload.length >= 3 && msg.payload[0] <= 3) {
+          libraryIndex = decode16(msg.payload, 0);
         }
         break;
       // These messages have an algorithm index as the first payload byte.
@@ -89,7 +95,6 @@ class RequestKey {
         break;
 
       // Other messages don't have these indices.
-      case DistingNTRespMessageType.respAlgorithmInfo:
       default:
         break;
     }
@@ -99,6 +104,7 @@ class RequestKey {
       messageType: msg.messageType,
       algorithmIndex: algorithmIndex,
       parameterNumber: parameterNumber,
+      libraryIndex: libraryIndex,
       sdCardOperation: sdCardOperation,
       settingId: settingId,
     );
@@ -113,6 +119,10 @@ class RequestKey {
 
     if (algorithmIndex != null &&
         algorithmIndex != responseKey.algorithmIndex) {
+      return false;
+    }
+
+    if (libraryIndex != null && libraryIndex != responseKey.libraryIndex) {
       return false;
     }
 
@@ -151,6 +161,10 @@ class RequestKey {
       return false;
     }
 
+    if (libraryIndex != null && libraryIndex != responseKey.libraryIndex) {
+      return false;
+    }
+
     if (parameterNumber != null &&
         parameterNumber != responseKey.parameterNumber) {
       return false;
@@ -163,6 +177,63 @@ class RequestKey {
     }
 
     return true;
+  }
+
+  /// Whether a late wire reply owed to `this` key could be indistinguishable
+  /// from, or erroneously satisfy, a request with [other] key.
+  bool overlapsForQuarantine(RequestKey other) {
+    if (sysExId != other.sysExId) return false;
+    if (messageType == null || other.messageType == null) {
+      return messageType == other.messageType;
+    }
+    if (messageType != other.messageType) return false;
+
+    // SD errors carry no operation code and match any SD operation on the
+    // same SysEx ID.
+    if (messageType == DistingNTRespMessageType.respDirectoryListing &&
+        (sdCardOperation != null || other.sdCardOperation != null)) {
+      return true;
+    }
+
+    if (algorithmIndex != null &&
+        other.algorithmIndex != null &&
+        algorithmIndex != other.algorithmIndex) {
+      return false;
+    }
+
+    if (libraryIndex != null &&
+        other.libraryIndex != null &&
+        libraryIndex != other.libraryIndex) {
+      return false;
+    }
+
+    // Normal enum-string matching intentionally ignores parameterNumber on the
+    // same slot, so same-slot enum replies can cross-contaminate.
+    if (messageType == DistingNTRespMessageType.respEnumStrings) {
+      return true;
+    }
+
+    if (parameterNumber != null &&
+        other.parameterNumber != null &&
+        parameterNumber != other.parameterNumber) {
+      return false;
+    }
+
+    if (settingId != null &&
+        other.settingId != null &&
+        settingId != other.settingId) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /// Whether [msg] can drain a session-loss quarantine debt for this key.
+  bool matchesForQuarantineDrain(DistingNTParsedMessage msg) {
+    if (messageType == DistingNTRespMessageType.respEnumStrings) {
+      return matches(msg);
+    }
+    return matchesStrict(msg);
   }
 
   bool _matchesSdCardOperation(

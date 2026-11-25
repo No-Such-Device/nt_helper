@@ -53,13 +53,82 @@ final class AmbiguousResponseAttributionException extends StateError {
       );
 }
 
+/// Phase at which a request failed due to scheduler/transport termination.
+enum RequestFailurePhase {
+  /// Rejected before admission or while queued; bytes were never transmitted.
+  beforeSend,
+
+  /// Failed after transmission was attempted; device execution outcome is unknown.
+  inFlight,
+}
+
+/// Why a scheduler stopped accepting or transmitting requests.
+enum SchedulerTerminationReason {
+  disposed,
+  receiveStreamClosed,
+  receiveStreamUnavailable,
+  connectionLost,
+}
+
+/// Phase-aware terminal error raised when a scheduler is disposed or its
+/// underlying receive/transport path is lost.
+final class DistingSchedulerClosedException extends StateError {
+  DistingSchedulerClosedException({
+    required this.reason,
+    required this.phase,
+    String? message,
+  }) : super(
+         message ??
+             switch ((reason, phase)) {
+               (
+                 SchedulerTerminationReason.disposed,
+                 RequestFailurePhase.beforeSend,
+               ) =>
+                 'Scheduler disposed before request was sent.',
+               (
+                 SchedulerTerminationReason.disposed,
+                 RequestFailurePhase.inFlight,
+               ) =>
+                 'Scheduler disposed while request was in flight; outcome is unknown.',
+               (
+                 SchedulerTerminationReason.receiveStreamClosed,
+                 RequestFailurePhase.beforeSend,
+               ) =>
+                 'MIDI receive stream closed before request was sent.',
+               (
+                 SchedulerTerminationReason.receiveStreamClosed,
+                 RequestFailurePhase.inFlight,
+               ) =>
+                 'MIDI receive stream closed while request was in flight; outcome is unknown.',
+               (SchedulerTerminationReason.receiveStreamUnavailable, _) =>
+                 'MIDI receive stream is unavailable; request was not sent.',
+               (
+                 SchedulerTerminationReason.connectionLost,
+                 RequestFailurePhase.beforeSend,
+               ) =>
+                 'MIDI connection lost before request was sent.',
+               (
+                 SchedulerTerminationReason.connectionLost,
+                 RequestFailurePhase.inFlight,
+               ) =>
+                 'MIDI connection lost while request was in flight; outcome is unknown.',
+             },
+       );
+
+  final SchedulerTerminationReason reason;
+  final RequestFailurePhase phase;
+
+  bool get definitelyUnsent => phase == RequestFailurePhase.beforeSend;
+  bool get outcomeUnknown => phase == RequestFailurePhase.inFlight;
+}
+
 // -----------------------------------------------------------------------------
 // Scheduler state
 // -----------------------------------------------------------------------------
 
 typedef CcCallback = void Function(int channel, int cc, int value);
 
-enum _SchedulerState { idle, sending, waitingForResponse }
+enum _SchedulerState { idle, sending, waitingForResponse, closed }
 
 // -----------------------------------------------------------------------------
 // Internal request representation
@@ -101,6 +170,13 @@ class _ScheduledRequest {
   bool attributionStarted = false;
   Timer? timeoutTimer;
   void Function()? removeCancellationListener;
+
+  /// Effective total attempt cap. Preserves existing total-attempt semantics
+  /// where 0 or 1 means a single send attempt, and `never` replay always caps
+  /// at 1 attempt.
+  int get maxAttempts => replayPolicy == RequestReplayPolicy.never
+      ? 1
+      : (maxRetries < 1 ? 1 : maxRetries);
 
   /// Stopwatch to measure round-trip time from send to response
   final Stopwatch stopwatch = Stopwatch();
@@ -161,70 +237,121 @@ final class _AttributionEndpointKey {
   int get hashCode => Object.hash(inputDeviceId, sysExId);
 }
 
-/// One response that may still arrive for an earlier request.
-final class _ResponseDebt {
-  const _ResponseDebt({required this.key, required this.fromBestEffortRequest});
+final class _UncertainDomainKey {
+  const _UncertainDomainKey({required this.sysExId, required this.messageType});
+
+  final int sysExId;
+  final DistingNTRespMessageType messageType;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _UncertainDomainKey &&
+      sysExId == other.sysExId &&
+      messageType == other.messageType;
+
+  @override
+  int get hashCode => Object.hash(sysExId, messageType);
+}
+
+/// Counted response debt for one [RequestKey].
+final class _CountedResponseDebt {
+  _CountedResponseDebt(this.key);
 
   final RequestKey key;
-  final bool fromBestEffortRequest;
+  int strictCount = 0;
+  int bestEffortCount = 0;
+  int sessionLossCount = 0;
+
+  int get totalCount => strictCount + bestEffortCount + sessionLossCount;
+  bool get isEmpty => totalCount == 0;
 }
 
 /// Tracks response debt for requests whose wire protocol has no transaction ID.
 ///
-/// The tracker is shared by schedulers using the same MIDI command and endpoint,
-/// so disposing and replacing a manager cannot make an old packet attributable
-/// to the replacement. Strict callers are always tracked. Ordinary 0x40 reads
-/// are also tracked because their late same-slot responses are indistinguishable
-/// from a strict respecification readback. Debt remains until matching packets
-/// drain it; elapsed time alone cannot make an otherwise indistinguishable
-/// packet safe to attribute.
-final class _StrictResponseAttribution {
-  _ScheduledRequest? _activeRequest;
-  final List<_ResponseDebt> _responseDebt = [];
+/// The tracker is carried across manager replacement, `MidiCommand` client
+/// replacement, and uncertain USB endpoint re-enumeration aliases so old
+/// in-flight replies cannot be attributed to a replacement session. Debt
+/// remains until matching packets drain it; elapsed time, a new local epoch, or
+/// a fresh endpoint handle alone cannot prove old device replies impossible.
+final class ResponseAttributionTracker {
+  static const int _maxDistinctDebtKeys = 512;
 
-  bool begin(_ScheduledRequest request) {
+  _ScheduledRequest? _activeRequest;
+  final Map<RequestKey, _CountedResponseDebt> _debts = {};
+  final Set<_UncertainDomainKey> _uncertainDomains = {};
+
+  int get totalDebtCount {
+    var total = 0;
+    for (final debt in _debts.values) {
+      total += debt.totalCount;
+    }
+    return total;
+  }
+
+  bool get hasUncertainDomains => _uncertainDomains.isNotEmpty;
+
+  bool hasSessionLossDebt(RequestKey key) {
+    if (_matchesUncertainDomain(key)) return true;
+    for (final debt in _debts.values) {
+      if (debt.sessionLossCount > 0 && debt.key.overlapsForQuarantine(key)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool hasAnyOverlappingDebt(RequestKey key) {
+    if (_matchesUncertainDomain(key)) return true;
+    for (final debt in _debts.values) {
+      if (debt.totalCount > 0 && debt.key.overlapsForQuarantine(key)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _begin(_ScheduledRequest request) {
+    if (_activeRequest != null) {
+      return false;
+    }
+    if (hasSessionLossDebt(request.key)) {
+      return false;
+    }
     final blocksBeforeSend =
         request.attributionPolicy ==
         ResponseAttributionPolicy.failWhenAmbiguous;
-    if (_activeRequest != null ||
-        (blocksBeforeSend &&
-            _responseDebt.any(
-              (debt) =>
-                  debt.key == request.key ||
-                  (debt.key.sdCardOperation != null &&
-                      request.key.sdCardOperation != null &&
-                      debt.key.sysExId == request.key.sysExId),
-            ))) {
+    if (blocksBeforeSend && hasAnyOverlappingDebt(request.key)) {
       return false;
     }
     _activeRequest = request;
     return true;
   }
 
-  void markSent(_ScheduledRequest request) {
-    if (_tracksResponseDebt(request)) {
-      request.sentRequestCount++;
-    }
+  void _markSent(_ScheduledRequest request) {
+    request.sentRequestCount++;
   }
 
-  void markResponse(_ScheduledRequest request) {
-    if (_tracksResponseDebt(request)) {
-      request.matchingResponseCount++;
-    }
+  void _markResponse(_ScheduledRequest request) {
+    request.matchingResponseCount++;
   }
 
-  void finish(_ScheduledRequest request) {
-    if (_tracksResponseDebt(request)) {
-      final unresolved =
-          request.sentRequestCount - request.matchingResponseCount;
-      for (var i = 0; i < unresolved; i++) {
-        _responseDebt.add(
-          _ResponseDebt(
-            key: request.key,
-            fromBestEffortRequest:
-                request.attributionPolicy ==
-                ResponseAttributionPolicy.bestEffort,
-          ),
+  void _finish(_ScheduledRequest request, {bool sessionLost = false}) {
+    final unresolved = request.sentRequestCount - request.matchingResponseCount;
+    final canRecordKeyDebt =
+        unresolved > 0 &&
+        request.expectation != ResponseExpectation.none &&
+        request.rawResponseMatcher == null &&
+        request.key.messageType != null;
+
+    if (canRecordKeyDebt) {
+      if (sessionLost) {
+        _addDebt(request.key, count: unresolved, sessionLoss: true);
+      } else if (_tracksHealthyResponseDebt(request)) {
+        _addDebt(
+          request.key,
+          count: unresolved,
+          bestEffort:
+              request.attributionPolicy == ResponseAttributionPolicy.bestEffort,
         );
       }
     }
@@ -236,68 +363,186 @@ final class _StrictResponseAttribution {
 
   bool consumeAmbiguousForActive(DistingNTParsedMessage parsed) {
     final activeRequest = _activeRequest;
-    if (activeRequest == null ||
-        activeRequest.attributionPolicy !=
+    if (activeRequest == null) {
+      return false;
+    }
+
+    // Session-loss quarantine applies conservatively to any active request whose
+    // response class still has owed replies from a prior lost session.
+    if (activeRequest.key.matches(parsed) && _consumeSessionLossDebt(parsed)) {
+      return true;
+    }
+
+    if (activeRequest.attributionPolicy !=
             ResponseAttributionPolicy.rejectAmbiguousResponse ||
         !activeRequest.key.matchesStrict(parsed)) {
       return false;
     }
 
-    final debtIndex = _responseDebt.indexWhere(
-      (debt) => debt.key.matchesStrict(parsed),
-    );
-    if (debtIndex == -1) return false;
+    if (_matchesUncertainDomainMessage(parsed)) {
+      return true;
+    }
 
-    _responseDebt.removeAt(debtIndex);
-    return true;
+    for (final entry in _debts.entries.toList()) {
+      final debt = entry.value;
+      if (!debt.key.matchesStrict(parsed)) continue;
+      if (debt.sessionLossCount > 0) {
+        debt.sessionLossCount--;
+      } else if (debt.strictCount > 0) {
+        debt.strictCount--;
+      } else if (debt.bestEffortCount > 0) {
+        debt.bestEffortCount--;
+      } else {
+        continue;
+      }
+      if (debt.isEmpty) {
+        _debts.remove(entry.key);
+      }
+      return true;
+    }
+    return false;
   }
 
   bool consumeUnattributed(
     DistingNTParsedMessage parsed, {
     required bool allowBestEffortDebt,
   }) {
+    // Drain owed replies from a prior lost session first, even before any
+    // best-effort active handler or passive observer sees them.
+    if (_consumeSessionLossDebt(parsed)) {
+      return true;
+    }
+
     final activeRequest = _activeRequest;
     if (activeRequest != null && activeRequest.key.matchesStrict(parsed)) {
       return false;
     }
 
-    final debtIndex = _responseDebt.indexWhere(
-      (debt) =>
-          debt.key.matchesStrict(parsed) &&
-          (allowBestEffortDebt || !debt.fromBestEffortRequest),
-    );
-    if (debtIndex == -1) return false;
-
-    _responseDebt.removeAt(debtIndex);
-    return true;
+    for (final entry in _debts.entries.toList()) {
+      final debt = entry.value;
+      if (!debt.key.matchesStrict(parsed)) continue;
+      if (debt.strictCount > 0) {
+        debt.strictCount--;
+        if (debt.isEmpty) _debts.remove(entry.key);
+        return true;
+      }
+      if (allowBestEffortDebt && debt.bestEffortCount > 0) {
+        debt.bestEffortCount--;
+        if (debt.isEmpty) _debts.remove(entry.key);
+        return true;
+      }
+    }
+    return false;
   }
 
-  bool _tracksResponseDebt(_ScheduledRequest request) =>
+  bool _consumeSessionLossDebt(DistingNTParsedMessage parsed) {
+    if (_matchesUncertainDomainMessage(parsed)) {
+      return true;
+    }
+    for (final entry in _debts.entries.toList()) {
+      final debt = entry.value;
+      if (debt.sessionLossCount <= 0) continue;
+      if (!debt.key.matchesForQuarantineDrain(parsed)) continue;
+      debt.sessionLossCount--;
+      if (debt.isEmpty) {
+        _debts.remove(entry.key);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  void _addDebt(
+    RequestKey key, {
+    required int count,
+    bool bestEffort = false,
+    bool sessionLoss = false,
+  }) {
+    if (count <= 0) return;
+    final messageType = key.messageType;
+    if (messageType == null) return;
+    final domain = _UncertainDomainKey(
+      sysExId: key.sysExId,
+      messageType: messageType,
+    );
+    if (_uncertainDomains.contains(domain)) {
+      return;
+    }
+
+    var entry = _debts[key];
+    if (entry == null) {
+      if (_debts.length >= _maxDistinctDebtKeys) {
+        // Keep memory bounded without dropping safety evidence: collapse this
+        // response class into a conservative uncertain-domain marker.
+        _uncertainDomains.add(domain);
+        _debts.removeWhere(
+          (existingKey, _) =>
+              existingKey.sysExId == key.sysExId &&
+              existingKey.messageType == messageType,
+        );
+        return;
+      }
+      entry = _CountedResponseDebt(key);
+      _debts[key] = entry;
+    }
+
+    if (sessionLoss) {
+      entry.sessionLossCount += count;
+    } else if (bestEffort) {
+      entry.bestEffortCount += count;
+    } else {
+      entry.strictCount += count;
+    }
+  }
+
+  bool _matchesUncertainDomain(RequestKey key) {
+    final messageType = key.messageType;
+    if (messageType == null) return false;
+    return _uncertainDomains.contains(
+      _UncertainDomainKey(sysExId: key.sysExId, messageType: messageType),
+    );
+  }
+
+  bool _matchesUncertainDomainMessage(DistingNTParsedMessage parsed) {
+    return _uncertainDomains.contains(
+      _UncertainDomainKey(
+        sysExId: parsed.sysExId,
+        messageType: parsed.messageType,
+      ),
+    );
+  }
+
+  bool _tracksHealthyResponseDebt(_ScheduledRequest request) =>
       request.expectation != ResponseExpectation.none &&
       (request.attributionPolicy != ResponseAttributionPolicy.bestEffort ||
           request.key.messageType == DistingNTRespMessageType.respAlgorithm);
 }
 
-final Expando<Map<_AttributionEndpointKey, _StrictResponseAttribution>>
+final Expando<Map<_AttributionEndpointKey, ResponseAttributionTracker>>
 _strictAttributionByMidi = Expando('Disting strict response attribution');
 
-_StrictResponseAttribution _strictAttributionFor({
+ResponseAttributionTracker _strictAttributionFor({
   required MidiCommand midi,
   required MidiDevice inputDevice,
   required int sysExId,
+  ResponseAttributionTracker? overrideTracker,
 }) {
   final endpointStates = _strictAttributionByMidi[midi] ??= {};
   final endpoint = _AttributionEndpointKey(
     inputDeviceId: inputDevice.id,
     sysExId: sysExId,
   );
-  return endpointStates.putIfAbsent(endpoint, _StrictResponseAttribution.new);
+  if (overrideTracker != null) {
+    endpointStates[endpoint] = overrideTracker;
+    return overrideTracker;
+  }
+  return endpointStates.putIfAbsent(endpoint, ResponseAttributionTracker.new);
 }
 
 class _ResponseDemux {
   _ResponseDemux(this._strictAttribution);
 
-  final _StrictResponseAttribution _strictAttribution;
+  final ResponseAttributionTracker _strictAttribution;
   _ActiveHandler? _activeHandler;
   final List<_ExpiredHandler> _expiredHandlers = [];
   final List<void Function(DistingNTParsedMessage)> _observers = [];
@@ -329,6 +574,7 @@ class _ResponseDemux {
       _expiredHandlers.add(
         _ExpiredHandler(key: handler.key, expiredAt: clock.now()),
       );
+      _cleanupExpiredHandlers();
     }
   }
 
@@ -344,6 +590,10 @@ class _ResponseDemux {
     _observers.remove(observer);
   }
 
+  void clearObservers() {
+    _observers.clear();
+  }
+
   void dispatch(DistingNTParsedMessage parsed) {
     // 1. A strict verification request may be sent while an older response is
     // still owed. Reject an indistinguishable stale packet before it crosses
@@ -357,8 +607,8 @@ class _ResponseDemux {
       return;
     }
 
-    // 2. Drain unattributed strict debt, plus ordinary 0x40 debt when doing so
-    // cannot change the historical active-first behavior of a best-effort read.
+    // 2. Drain unattributed session-loss and strict debt, plus ordinary 0x40
+    // debt when doing so cannot change historical active-first behavior.
     final activeHandlerMatches = _activeHandler?.key.matches(parsed) ?? false;
     if (_strictAttribution.consumeUnattributed(
       parsed,
@@ -370,7 +620,9 @@ class _ResponseDemux {
     }
 
     // 3. Notify passive observers only after stale response debt is excluded.
-    for (final observer in _observers) {
+    for (final observer in List<void Function(DistingNTParsedMessage)>.of(
+      _observers,
+    )) {
       try {
         observer(parsed);
       } catch (_) {}
@@ -399,7 +651,7 @@ class _ResponseDemux {
     // 6. No match — discard cleanly
     unmatchedResponsesDiscarded++;
 
-    // Lazy cleanup of old expired handlers
+    // Cleanup of old expired handlers
     _cleanupExpiredHandlers();
   }
 
@@ -485,6 +737,8 @@ class DistingMessageScheduler {
     Duration defaultTimeout = const Duration(milliseconds: 1000),
     this.defaultMaxRetries = 5,
     Duration defaultRetryDelay = Duration.zero,
+    ResponseAttributionTracker? attributionTracker,
+    this.onConnectionLost,
   }) : _midi = midiCommand,
        messageInterval = _normalizeDuration(messageInterval),
        defaultTimeout = _normalizeDuration(defaultTimeout),
@@ -493,16 +747,14 @@ class DistingMessageScheduler {
       midi: _midi,
       inputDevice: _inputDevice,
       sysExId: _sysExId,
+      overrideTracker: attributionTracker,
     );
     _demux = _ResponseDemux(_strictAttribution);
-    _subscription = _midi.onMidiPacketReceived?.listen(
-      _handleIncomingPacket,
-      onError: _handleSubscriptionError,
-      onDone: _handleSubscriptionDone,
-      cancelOnError: false,
-    );
+    _attachSubscription();
     if (_subscription == null) {
-      _subscriptionActive = false;
+      _terminated = true;
+      _terminationReason = SchedulerTerminationReason.receiveStreamUnavailable;
+      _state = _SchedulerState.closed;
     }
   }
 
@@ -511,10 +763,12 @@ class DistingMessageScheduler {
   final MidiDevice _inputDevice;
   final MidiDevice _outputDevice;
   final int _sysExId;
+  final VoidCallback? onConnectionLost;
 
   static const bool _diagnosticsEnabled = true;
   static int _nextRequestId = 0;
   static const int _maxTransferErrorRecoveries = 1;
+  static const Duration _reconnectConnectTimeout = Duration(seconds: 3);
 
   // Timing configuration
   final Duration messageInterval;
@@ -528,21 +782,68 @@ class DistingMessageScheduler {
   _ScheduledRequest? _currentRequest;
   Timer? _nextProcessTimer;
   Timer? _retryTimer;
+  DateTime? _nextAllowedSendAt;
   StreamSubscription? _subscription;
+  bool _disposed = false;
+  bool _terminated = false;
+  SchedulerTerminationReason? _terminationReason;
+  int _subscriptionEpoch = 0;
+  int _reconnectOpEpoch = 0;
 
   // Response demultiplexer
-  late final _StrictResponseAttribution _strictAttribution;
+  late final ResponseAttributionTracker _strictAttribution;
   late final _ResponseDemux _demux;
+
+  bool get isDisposed => _disposed;
+  bool get isUsable =>
+      !_disposed &&
+      !_terminated &&
+      _subscriptionActive &&
+      !_deviceConnectionSuspectedBroken;
+  ResponseAttributionTracker get attributionTracker => _strictAttribution;
 
   // CC callback for receiving MIDI CC messages from the device
   CcCallback? _ccCallback;
 
   void setCcCallback(CcCallback callback) {
+    if (_disposed || _terminated) return;
     _ccCallback = callback;
   }
 
   void clearCcCallback() {
     _ccCallback = null;
+  }
+
+  void _attachSubscription() {
+    final subEpoch = ++_subscriptionEpoch;
+    _subscription?.cancel();
+    _subscription = null;
+    _subscriptionActive = false;
+
+    if (_disposed || _terminated) {
+      return;
+    }
+
+    _subscription = _midi.onMidiPacketReceived?.listen(
+      (packet) {
+        if (_disposed || _terminated || subEpoch != _subscriptionEpoch) return;
+        _handleIncomingPacket(packet);
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (_disposed || _terminated || subEpoch != _subscriptionEpoch) return;
+        _handleSubscriptionError(error, stackTrace);
+      },
+      onDone: () {
+        if (_disposed || _terminated || subEpoch != _subscriptionEpoch) return;
+        _handleSubscriptionDone();
+      },
+      cancelOnError: false,
+    );
+
+    if (_subscription != null) {
+      _subscriptionActive = true;
+      _lastSubscriptionError = null;
+    }
   }
 
   // Diagnostic counters
@@ -698,19 +999,13 @@ class DistingMessageScheduler {
 
   /// Attempts to re-establish the MIDI subscription if it's dead.
   void tryReconnectSubscription() {
-    _subscription?.cancel();
-    _subscriptionActive = false;
-
-    _subscription = _midi.onMidiPacketReceived?.listen(
-      _handleIncomingPacket,
-      onError: _handleSubscriptionError,
-      onDone: _handleSubscriptionDone,
-      cancelOnError: false,
-    );
-
-    if (_subscription != null) {
-      _subscriptionActive = true;
-      _lastSubscriptionError = null;
+    if (_disposed || _terminated) return;
+    _attachSubscription();
+    if (_subscription == null) {
+      _terminate(
+        SchedulerTerminationReason.receiveStreamUnavailable,
+        notifyLoss: true,
+      );
     }
   }
 
@@ -718,6 +1013,8 @@ class DistingMessageScheduler {
   /// Clears buffers, resets counters, and re-subscribes to the stream.
   /// Does NOT affect the current request - caller is responsible for that.
   void _resetInternalState() {
+    if (_disposed || _terminated) return;
+
     // Clear any partial SysEx data
     _sysExBuffer.clear();
     _isBufferingSysEx = false;
@@ -726,49 +1023,39 @@ class DistingMessageScheduler {
     _consecutiveTimeouts = 0;
 
     // Re-establish subscription
-    _subscription?.cancel();
-    _subscriptionActive = false;
-
-    _subscription = _midi.onMidiPacketReceived?.listen(
-      _handleIncomingPacket,
-      onError: _handleSubscriptionError,
-      onDone: _handleSubscriptionDone,
-      cancelOnError: false,
-    );
+    _attachSubscription();
 
     if (_subscription != null) {
-      _subscriptionActive = true;
-      _lastSubscriptionError = null;
       _totalPacketsReceived = 0;
       _sysexPacketsReceived = 0;
       _nonSysexPacketsReceived = 0;
       _ccMessagesDispatched = 0;
       _packetsFromWrongDevice = 0;
+    } else {
+      _terminate(
+        SchedulerTerminationReason.receiveStreamUnavailable,
+        notifyLoss: true,
+      );
     }
   }
 
   /// Forces a full MIDI device disconnect/reconnect cycle.
-  /// This is used to recover from corrupted MIDI state caused by rogue
-  /// non-SysEx bytes that break CoreMIDI/flutter_midi_command.
+  /// Guarded by terminal disposal and local lifecycle epochs so a suspended
+  /// reconnect can never revive listeners or alter state after disposal.
   Future<void> forceDeviceReconnect() async {
+    if (_disposed || _terminated) return;
+    final opEpoch = ++_reconnectOpEpoch;
+
     // Cancel current subscription first (safe operation)
+    _subscriptionEpoch++;
     _subscription?.cancel();
+    _subscription = null;
     _subscriptionActive = false;
 
-    // On Windows (and some other platforms), input and output are separate devices
-    // and both need to be disconnected/reconnected.
-    //
-    // IMPORTANT: If we suspect the device connection is broken (e.g., device was
-    // unplugged), we skip the disconnect call entirely. Calling disconnectDevice
-    // on an invalid handle can crash the native MIDI library on Windows.
-
     if (!_deviceConnectionSuspectedBroken) {
-      // Try to disconnect, but wrap in defensive try-catch.
-      // On Windows, disconnecting an already-invalid handle can crash.
       try {
         _midi.disconnectDevice(_inputDevice);
       } catch (e) {
-        // Disconnect failed - device likely already disconnected
         _deviceConnectionSuspectedBroken = true;
       }
 
@@ -776,7 +1063,6 @@ class DistingMessageScheduler {
         try {
           _midi.disconnectDevice(_outputDevice);
         } catch (e) {
-          // Disconnect failed - device likely already disconnected
           _deviceConnectionSuspectedBroken = true;
         }
       }
@@ -784,34 +1070,35 @@ class DistingMessageScheduler {
 
     // Brief delay to let the system settle
     await Future.delayed(const Duration(milliseconds: 500));
+    if (_disposed || _terminated || opEpoch != _reconnectOpEpoch) return;
 
-    // Try to reconnect the devices
+    // Try to reconnect the devices (awaited with bounded timeout)
     try {
-      _midi.connectToDevice(_inputDevice);
+      await _midi
+          .connectToDevice(_inputDevice)
+          .timeout(_reconnectConnectTimeout);
+      if (_disposed || _terminated || opEpoch != _reconnectOpEpoch) return;
       if (_outputDevice.id != _inputDevice.id) {
-        _midi.connectToDevice(_outputDevice);
+        await _midi
+            .connectToDevice(_outputDevice)
+            .timeout(_reconnectConnectTimeout);
+        if (_disposed || _terminated || opEpoch != _reconnectOpEpoch) return;
       }
-      // If reconnect succeeded, clear the broken flag
       _deviceConnectionSuspectedBroken = false;
     } catch (e) {
-      // Reconnect failed - device may not be available
-      _deviceConnectionSuspectedBroken = true;
-      return; // Don't try to set up subscription if reconnect failed
+      if (!_disposed && !_terminated && opEpoch == _reconnectOpEpoch) {
+        _deviceConnectionSuspectedBroken = true;
+      }
+      return;
     }
 
     // Re-establish subscription
     await Future.delayed(const Duration(milliseconds: 200));
-    _subscription = _midi.onMidiPacketReceived?.listen(
-      _handleIncomingPacket,
-      onError: _handleSubscriptionError,
-      onDone: _handleSubscriptionDone,
-      cancelOnError: false,
-    );
+    if (_disposed || _terminated || opEpoch != _reconnectOpEpoch) return;
+
+    _attachSubscription();
 
     if (_subscription != null) {
-      _subscriptionActive = true;
-      _lastSubscriptionError = null;
-      // Reset diagnostic counters
       _totalPacketsReceived = 0;
       _sysexPacketsReceived = 0;
       _nonSysexPacketsReceived = 0;
@@ -821,28 +1108,30 @@ class DistingMessageScheduler {
   }
 
   void _handleSubscriptionError(Object error, StackTrace stackTrace) {
+    if (_disposed || _terminated) return;
     _lastSubscriptionError = error.toString();
 
     // The listener uses cancelOnError: false, so a single stream error does
     // not end the subscription. If it interrupted a split SysEx response,
     // discard the unusable partial frame. Only replay explicitly eligible
-    // requests; SD requests lack transaction IDs and must fail closed instead.
+    // requests within their configured total attempt budget; never-replay
+    // requests fail closed immediately.
     _subscriptionActive = _subscription != null;
     final request = _currentRequest;
     if (_state != _SchedulerState.waitingForResponse ||
         !_isBufferingSysEx ||
         request == null ||
         request.rawResponseMatcher != null ||
-        request.completer.isCompleted ||
-        request.transferErrorRecoveryCount >= _maxTransferErrorRecoveries) {
+        request.completer.isCompleted) {
       return;
     }
 
     _sysExBuffer.clear();
     _isBufferingSysEx = false;
-    request.timeoutTimer?.cancel();
-    request.stopwatch.stop();
+
     if (request.replayPolicy == RequestReplayPolicy.never) {
+      request.timeoutTimer?.cancel();
+      request.stopwatch.stop();
       _demux.discardActive();
       request.completer.completeError(
         StateError(
@@ -852,6 +1141,14 @@ class DistingMessageScheduler {
       _finishCurrentRequest();
       return;
     }
+
+    if (request.transferErrorRecoveryCount >= _maxTransferErrorRecoveries ||
+        request.attemptCount >= request.maxAttempts) {
+      return;
+    }
+
+    request.timeoutTimer?.cancel();
+    request.stopwatch.stop();
     request.transferErrorRecoveryCount++;
     _state = _SchedulerState.sending;
     if (request.retryDelay == Duration.zero) {
@@ -862,13 +1159,26 @@ class DistingMessageScheduler {
   }
 
   void _handleSubscriptionDone() {
-    _subscriptionActive = false;
+    _terminate(
+      SchedulerTerminationReason.receiveStreamClosed,
+      notifyLoss: true,
+    );
+  }
+
+  /// Synchronously terminates admission and settles all in-flight and queued
+  /// requests with phase-aware errors without waiting for native teardown.
+  void markConnectionLost({
+    SchedulerTerminationReason reason =
+        SchedulerTerminationReason.connectionLost,
+  }) {
+    _terminate(reason, notifyLoss: false);
   }
 
   /// Adds a passive observer that receives attributable parsed Disting NT SysEx
   /// messages, regardless of whether they match a pending request. Packets owed
   /// to an earlier request are excluded.
   void addMessageObserver(void Function(DistingNTParsedMessage) observer) {
+    if (_disposed || _terminated) return;
     _demux.addObserver(observer);
   }
 
@@ -893,6 +1203,7 @@ class DistingMessageScheduler {
       packet,
       RequestKey(sysExId: _sysExId),
       maxRetries: 1,
+      replayPolicy: RequestReplayPolicy.never,
       rawResponseMatcher: matches,
     );
     return result!;
@@ -912,7 +1223,24 @@ class DistingMessageScheduler {
     void Function()? preflight,
     bool Function(Uint8List)? rawResponseMatcher,
   }) {
+    if (_disposed || _terminated || !_subscriptionActive) {
+      final reason =
+          _terminationReason ??
+          (_disposed
+              ? SchedulerTerminationReason.disposed
+              : SchedulerTerminationReason.receiveStreamUnavailable);
+      return Future<T?>.error(
+        DistingSchedulerClosedException(
+          reason: reason,
+          phase: RequestFailurePhase.beforeSend,
+        ),
+      );
+    }
+
     final completer = Completer<T?>();
+    final effectiveMaxRetries = replayPolicy == RequestReplayPolicy.never
+        ? 1
+        : (maxRetries ?? defaultMaxRetries);
     final request = _ScheduledRequest(
       id: ++_nextRequestId,
       packet: packet,
@@ -920,9 +1248,7 @@ class DistingMessageScheduler {
       expectation: responseExpectation,
       completer: completer,
       timeout: _normalizeDuration(timeout ?? defaultTimeout),
-      maxRetries: replayPolicy == RequestReplayPolicy.never
-          ? 1
-          : maxRetries ?? defaultMaxRetries,
+      maxRetries: effectiveMaxRetries,
       retryDelay: _normalizeDuration(retryDelay ?? defaultRetryDelay),
       attributionPolicy: attributionPolicy,
       replayPolicy: replayPolicy,
@@ -940,48 +1266,134 @@ class DistingMessageScheduler {
       'maxRetries=${request.maxRetries} queue=${_queue.length} key=$key',
     );
 
-    // Process immediately if idle
+    // Schedule processing while honoring inter-message pacing cooldown.
     if (_state == _SchedulerState.idle) {
-      _processNext();
+      _scheduleNextProcess(allowImmediateIfIdle: true);
     }
 
     return completer.future;
   }
 
   void dispose() {
-    _subscription?.cancel();
-    _nextProcessTimer?.cancel();
-    _retryTimer?.cancel();
-    _demux.clear();
-    final current = _currentRequest;
-    _finishResponseAttribution(current);
-    if (current != null && !current.completer.isCompleted) {
-      current.completer.completeError(StateError('Scheduler disposed'));
-    }
-    current?.dispose();
-    _currentRequest = null;
-    _state = _SchedulerState.idle;
+    _disposed = true;
+    _terminate(SchedulerTerminationReason.disposed, notifyLoss: false);
+  }
 
-    // Fail all pending requests
-    for (final request in _queue) {
+  void _terminate(
+    SchedulerTerminationReason reason, {
+    required bool notifyLoss,
+  }) {
+    _subscriptionEpoch++;
+    _reconnectOpEpoch++;
+    _subscription?.cancel();
+    _subscription = null;
+    _subscriptionActive = false;
+    _nextProcessTimer?.cancel();
+    _nextProcessTimer = null;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _sysExBuffer.clear();
+    _isBufferingSysEx = false;
+    _ccCallback = null;
+
+    if (_terminated) {
+      _state = _SchedulerState.closed;
+      return;
+    }
+
+    _terminated = true;
+    _terminationReason = reason;
+    _state = _SchedulerState.closed;
+
+    _demux.clear();
+    _demux.clearObservers();
+
+    final current = _currentRequest;
+    _currentRequest = null;
+    final queued = _queue.toList(growable: false);
+    _queue.clear();
+
+    if (current != null) {
+      final inFlight = current.sentRequestCount > 0 || current.attemptCount > 0;
+      _finishResponseAttribution(current, sessionLost: inFlight);
+      if (!current.completer.isCompleted) {
+        current.completer.completeError(
+          DistingSchedulerClosedException(
+            reason: reason,
+            phase: inFlight
+                ? RequestFailurePhase.inFlight
+                : RequestFailurePhase.beforeSend,
+          ),
+        );
+      }
+      current.dispose();
+    }
+
+    // Fail all queued (definitely unsent) requests once with beforeSend phase.
+    for (final request in queued) {
       if (!request.completer.isCompleted) {
-        request.completer.completeError(StateError('Scheduler disposed'));
+        request.completer.completeError(
+          DistingSchedulerClosedException(
+            reason: reason,
+            phase: RequestFailurePhase.beforeSend,
+          ),
+        );
       }
       request.dispose();
     }
-    _queue.clear();
+
+    if (notifyLoss) {
+      try {
+        onConnectionLost?.call();
+      } catch (_) {}
+    }
   }
 
   // ---------------------------------------------------------------------------
   // Core processing logic
   // ---------------------------------------------------------------------------
 
+  void _scheduleNextProcess({required bool allowImmediateIfIdle}) {
+    if (_disposed ||
+        _terminated ||
+        _state != _SchedulerState.idle ||
+        _queue.isEmpty) {
+      return;
+    }
+    if (_nextProcessTimer != null) {
+      return;
+    }
+
+    final now = clock.now();
+    final nextAllowed = _nextAllowedSendAt;
+    if (nextAllowed != null && nextAllowed.isAfter(now)) {
+      _nextProcessTimer = Timer(nextAllowed.difference(now), _processNext);
+      return;
+    }
+
+    if (allowImmediateIfIdle) {
+      _processNext();
+    } else {
+      _nextProcessTimer = Timer(Duration.zero, _processNext);
+    }
+  }
+
   void _processNext() {
-    // Cancel any pending timer
+    // Clear the timer reference since we are now executing
     _nextProcessTimer?.cancel();
     _nextProcessTimer = null;
 
-    if (_state != _SchedulerState.idle || _queue.isEmpty) {
+    if (_disposed ||
+        _terminated ||
+        _state != _SchedulerState.idle ||
+        _queue.isEmpty) {
+      return;
+    }
+
+    final now = clock.now();
+    final nextAllowed = _nextAllowedSendAt;
+    if (nextAllowed != null && nextAllowed.isAfter(now)) {
+      _nextProcessTimer = Timer(nextAllowed.difference(now), _processNext);
       return;
     }
 
@@ -1000,6 +1412,26 @@ class DistingMessageScheduler {
       return;
     }
 
+    if (_disposed || _terminated || !_subscriptionActive) {
+      final reason =
+          _terminationReason ??
+          (_disposed
+              ? SchedulerTerminationReason.disposed
+              : SchedulerTerminationReason.receiveStreamUnavailable);
+      final inFlight = request.sentRequestCount > 0 || request.attemptCount > 0;
+      _demux.discardActive();
+      request.completer.completeError(
+        DistingSchedulerClosedException(
+          reason: reason,
+          phase: inFlight
+              ? RequestFailurePhase.inFlight
+              : RequestFailurePhase.beforeSend,
+        ),
+      );
+      _finishCurrentRequest();
+      return;
+    }
+
     try {
       request.preflight?.call();
     } catch (error, stack) {
@@ -1010,7 +1442,7 @@ class DistingMessageScheduler {
 
     if (request.attributionPolicy != ResponseAttributionPolicy.bestEffort &&
         !request.attributionStarted) {
-      if (!_strictAttribution.begin(request)) {
+      if (!_strictAttribution._begin(request)) {
         request.completer.completeError(
           AmbiguousResponseAttributionException(),
         );
@@ -1018,22 +1450,37 @@ class DistingMessageScheduler {
         return;
       }
       request.attributionStarted = true;
+    } else if (request.attributionPolicy ==
+            ResponseAttributionPolicy.bestEffort &&
+        request.expectation != ResponseExpectation.none &&
+        request.rawResponseMatcher == null &&
+        _strictAttribution.hasSessionLossDebt(request.key)) {
+      request.completer.completeError(AmbiguousResponseAttributionException());
+      _finishCurrentRequest();
+      return;
     }
 
-    // If device is suspected broken, fail immediately instead of trying to send.
-    // This prevents flooding the native layer with failed send attempts.
+    // If device is suspected broken, settle immediately as terminal without
+    // retrying an uncounted attempt.
     if (_deviceConnectionSuspectedBroken) {
-      _handleSendFailure(
-        request,
-        StateError('Device connection is broken - cannot send'),
+      _demux.discardActive();
+      request.completer.completeError(
+        DistingSchedulerClosedException(
+          reason: SchedulerTerminationReason.connectionLost,
+          phase: request.attemptCount == 0
+              ? RequestFailurePhase.beforeSend
+              : RequestFailurePhase.inFlight,
+          message: 'Device connection is broken - cannot send',
+        ),
       );
+      _finishCurrentRequest();
       return;
     }
 
     request.attemptCount++;
     _diag(
       'send #${request.id} attempt=${request.attemptCount}/'
-      '${request.maxRetries} packetBytes=${request.packet.length} '
+      '${request.maxAttempts} packetBytes=${request.packet.length} '
       'queue=${_queue.length} key=${request.key}',
     );
 
@@ -1060,15 +1507,18 @@ class DistingMessageScheduler {
     try {
       // Sending can throw after bytes reached the device. Conservatively retain
       // attribution debt even when transmission itself reports failure.
-      _strictAttribution.markSent(request);
+      _strictAttribution._markSent(request);
       _midi.sendData(request.packet, deviceId: _outputDevice.id);
     } catch (e) {
       request.stopwatch.stop();
+      if (_disposed || _terminated) return;
       _handleSendFailure(request, e);
       return;
     }
 
-    if (!identical(_currentRequest, request)) return;
+    if (_disposed || _terminated || !identical(_currentRequest, request)) {
+      return;
+    }
 
     if (request.expectation == ResponseExpectation.none) {
       // Fire-and-forget: complete immediately and schedule next
@@ -1107,11 +1557,18 @@ class DistingMessageScheduler {
     if (_queue.remove(request)) {
       request.completer.completeError(const DistingRequestCancelledException());
       request.dispose();
+      if (_queue.isEmpty) {
+        _nextProcessTimer?.cancel();
+        _nextProcessTimer = null;
+      }
     }
   }
 
   void _onResponseAttributionAmbiguous(_ScheduledRequest request) {
-    if (!identical(_currentRequest, request) || request.completer.isCompleted) {
+    if (_disposed ||
+        _terminated ||
+        !identical(_currentRequest, request) ||
+        request.completer.isCompleted) {
       return;
     }
 
@@ -1126,13 +1583,14 @@ class DistingMessageScheduler {
     _ScheduledRequest request,
     DistingNTParsedMessage parsed,
   ) {
+    if (_disposed || _terminated) return;
     // Guard against race conditions
     if (request.completer.isCompleted) {
       _finishCurrentRequest();
       return;
     }
 
-    _strictAttribution.markResponse(request);
+    _strictAttribution._markResponse(request);
 
     // Cancel timeout timer since we got a response
     request.timeoutTimer?.cancel();
@@ -1186,9 +1644,11 @@ class DistingMessageScheduler {
             'payloadLength=${parsed.payload.length} '
             'payloadHex=${_hex(parsed.payload)} error=$e',
           );
-          final shouldRetryParseError = e is! TruncatedParameterPagesException;
+          final shouldRetryParseError =
+              e is! TruncatedParameterPagesException &&
+              request.replayPolicy == RequestReplayPolicy.allow;
           if (shouldRetryParseError &&
-              request.attemptCount < request.maxRetries) {
+              request.attemptCount < request.maxAttempts) {
             _state = _SchedulerState.sending;
             if (request.retryDelay == Duration.zero) {
               _sendCurrentRequest();
@@ -1223,6 +1683,7 @@ class DistingMessageScheduler {
   }
 
   void _onTimeout() {
+    if (_disposed || _terminated) return;
     final request = _currentRequest;
 
     // Clear any partial SysEx buffer on timeout to prevent stale data
@@ -1238,7 +1699,8 @@ class DistingMessageScheduler {
       return;
     }
 
-    if (request.attemptCount >= request.maxRetries) {
+    if (request.replayPolicy == RequestReplayPolicy.never ||
+        request.attemptCount >= request.maxAttempts) {
       // Out of retries — strict requests use shared response debt across
       // manager replacement. Ordinary requests retain the local stale handler;
       // indistinguishable 0x40 attempts are also retained as shared debt.
@@ -1265,18 +1727,22 @@ class DistingMessageScheduler {
           'timeout=${request.timeout.inMilliseconds}ms '
           'consecutiveTimeouts=$_consecutiveTimeouts key=${request.key}',
         );
-        request.completer.completeError(
-          TimeoutException(
-            'No response after ${request.attemptCount} attempts',
-            request.timeout,
-          ),
-        );
+        if (!request.completer.isCompleted) {
+          request.completer.completeError(
+            TimeoutException(
+              'No response after ${request.attemptCount} attempts',
+              request.timeout,
+            ),
+          );
+        }
       } else {
         _diag(
           'timeout-final #${request.id} optional attempts=${request.attemptCount} '
           'timeout=${request.timeout.inMilliseconds}ms key=${request.key}',
         );
-        request.completer.complete(null);
+        if (!request.completer.isCompleted) {
+          request.completer.complete(null);
+        }
       }
       _finishCurrentRequest();
     } else {
@@ -1297,12 +1763,14 @@ class DistingMessageScheduler {
   }
 
   void _handleSendFailure(_ScheduledRequest request, Object error) {
+    if (_disposed || _terminated) return;
     if (request.completer.isCompleted) {
       _finishCurrentRequest();
       return;
     }
 
-    if (request.attemptCount >= request.maxRetries) {
+    if (request.replayPolicy == RequestReplayPolicy.never ||
+        request.attemptCount >= request.maxAttempts) {
       if (request.attributionStarted) {
         _demux.discardActive();
       } else {
@@ -1354,23 +1822,37 @@ class DistingMessageScheduler {
   }
 
   void _finishCurrentRequest() {
-    _finishResponseAttribution(_currentRequest);
-    _currentRequest?.dispose();
+    final finished = _currentRequest;
+    _finishResponseAttribution(finished);
+    finished?.dispose();
     _currentRequest = null;
-    _state = _SchedulerState.idle;
     _retryTimer?.cancel();
     _retryTimer = null;
 
+    if (_disposed || _terminated) {
+      _state = _SchedulerState.closed;
+      return;
+    }
+
+    _state = _SchedulerState.idle;
+    if (finished != null &&
+        finished.attemptCount > 0 &&
+        messageInterval > Duration.zero) {
+      _nextAllowedSendAt = clock.now().add(messageInterval);
+    }
+
     // Schedule next request after message interval
     if (_queue.isNotEmpty) {
-      _nextProcessTimer?.cancel();
-      _nextProcessTimer = Timer(messageInterval, _processNext);
+      _scheduleNextProcess(allowImmediateIfIdle: false);
     }
   }
 
-  void _finishResponseAttribution(_ScheduledRequest? request) {
+  void _finishResponseAttribution(
+    _ScheduledRequest? request, {
+    bool sessionLost = false,
+  }) {
     if (request == null) return;
-    _strictAttribution.finish(request);
+    _strictAttribution._finish(request, sessionLost: sessionLost);
     request.attributionStarted = false;
   }
 
@@ -1407,6 +1889,7 @@ class DistingMessageScheduler {
   }
 
   void _handleIncomingPacket(dynamic packet) {
+    if (_disposed || _terminated) return;
     _totalPacketsReceived++;
     _lastPacketTime = clock.now();
 

@@ -9,6 +9,7 @@
 
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 
@@ -121,7 +122,7 @@ class ParameterUpdateQueue {
 
   /// Wait for all pending updates to be sent to hardware.
   Future<void> flush() async {
-    while (_pendingUpdates.isNotEmpty || _isProcessing) {
+    while (!_disposed && (_pendingUpdates.isNotEmpty || _isProcessing)) {
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
   }
@@ -137,6 +138,7 @@ class ParameterUpdateQueue {
   void dispose() {
     _disposed = true;
     _processTimer?.cancel();
+    _processTimer = null;
     _pendingUpdates.clear();
     _lastStringUpdateTime.clear();
   }
@@ -158,8 +160,9 @@ class ParameterUpdateQueue {
     int algorithmIndex,
     int parameterNumber,
   ) async {
+    if (_disposed) return;
     final key = '$algorithmIndex:$parameterNumber';
-    final now = DateTime.now();
+    final now = clock.now();
 
     // Throttle immediate string updates to avoid overwhelming MIDI
     final lastUpdate = _lastStringUpdateTime[key];
@@ -175,6 +178,7 @@ class ParameterUpdateQueue {
         algorithmIndex,
         parameterNumber,
       );
+      if (_disposed) return;
       if (parameterString != null) {
         onParameterStringUpdated?.call(
           algorithmIndex,
@@ -204,6 +208,7 @@ class ParameterUpdateQueue {
         update.parameterNumber,
         update.value,
       );
+      if (_disposed) return;
 
       // Query parameter string if needed (expects response)
       if (update.needsStringUpdate) {
@@ -213,6 +218,7 @@ class ParameterUpdateQueue {
                 update.algorithmIndex,
                 update.parameterNumber,
               );
+          if (_disposed) return;
           if (parameterString != null) {
             // Notify the cubit about the updated parameter string
             onParameterStringUpdated?.call(
@@ -220,7 +226,7 @@ class ParameterUpdateQueue {
               update.parameterNumber,
               parameterString.value,
             );
-          } else {}
+          }
         } catch (e) {
           // Continue processing even if string update fails
         }
@@ -228,7 +234,9 @@ class ParameterUpdateQueue {
 
       _totalUpdatesSent++;
     } catch (e, stackTrace) {
-      debugPrintStack(stackTrace: stackTrace);
+      if (!_disposed) {
+        debugPrintStack(stackTrace: stackTrace);
+      }
     } finally {
       _isProcessing = false;
 

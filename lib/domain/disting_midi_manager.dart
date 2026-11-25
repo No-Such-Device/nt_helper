@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show VoidCallback;
 import 'package:nt_helper/models/module_settings.dart';
 import 'package:nt_helper/domain/sysex/module_settings_codec.dart';
 
@@ -136,6 +137,7 @@ class DistingMidiManager
           ? const Duration(seconds: 1)
           : _scheduler.defaultTimeout,
       attributionPolicy: ResponseAttributionPolicy.failWhenAmbiguous,
+      replayPolicy: RequestReplayPolicy.never,
       cancellation: cancellation,
     );
     if (result == null) {
@@ -302,6 +304,8 @@ class DistingMidiManager
     required MidiDevice inputDevice,
     required MidiDevice outputDevice,
     required this.sysExId,
+    ResponseAttributionTracker? attributionTracker,
+    VoidCallback? onConnectionLost,
   }) : fileActivity = SdCardFileActivity.forEndpoint(
          midiCommand,
          inputDevice.id,
@@ -320,7 +324,87 @@ class DistingMidiManager
          ),
          defaultRetryDelay:
              Duration(milliseconds: SettingsService().interMessageDelay) * 2,
+         attributionTracker: attributionTracker,
+         onConnectionLost: onConnectionLost,
        );
+
+  bool get isTransportUsable => _scheduler.isUsable;
+  bool get isDisposed => _scheduler.isDisposed;
+  ResponseAttributionTracker get attributionTracker =>
+      _scheduler.attributionTracker;
+
+  void markConnectionLost({
+    SchedulerTerminationReason reason =
+        SchedulerTerminationReason.connectionLost,
+  }) {
+    _scheduler.clearCcCallback();
+    _scheduler.markConnectionLost(reason: reason);
+  }
+
+  /// Validates that the replacement transport can perform a fresh read-only
+  /// round-trip on an unaffected response class without replaying mutations or
+  /// clearing quarantine debt.
+  Future<bool> probeSessionReadable({
+    Duration timeout = const Duration(seconds: 2),
+  }) async {
+    if (!isTransportUsable) return false;
+    final probes = <Future<Object?> Function()>[
+      () => _scheduler.sendRequest<String>(
+        RequestVersionStringMessage(sysExId: sysExId).encode(),
+        RequestKey(
+          sysExId: sysExId,
+          messageType: DistingNTRespMessageType.respMessage,
+        ),
+        responseExpectation: ResponseExpectation.required,
+        maxRetries: 1,
+        timeout: timeout,
+      ),
+      () => _scheduler.sendRequest<int>(
+        RequestNumAlgorithmsMessage(sysExId: sysExId).encode(),
+        RequestKey(
+          sysExId: sysExId,
+          messageType: DistingNTRespMessageType.respNumAlgorithms,
+        ),
+        responseExpectation: ResponseExpectation.required,
+        maxRetries: 1,
+        timeout: timeout,
+      ),
+      () => _scheduler.sendRequest<SlotCountInfo>(
+        RequestNumAlgorithmsInPresetMessage(sysExId: sysExId).encode(),
+        RequestKey(
+          sysExId: sysExId,
+          messageType: DistingNTRespMessageType.respNumAlgorithmsInPreset,
+        ),
+        responseExpectation: ResponseExpectation.required,
+        maxRetries: 1,
+        timeout: timeout,
+      ),
+      () => _scheduler.sendRequest<String>(
+        RequestPresetNameMessage(sysExId: sysExId).encode(),
+        RequestKey(
+          sysExId: sysExId,
+          messageType: DistingNTRespMessageType.respPresetName,
+        ),
+        responseExpectation: ResponseExpectation.required,
+        maxRetries: 1,
+        timeout: timeout,
+      ),
+    ];
+
+    for (final probe in probes) {
+      if (!isTransportUsable) return false;
+      try {
+        final result = await probe();
+        if (result != null) return true;
+      } on AmbiguousResponseAttributionException {
+        // This specific response class is quarantined; try an unaffected read.
+        continue;
+      } catch (_) {
+        return false;
+      }
+    }
+    return false;
+  }
 
   Future<void> _checkSdCardSupport() async {
     _firmwareVersion ??= await requestVersionString();
@@ -393,6 +477,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -764,6 +849,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -786,6 +872,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -802,6 +889,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.optional,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -822,6 +910,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.optional,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -833,6 +922,7 @@ class DistingMidiManager
       packet,
       RequestKey(sysExId: sysExId),
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -844,6 +934,7 @@ class DistingMidiManager
       packet,
       RequestKey(sysExId: sysExId),
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -855,6 +946,7 @@ class DistingMidiManager
       packet,
       RequestKey(sysExId: sysExId),
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -875,6 +967,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -891,6 +984,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -912,6 +1006,7 @@ class DistingMidiManager
       key,
       responseExpectation: ResponseExpectation.none,
       maxRetries: 1,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -925,6 +1020,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -942,6 +1038,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -955,6 +1052,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -968,6 +1066,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -985,6 +1084,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -1002,6 +1102,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -1031,6 +1132,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -1049,6 +1151,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
       preflight: () => fileActivity.requireAvailable(presetName, preset: true),
     );
   }
@@ -1101,16 +1204,19 @@ class DistingMidiManager
         cvPacket,
         key,
         responseExpectation: ResponseExpectation.none,
+        replayPolicy: RequestReplayPolicy.never,
       ),
       _scheduler.sendRequest<void>(
         midiPacket,
         key,
         responseExpectation: ResponseExpectation.none,
+        replayPolicy: RequestReplayPolicy.never,
       ),
       _scheduler.sendRequest<void>(
         i2cPacket,
         key,
         responseExpectation: ResponseExpectation.none,
+        replayPolicy: RequestReplayPolicy.never,
       ),
     ]);
   }
@@ -1181,6 +1287,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -1199,6 +1306,7 @@ class DistingMidiManager
           RequestKey(sysExId: sysExId),
           responseExpectation: ResponseExpectation.none,
           maxRetries: 1,
+          replayPolicy: RequestReplayPolicy.never,
           cancellation: cancellation,
         ),
     ];
@@ -1222,6 +1330,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -1241,6 +1350,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -1259,6 +1369,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -1277,6 +1388,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -1635,6 +1747,7 @@ class DistingMidiManager
       packet,
       key,
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -1649,6 +1762,7 @@ class DistingMidiManager
         messageType: DistingNTRespMessageType.respMessage,
       ),
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
@@ -1663,6 +1777,7 @@ class DistingMidiManager
         messageType: DistingNTRespMessageType.respMessage,
       ),
       responseExpectation: ResponseExpectation.none,
+      replayPolicy: RequestReplayPolicy.never,
     );
   }
 
