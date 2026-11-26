@@ -74,18 +74,22 @@ class _ParameterValueDelegate {
             );
           } else {
             // When user releases slider - do minimal additional processing
+            final transportDisconnected =
+                _cubit._connectionDelegate.isTransportDisconnected;
 
             // Special case for switching programs
-            if (_cubit._isProgramParameter(
-              syncstate,
-              algorithmIndex,
-              parameterNumber,
-            )) {
+            if (!transportDisconnected &&
+                _cubit._isProgramParameter(
+                  syncstate,
+                  algorithmIndex,
+                  parameterNumber,
+                )) {
               _cubit._queueProgramRefresh(algorithmIndex);
             }
 
             // Anomaly Check - using the value we're setting
-            if (parameterNumber < currentSlot.parameters.length) {
+            if (!transportDisconnected &&
+                parameterNumber < currentSlot.parameters.length) {
               final parameterInfo = currentSlot.parameters.elementAt(
                 parameterNumber,
               );
@@ -131,11 +135,12 @@ class _ParameterValueDelegate {
 
             // Trigger a debounced refresh to re-sync state after the user lets go
             // Skip if we're already doing a full program refresh (which includes all values)
-            if (!_cubit._isProgramParameter(
-              syncstate,
-              algorithmIndex,
-              parameterNumber,
-            )) {
+            if (!transportDisconnected &&
+                !_cubit._isProgramParameter(
+                  syncstate,
+                  algorithmIndex,
+                  parameterNumber,
+                )) {
               _cubit.scheduleParameterRefresh(algorithmIndex);
             }
           }

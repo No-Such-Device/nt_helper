@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:bloc_test/bloc_test.dart';
+import 'package:drift/native.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_midi_command/flutter_midi_command.dart';
@@ -20,7 +20,12 @@ import 'package:nt_helper/domain/i_disting_midi_manager.dart';
 import 'package:nt_helper/domain/sysex/module_settings_codec.dart';
 import 'package:nt_helper/domain/sysex/sysex_utils.dart';
 import 'package:nt_helper/models/module_settings.dart';
+import 'package:nt_helper/models/packed_mapping_data.dart';
+import 'package:nt_helper/services/algorithm_metadata_service.dart';
+import 'package:nt_helper/services/app_update_service.dart';
 import 'package:nt_helper/services/settings_service.dart';
+import 'package:nt_helper/ui/synchronized_screen.dart';
+import 'package:nt_helper/ui/widgets/algorithm_list_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../test_helpers/module_settings_fixtures.dart';
@@ -29,13 +34,25 @@ class _MockAppDatabase extends Mock implements AppDatabase {}
 
 class _MockMetadataDao extends Mock implements MetadataDao {}
 
-class _MockDistingCubit extends MockCubit<DistingState>
-    implements DistingCubit {}
+class _MockAppUpdateService extends Mock implements AppUpdateService {}
+
+_MockAppUpdateService _createNoOpAppUpdateService() {
+  final service = _MockAppUpdateService();
+  when(() => service.isSupported).thenReturn(false);
+  when(
+    () => service.checkForUpdate(
+      forceRefresh: any(named: 'forceRefresh'),
+      skipVersionCheck: any(named: 'skipVersionCheck'),
+    ),
+  ).thenAnswer((_) async => null);
+  return service;
+}
 
 class _FakeMidiCommand extends Fake implements MidiCommand {
   _FakeMidiCommand() {
+    // Production backends (Darwin, Linux, Windows, Android) deliver setup
+    // events asynchronously on broadcast streams rather than synchronously.
     _setupController = StreamController<MidiSetupChange>.broadcast(
-      sync: true,
       onListen: () => setupListenerCount++,
       onCancel: () => setupListenerCount--,
     );
@@ -151,10 +168,6 @@ class _FakeMidiCommand extends Fake implements MidiCommand {
       if (connectedLinuxDevices.containsKey(device.id)) {
         return;
       }
-      // Mirrors AlsaSeqLinuxDevice.connect (lines 91-94): if the underlying
-      // endpoint is still marked connected because an unawaited disconnect has
-      // not reached ALSA teardown yet, connect() returns early and the late
-      // disconnect then tears down the ALSA route.
       if (!alsaConnectedEndpoints.contains(device.id)) {
         alsaConnectedEndpoints.add(device.id);
       }
@@ -179,10 +192,10 @@ class _FakeMidiCommand extends Fake implements MidiCommand {
       if (existing == null) {
         return;
       }
-      // Mirrors FlutterMidiCommandLinux.disconnectDevice (lines 179-190) and
+      // Mirrors FlutterMidiCommandLinux.disconnectDevice (lines 177-190) and
       // LinuxMidiDevice.disconnect (lines 84-90): removes map entry and emits
-      // deviceDisconnected + connected=false synchronously, then awaits rx sub
-      // cancellation before running AlsaSeqLinuxDevice.disconnect.
+      // deviceDisconnected + connected=false, then awaits rx sub cancellation
+      // before running AlsaSeqLinuxDevice.disconnect.
       _setupController.add(MidiSetupChange.deviceDisconnected);
       existing.connected = false;
       final closeGate = pendingAsyncDisconnectById.remove(device.id);
@@ -328,6 +341,10 @@ class _FakeMidiCommand extends Fake implements MidiCommand {
         .toList();
     for (final device in removed) {
       final wasOpen = openDeviceIds.remove(device.id);
+      if (simulateLinuxAsyncClose) {
+        connectedLinuxDevices.remove(device.id);
+        alsaConnectedEndpoints.remove(device.id);
+      }
       device.connected = false;
       if (wasOpen) {
         _setupController.add(MidiSetupChange.deviceDisconnected);
@@ -381,10 +398,86 @@ MidiDevice _makeDuplexEndpoint(String id, String name) {
   return device;
 }
 
+Slot _makeSlot(int index, String guid, String name, {int value = 10}) => Slot(
+  algorithm: Algorithm(algorithmIndex: index, guid: guid, name: name),
+  routing: RoutingInfo.filler(),
+  pages: ParameterPages(
+    algorithmIndex: index,
+    pages: [
+      ParameterPage(name: 'Main', parameters: const [0]),
+    ],
+  ),
+  parameters: [
+    ParameterInfo(
+      algorithmIndex: index,
+      parameterNumber: 0,
+      min: 0,
+      max: 1000,
+      defaultValue: 0,
+      unit: 0,
+      name: 'Level',
+      powerOfTen: 0,
+    ),
+  ],
+  values: [
+    ParameterValue(algorithmIndex: index, parameterNumber: 0, value: value),
+  ],
+  enums: [ParameterEnumStrings.filler()],
+  mappings: [Mapping.filler()],
+  valueStrings: [ParameterValueString.filler()],
+);
+
 Future<void> _flushEventQueue() async {
-  for (var i = 0; i < 6; i++) {
+  for (var i = 0; i < 8; i++) {
     await Future<void>.delayed(Duration.zero);
   }
+}
+
+Future<void> _chooseDropdown(
+  WidgetTester tester,
+  Key dropdownKey,
+  String label,
+) async {
+  final dropdown = find.byKey(dropdownKey);
+  await tester.tapAt(tester.getTopLeft(dropdown) + const Offset(20, 20));
+  await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(MenuItemButton, label).hitTestable());
+  await tester.pumpAndSettle();
+}
+
+Future<T> _awaitWhilePumping<T>(
+  WidgetTester tester,
+  Future<T> future, {
+  int maxPumps = 100,
+  Duration step = const Duration(milliseconds: 10),
+}) async {
+  var done = false;
+  late T result;
+  Object? error;
+  StackTrace? stackTrace;
+  unawaited(
+    future.then(
+      (value) {
+        result = value;
+        done = true;
+      },
+      onError: (Object e, StackTrace st) {
+        error = e;
+        stackTrace = st;
+        done = true;
+      },
+    ),
+  );
+  for (var i = 0; i < maxPumps && !done; i++) {
+    await tester.pump(step);
+  }
+  if (!done) {
+    fail('Future did not complete after $maxPumps pumps');
+  }
+  if (error != null) {
+    Error.throwWithStackTrace(error!, stackTrace!);
+  }
+  return result;
 }
 
 void main() {
@@ -422,6 +515,7 @@ void main() {
       database,
       midiCommand: midiCommand,
       isWindowsOverride: false,
+      isLinuxOverride: false,
     );
   });
 
@@ -432,7 +526,7 @@ void main() {
     await midiCommand.closeControllers();
   });
 
-  test('MIDI loss and return with re-enumerated IDs and mutated names reconnects cleanly without replaying writes', () async {
+  test('transient MIDI loss and return with re-enumerated IDs and mutated names stays silently synchronized without replaying writes', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     midiCommand.availableDevices = [input1, output1];
@@ -443,108 +537,124 @@ void main() {
 
     await cubit.connectToDevices(input1, output1, 0);
     expect(cubit.state, isA<DistingStateSynchronized>());
-    expect(
-      (cubit.state as DistingStateSynchronized).presetName,
-      'Before Disconnect',
+    final connectedSync = cubit.state as DistingStateSynchronized;
+    cubit.emit(
+      connectedSync.copyWith(slots: [_makeSlot(0, 'G1', 'Alpha', value: 10)]),
     );
+    final oldManager = cubit.requireDisting();
     expect(input1.name, 'disting NT disting NT');
+
+    final emittedStates = <DistingState>[];
+    final sub = cubit.stream.listen(emittedStates.add);
+    addTearDown(sub.cancel);
 
     // Simulate USB/MIDI disconnect: endpoints vanish and OS closes handles.
     midiCommand.simulateDevicesDisappeared({input1.id, output1.id});
     await _flushEventQueue();
 
-    final waiting = cubit.state as DistingStateSelectDevice;
-    expect(waiting.inputDevices, isEmpty);
-    expect(waiting.outputDevices, isEmpty);
-    expect(waiting.connectionStatus, contains('MIDI connection lost'));
-    expect(waiting.connectionStatus, contains('disting NT'));
-    expect(cubit.disting(), isNull);
+    // Must remain silently in DistingStateSynchronized without leaving the editor.
+    expect(cubit.state, isA<DistingStateSynchronized>());
+    expect(
+      emittedStates.where(
+        (s) => s is DistingStateSelectDevice || s is DistingStateConnected,
+      ),
+      isEmpty,
+    );
     expect(midiCommand.disposeCalls, 0);
     expect(midiCommand.setupListenerCount, 1);
     expect(midiCommand.packetListenerCount, 0);
 
-    // Simulate USB/MIDI return with newly assigned OS endpoint IDs.
+    // Edits while disconnected keep local optimistic state but send/queue no MIDI writes.
     midiCommand.sentPackets.clear();
+    await cubit.updateParameterValue(
+      algorithmIndex: 0,
+      parameterNumber: 0,
+      value: 42,
+      userIsChangingTheValue: false,
+    );
+    expect(
+      (cubit.state as DistingStateSynchronized).slots.first.values.first.value,
+      42,
+    );
+    expect(midiCommand.sentPackets, isEmpty);
+
+    // Simulate USB/MIDI return with newly assigned OS endpoint IDs.
     midiCommand.presetName = 'After Reconnect';
     final input2 = _makeEndpoint('nt-in-2', 'disting NT', MidiPortType.IN);
     final output2 = _makeEndpoint('nt-out-2', 'disting NT', MidiPortType.OUT);
-    final syncedAfterReturn = cubit.stream.firstWhere(
-      (state) => state is DistingStateSynchronized,
+    final reconnected = cubit.stream.firstWhere(
+      (state) =>
+          state is DistingStateSynchronized &&
+          !identical(state.disting, oldManager),
     );
     midiCommand.simulateDevicesAppeared([input2, output2]);
-    final synced = await syncedAfterReturn.timeout(
+    final synced = await reconnected.timeout(
       const Duration(seconds: 2),
     ) as DistingStateSynchronized;
 
-    expect(synced.presetName, 'After Reconnect');
+    // Never bounced through SelectDevice or Connected; editor state preserved.
+    expect(
+      emittedStates.where(
+        (s) => s is DistingStateSelectDevice || s is DistingStateConnected,
+      ),
+      isEmpty,
+    );
+    expect(synced.presetName, 'Before Disconnect');
+    expect(synced.slots.first.values.first.value, 42);
     expect(synced.inputDevice?.id, 'nt-in-2');
     expect(synced.outputDevice?.id, 'nt-out-2');
     expect(midiCommand.disposeCalls, 0);
     expect(midiCommand.setupListenerCount, 1);
     expect(midiCommand.packetListenerCount, 1);
 
-    // Only normal connection traffic was sent; no preset/parameter/settings/SD writes.
-    final sentCommands = midiCommand.sentPackets
-        .where((p) => p.length > 6 && p[0] == 0xF0 && p[4] == 0x6D)
-        .map((p) => p[6])
-        .toList();
-    expect(
-      sentCommands,
-      isNot(
-        anyElement(
-          isIn([
-            DistingNTRequestMessageType.setParameterValue.value,
-            DistingNTRequestMessageType.savePreset.value,
-            DistingNTRequestMessageType.loadPreset.value,
-            DistingNTRequestMessageType.setPresetName.value,
-            DistingNTRequestMessageType.setSettingValue.value,
-            DistingNTRequestMessageType.settingsAction.value,
-            DistingNTRequestMessageType.sdCardOperation.value,
-          ]),
-        ),
-      ),
-    );
+    // Zero stale writes or unsolicited commands sent on silent reconnect.
+    expect(midiCommand.sentPackets, isEmpty);
 
-    // Fresh NT query after return succeeds.
+    // Fresh NT query after return succeeds immediately without manual Connect.
     expect(await cubit.requireDisting().requestPresetName(), 'After Reconnect');
   }, tags: ['regression']);
 
-  test('duplex endpoint fast disconnect on same ID falls back to fresh selection and communicates via normal reconnect', () async {
+  test('duplex endpoint same-ID bounce silently reopens fresh snapshot object and resumes queries automatically', () async {
     final duplex1 = _makeDuplexEndpoint('nt-duplex', 'disting NT');
     midiCommand.availableDevices = [duplex1];
 
     await cubit.initialize();
     await cubit.connectToDevices(duplex1, duplex1, 0);
     expect(cubit.state, isA<DistingStateSynchronized>());
+    final oldManager = cubit.requireDisting();
     expect(midiCommand.connectCalls, ['nt-duplex']);
 
-    // Simulate native handle closure where the same ID is still present in the
-    // discovery snapshot: conservative normal flow avoids racing void
-    // disconnectDevice's unawaited close on Linux/Darwin/Android.
+    final emittedStates = <DistingState>[];
+    final sub = cubit.stream.listen(emittedStates.add);
+    addTearDown(sub.cancel);
+
     midiCommand.presetName = 'Same ID Bounce';
     midiCommand.openDeviceIds.remove('nt-duplex');
     final duplex2 = _makeDuplexEndpoint('nt-duplex', 'disting NT');
     midiCommand.availableDevices = [duplex2];
-    duplex1.connected = false;
-    await _flushEventQueue();
-
-    final selectState = cubit.state as DistingStateSelectDevice;
-    expect(selectState.selectedInputDevice, same(duplex2));
-    expect(selectState.selectedOutputDevice, same(duplex2));
-    expect(selectState.connectionStatus, contains('Select Connect'));
-    expect(midiCommand.connectCalls, ['nt-duplex']);
-
-    await cubit.connectToDevices(
-      selectState.selectedInputDevice!,
-      selectState.selectedOutputDevice!,
-      selectState.selectedSysExId,
+    final reconnected = cubit.stream.firstWhere(
+      (state) =>
+          state is DistingStateSynchronized &&
+          !identical(state.disting, oldManager),
     );
-    expect(cubit.state, isA<DistingStateSynchronized>());
+    duplex1.connected = false;
+    final synced = await reconnected.timeout(
+      const Duration(seconds: 2),
+    ) as DistingStateSynchronized;
+
+    expect(
+      emittedStates.where(
+        (s) => s is DistingStateSelectDevice || s is DistingStateConnected,
+      ),
+      isEmpty,
+    );
+    expect(synced.inputDevice, same(duplex2));
+    expect(synced.outputDevice, same(duplex2));
     expect(midiCommand.connectCalls, ['nt-duplex', 'nt-duplex']);
     expect(await cubit.requireDisting().requestPresetName(), 'Same ID Bounce');
   }, tags: ['regression']);
 
-  test('in-flight query fails promptly on disconnect without hanging and fresh query succeeds after return', () async {
+  test('in-flight query fails promptly on disconnect without hanging and fresh query succeeds after silent return', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     midiCommand.availableDevices = [input1, output1];
@@ -558,10 +668,11 @@ void main() {
     final inFlight = oldManager.requestVersionString();
     final inFlightError = expectLater(inFlight, throwsA(isA<StateError>()));
 
-    // Disconnect immediately fails the in-flight request.
+    // Disconnect immediately fails the in-flight request while staying synchronized.
     midiCommand.simulateDevicesDisappeared({input1.id, output1.id});
     await inFlightError;
     await _flushEventQueue();
+    expect(cubit.state, isA<DistingStateSynchronized>());
 
     // Any late call against the disposed manager also fails immediately without sending.
     final sentBeforeLateCall = midiCommand.sentPackets.length;
@@ -571,57 +682,62 @@ void main() {
     );
     expect(midiCommand.sentPackets.length, sentBeforeLateCall);
 
-    // Device returns and replies normally again.
+    // Device returns and replies normally again without manual Connect.
     midiCommand.respondToQueries = true;
     midiCommand.presetName = 'Fresh Query OK';
     final input2 = _makeEndpoint('nt-in-2', 'disting NT', MidiPortType.IN);
     final output2 = _makeEndpoint('nt-out-2', 'disting NT', MidiPortType.OUT);
-    final syncedAfterReturn = cubit.stream.firstWhere(
-      (state) => state is DistingStateSynchronized,
+    final reconnected = cubit.stream.firstWhere(
+      (state) =>
+          state is DistingStateSynchronized &&
+          !identical(state.disting, oldManager),
     );
     midiCommand.simulateDevicesAppeared([input2, output2]);
-    await syncedAfterReturn.timeout(const Duration(seconds: 2));
+    await reconnected.timeout(const Duration(seconds: 2));
 
     expect(await cubit.requireDisting().requestPresetName(), 'Fresh Query OK');
   }, tags: ['regression']);
 
-  test('failed reconnect attempt cleans up opened port without hanging and recovers on next return', () async {
+  test('failed silent reconnect cleans up opened port without retry loop on async setup stream and recovers on next setup event', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     midiCommand.availableDevices = [input1, output1];
 
     await cubit.initialize();
     await cubit.connectToDevices(input1, output1, 0);
+    final oldManager = cubit.requireDisting();
 
     midiCommand.simulateDevicesDisappeared({input1.id, output1.id});
     await _flushEventQueue();
-    expect(cubit.state, isA<DistingStateSelectDevice>());
+    expect(cubit.state, isA<DistingStateSynchronized>());
 
-    // First return fails when opening the output port.
+    // First return fails when opening the output port after input opened.
     final input2 = _makeEndpoint('nt-in-2', 'disting NT', MidiPortType.IN);
     final output2 = _makeEndpoint('nt-out-2', 'disting NT', MidiPortType.OUT);
+    midiCommand.connectCalls.clear();
     midiCommand.throwOnConnectDeviceId = output2.id;
     midiCommand.simulateDevicesAppeared([input2, output2]);
     await _flushEventQueue();
 
-    // Input that opened during the failed attempt was cleanly disconnected.
+    // Input that opened during the failed attempt was cleanly disconnected,
+    // and its async deviceDisconnected echo did not trigger a retry loop.
     expect(midiCommand.openDeviceIds, isEmpty);
-    expect(cubit.state, isA<DistingStateSelectDevice>());
-    expect(
-      (cubit.state as DistingStateSelectDevice).connectionStatus,
-      contains('MIDI connection lost'),
-    );
+    expect(midiCommand.connectCalls, [input2.id, output2.id]);
+    expect(cubit.state, isA<DistingStateSynchronized>());
+    expect(identical(cubit.disting(), oldManager), isTrue);
     expect(midiCommand.setupListenerCount, 1);
     expect(midiCommand.packetListenerCount, 0);
 
     // Subsequent setup event succeeds cleanly without app restart.
     midiCommand.throwOnConnectDeviceId = null;
     midiCommand.presetName = 'Recovered After Failure';
-    final syncedAfterRetry = cubit.stream.firstWhere(
-      (state) => state is DistingStateSynchronized,
+    final reconnected = cubit.stream.firstWhere(
+      (state) =>
+          state is DistingStateSynchronized &&
+          !identical(state.disting, oldManager),
     );
     midiCommand.emitSetupChange(MidiSetupChange.deviceStateChanged);
-    await syncedAfterRetry.timeout(const Duration(seconds: 2));
+    await reconnected.timeout(const Duration(seconds: 2));
 
     expect(
       await cubit.requireDisting().requestPresetName(),
@@ -629,7 +745,7 @@ void main() {
     );
   }, tags: ['regression']);
 
-  test('partial return, ambiguous return, and unrelated disconnects are handled safely', () async {
+  test('partial return, ambiguous return, and unrelated disconnects are handled silently and safely', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     final other = _makeEndpoint('other-in', 'MIDI Keyboard', MidiPortType.IN);
@@ -645,17 +761,17 @@ void main() {
     expect(cubit.state, isA<DistingStateSynchronized>());
     expect(identical(cubit.disting(), originalManager), isTrue);
 
-    // Selected NT disappears.
+    // Selected NT disappears: stays silently in Synchronized.
     midiCommand.simulateDevicesDisappeared({input1.id, output1.id});
     await _flushEventQueue();
-    expect(cubit.state, isA<DistingStateSelectDevice>());
+    expect(cubit.state, isA<DistingStateSynchronized>());
     final connectsBeforePartial = midiCommand.connectCalls.length;
 
-    // Partial return (only input): stays gracefully waiting without connecting.
+    // Partial return (only input): stays silently waiting without connecting.
     final input2 = _makeEndpoint('nt-in-2', 'disting NT', MidiPortType.IN);
     midiCommand.simulateDevicesAppeared([input2]);
     await _flushEventQueue();
-    expect(cubit.state, isA<DistingStateSelectDevice>());
+    expect(cubit.state, isA<DistingStateSynchronized>());
     expect(midiCommand.connectCalls.length, connectsBeforePartial);
 
     // Ambiguous return (two identical NT inputs and one output): refuses to guess.
@@ -667,24 +783,25 @@ void main() {
     final output2 = _makeEndpoint('nt-out-2', 'disting NT', MidiPortType.OUT);
     midiCommand.simulateDevicesAppeared([duplicateInput, output2]);
     await _flushEventQueue();
-    final ambiguousState = cubit.state as DistingStateSelectDevice;
-    expect(ambiguousState.connectionStatus, contains('Multiple'));
+    expect(cubit.state, isA<DistingStateSynchronized>());
     expect(midiCommand.connectCalls.length, connectsBeforePartial);
 
-    // Ambiguity clears -> exact single match reconnects cleanly.
+    // Ambiguity clears -> exact single match reconnects silently.
     midiCommand.presetName = 'Unambiguous Return';
-    final synced = cubit.stream.firstWhere(
-      (state) => state is DistingStateSynchronized,
+    final reconnected = cubit.stream.firstWhere(
+      (state) =>
+          state is DistingStateSynchronized &&
+          !identical(state.disting, originalManager),
     );
     midiCommand.simulateDevicesDisappeared({duplicateInput.id});
-    await synced.timeout(const Duration(seconds: 2));
+    await reconnected.timeout(const Duration(seconds: 2));
     expect(
       await cubit.requireDisting().requestPresetName(),
       'Unambiguous Return',
     );
   }, tags: ['regression']);
 
-  test('subscriptions do not duplicate across repeated disconnect/reconnect cycles', () async {
+  test('subscriptions do not duplicate across repeated silent disconnect/reconnect cycles', () async {
     final input0 = _makeEndpoint('nt-in-0', 'disting NT', MidiPortType.IN);
     final output0 = _makeEndpoint('nt-out-0', 'disting NT', MidiPortType.OUT);
     midiCommand.availableDevices = [input0, output0];
@@ -694,9 +811,14 @@ void main() {
     expect(midiCommand.setupListenerCount, 1);
     expect(midiCommand.packetListenerCount, 1);
 
+    final emittedStates = <DistingState>[];
+    final sub = cubit.stream.listen(emittedStates.add);
+    addTearDown(sub.cancel);
+
     var currentInId = input0.id;
     var currentOutId = output0.id;
     for (var cycle = 1; cycle <= 3; cycle++) {
+      final previousManager = cubit.requireDisting();
       midiCommand.simulateDevicesDisappeared({currentInId, currentOutId});
       await _flushEventQueue();
       expect(midiCommand.setupListenerCount, 1);
@@ -705,31 +827,38 @@ void main() {
       currentInId = 'nt-in-$cycle';
       currentOutId = 'nt-out-$cycle';
       midiCommand.presetName = 'Cycle $cycle';
-      final synced = cubit.stream.firstWhere(
+      final reconnected = cubit.stream.firstWhere(
         (state) =>
             state is DistingStateSynchronized &&
-            state.presetName == 'Cycle $cycle',
+            !identical(state.disting, previousManager),
       );
       midiCommand.simulateDevicesAppeared([
         _makeEndpoint(currentInId, 'disting NT', MidiPortType.IN),
         _makeEndpoint(currentOutId, 'disting NT', MidiPortType.OUT),
       ]);
-      await synced.timeout(const Duration(seconds: 2));
+      await reconnected.timeout(const Duration(seconds: 2));
       expect(midiCommand.setupListenerCount, 1);
       expect(midiCommand.packetListenerCount, 1);
     }
 
+    expect(
+      emittedStates.where(
+        (s) => s is DistingStateSelectDevice || s is DistingStateConnected,
+      ),
+      isEmpty,
+    );
     expect(midiCommand.disposeCalls, 0);
     expect(await cubit.requireDisting().requestPresetName(), 'Cycle 3');
   }, tags: ['regression']);
 
-  test('reconnects do not overlap under burst setup events', () async {
+  test('silent reconnects do not overlap under burst setup events', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     midiCommand.availableDevices = [input1, output1];
 
     await cubit.initialize();
     await cubit.connectToDevices(input1, output1, 0);
+    final oldManager = cubit.requireDisting();
 
     midiCommand.simulateDevicesDisappeared({input1.id, output1.id});
     await _flushEventQueue();
@@ -752,12 +881,14 @@ void main() {
 
     expect(midiCommand.connectCalls, ['nt-in-2']);
 
-    final synced = cubit.stream.firstWhere(
-      (state) => state is DistingStateSynchronized,
+    final reconnected = cubit.stream.firstWhere(
+      (state) =>
+          state is DistingStateSynchronized &&
+          !identical(state.disting, oldManager),
     );
     midiCommand.pendingConnect = null;
     gate.complete();
-    await synced.timeout(const Duration(seconds: 2));
+    await reconnected.timeout(const Duration(seconds: 2));
 
     expect(midiCommand.connectCalls, ['nt-in-2', 'nt-out-2']);
     expect(midiCommand.setupListenerCount, 1);
@@ -768,7 +899,7 @@ void main() {
     );
   }, tags: ['regression']);
 
-  test('strict SD card attribution and NT Settings guards remain enforced across disconnect/reconnect', () async {
+  test('strict SD card attribution, NT Settings guards, and pending mapping write discard remain enforced across silent disconnect/reconnect', () async {
     final input1 = _makeEndpoint('nt-in-same', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint(
       'nt-out-same',
@@ -781,6 +912,12 @@ void main() {
     await cubit.initialize();
     await cubit.connectToDevices(input1, output1, 0);
     expect(cubit.state, isA<DistingStateSynchronized>());
+    final oldManager = cubit.requireDisting();
+    cubit.emit(
+      (cubit.state as DistingStateSynchronized).copyWith(
+        slots: [_makeSlot(0, 'G1', 'Alpha', value: 10)],
+      ),
+    );
 
     // Load NT Settings and stage a local draft (not applied).
     await cubit.loadModuleSettings();
@@ -788,6 +925,17 @@ void main() {
     final connectionIdBefore = cubit.moduleSettingsState.connectionId;
     cubit.editModuleSetting(5, const ModuleSettingValue(1));
     expect(cubit.moduleSettingsState.settings[5]?.changed, isTrue);
+
+    // Queue a debounced mapping save just before disconnect.
+    final pendingMapping = cubit.saveMapping(
+      0,
+      0,
+      PackedMappingData.filler().copyWith(version: 6, cvInput: 2),
+    );
+    final pendingMappingFailed = expectLater(
+      pendingMapping,
+      throwsA(isA<StateError>()),
+    );
 
     // Leave unacknowledged SD response debt right as MIDI disconnects.
     midiCommand.respondToSd = false;
@@ -797,12 +945,15 @@ void main() {
 
     midiCommand.simulateDevicesDisappeared({input1.id, output1.id});
     await sdFailed;
+    await pendingMappingFailed;
     await _flushEventQueue();
 
-    // Module settings must immediately become unavailable when disconnected.
+    // Still silently in Synchronized, yet Module Settings is immediately unavailable.
+    expect(cubit.state, isA<DistingStateSynchronized>());
     expect(cubit.moduleSettingsState.unavailableReason, isNotNull);
 
     // Reconnect on the same endpoint ID.
+    midiCommand.sentPackets.clear();
     midiCommand.respondToSd = true;
     midiCommand.presetName = 'Guards Preserved';
     final input2 = _makeEndpoint('nt-in-same', 'disting NT', MidiPortType.IN);
@@ -811,11 +962,16 @@ void main() {
       'disting NT',
       MidiPortType.OUT,
     );
-    final synced = cubit.stream.firstWhere(
-      (state) => state is DistingStateSynchronized,
+    final reconnected = cubit.stream.firstWhere(
+      (state) =>
+          state is DistingStateSynchronized &&
+          !identical(state.disting, oldManager),
     );
     midiCommand.simulateDevicesAppeared([input2, output2]);
-    await synced.timeout(const Duration(seconds: 2));
+    await reconnected.timeout(const Duration(seconds: 2));
+
+    // Discarded mapping write was NOT replayed after return.
+    expect(midiCommand.sentPackets, isEmpty);
 
     // Ordinary NT query succeeds immediately.
     expect(
@@ -846,7 +1002,7 @@ void main() {
     );
   }, tags: ['regression']);
 
-  test('explicit manual selection, offline mode, and disposal cancel reconnect and clean up all listeners', () async {
+  test('explicit permanent disconnect, manual selection, and disposal cancel silent reconnect and clean up all listeners', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     final otherIn = _makeEndpoint('other-in', 'Forever', MidiPortType.IN);
@@ -855,21 +1011,20 @@ void main() {
     await cubit.initialize();
     await cubit.connectToDevices(input1, output1, 0);
 
-    // Disconnect -> waiting for disting NT.
+    // Transient disconnect -> silently waiting in Synchronized.
     midiCommand.simulateDevicesDisappeared({input1.id, output1.id});
     await _flushEventQueue();
-    expect(
-      (cubit.state as DistingStateSelectDevice).connectionStatus,
-      isNotNull,
-    );
+    expect(cubit.state, isA<DistingStateSynchronized>());
 
-    // User manually selects another device -> clears pending auto-reconnect.
+    // User explicitly disconnects to device selection and picks another device.
+    cubit.disconnect();
+    await cubit.loadDevices();
+    expect(cubit.state, isA<DistingStateSelectDevice>());
     cubit.updateDeviceSelection(
       inputDevice: otherIn,
       outputDevice: null,
       sysExId: 0,
     );
-    expect((cubit.state as DistingStateSelectDevice).connectionStatus, isNull);
 
     final connectsBeforeReturn = midiCommand.connectCalls.length;
     midiCommand.simulateDevicesAppeared([
@@ -880,7 +1035,7 @@ void main() {
     expect(cubit.state, isA<DistingStateSelectDevice>());
     expect(midiCommand.connectCalls.length, connectsBeforeReturn);
 
-    // Reconnect manually, then dispose cubit mid-connect / active session.
+    // Reconnect manually, then dispose cubit mid-connect.
     final gate = Completer<void>();
     midiCommand.pendingConnect = gate;
     final input2 = midiCommand.availableDevices.firstWhere(
@@ -909,7 +1064,7 @@ void main() {
     await _flushEventQueue();
   }, tags: ['regression']);
 
-  test('goOffline while auto-reconnect open is gated preserves offline mode and sends no stale traffic', () async {
+  test('goOffline while silent auto-reconnect open is gated preserves offline mode and sends no stale traffic', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     midiCommand.availableDevices = [input1, output1];
@@ -919,7 +1074,7 @@ void main() {
 
     midiCommand.simulateDevicesDisappeared({input1.id, output1.id});
     await _flushEventQueue();
-    expect(cubit.state, isA<DistingStateSelectDevice>());
+    expect(cubit.state, isA<DistingStateSynchronized>());
 
     final inputOpenGate = Completer<void>();
     midiCommand.connectCalls.clear();
@@ -931,7 +1086,7 @@ void main() {
     await _flushEventQueue();
     expect(midiCommand.connectCalls, ['nt-in-2']);
 
-    // Go offline while auto-reconnect is gated on input open.
+    // Go offline while silent auto-reconnect is gated on input open.
     midiCommand.sentPackets.clear();
     await cubit.goOffline();
     final offlineState = cubit.state as DistingStateSynchronized;
@@ -953,7 +1108,7 @@ void main() {
     expect(midiCommand.packetListenerCount, 0);
   }, tags: ['regression']);
 
-  test('onDemo while auto-reconnect open is gated preserves demo mode and cleans up stale ports', () async {
+  test('onDemo while silent auto-reconnect open is gated preserves demo mode and cleans up stale ports', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     midiCommand.availableDevices = [input1, output1];
@@ -996,7 +1151,7 @@ void main() {
     expect(midiCommand.packetListenerCount, 0);
   }, tags: ['regression']);
 
-  test('failing stale auto-reconnect after goOffline does not overwrite offline mode', () async {
+  test('failing stale silent auto-reconnect after goOffline does not overwrite offline mode', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     midiCommand.availableDevices = [input1, output1];
@@ -1033,7 +1188,7 @@ void main() {
     expect(midiCommand.setupListenerCount, 0);
   }, tags: ['regression']);
 
-  test('updateDeviceSelection while auto-reconnect open is gated preserves chosen selection and protects replacement connection', () async {
+  test('disconnect and updateDeviceSelection while silent auto-reconnect open is gated preserves selection and protects replacement connection', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     final otherIn = _makeEndpoint('other-in', 'Other Synth', MidiPortType.IN);
@@ -1060,8 +1215,10 @@ void main() {
     await _flushEventQueue();
     expect(midiCommand.connectCalls, ['nt-in-2']);
 
-    // User changes selection while auto-reconnect is gated on input open.
+    // User disconnects to selection screen and changes selection while silent open is gated.
     midiCommand.sentPackets.clear();
+    cubit.disconnect();
+    await cubit.loadDevices();
     cubit.updateDeviceSelection(
       inputDevice: otherIn,
       outputDevice: otherOut,
@@ -1076,13 +1233,11 @@ void main() {
     expect(selectionState.selectedInputDevice?.id, 'other-in');
     expect(selectionState.selectedOutputDevice?.id, 'other-out');
     expect(selectionState.selectedSysExId, 3);
-    expect(selectionState.connectionStatus, isNull);
     expect(midiCommand.openDeviceIds, isEmpty);
     expect(midiCommand.sentPackets, isEmpty);
 
-    // Also verify that if user starts a replacement connection on the SAME
-    // endpoints while a stale open is still gated, releasing the stale open
-    // never closes or disposes the replacement connection.
+    // Replacement connection on the SAME endpoints while a stale open is gated:
+    // releasing the stale open never closes or disposes the replacement connection.
     final ntIn2 = midiCommand.availableDevices.firstWhere(
       (d) => d.id == 'nt-in-2',
     );
@@ -1117,84 +1272,74 @@ void main() {
     );
   }, tags: ['regression']);
 
-  test('failed reconnect keeps opening ownership through cleanup, drains queued retry, and prevents overlapping third open', () async {
+  test('failed silent reconnect keeps opening ownership through cleanup, drains queued retry, and prevents overlapping third open', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     midiCommand.availableDevices = [input1, output1];
 
     await cubit.initialize();
     await cubit.connectToDevices(input1, output1, 0);
+    final oldManager = cubit.requireDisting();
 
     midiCommand.simulateDevicesDisappeared({input1.id, output1.id});
     await _flushEventQueue();
 
-    // First return fails on input2 (so no self-disconnect occurs), then gates
-    // inside catch cleanup's devices lookup after _pendingReconnectTarget is set.
     final input2 = _makeEndpoint('nt-in-2', 'disting NT', MidiPortType.IN);
     final output2 = _makeEndpoint('nt-out-2', 'disting NT', MidiPortType.OUT);
-    final cleanupGate = Completer<void>();
-    final cleanupEntered = Completer<void>();
-    midiCommand.throwOnConnectDeviceId = input2.id;
-    var devicesCallsAfterReturn = 0;
-    midiCommand.onDevicesRequested = () {
-      devicesCallsAfterReturn++;
-      // Call 1 is _checkPendingReconnect; call 2 is catch cleanup.
-      if (devicesCallsAfterReturn == 2) {
-        midiCommand.pendingDevicesGate = cleanupGate;
-        if (!cleanupEntered.isCompleted) {
-          cleanupEntered.complete();
-        }
-      }
-    };
-
+    final attempt1Gate = Completer<void>();
     midiCommand.connectCalls.clear();
+    midiCommand.pendingConnectByDeviceId[input2.id] = attempt1Gate;
     midiCommand.simulateDevicesAppeared([input2, output2]);
-    await cleanupEntered.future.timeout(const Duration(seconds: 2));
     await _flushEventQueue();
-    expect(midiCommand.openDeviceIds, isEmpty);
+    expect(midiCommand.connectCalls, [input2.id]);
 
-    // Arm a gate on the retry's input open and clear the failure fault.
-    midiCommand.onDevicesRequested = null;
-    midiCommand.throwOnConnectDeviceId = null;
-    midiCommand.connectCalls.clear();
+    // Arm a gate on the retry's input open.
     final retryGate = Completer<void>();
     midiCommand.pendingConnectByDeviceId[input2.id] = retryGate;
     midiCommand.presetName = 'Single Retry Owner';
 
-    // Deliver a setup event while attempt #1 is still suspended in cleanup.
-    // Because attempt #1 still owns the opening lock through cleanup, no
-    // retry may start until cleanup releases ownership.
+    // Deliver a setup event while attempt #1 still owns the opening lock:
+    // must NOT start an overlapping retry yet.
     midiCommand.emitSetupChange(MidiSetupChange.deviceStateChanged);
     await _flushEventQueue();
-    expect(midiCommand.connectCalls, isEmpty);
-
-    // Release attempt #1 cleanup -> queued notification triggers retry attempt #2,
-    // which suspends on retryGate.
-    cleanupGate.complete();
-    await _flushEventQueue();
     expect(midiCommand.connectCalls, [input2.id]);
+
+    // Fail attempt #1 -> finally releases ownership and drains queued retry attempt #2,
+    // which suspends on retryGate.
+    attempt1Gate.completeError(StateError('Transient open failure'));
+    await _flushEventQueue();
+    expect(midiCommand.connectCalls, [input2.id, input2.id]);
 
     // Deliver another setup event while retry attempt #2 is still gated:
     // must NOT start an overlapping third open.
     midiCommand.emitSetupChange(MidiSetupChange.deviceAppeared);
     await _flushEventQueue();
-    expect(midiCommand.connectCalls, [input2.id]);
+    expect(midiCommand.connectCalls, [input2.id, input2.id]);
 
-    // Release retryGate -> attempt #2 finishes cleanly.
-    final synced = cubit.stream.firstWhere(
-      (state) => state is DistingStateSynchronized,
+    // Release retryGate -> attempt #2 finishes silently.
+    final reconnected = cubit.stream.firstWhere(
+      (state) =>
+          state is DistingStateSynchronized &&
+          !identical(state.disting, oldManager),
     );
     retryGate.complete();
-    await synced.timeout(const Duration(seconds: 2));
+    await reconnected.timeout(const Duration(seconds: 2));
 
-    expect(midiCommand.connectCalls, [input2.id, output2.id]);
+    expect(midiCommand.connectCalls, [input2.id, input2.id, output2.id]);
     expect(
       await cubit.requireDisting().requestPresetName(),
       'Single Retry Owner',
     );
   }, tags: ['regression']);
 
-  test('Linux async-close contract: surviving counterpart during rapid bounce does not reopen stale snapshot object before native close completes', () async {
+  test('Linux async-close contract: surviving counterpart during rapid bounce stays silently synchronized without racing unawaited close and reconnects fresh on refresh', () async {
+    await cubit.close();
+    cubit = DistingCubit(
+      database,
+      midiCommand: midiCommand,
+      isWindowsOverride: false,
+      isLinuxOverride: true,
+    );
     midiCommand.simulateLinuxAsyncClose = true;
     final input1 = _makeEndpoint('aseq:20:0', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('aseq:20:1', 'disting NT', MidiPortType.OUT);
@@ -1209,6 +1354,7 @@ void main() {
     );
     final connectedOutput =
         (cubit.state as DistingStateSynchronized).outputDevice!;
+    final oldManager = cubit.requireDisting();
     expect(cubit.state, isA<DistingStateSynchronized>());
 
     // Hold the Linux async close of the surviving output endpoint on a gate.
@@ -1218,7 +1364,7 @@ void main() {
     midiCommand.presetName = 'Fresh After Async Close';
 
     // Input bounces rapidly to a new ID while output stays in the Linux
-    // connected map (so pre-teardown devices() returns connectedOutput).
+    // connected map.
     midiCommand.connectedLinuxDevices.remove(input1.id);
     midiCommand.alsaConnectedEndpoints.remove(input1.id);
     midiCommand.openDeviceIds.remove(input1.id);
@@ -1228,34 +1374,35 @@ void main() {
     midiCommand.emitSetupChange(MidiSetupChange.deviceAppeared);
     await _flushEventQueue();
 
-    // Must NOT immediately auto-reopen against the unawaited Linux close,
-    // and must present fresh post-teardown device objects for normal Connect.
+    // Must NOT leave SynchronizedScreen and must NOT immediately race
+    // an automatic open against the unawaited Linux close.
+    expect(cubit.state, isA<DistingStateSynchronized>());
     expect(midiCommand.connectCalls, isEmpty);
-    final selectState = cubit.state as DistingStateSelectDevice;
-    expect(selectState.selectedInputDevice?.id, input2.id);
-    expect(selectState.selectedOutputDevice?.id, output1.id);
-    expect(
-      identical(selectState.selectedOutputDevice, connectedOutput),
-      isFalse,
-    );
 
-    // Complete the native async close, then reconnect via normal flow.
+    // Complete the native async close, then recover via user refresh without leaving editor.
     outputCloseGate.complete();
     await _flushEventQueue();
 
-    await cubit.connectToDevices(
-      selectState.selectedInputDevice!,
-      selectState.selectedOutputDevice!,
-      selectState.selectedSysExId,
-    );
-    expect(cubit.state, isA<DistingStateSynchronized>());
+    await cubit.refresh();
+    final recovered = cubit.state as DistingStateSynchronized;
+    expect(identical(recovered.disting, oldManager), isFalse);
+    expect(recovered.inputDevice?.id, input2.id);
+    expect(recovered.outputDevice?.id, output1.id);
+    expect(identical(recovered.outputDevice, connectedOutput), isFalse);
     expect(
       await cubit.requireDisting().requestPresetName(),
       'Fresh After Async Close',
     );
   }, tags: ['regression']);
 
-  test('Linux async-close contract: surviving counterpart with delayed input return avoids racing unawaited close and reconnects via normal flow', () async {
+  test('Linux async-close contract: surviving counterpart with delayed input return avoids racing unawaited close and auto-recovers once surviving port vanishes and returns', () async {
+    await cubit.close();
+    cubit = DistingCubit(
+      database,
+      midiCommand: midiCommand,
+      isWindowsOverride: false,
+      isLinuxOverride: true,
+    );
     midiCommand.simulateLinuxAsyncClose = true;
     final input1 = _makeEndpoint('aseq:20:0', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('aseq:20:1', 'disting NT', MidiPortType.OUT);
@@ -1270,6 +1417,7 @@ void main() {
     );
     final connectedOutput =
         (cubit.state as DistingStateSynchronized).outputDevice!;
+    final oldManager = cubit.requireDisting();
 
     final outputCloseGate = Completer<void>();
     midiCommand.pendingAsyncDisconnectById[output1.id] = outputCloseGate;
@@ -1284,13 +1432,8 @@ void main() {
     midiCommand.emitSetupChange(MidiSetupChange.deviceDisappeared);
     await _flushEventQueue();
 
-    final waitingState = cubit.state as DistingStateSelectDevice;
-    expect(waitingState.selectedInputDevice, isNull);
-    expect(waitingState.selectedOutputDevice?.id, output1.id);
-    expect(
-      identical(waitingState.selectedOutputDevice, connectedOutput),
-      isFalse,
-    );
+    expect(cubit.state, isA<DistingStateSynchronized>());
+    expect(midiCommand.connectCalls, isEmpty);
 
     // Input returns while output's unawaited Linux close is STILL in flight.
     final input2 = _makeEndpoint('aseq:21:0', 'disting NT', MidiPortType.IN);
@@ -1299,28 +1442,69 @@ void main() {
     await _flushEventQueue();
 
     // Must NOT race an automatic open against the unawaited close.
+    expect(cubit.state, isA<DistingStateSynchronized>());
     expect(midiCommand.connectCalls, isEmpty);
-    final readyState = cubit.state as DistingStateSelectDevice;
-    expect(readyState.selectedInputDevice?.id, input2.id);
-    expect(readyState.selectedOutputDevice?.id, output1.id);
 
-    // Once native async close completes, normal Connect succeeds cleanly.
+    // Complete the native async close; user refresh silently reopens fresh objects.
     outputCloseGate.complete();
     await _flushEventQueue();
 
-    await cubit.connectToDevices(
-      readyState.selectedInputDevice!,
-      readyState.selectedOutputDevice!,
-      readyState.selectedSysExId,
-    );
-    expect(cubit.state, isA<DistingStateSynchronized>());
+    await cubit.refresh();
+    final recovered = cubit.state as DistingStateSynchronized;
+    expect(identical(recovered.disting, oldManager), isFalse);
+    expect(recovered.inputDevice?.id, input2.id);
+    expect(recovered.outputDevice?.id, output1.id);
+    expect(identical(recovered.outputDevice, connectedOutput), isFalse);
     expect(
       await cubit.requireDisting().requestPresetName(),
       'Delayed Return After Async Close',
     );
   }, tags: ['regression']);
 
-  test('disconnect during in-flight sync aborts sync promptly and recovers on return', () async {
+  test('Linux full disappearance (both ports vanish and return) recovers silently and automatically', () async {
+    await cubit.close();
+    cubit = DistingCubit(
+      database,
+      midiCommand: midiCommand,
+      isWindowsOverride: false,
+      isLinuxOverride: true,
+    );
+    midiCommand.simulateLinuxAsyncClose = true;
+    final input1 = _makeEndpoint('aseq:20:0', 'disting NT', MidiPortType.IN);
+    final output1 = _makeEndpoint('aseq:20:1', 'disting NT', MidiPortType.OUT);
+    midiCommand.availableDevices = [input1, output1];
+
+    await cubit.initialize();
+    final initialState = cubit.state as DistingStateSelectDevice;
+    await cubit.connectToDevices(
+      initialState.inputDevices.single,
+      initialState.outputDevices.single,
+      0,
+    );
+    final oldManager = cubit.requireDisting();
+
+    midiCommand.simulateDevicesDisappeared({input1.id, output1.id});
+    await _flushEventQueue();
+    expect(cubit.state, isA<DistingStateSynchronized>());
+
+    midiCommand.presetName = 'Linux Full Auto Reconnect';
+    final reconnected = cubit.stream.firstWhere(
+      (state) =>
+          state is DistingStateSynchronized &&
+          !identical(state.disting, oldManager),
+    );
+    midiCommand.simulateDevicesAppeared([
+      _makeEndpoint('aseq:24:0', 'disting NT', MidiPortType.IN),
+      _makeEndpoint('aseq:24:1', 'disting NT', MidiPortType.OUT),
+    ]);
+    await reconnected.timeout(const Duration(seconds: 2));
+    expect(
+      await cubit.requireDisting().requestPresetName(),
+      'Linux Full Auto Reconnect',
+    );
+  }, tags: ['regression']);
+
+  test('disconnect during in-flight initial sync aborts sync promptly and recovers silently on return', () async {
     final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
     final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
     midiCommand.availableDevices = [input1, output1];
@@ -1343,16 +1527,17 @@ void main() {
     await presetNameSent.future.timeout(const Duration(seconds: 2));
     expect(cubit.state, isA<DistingStateConnected>());
 
-    // Disconnect mid-sync: sync exits promptly without hanging.
+    final emittedStates = <DistingState>[];
+    final sub = cubit.stream.listen(emittedStates.add);
+    addTearDown(sub.cancel);
+
+    // Disconnect mid-sync: sync exits promptly without bouncing to SelectDevice.
     midiCommand.simulateDevicesDisappeared({input1.id, output1.id});
     await connectFuture.timeout(const Duration(seconds: 2));
     await _flushEventQueue();
 
-    expect(cubit.state, isA<DistingStateSelectDevice>());
-    expect(
-      (cubit.state as DistingStateSelectDevice).connectionStatus,
-      contains('MIDI connection lost'),
-    );
+    expect(cubit.state, isA<DistingStateConnected>());
+    expect(emittedStates.whereType<DistingStateSelectDevice>(), isEmpty);
 
     // Device returns and completes full sync cleanly.
     midiCommand.onPacketSent = null;
@@ -1367,6 +1552,7 @@ void main() {
     ]);
     await synced.timeout(const Duration(seconds: 2));
 
+    expect(emittedStates.whereType<DistingStateSelectDevice>(), isEmpty);
     expect(
       await cubit.requireDisting().requestPresetName(),
       'Synced After Mid-Sync Drop',
@@ -1374,66 +1560,285 @@ void main() {
   }, tags: ['regression']);
 
   testWidgets(
-    'device selection status banner preserves control geometry and exposes a live region',
+    'starting with no MIDI ports then plugging in NT enables Connect after valid user selection without restart',
     (tester) async {
       tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.physicalSize = const Size(1400, 900);
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
 
-      final mockCubit = _MockDistingCubit();
-      final states = StreamController<DistingState>.broadcast();
-      addTearDown(states.close);
-
-      const baseState = DistingStateSelectDevice(
-        inputDevices: [],
-        outputDevices: [],
-        canWorkOffline: false,
+      final testDb = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(testDb.close);
+      await tester.runAsync(
+        () => AlgorithmMetadataService().initialize(testDb),
       );
-      whenListen(mockCubit, states.stream, initialState: baseState);
 
-      final semantics = tester.ensureSemantics();
-      try {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: BlocProvider<DistingCubit>.value(
-              value: mockCubit,
-              child: const DistingPage(),
-            ),
+      final appUpdateService = _createNoOpAppUpdateService();
+
+      final widgetMidi = _FakeMidiCommand();
+      addTearDown(widgetMidi.closeControllers);
+      final widgetCubit = DistingCubit(
+        testDb,
+        midiCommand: widgetMidi,
+        isWindowsOverride: false,
+        isLinuxOverride: false,
+      );
+      addTearDown(widgetCubit.close);
+
+      // App starts with zero MIDI ports available.
+      await widgetCubit.initialize();
+      expect(widgetCubit.state, isA<DistingStateSelectDevice>());
+      expect(widgetMidi.setupListenerCount, 1);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider<DistingCubit>.value(
+            value: widgetCubit,
+            child: DistingPage(appUpdateService: appUpdateService),
           ),
-        );
-        await tester.pump();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        final inputDropdown = find.byKey(
-          const ValueKey('input-midi-device-dropdown'),
-        );
-        final connectButton = find.widgetWithText(FilledButton, 'Connect');
-        final initialInputRect = tester.getRect(inputDropdown);
-        final initialConnectRect = tester.getRect(connectButton);
+      final connectFinder = find.widgetWithText(FilledButton, 'Connect');
+      expect(tester.widget<FilledButton>(connectFinder).onPressed, isNull);
 
-        const statusText =
-            'MIDI connection lost. Waiting for disting NT to reconnect.';
-        states.add(baseState.copyWith(connectionStatus: statusText));
-        await tester.pump();
-        await tester.pump();
+      // USB connected after app start alongside another MIDI port (multiple choices).
+      final otherIn = _makeEndpoint('bus-1', 'Bus 1', MidiPortType.IN);
+      final otherOut = _makeEndpoint('bus-1-out', 'Bus 1', MidiPortType.OUT);
+      final ntIn = _makeEndpoint('nt-in-late', 'disting NT', MidiPortType.IN);
+      final ntOut = _makeEndpoint(
+        'nt-out-late',
+        'disting NT',
+        MidiPortType.OUT,
+      );
+      widgetMidi.presetName = 'Connected After Late USB';
+      widgetMidi.simulateDevicesAppeared([otherIn, otherOut, ntIn, ntOut]);
+      await tester.pump();
+      await tester.pumpAndSettle();
 
-        expect(find.text(statusText), findsOneWidget);
-        expect(tester.getRect(inputDropdown), initialInputRect);
-        expect(tester.getRect(connectButton), initialConnectRect);
+      final afterAppear = widgetCubit.state as DistingStateSelectDevice;
+      expect(afterAppear.inputDevices.map((d) => d.id), contains('nt-in-late'));
+      expect(
+        afterAppear.outputDevices.map((d) => d.id),
+        contains('nt-out-late'),
+      );
+      expect(afterAppear.selectedInputDevice, isNull);
+      expect(afterAppear.selectedOutputDevice, isNull);
+      expect(tester.widget<FilledButton>(connectFinder).onPressed, isNull);
 
-        final semanticsNode = tester.getSemantics(find.text(statusText));
-        expect(semanticsNode.label, contains(statusText));
+      // Selecting NT input alone keeps Connect disabled.
+      await _chooseDropdown(
+        tester,
+        const ValueKey('input-midi-device-dropdown'),
+        'disting NT',
+      );
+      expect(tester.widget<FilledButton>(connectFinder).onPressed, isNull);
 
-        states.add(baseState.copyWith(connectionStatus: null));
-        await tester.pump();
-        await tester.pump();
+      // Selecting NT output as well enables Connect with no pending flags blocking it.
+      await _chooseDropdown(
+        tester,
+        const ValueKey('output-midi-device-dropdown'),
+        'disting NT',
+      );
+      expect(tester.widget<FilledButton>(connectFinder).onPressed, isNotNull);
 
-        expect(find.text(statusText), findsNothing);
-        expect(tester.getRect(inputDropdown), initialInputRect);
-        expect(tester.getRect(connectButton), initialConnectRect);
-      } finally {
-        semantics.dispose();
-      }
+      // Tapping Connect connects and synchronizes cleanly with no restart.
+      final synchronized = widgetCubit.stream.firstWhere(
+        (state) => state is DistingStateSynchronized,
+      );
+      await tester.tap(connectFinder);
+      await _awaitWhilePumping(tester, synchronized);
+      await tester.pump();
+
+      expect(widgetCubit.state, isA<DistingStateSynchronized>());
+      expect(find.byType(SynchronizedScreen), findsOneWidget);
+      expect(
+        await _awaitWhilePumping(
+          tester,
+          widgetCubit.requireDisting().requestPresetName(),
+        ),
+        'Connected After Late USB',
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 150));
+    },
+    tags: ['regression'],
+  );
+
+  testWidgets(
+    'real SynchronizedScreen preserves editor instance, selected slot, and local edits silently across MIDI loss and return with zero notifications',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1400, 900);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final testDb = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(testDb.close);
+      await tester.runAsync(
+        () => AlgorithmMetadataService().initialize(testDb),
+      );
+
+      final appUpdateService = _createNoOpAppUpdateService();
+
+      final widgetMidi = _FakeMidiCommand();
+      addTearDown(widgetMidi.closeControllers);
+      final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
+      final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
+      widgetMidi.availableDevices = [input1, output1];
+      widgetMidi.presetName = 'Live Session';
+
+      final widgetCubit = DistingCubit(
+        testDb,
+        midiCommand: widgetMidi,
+        isWindowsOverride: false,
+        isLinuxOverride: false,
+      );
+      addTearDown(widgetCubit.close);
+
+      await widgetCubit.initialize();
+      await _awaitWhilePumping(
+        tester,
+        widgetCubit.connectToDevices(input1, output1, 0),
+      );
+      final initialSync = widgetCubit.state as DistingStateSynchronized;
+      final oldManager = widgetCubit.requireDisting();
+      widgetCubit.emit(
+        initialSync.copyWith(
+          slots: [
+            _makeSlot(0, 'G1', 'Alpha', value: 10),
+            _makeSlot(1, 'G2', 'Beta', value: 25),
+          ],
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider<DistingCubit>.value(
+            value: widgetCubit,
+            child: DistingPage(appUpdateService: appUpdateService),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SynchronizedScreen), findsOneWidget);
+      final initialScreenState = tester.state(find.byType(SynchronizedScreen));
+
+      // Select slot 1 (Beta) in the editor sidebar.
+      final sidebarBefore = tester.widget<AlgorithmListView>(
+        find.byType(AlgorithmListView),
+      );
+      sidebarBefore.onSelectionChanged(1);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<AlgorithmListView>(find.byType(AlgorithmListView))
+            .selectedIndex,
+        1,
+      );
+
+      // Simulate transient MIDI loss.
+      widgetMidi.simulateDevicesDisappeared({input1.id, output1.id});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      // Exact same SynchronizedScreen State instance remains mounted; zero messages/banners/dialogs.
+      expect(find.byType(SynchronizedScreen), findsOneWidget);
+      expect(
+        identical(
+          tester.state(find.byType(SynchronizedScreen)),
+          initialScreenState,
+        ),
+        isTrue,
+      );
+      expect(find.textContaining('MIDI connection lost'), findsNothing);
+      expect(
+        find.text('Select MIDI input and output ports, then connect.'),
+        findsNothing,
+      );
+      expect(find.text('Synchronizing...'), findsNothing);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(
+        tester
+            .widget<AlgorithmListView>(find.byType(AlgorithmListView))
+            .selectedIndex,
+        1,
+      );
+
+      // Perform a local parameter edit while disconnected: preserved in UI, no MIDI sent/queued, no snackbar.
+      widgetMidi.sentPackets.clear();
+      await widgetCubit.updateParameterValue(
+        algorithmIndex: 1,
+        parameterNumber: 0,
+        value: 77,
+        userIsChangingTheValue: false,
+      );
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(find.text('77'), findsWidgets);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(widgetMidi.sentPackets, isEmpty);
+
+      // Simulate MIDI return with re-enumerated IDs.
+      widgetMidi.presetName = 'Resumed Quietly';
+      final reconnected = widgetCubit.stream.firstWhere(
+        (state) =>
+            state is DistingStateSynchronized &&
+            !identical(state.disting, oldManager),
+      );
+      widgetMidi.simulateDevicesAppeared([
+        _makeEndpoint('nt-in-2', 'disting NT', MidiPortType.IN),
+        _makeEndpoint('nt-out-2', 'disting NT', MidiPortType.OUT),
+      ]);
+      await _awaitWhilePumping(tester, reconnected);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      // Still the exact same SynchronizedScreen instance, same selected slot, local edit preserved, zero notifications.
+      expect(find.byType(SynchronizedScreen), findsOneWidget);
+      expect(
+        identical(
+          tester.state(find.byType(SynchronizedScreen)),
+          initialScreenState,
+        ),
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<AlgorithmListView>(find.byType(AlgorithmListView))
+            .selectedIndex,
+        1,
+      );
+      expect(find.text('77'), findsWidgets);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.byType(AlertDialog), findsNothing);
+      // No stale parameter writes or unsolicited resync traffic on silent return
+      // (only read-only CPU monitoring resumed for the active SynchronizedScreen).
+      expect(
+        widgetMidi.sentPackets.where(
+          (packet) =>
+              packet.length <= 6 ||
+              (packet[6] != DistingNTRequestMessageType.wake.value &&
+                  packet[6] !=
+                      DistingNTRequestMessageType.requestCpuUsage.value),
+        ),
+        isEmpty,
+      );
+
+      // Fresh NT query immediately works automatically without manual Connect.
+      expect(
+        await _awaitWhilePumping(
+          tester,
+          widgetCubit.requireDisting().requestPresetName(),
+        ),
+        'Resumed Quietly',
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 150));
     },
     tags: ['regression'],
   );

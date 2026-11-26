@@ -276,6 +276,7 @@ final class _MemoryDelegate {
   }
 
   IDistingMidiManager? _physicalManager(DistingState state) {
+    if (_cubit._connectionDelegate.isTransportDisconnected) return null;
     return switch (state) {
       DistingStateSynchronized(
         disting: final manager,

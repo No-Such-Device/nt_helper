@@ -567,4 +567,128 @@ void main() {
       () => harness.cubit.connectToDevices(refreshedInput, refreshedOutput, 7),
     ).called(1);
   });
+
+  testWidgets(
+    'removing a selected MIDI port clears stale dropdown text and re-selecting after return enables Connect',
+    (tester) async {
+      final ntIn = _input('nt-in', 'disting NT');
+      final ntOut = _output('nt-out', 'disting NT');
+      final otherIn = _input('other-in', 'Bus 1');
+      final otherOut = _output('other-out', 'Bus 1');
+      final harness = _SelectionHarness(
+        DistingState.selectDevice(
+          inputDevices: [otherIn, ntIn],
+          outputDevices: [otherOut, ntOut],
+          canWorkOffline: true,
+          selectedInputDevice: ntIn,
+          selectedOutputDevice: ntOut,
+        ) as DistingStateSelectDevice,
+      );
+      when(() => harness.cubit.connectToDevices(ntIn, ntOut, 0))
+          .thenAnswer((_) async {});
+
+      await _pumpPage(tester, harness);
+
+      String dropdownText(Key key) => tester
+          .widget<EditableText>(
+            find.descendant(
+              of: find.byKey(key),
+              matching: find.byType(EditableText),
+            ),
+          )
+          .controller
+          .text;
+
+      expect(
+        dropdownText(const ValueKey('input-midi-device-dropdown')),
+        'disting NT',
+      );
+      expect(
+        dropdownText(const ValueKey('output-midi-device-dropdown')),
+        'disting NT',
+      );
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Connect'))
+            .onPressed,
+        isNotNull,
+      );
+
+      // Selected NT disappears while other ports remain -> model clears to null.
+      harness.emit(
+        DistingState.selectDevice(
+          inputDevices: [otherIn],
+          outputDevices: [otherOut],
+          canWorkOffline: true,
+          selectedInputDevice: null,
+          selectedOutputDevice: null,
+        ) as DistingStateSelectDevice,
+      );
+      await tester.pumpAndSettle();
+
+      expect(dropdownText(const ValueKey('input-midi-device-dropdown')), '');
+      expect(dropdownText(const ValueKey('output-midi-device-dropdown')), '');
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Connect'))
+            .onPressed,
+        isNull,
+      );
+
+      // NT returns among multiple ports (still unselected in model).
+      harness.emit(
+        DistingState.selectDevice(
+          inputDevices: [otherIn, ntIn],
+          outputDevices: [otherOut, ntOut],
+          canWorkOffline: true,
+          selectedInputDevice: null,
+          selectedOutputDevice: null,
+        ) as DistingStateSelectDevice,
+      );
+      await tester.pumpAndSettle();
+
+      expect(dropdownText(const ValueKey('input-midi-device-dropdown')), '');
+      expect(dropdownText(const ValueKey('output-midi-device-dropdown')), '');
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Connect'))
+            .onPressed,
+        isNull,
+      );
+
+      // Selecting NT in both dropdowns updates displayed text and enables Connect.
+      await _choose(
+        tester,
+        const ValueKey('input-midi-device-dropdown'),
+        'disting NT',
+      );
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Connect'))
+            .onPressed,
+        isNull,
+      );
+      await _choose(
+        tester,
+        const ValueKey('output-midi-device-dropdown'),
+        'disting NT',
+      );
+
+      expect(
+        dropdownText(const ValueKey('input-midi-device-dropdown')),
+        'disting NT',
+      );
+      expect(
+        dropdownText(const ValueKey('output-midi-device-dropdown')),
+        'disting NT',
+      );
+      final connect = find.widgetWithText(FilledButton, 'Connect');
+      expect(tester.widget<FilledButton>(connect).onPressed, isNotNull);
+
+      await tester.tap(connect);
+      await tester.pump();
+      verify(() => harness.cubit.connectToDevices(ntIn, ntOut, 0)).called(1);
+    },
+    tags: ['regression'],
+  );
 }

@@ -212,9 +212,11 @@ class DistingCubit extends _DistingCubitBase
     MidiCommand? midiCommand,
     MidiCommand Function()? midiCommandFactory,
     bool? isWindowsOverride,
+    bool? isLinuxOverride,
   }) : _prefs = SharedPreferences.getInstance(),
        _midiCommandFactory = midiCommandFactory ?? createNativeMidiCommand,
        _isWindows = isWindowsOverride ?? Platform.isWindows,
+       _isLinux = isLinuxOverride ?? Platform.isLinux,
        super(const DistingState.initial()) {
     _metadataDao =
         database.metadataDao; // Initialize DAO using public database field
@@ -231,6 +233,7 @@ class DistingCubit extends _DistingCubitBase
 
   final MidiCommand Function() _midiCommandFactory;
   final bool _isWindows;
+  final bool _isLinux;
   late MidiCommand _midiCommand;
 
   // MIDI setup change subscription for auto-detecting device connections
@@ -1362,6 +1365,7 @@ class DistingCubit extends _DistingCubitBase
     _monitoringDelegate.pauseCpuMonitoring();
     if (identical(disting(), manager)) {
       _remoteDelegate.clearConnection();
+      _moduleSettingsDelegate.clearConnection();
       _memoryDelegate.clearConnection();
     }
     _parameterQueue?.dispose();
