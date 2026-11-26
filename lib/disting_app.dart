@@ -432,7 +432,7 @@ class _DistingPageState extends State<DistingPage> {
   }
 }
 
-class _DeviceSelectionView extends StatelessWidget {
+class _DeviceSelectionView extends StatefulWidget {
   final AppUpdateService appUpdateService;
   final List<MidiDevice> inputDevices;
   final List<MidiDevice> outputDevices;
@@ -471,22 +471,69 @@ class _DeviceSelectionView extends StatelessWidget {
     required this.canWorkOffline,
   });
 
+  @override
+  State<_DeviceSelectionView> createState() => _DeviceSelectionViewState();
+}
+
+class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
+  late final TextEditingController _inputController;
+  late final TextEditingController _outputController;
+  late final TextEditingController _sysExIdController;
+
   MidiDevice? _deviceWithId(List<MidiDevice> devices, String? id) => id == null
       ? null
       : devices.where((device) => device.id == id).firstOrNull;
+
+  MidiDevice? get _currentInputDevice =>
+      _deviceWithId(widget.inputDevices, widget.selectedInputDevice?.id);
+
+  MidiDevice? get _currentOutputDevice =>
+      _deviceWithId(widget.outputDevices, widget.selectedOutputDevice?.id);
+
+  void _syncControllerText(TextEditingController controller, String text) {
+    if (controller.text == text) return;
+    controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _inputController = TextEditingController(
+      text: _currentInputDevice?.name ?? '',
+    );
+    _outputController = TextEditingController(
+      text: _currentOutputDevice?.name ?? '',
+    );
+    _sysExIdController = TextEditingController(
+      text: widget.selectedSysExId.toString(),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _DeviceSelectionView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncControllerText(_inputController, _currentInputDevice?.name ?? '');
+    _syncControllerText(_outputController, _currentOutputDevice?.name ?? '');
+    _syncControllerText(_sysExIdController, widget.selectedSysExId.toString());
+  }
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    _outputController.dispose();
+    _sysExIdController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final currentInputDevice = _deviceWithId(
-      inputDevices,
-      selectedInputDevice?.id,
-    );
-    final currentOutputDevice = _deviceWithId(
-      outputDevices,
-      selectedOutputDevice?.id,
-    );
+    final currentInputDevice = _currentInputDevice;
+    final currentOutputDevice = _currentOutputDevice;
     final canConnect =
         currentInputDevice != null && currentOutputDevice != null;
 
@@ -513,14 +560,14 @@ class _DeviceSelectionView extends StatelessWidget {
                         ),
                       ),
                     ),
-                    AppUpdateAction(updateService: appUpdateService),
+                    AppUpdateAction(updateService: widget.appUpdateService),
                     IconButton(
                       icon: const Icon(
                         Icons.settings,
                         semanticLabel: 'Settings',
                       ),
                       tooltip: 'Settings',
-                      onPressed: onSettingsPressed,
+                      onPressed: widget.onSettingsPressed,
                     ),
                   ],
                 ),
@@ -530,20 +577,22 @@ class _DeviceSelectionView extends StatelessWidget {
                     DropdownMenu<String>(
                       key: const ValueKey('input-midi-device-dropdown'),
                       width: 250,
+                      controller: _inputController,
+                      selectOnly: true,
                       initialSelection: currentInputDevice?.id,
                       enabled: true,
                       label: const Text('Input MIDI Device'),
-                      dropdownMenuEntries: inputDevices.map((device) {
+                      dropdownMenuEntries: widget.inputDevices.map((device) {
                         return DropdownMenuEntry<String>(
                           value: device.id,
                           label: device.name,
                         );
                       }).toList(),
                       onSelected: (id) {
-                        onSelectionChanged(
-                          _deviceWithId(inputDevices, id),
+                        widget.onSelectionChanged(
+                          _deviceWithId(widget.inputDevices, id),
                           currentOutputDevice,
-                          selectedSysExId,
+                          widget.selectedSysExId,
                         );
                       },
                     ),
@@ -554,7 +603,7 @@ class _DeviceSelectionView extends StatelessWidget {
                         semanticLabel: 'Refresh devices',
                       ),
                       tooltip: 'Refresh devices',
-                      onPressed: onRefresh,
+                      onPressed: widget.onRefresh,
                     ),
                   ],
                 ),
@@ -562,29 +611,32 @@ class _DeviceSelectionView extends StatelessWidget {
                 DropdownMenu<String>(
                   key: const ValueKey('output-midi-device-dropdown'),
                   width: 250,
+                  controller: _outputController,
+                  selectOnly: true,
                   initialSelection: currentOutputDevice?.id,
                   enabled: true,
                   label: const Text('Output MIDI Device'),
-                  dropdownMenuEntries: outputDevices.map((device) {
+                  dropdownMenuEntries: widget.outputDevices.map((device) {
                     return DropdownMenuEntry<String>(
                       value: device.id,
                       label: device.name,
                     );
                   }).toList(),
                   onSelected: (id) {
-                    onSelectionChanged(
+                    widget.onSelectionChanged(
                       currentInputDevice,
-                      _deviceWithId(outputDevices, id),
-                      selectedSysExId,
+                      _deviceWithId(widget.outputDevices, id),
+                      widget.selectedSysExId,
                     );
                   },
                 ),
                 const SizedBox(height: 16),
                 DropdownMenu<int>(
                   width: 250,
+                  controller: _sysExIdController,
                   // Search text is not a committed SysEx ID. Show selections only.
                   selectOnly: true,
-                  initialSelection: selectedSysExId,
+                  initialSelection: widget.selectedSysExId,
                   label: const Text("Device ID"),
                   dropdownMenuEntries: List.generate(128, (index) {
                     return DropdownMenuEntry<int>(
@@ -594,7 +646,7 @@ class _DeviceSelectionView extends StatelessWidget {
                   }),
                   onSelected: (id) {
                     if (id == null) return;
-                    onSelectionChanged(
+                    widget.onSelectionChanged(
                       currentInputDevice,
                       currentOutputDevice,
                       id,
@@ -610,28 +662,30 @@ class _DeviceSelectionView extends StatelessWidget {
                       icon: const Icon(Icons.link),
                       label: const Text('Connect'),
                       onPressed: canConnect
-                          ? () => onDeviceSelected(
+                          ? () => widget.onDeviceSelected(
                               currentInputDevice,
                               currentOutputDevice,
-                              selectedSysExId,
+                              widget.selectedSysExId,
                             )
                           : null,
                     ),
-                    if (onFirmwarePressed != null)
+                    if (widget.onFirmwarePressed != null)
                       OutlinedButton.icon(
                         icon: const Icon(Icons.system_update),
                         label: const Text('Firmware'),
-                        onPressed: () => onFirmwarePressed?.call(
+                        onPressed: () => widget.onFirmwarePressed?.call(
                           null,
                           currentInputDevice,
                           currentOutputDevice,
-                          selectedSysExId,
+                          widget.selectedSysExId,
                         ),
                       ),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.cloud_off),
                       label: const Text('Offline'),
-                      onPressed: canWorkOffline ? onOfflinePressed : null,
+                      onPressed: widget.canWorkOffline
+                          ? widget.onOfflinePressed
+                          : null,
                     ),
                   ],
                 ),
@@ -652,7 +706,7 @@ class _DeviceSelectionView extends StatelessWidget {
                   hint: 'Try the app with simulated algorithms, no hardware needed',
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.play_arrow),
-                    onPressed: onDemoPressed,
+                    onPressed: widget.onDemoPressed,
                     label: const Text('Demo Mode'),
                   ),
                 ),

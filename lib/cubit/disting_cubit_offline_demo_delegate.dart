@@ -7,9 +7,11 @@ class _OfflineDemoDelegate {
 
   Future<void> onDemo() async {
     _cubit._remoteDelegate.clearConnection();
+    _cubit._moduleSettingsDelegate.clearConnection();
     _cubit._memoryDelegate.clearConnection();
 
     // Stop listening for MIDI setup changes when entering demo mode
+    _cubit._connectionDelegate.clearConnectionTracking();
     _cubit._stopMidiSetupListener();
 
     // Stop CC notifications before replacing manager
@@ -50,6 +52,7 @@ class _OfflineDemoDelegate {
 
   Future<void> goOffline() async {
     _cubit._remoteDelegate.clearConnection();
+    _cubit._moduleSettingsDelegate.clearConnection();
     _cubit._memoryDelegate.clearConnection();
     final currentState = _cubit.state;
     if (currentState is DistingStateSynchronized && currentState.offline) {
@@ -57,6 +60,7 @@ class _OfflineDemoDelegate {
     }
 
     // Stop listening for MIDI setup changes when going offline
+    _cubit._connectionDelegate.clearConnectionTracking();
     _cubit._stopMidiSetupListener();
 
     // Stop CC notifications before disconnecting (avoids callbacks on disposed manager)
@@ -85,11 +89,15 @@ class _OfflineDemoDelegate {
       // Disconnect existing MIDI connection IF devices were present
       if (currentManager != null) {
         if (currentInputDevice != null) {
-          _cubit._midiCommand.disconnectDevice(currentInputDevice);
+          try {
+            _cubit._midiCommand.disconnectDevice(currentInputDevice);
+          } catch (_) {}
         }
         if (currentOutputDevice != null &&
             currentOutputDevice.id != currentInputDevice?.id) {
-          _cubit._midiCommand.disconnectDevice(currentOutputDevice);
+          try {
+            _cubit._midiCommand.disconnectDevice(currentOutputDevice);
+          } catch (_) {}
         }
         currentManager.dispose();
       }

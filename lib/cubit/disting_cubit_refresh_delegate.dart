@@ -16,7 +16,16 @@ class _RefreshDelegate {
   Future<void> refresh({bool fullRefresh = false}) async {
     final currentState = _cubit.state;
     if (currentState is DistingStateSynchronized) {
-      if (fullRefresh && !currentState.offline) {
+      if (!currentState.offline &&
+          !currentState.demo &&
+          _cubit._connectionDelegate.hasPendingReconnect) {
+        final reconnected = await _cubit._connectionDelegate
+            .tryReconnectPendingForUserRefresh();
+        if (!reconnected) return;
+      }
+      final refreshedState = _cubit.state;
+      if (refreshedState is! DistingStateSynchronized) return;
+      if (fullRefresh && !refreshedState.offline) {
         await _cubit._performSyncAndEmit();
         _cubit._memoryDelegate.refreshAfterDeviceMutation();
         return;
@@ -24,9 +33,9 @@ class _RefreshDelegate {
 
       await _cubit._refreshStateFromManager();
 
-      if (!currentState.offline &&
+      if (!refreshedState.offline &&
           _cubit._algorithmLibraryDelegate.shouldRefreshAlgorithms(
-            currentState,
+            refreshedState,
           )) {
         _cubit._algorithmLibraryDelegate.refreshAlgorithmsInBackground();
       }

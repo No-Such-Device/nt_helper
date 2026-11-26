@@ -212,9 +212,11 @@ class DistingCubit extends _DistingCubitBase
     MidiCommand? midiCommand,
     MidiCommand Function()? midiCommandFactory,
     bool? isWindowsOverride,
+    bool? isLinuxOverride,
   }) : _prefs = SharedPreferences.getInstance(),
        _midiCommandFactory = midiCommandFactory ?? createNativeMidiCommand,
        _isWindows = isWindowsOverride ?? Platform.isWindows,
+       _isLinux = isLinuxOverride ?? Platform.isLinux,
        super(const DistingState.initial()) {
     _metadataDao =
         database.metadataDao; // Initialize DAO using public database field
@@ -231,6 +233,7 @@ class DistingCubit extends _DistingCubitBase
 
   final MidiCommand Function() _midiCommandFactory;
   final bool _isWindows;
+  final bool _isLinux;
   late MidiCommand _midiCommand;
 
   // MIDI setup change subscription for auto-detecting device connections
@@ -286,6 +289,7 @@ class DistingCubit extends _DistingCubitBase
   @override
   Future<void> close() async {
     _cancelRespecificationForConnectionChange();
+    _connectionDelegate.dispose();
     await _remoteDelegate.dispose();
     await _moduleSettingsDelegate.dispose();
     _ccNotificationDelegate.stop();
@@ -302,8 +306,6 @@ class DistingCubit extends _DistingCubitBase
     _midiCommand.dispose();
 
     _parameterRefreshDelegate.dispose();
-
-    _midiSetupSubscription?.cancel();
 
     await _monitoringDelegate.dispose();
 
@@ -474,6 +476,15 @@ class DistingCubit extends _DistingCubitBase
   Future<void> goOnline() async {
     _cancelRespecificationForConnectionChange();
     return _offlineDemoDelegate.goOnline();
+  }
+
+  /// Leaves the current session (online, offline, or demo) and opens the
+  /// device selection screen with saved preferences restored without
+  /// automatically connecting to any MIDI device.
+  Future<void> switchToDeviceSelection() async {
+    _checkpointDelegate.clearCheckpoints();
+    _cancelRespecificationForConnectionChange();
+    return _connectionDelegate.switchToDeviceSelection();
   }
 
   Future<void> cancelSync() async {
@@ -1358,10 +1369,12 @@ class DistingCubit extends _DistingCubitBase
     MidiDevice inputDevice,
     MidiDevice outputDevice,
   ) {
+    _connectionDelegate.clearConnectionTracking();
     _ccNotificationDelegate.stop();
     _monitoringDelegate.pauseCpuMonitoring();
     if (identical(disting(), manager)) {
       _remoteDelegate.clearConnection();
+      _moduleSettingsDelegate.clearConnection();
       _memoryDelegate.clearConnection();
     }
     _parameterQueue?.dispose();

@@ -37,22 +37,32 @@ final class _ModuleSettingsDelegate {
 
   void onDistingStateWillChange(DistingState next) => _synchronize(next);
 
+  void clearConnection() {
+    if (_disposed) return;
+    _scope?.cancellation.cancel();
+    _scope = null;
+    _reason = 'Connect to a disting NT to read or change module settings.';
+    _publish();
+  }
+
   void _synchronize(DistingState next) {
     if (_disposed) return;
-    final reason = switch (next) {
-      DistingStateSynchronized(demo: true) =>
-        'Module settings are unavailable in Demo mode.',
-      DistingStateSynchronized(offline: true) =>
-        'Connect to a disting NT to read or change module settings.',
-      DistingStateSynchronized(:final firmwareVersion)
-          when !firmwareVersion.isModuleSettingsCandidate =>
-        'NT Settings requires recognized firmware 1.20 or later, with settings protocol support.',
-      DistingStateSynchronized(:final disting)
-          when disting is! ModuleSettingsTransport =>
-        'This connection does not support NT Settings.',
-      DistingStateSynchronized() => null,
-      _ => 'Connect to a disting NT to read or change module settings.',
-    };
+    final reason = _cubit._connectionDelegate.isTransportDisconnected
+        ? 'Connect to a disting NT to read or change module settings.'
+        : switch (next) {
+            DistingStateSynchronized(demo: true) =>
+              'Module settings are unavailable in Demo mode.',
+            DistingStateSynchronized(offline: true) =>
+              'Connect to a disting NT to read or change module settings.',
+            DistingStateSynchronized(:final firmwareVersion)
+                when !firmwareVersion.isModuleSettingsCandidate =>
+              'NT Settings requires recognized firmware 1.20 or later, with settings protocol support.',
+            DistingStateSynchronized(:final disting)
+                when disting is! ModuleSettingsTransport =>
+              'This connection does not support NT Settings.',
+            DistingStateSynchronized() => null,
+            _ => 'Connect to a disting NT to read or change module settings.',
+          };
     final manager = reason == null && next is DistingStateSynchronized
         ? next.disting
         : null;

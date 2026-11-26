@@ -58,8 +58,14 @@ mixin _DistingCubitSlotOps on _DistingCubitBase {
               final currentSlot = verificationState.slots[algorithmIndex];
               if (currentSlot.algorithm.guid != currentAlgorithm.guid) return;
               if (currentSlot.algorithm.name != trimmed) return;
+              if (!identical(verificationState.disting, disting)) return;
 
-              final actual = await disting.requestAlgorithmGuid(algorithmIndex);
+              Algorithm? actual;
+              try {
+                actual = await disting.requestAlgorithmGuid(algorithmIndex);
+              } catch (_) {
+                return;
+              }
               if (actual == null) return;
               if (isClosed || !identical(state, verificationState)) return;
 

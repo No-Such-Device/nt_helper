@@ -32,8 +32,9 @@ class _ParameterRefreshDelegate {
   /// The actual refresh occurs 300ms after the last call to this method.
   void scheduleParameterRefresh(int algorithmIndex) {
     final syncState = _cubit.state;
-    if (syncState is! DistingStateSynchronized) {
-      return; // Only schedule refresh when synchronized
+    if (syncState is! DistingStateSynchronized ||
+        _cubit._connectionDelegate.isTransportDisconnected) {
+      return; // Only schedule refresh when synchronized with an active transport
     }
 
     // Cancel any pending timer
@@ -42,29 +43,35 @@ class _ParameterRefreshDelegate {
     // Schedule a new refresh after the debounce delay
     _parameterRefreshTimer = Timer(_parameterRefreshDebounceDelay, () async {
       final manager = _cubit.disting();
-      if (manager != null) {
-        final allParameterValues = await manager.requestAllParameterValues(
-          algorithmIndex,
-        );
+      if (manager != null &&
+          !_cubit._connectionDelegate.isTransportDisconnected) {
+        try {
+          final allParameterValues = await manager.requestAllParameterValues(
+            algorithmIndex,
+          );
 
-        if (allParameterValues != null) {
-          // Get current state (might have changed since timer was scheduled)
-          final currentState = _cubit.state;
-          if (currentState is DistingStateSynchronized &&
-              algorithmIndex < currentState.slots.length) {
-            // Update the slot with the refreshed parameter values
-            final currentSlot = currentState.slots[algorithmIndex];
-            final updatedSlot = currentSlot.copyWith(
-              values: allParameterValues.values,
-            );
+          if (allParameterValues != null) {
+            // Get current state (might have changed since timer was scheduled)
+            final currentState = _cubit.state;
+            if (currentState is DistingStateSynchronized &&
+                identical(currentState.disting, manager) &&
+                algorithmIndex < currentState.slots.length) {
+              // Update the slot with the refreshed parameter values
+              final currentSlot = currentState.slots[algorithmIndex];
+              final updatedSlot = currentSlot.copyWith(
+                values: allParameterValues.values,
+              );
 
-            // Create new slots list with the updated slot
-            final updatedSlots = List<Slot>.from(currentState.slots);
-            updatedSlots[algorithmIndex] = updatedSlot;
+              // Create new slots list with the updated slot
+              final updatedSlots = List<Slot>.from(currentState.slots);
+              updatedSlots[algorithmIndex] = updatedSlot;
 
-            // Emit the updated state
-            _cubit._emitState(currentState.copyWith(slots: updatedSlots));
+              // Emit the updated state
+              _cubit._emitState(currentState.copyWith(slots: updatedSlots));
+            }
           }
+        } catch (_) {
+          // Silently discard debounced refresh failures during transient loss.
         }
       }
       _parameterRefreshTimer = null; // Clear timer reference

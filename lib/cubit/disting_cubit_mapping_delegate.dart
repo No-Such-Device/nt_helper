@@ -50,6 +50,9 @@ class _MappingDelegate {
     if (_disposed) {
       return Future.error(StateError('Mapping save coordinator is closed'));
     }
+    if (_cubit._connectionDelegate.isTransportDisconnected) {
+      return Future.error(StateError('MIDI transport is disconnected'));
+    }
 
     final key = (
       algorithmIndex: algorithmIndex,
@@ -134,7 +137,13 @@ class _MappingDelegate {
         _completeWaitersWithError(entry, error, stackTrace);
         return;
       } catch (error, stackTrace) {
-        if (_disposed) return;
+        if (_disposed || !identical(_pendingSaves[key], entry)) return;
+        if (_cubit._connectionDelegate.isTransportDisconnected) {
+          entry.writing = false;
+          _pendingSaves.remove(key);
+          _completeWaitersWithError(entry, error, stackTrace);
+          return;
+        }
         if (entry.revision != revision) {
           continue;
         }
@@ -286,6 +295,19 @@ class _MappingDelegate {
         entry.waitingForSynchronization = false;
         _scheduleSave(key, entry, Duration.zero);
       }
+    }
+  }
+
+  void discardPendingForConnectionLoss() {
+    if (_pendingSaves.isEmpty) return;
+    final error = StateError('MIDI transport is disconnected');
+    final stackTrace = StackTrace.current;
+    final entries = _pendingSaves.values.toList();
+    _pendingSaves.clear();
+    for (final entry in entries) {
+      entry.timer?.cancel();
+      entry.timer = null;
+      _completeWaitersWithError(entry, error, stackTrace);
     }
   }
 
