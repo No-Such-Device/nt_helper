@@ -2625,7 +2625,7 @@ class _SynchronizedScreenState extends State<SynchronizedScreen>
             onTap: widget.loading
                 ? null
                 : () {
-                    popupCtx.read<DistingCubit>().goOnline();
+                    popupCtx.read<DistingCubit>().switchToDeviceSelection();
                   },
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

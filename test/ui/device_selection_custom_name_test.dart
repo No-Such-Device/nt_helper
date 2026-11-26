@@ -691,4 +691,181 @@ void main() {
     },
     tags: ['regression'],
   );
+
+  testWidgets(
+    'directional dropdown controls show one exact backend name per direction across selection, unplug, replug, same-ID rename, reopen, and legitimate repeated names',
+    (tester) async {
+      final ntIn = _input('nt-in', 'disting NT');
+      final ntOut = _output('nt-out', 'disting NT');
+      final otherIn = _input('other-in', 'Bus 1');
+      final otherOut = _output('other-out', 'Bus 1');
+      final harness = _SelectionHarness(
+        DistingState.selectDevice(
+          inputDevices: [otherIn, ntIn],
+          outputDevices: [otherOut, ntOut],
+          canWorkOffline: true,
+          selectedInputDevice: ntIn,
+          selectedOutputDevice: ntOut,
+          selectedSysExId: 17,
+        ) as DistingStateSelectDevice,
+      );
+
+      await _pumpPage(tester, harness);
+
+      String dropdownText(Key key) => tester
+          .widget<EditableText>(
+            find.descendant(
+              of: find.byKey(key),
+              matching: find.byType(EditableText),
+            ),
+          )
+          .controller
+          .text;
+
+      String deviceIdText() => tester
+          .widget<EditableText>(
+            find.descendant(
+              of: find.byType(DropdownMenu<int>),
+              matching: find.byType(EditableText),
+            ),
+          )
+          .controller
+          .text;
+
+      expect(
+        dropdownText(const ValueKey('input-midi-device-dropdown')),
+        'disting NT',
+      );
+      expect(
+        dropdownText(const ValueKey('output-midi-device-dropdown')),
+        'disting NT',
+      );
+      expect(deviceIdText(), '17');
+
+      // Same-ID backend rename updates visible controller label cleanly without doubling or stale text.
+      final renamedIn = _input('nt-in', 'Studio NT In');
+      final renamedOut = _output('nt-out', 'Studio NT Out');
+      harness.emit(
+        DistingState.selectDevice(
+          inputDevices: [otherIn, renamedIn],
+          outputDevices: [otherOut, renamedOut],
+          canWorkOffline: true,
+          selectedInputDevice: renamedIn,
+          selectedOutputDevice: renamedOut,
+          selectedSysExId: 17,
+        ) as DistingStateSelectDevice,
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        dropdownText(const ValueKey('input-midi-device-dropdown')),
+        'Studio NT In',
+      );
+      expect(
+        dropdownText(const ValueKey('output-midi-device-dropdown')),
+        'Studio NT Out',
+      );
+
+      // Unplug clears displayed labels while Device ID remains intact.
+      harness.emit(
+        DistingState.selectDevice(
+          inputDevices: [otherIn],
+          outputDevices: [otherOut],
+          canWorkOffline: true,
+          selectedInputDevice: null,
+          selectedOutputDevice: null,
+          selectedSysExId: 17,
+        ) as DistingStateSelectDevice,
+      );
+      await tester.pumpAndSettle();
+
+      expect(dropdownText(const ValueKey('input-midi-device-dropdown')), '');
+      expect(dropdownText(const ValueKey('output-midi-device-dropdown')), '');
+      expect(deviceIdText(), '17');
+
+      // Replug with restored selection displays one exact backend name per direction.
+      final returnedIn = _input('nt-in-2', 'disting NT');
+      final returnedOut = _output('nt-out-2', 'disting NT');
+      harness.emit(
+        DistingState.selectDevice(
+          inputDevices: [otherIn, returnedIn],
+          outputDevices: [otherOut, returnedOut],
+          canWorkOffline: true,
+          selectedInputDevice: returnedIn,
+          selectedOutputDevice: returnedOut,
+          selectedSysExId: 17,
+        ) as DistingStateSelectDevice,
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        dropdownText(const ValueKey('input-midi-device-dropdown')),
+        'disting NT',
+      );
+      expect(
+        dropdownText(const ValueKey('output-midi-device-dropdown')),
+        'disting NT',
+      );
+
+      // Legitimate repeated-word custom backend name is preserved verbatim without stripping.
+      final repeatedIn = _input('custom-in', 'NT NT');
+      final repeatedOut = _output('custom-out', 'NT NT');
+      harness.emit(
+        DistingState.selectDevice(
+          inputDevices: [repeatedIn, returnedIn],
+          outputDevices: [repeatedOut, returnedOut],
+          canWorkOffline: true,
+          selectedInputDevice: returnedIn,
+          selectedOutputDevice: returnedOut,
+          selectedSysExId: 17,
+        ) as DistingStateSelectDevice,
+      );
+      await tester.pumpAndSettle();
+
+      await _choose(
+        tester,
+        const ValueKey('input-midi-device-dropdown'),
+        'NT NT',
+      );
+      await _choose(
+        tester,
+        const ValueKey('output-midi-device-dropdown'),
+        'NT NT',
+      );
+      expect(
+        dropdownText(const ValueKey('input-midi-device-dropdown')),
+        'NT NT',
+      );
+      expect(
+        dropdownText(const ValueKey('output-midi-device-dropdown')),
+        'NT NT',
+      );
+
+      // Leave Device page and reopen: restored labels stay exact once per direction.
+      harness.states.add(const DistingState.initial());
+      await tester.pumpAndSettle();
+      harness.emit(
+        DistingState.selectDevice(
+          inputDevices: [repeatedIn, returnedIn],
+          outputDevices: [repeatedOut, returnedOut],
+          canWorkOffline: true,
+          selectedInputDevice: repeatedIn,
+          selectedOutputDevice: repeatedOut,
+          selectedSysExId: 23,
+        ) as DistingStateSelectDevice,
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        dropdownText(const ValueKey('input-midi-device-dropdown')),
+        'NT NT',
+      );
+      expect(
+        dropdownText(const ValueKey('output-midi-device-dropdown')),
+        'NT NT',
+      );
+      expect(deviceIdText(), '23');
+    },
+    tags: ['regression'],
+  );
 }

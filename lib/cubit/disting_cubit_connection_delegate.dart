@@ -33,6 +33,42 @@ bool firmwareMidiEndpointsAvailable(
   return hasInput && hasOutput;
 }
 
+const _kPrefSelectedInputName = 'selectedInputMidiDevice';
+const _kPrefSelectedInputId = 'selectedInputMidiDeviceId';
+const _kPrefSelectedOutputName = 'selectedOutputMidiDevice';
+const _kPrefSelectedOutputId = 'selectedOutputMidiDeviceId';
+const _kPrefSelectedSysExId = 'selectedSysExId';
+
+class _DesiredMidiEndpoint {
+  const _DesiredMidiEndpoint({this.id, this.name});
+
+  final String? id;
+  final String? name;
+
+  bool get isEmpty =>
+      (id == null || id!.isEmpty) && (name == null || name!.trim().isEmpty);
+}
+
+class _DesiredDeviceSelection {
+  const _DesiredDeviceSelection({this.input, this.output, this.sysExId = 0});
+
+  final _DesiredMidiEndpoint? input;
+  final _DesiredMidiEndpoint? output;
+  final int sysExId;
+}
+
+class _DeviceListSnapshot {
+  const _DeviceListSnapshot({
+    required this.allDevices,
+    required this.inputDevices,
+    required this.outputDevices,
+  });
+
+  final List<MidiDevice> allDevices;
+  final List<MidiDevice> inputDevices;
+  final List<MidiDevice> outputDevices;
+}
+
 class _SelectedMidiTarget {
   const _SelectedMidiTarget({
     required this.inputId,
@@ -66,6 +102,10 @@ class _ConnectionDelegate {
   final DistingCubit _cubit;
   int _syncGeneration = 0;
   int _connectionSessionToken = 0;
+  int _deviceListGeneration = 0;
+  int _selectionRevision = 0;
+  _DesiredDeviceSelection? _desiredSelection;
+  Future<void> _persistChain = Future<void>.value();
   int? _activeOpenToken;
   String? _openingInputId;
   String? _openingOutputId;
@@ -206,6 +246,90 @@ class _ConnectionDelegate {
     }
   }
 
+  int _normalizeSysExId(int? value) =>
+      value != null && value >= 0 && value <= 127 ? value : 0;
+
+  _DesiredMidiEndpoint? _desiredEndpointFrom({String? id, String? name}) {
+    final hasId = id != null && id.trim().isNotEmpty;
+    final hasName = name != null && name.trim().isNotEmpty;
+    if (!hasId && !hasName) return null;
+    return _DesiredMidiEndpoint(
+      id: hasId ? id : null,
+      name: hasName ? name : null,
+    );
+  }
+
+  Future<_DesiredDeviceSelection> _readDesiredSelectionFromPrefs() async {
+    final prefs = await _cubit._prefs;
+    return _DesiredDeviceSelection(
+      input: _desiredEndpointFrom(
+        id: prefs.getString(_kPrefSelectedInputId),
+        name: prefs.getString(_kPrefSelectedInputName),
+      ),
+      output: _desiredEndpointFrom(
+        id: prefs.getString(_kPrefSelectedOutputId),
+        name: prefs.getString(_kPrefSelectedOutputName),
+      ),
+      sysExId: _normalizeSysExId(prefs.getInt(_kPrefSelectedSysExId)),
+    );
+  }
+
+  Future<void> _writeDesiredSelectionToPrefs(
+    _DesiredDeviceSelection selection, {
+    int? expectedRevision,
+  }) async {
+    final prefs = await _cubit._prefs;
+    if (expectedRevision != null && _selectionRevision != expectedRevision) {
+      return;
+    }
+
+    Future<void> writeStringOrRemove(String key, String? value) async {
+      if (value == null || value.isEmpty) {
+        await prefs.remove(key);
+      } else {
+        await prefs.setString(key, value);
+      }
+    }
+
+    await writeStringOrRemove(_kPrefSelectedInputName, selection.input?.name);
+    if (expectedRevision != null && _selectionRevision != expectedRevision) {
+      return;
+    }
+    await writeStringOrRemove(_kPrefSelectedInputId, selection.input?.id);
+    if (expectedRevision != null && _selectionRevision != expectedRevision) {
+      return;
+    }
+    await writeStringOrRemove(_kPrefSelectedOutputName, selection.output?.name);
+    if (expectedRevision != null && _selectionRevision != expectedRevision) {
+      return;
+    }
+    await writeStringOrRemove(_kPrefSelectedOutputId, selection.output?.id);
+    if (expectedRevision != null && _selectionRevision != expectedRevision) {
+      return;
+    }
+    await prefs.setInt(
+      _kPrefSelectedSysExId,
+      _normalizeSysExId(selection.sysExId),
+    );
+  }
+
+  Future<void> _schedulePersistDesiredSelection(
+    _DesiredDeviceSelection selection,
+    int revision,
+  ) {
+    final writeFuture = _persistChain
+        .then((_) async {
+          if (_selectionRevision != revision) return;
+          await _writeDesiredSelectionToPrefs(
+            selection,
+            expectedRevision: revision,
+          );
+        })
+        .catchError((Object _) {});
+    _persistChain = writeFuture;
+    return writeFuture;
+  }
+
   ({MidiDevice? device, bool ambiguous}) _matchReturningEndpoint(
     List<MidiDevice> devices, {
     required String expectedId,
@@ -217,14 +341,19 @@ class _ConnectionDelegate {
           input ? device.inputPorts.isNotEmpty : device.outputPorts.isNotEmpty,
     );
 
-    final idMatches = directional
-        .where((device) => device.id == expectedId)
-        .toList();
-    if (idMatches.length == 1) {
-      return (device: idMatches.single, ambiguous: false);
-    }
-    if (devices.any((device) => device.id == expectedId)) {
-      return (device: null, ambiguous: false);
+    if (expectedId.isNotEmpty) {
+      final idMatches = directional
+          .where((device) => device.id == expectedId)
+          .toList();
+      if (idMatches.length == 1) {
+        return (device: idMatches.single, ambiguous: false);
+      }
+      if (idMatches.length > 1) {
+        return (device: null, ambiguous: true);
+      }
+      if (devices.any((device) => device.id == expectedId)) {
+        return (device: null, ambiguous: false);
+      }
     }
 
     final normalizedExpected = expectedName.trim().toLowerCase();
@@ -242,23 +371,23 @@ class _ConnectionDelegate {
     return (device: null, ambiguous: nameMatches.length > 1);
   }
 
-  MidiDevice? _resolveSelection(
-    List<MidiDevice> devices,
-    MidiDevice? previousSelection,
-  ) {
-    if (previousSelection != null) {
-      final retained =
-          devices
-              .where((device) => device.id == previousSelection.id)
-              .firstOrNull ??
-          devices
-              .where((device) => device.name == previousSelection.name)
-              .firstOrNull;
-      if (retained != null) return retained;
+  MidiDevice? _resolveDesiredEndpoint(
+    List<MidiDevice> allDevices,
+    List<MidiDevice> directionalDevices,
+    _DesiredMidiEndpoint? desired, {
+    required bool input,
+  }) {
+    if (desired != null && !desired.isEmpty) {
+      return _matchReturningEndpoint(
+        allDevices,
+        expectedId: desired.id ?? '',
+        expectedName: desired.name ?? '',
+        input: input,
+      ).device;
     }
-    // Suggest only an unambiguous endpoint, irrespective of module name.
-    // Selection does not open MIDI or initiate synchronization.
-    return devices.length == 1 ? devices.single : null;
+    // Without a saved preference for this direction, suggest only a sole
+    // unambiguous endpoint. Selection does not open MIDI or start sync.
+    return directionalDevices.length == 1 ? directionalDevices.single : null;
   }
 
   void updateDeviceSelection({
@@ -273,11 +402,34 @@ class _ConnectionDelegate {
     _setupCheckPending = false;
     _pendingSetupCheckCanRetrySamePair = false;
     _failedPairToSkipNextCheck = null;
+
+    final normalizedSysExId = _normalizeSysExId(sysExId);
+    final previousDesired =
+        _desiredSelection ?? const _DesiredDeviceSelection();
+    final nextDesiredInput = inputDevice != null
+        ? _desiredEndpointFrom(id: inputDevice.id, name: inputDevice.name)
+        : (currentState.selectedInputDevice != null
+              ? null
+              : previousDesired.input);
+    final nextDesiredOutput = outputDevice != null
+        ? _desiredEndpointFrom(id: outputDevice.id, name: outputDevice.name)
+        : (currentState.selectedOutputDevice != null
+              ? null
+              : previousDesired.output);
+    final nextDesired = _DesiredDeviceSelection(
+      input: nextDesiredInput,
+      output: nextDesiredOutput,
+      sysExId: normalizedSysExId,
+    );
+    _desiredSelection = nextDesired;
+    final revision = ++_selectionRevision;
+    _schedulePersistDesiredSelection(nextDesired, revision);
+
     _cubit._emitState(
       currentState.copyWith(
         selectedInputDevice: inputDevice,
         selectedOutputDevice: outputDevice,
-        selectedSysExId: sysExId,
+        selectedSysExId: normalizedSysExId,
       ),
     );
   }
@@ -288,6 +440,9 @@ class _ConnectionDelegate {
       'The app can start without a Disting NT connected; missing hardware '
       'should leave the app on device selection or offline mode.',
     );
+
+    final listGeneration = ++_deviceListGeneration;
+    final startRevision = _selectionRevision;
 
     // Check for offline capability first
     bool canWorkOffline = false; // Default to false
@@ -306,39 +461,43 @@ class _ConnectionDelegate {
       // Proceed with canWorkOffline as false
     }
 
-    final devices = await _fetchDeviceLists();
-    final prefs = await _cubit._prefs;
-    final savedInputName = prefs.getString('selectedInputMidiDevice');
-    final savedOutputName = prefs.getString('selectedOutputMidiDevice');
-    final savedSysExId = prefs.getInt('selectedSysExId');
-    final savedInputDevice = savedInputName == null
-        ? null
-        : devices['input']
-              ?.where((device) => device.name == savedInputName)
-              .firstOrNull;
-    final savedOutputDevice = savedOutputName == null
-        ? null
-        : devices['output']
-              ?.where((device) => device.name == savedOutputName)
-              .firstOrNull;
+    final snapshot = await _fetchDeviceLists();
+    final prefsSelection = await _readDesiredSelectionFromPrefs();
+    if (_cubit.isClosed || listGeneration != _deviceListGeneration) {
+      return;
+    }
+    if (_selectionRevision == startRevision) {
+      _desiredSelection = prefsSelection;
+    }
+    final currentState = _cubit.state;
+    if (currentState is! DistingStateInitial &&
+        currentState is! DistingStateSelectDevice) {
+      return;
+    }
+
+    final desired = _desiredSelection ?? prefsSelection;
+    final selectedInputDevice = _resolveDesiredEndpoint(
+      snapshot.allDevices,
+      snapshot.inputDevices,
+      desired.input,
+      input: true,
+    );
+    final selectedOutputDevice = _resolveDesiredEndpoint(
+      snapshot.allDevices,
+      snapshot.outputDevices,
+      desired.output,
+      input: false,
+    );
     final savedPairAvailable =
-        savedInputDevice != null &&
-        savedOutputDevice != null &&
-        savedSysExId != null;
+        selectedInputDevice != null && selectedOutputDevice != null;
     _cubit._emitState(
       DistingState.selectDevice(
-        inputDevices: devices['input'] ?? [],
-        outputDevices: devices['output'] ?? [],
+        inputDevices: snapshot.inputDevices,
+        outputDevices: snapshot.outputDevices,
         canWorkOffline: canWorkOffline,
-        selectedInputDevice: _resolveSelection(
-          devices['input'] ?? [],
-          savedInputDevice,
-        ),
-        selectedOutputDevice: _resolveSelection(
-          devices['output'] ?? [],
-          savedOutputDevice,
-        ),
-        selectedSysExId: savedPairAvailable ? savedSysExId : 0,
+        selectedInputDevice: selectedInputDevice,
+        selectedOutputDevice: selectedOutputDevice,
+        selectedSysExId: desired.sysExId,
       ),
     );
     StartupLogService.log(
@@ -349,30 +508,45 @@ class _ConnectionDelegate {
     startMidiSetupListener();
   }
 
+  Future<void> switchToDeviceSelection() async {
+    _cubit._offlineManager?.dispose();
+    _cubit._offlineManager = null;
+    disconnect();
+    await loadDevices();
+  }
+
   Future<void> loadDevices({int? sessionToken}) async {
     StartupLogService.log(
       'DistingCubit.loadDevices: refreshing MIDI device list',
     );
     final previousState = _cubit.state;
+    final listGeneration = ++_deviceListGeneration;
+    final startRevision = _selectionRevision;
     try {
       if (previousState is! DistingStateSelectDevice) {
         _cubit._emitState(const DistingState.initial());
       }
 
       // Fetch devices using the helper
-      final devices = await _fetchDeviceLists(); // Call helper
+      final snapshot = await _fetchDeviceLists();
 
       // Re-check offline capability here for manual refresh accuracy
       final bool canWorkOffline = await _cubit._metadataDao
           .hasCachedAlgorithms();
 
+      if (_desiredSelection == null) {
+        final prefsSelection = await _readDesiredSelectionFromPrefs();
+        if (_selectionRevision == startRevision && _desiredSelection == null) {
+          _desiredSelection = prefsSelection;
+        }
+      }
+
       if (_cubit.isClosed ||
+          listGeneration != _deviceListGeneration ||
           (sessionToken != null && _connectionSessionToken != sessionToken)) {
         return;
       }
 
-      final inputDevices = devices['input'] ?? [];
-      final outputDevices = devices['output'] ?? [];
       final currentState = _cubit.state;
       if (previousState is DistingStateSelectDevice &&
           currentState is! DistingStateSelectDevice) {
@@ -382,36 +556,36 @@ class _ConnectionDelegate {
           currentState is! DistingStateInitial) {
         return;
       }
-      final selectionState = currentState is DistingStateSelectDevice
-          ? currentState
-          : previousState is DistingStateSelectDevice
-          ? previousState
-          : null;
-      final selectedInputDevice = _resolveSelection(
-        inputDevices,
-        selectionState?.selectedInputDevice,
+      final desired = _desiredSelection ?? const _DesiredDeviceSelection();
+      final selectedInputDevice = _resolveDesiredEndpoint(
+        snapshot.allDevices,
+        snapshot.inputDevices,
+        desired.input,
+        input: true,
       );
-      final selectedOutputDevice = _resolveSelection(
-        outputDevices,
-        selectionState?.selectedOutputDevice,
+      final selectedOutputDevice = _resolveDesiredEndpoint(
+        snapshot.allDevices,
+        snapshot.outputDevices,
+        desired.output,
+        input: false,
       );
 
-      // Transition to the select device state, retaining each still-valid
-      // manual choice across explicit and MIDI-triggered refreshes.
+      // Transition to the select device state, preserving desired choices
+      // across explicit and MIDI-triggered refreshes even while absent.
       _cubit._emitState(
         DistingState.selectDevice(
-          inputDevices: inputDevices,
-          outputDevices: outputDevices,
+          inputDevices: snapshot.inputDevices,
+          outputDevices: snapshot.outputDevices,
           canWorkOffline: canWorkOffline,
           selectedInputDevice: selectedInputDevice,
           selectedOutputDevice: selectedOutputDevice,
-          selectedSysExId: selectionState?.selectedSysExId ?? 0,
+          selectedSysExId: desired.sysExId,
         ),
       );
       StartupLogService.log(
         'DistingCubit.loadDevices: device selection updated; '
-        'inputs=${devices['input']?.length ?? 0}, '
-        'outputs=${devices['output']?.length ?? 0}, '
+        'inputs=${snapshot.inputDevices.length}, '
+        'outputs=${snapshot.outputDevices.length}, '
         'canWorkOffline=$canWorkOffline',
       );
 
@@ -425,6 +599,7 @@ class _ConnectionDelegate {
       );
       debugPrintStack(stackTrace: stackTrace);
       if (_cubit.isClosed ||
+          listGeneration != _deviceListGeneration ||
           (sessionToken != null && _connectionSessionToken != sessionToken)) {
         return;
       }
@@ -439,10 +614,11 @@ class _ConnectionDelegate {
         return;
       }
       _cubit._emitState(
-        const DistingState.selectDevice(
-          inputDevices: [],
-          outputDevices: [],
+        DistingState.selectDevice(
+          inputDevices: const [],
+          outputDevices: const [],
           canWorkOffline: false,
+          selectedSysExId: _desiredSelection?.sysExId ?? 0,
         ),
       );
 
@@ -1225,6 +1401,7 @@ class _ConnectionDelegate {
   ) async {
     if (_openingConnection || _cubit.isClosed) return;
     final openToken = ++_connectionSessionToken;
+    final startRevision = _selectionRevision;
     _activeOpenToken = openToken;
     _openingInputId = inputDevice.id;
     _openingOutputId = outputDevice.id;
@@ -1300,6 +1477,22 @@ class _ConnectionDelegate {
       if (currentState is DistingStateSynchronized &&
           !currentState.offline &&
           !currentState.demo) {
+        if (_selectionRevision == startRevision) {
+          final nextDesired = _DesiredDeviceSelection(
+            input: _desiredEndpointFrom(
+              id: target.inputId,
+              name: target.inputName,
+            ),
+            output: _desiredEndpointFrom(
+              id: target.outputId,
+              name: target.outputName,
+            ),
+            sysExId: target.sysExId,
+          );
+          _desiredSelection = nextDesired;
+          final revision = ++_selectionRevision;
+          _schedulePersistDesiredSelection(nextDesired, revision);
+        }
         _cubit._emitState(
           currentState.copyWith(
             disting: newDistingManager,
@@ -1314,6 +1507,22 @@ class _ConnectionDelegate {
         _cubit._monitoringDelegate.resumeCpuMonitoring();
       } else if (currentState is DistingStateConnected &&
           !currentState.offline) {
+        if (_selectionRevision == startRevision) {
+          final nextDesired = _DesiredDeviceSelection(
+            input: _desiredEndpointFrom(
+              id: target.inputId,
+              name: target.inputName,
+            ),
+            output: _desiredEndpointFrom(
+              id: target.outputId,
+              name: target.outputName,
+            ),
+            sysExId: target.sysExId,
+          );
+          _desiredSelection = nextDesired;
+          final revision = ++_selectionRevision;
+          _schedulePersistDesiredSelection(nextDesired, revision);
+        }
         needsInitialSync = true;
         _cubit._emitState(
           DistingState.connected(
@@ -1416,16 +1625,21 @@ class _ConnectionDelegate {
         !_cubit.isClosed && _connectionSessionToken == openToken;
     bool isCurrentOpen() => isCurrentSession() && _activeOpenToken == openToken;
 
+    final normalizedSysExId = _normalizeSysExId(sysExId);
     final target = _SelectedMidiTarget(
       inputId: inputDevice.id,
-      inputName: _lastOnlineTarget?.inputId == inputDevice.id
+      inputName:
+          identical(inputDevice, _cubit._lastOnlineInputDevice) &&
+              _lastOnlineTarget?.inputId == inputDevice.id
           ? _lastOnlineTarget!.inputName
           : inputDevice.name,
       outputId: outputDevice.id,
-      outputName: _lastOnlineTarget?.outputId == outputDevice.id
+      outputName:
+          identical(outputDevice, _cubit._lastOnlineOutputDevice) &&
+              _lastOnlineTarget?.outputId == outputDevice.id
           ? _lastOnlineTarget!.outputName
           : outputDevice.name,
-      sysExId: sysExId,
+      sysExId: normalizedSysExId,
     );
 
     StartupLogService.log(
@@ -1495,21 +1709,17 @@ class _ConnectionDelegate {
         }
       }
 
-      final prefs = await _cubit._prefs;
-      if (!isCurrentOpen()) {
-        _cleanupDiscardedOpen(
-          openToken: openToken,
-          inputDevice: inputDevice,
-          outputDevice: outputDevice,
-          openedInput: openedInput,
-          openedOutput: openedOutput,
-          manager: newDistingManager,
-        );
-        return;
-      }
-      await prefs.setString('selectedInputMidiDevice', target.inputName);
-      await prefs.setString('selectedOutputMidiDevice', target.outputName);
-      await prefs.setInt('selectedSysExId', sysExId);
+      final nextDesired = _DesiredDeviceSelection(
+        input: _desiredEndpointFrom(id: target.inputId, name: target.inputName),
+        output: _desiredEndpointFrom(
+          id: target.outputId,
+          name: target.outputName,
+        ),
+        sysExId: target.sysExId,
+      );
+      _desiredSelection = nextDesired;
+      final persistRevision = ++_selectionRevision;
+      await _schedulePersistDesiredSelection(nextDesired, persistRevision);
       if (!isCurrentOpen()) {
         _cleanupDiscardedOpen(
           openToken: openToken,
@@ -1526,14 +1736,14 @@ class _ConnectionDelegate {
         midiCommand: _cubit._midiCommand,
         inputDevice: inputDevice,
         outputDevice: outputDevice,
-        sysExId: sysExId,
+        sysExId: target.sysExId,
       );
 
       _activeTarget = target;
       _lastOnlineTarget = target;
       _cubit._lastOnlineInputDevice = inputDevice;
       _cubit._lastOnlineOutputDevice = outputDevice;
-      _cubit._lastOnlineSysExId = sysExId;
+      _cubit._lastOnlineSysExId = target.sysExId;
 
       _cubit._emitState(
         DistingState.connected(
@@ -1640,15 +1850,19 @@ class _ConnectionDelegate {
     );
   }
 
-  Future<Map<String, List<MidiDevice>>> _fetchDeviceLists() async {
-    final devices = await _cubit._midiCommand.devices;
-    devices?.sort(
+  Future<_DeviceListSnapshot> _fetchDeviceLists() async {
+    final devices = List<MidiDevice>.of(
+      await _cubit._midiCommand.devices ?? const <MidiDevice>[],
+    );
+    devices.sort(
       (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
     );
-    final inputDevices =
-        devices?.where((it) => it.inputPorts.isNotEmpty).toList() ?? [];
-    final outputDevices =
-        devices?.where((it) => it.outputPorts.isNotEmpty).toList() ?? [];
+    final inputDevices = devices
+        .where((it) => it.inputPorts.isNotEmpty)
+        .toList();
+    final outputDevices = devices
+        .where((it) => it.outputPorts.isNotEmpty)
+        .toList();
     StartupLogService.log(
       'DistingCubit._fetchDeviceLists: visible MIDI devices: '
       '${_describeDevices(devices)}; inputs=${inputDevices.length}, '
@@ -1664,7 +1878,11 @@ class _ConnectionDelegate {
         'permissions/drivers, and whether the device appears in the system MIDI utility.',
       );
     }
-    return {'input': inputDevices, 'output': outputDevices};
+    return _DeviceListSnapshot(
+      allDevices: devices,
+      inputDevices: inputDevices,
+      outputDevices: outputDevices,
+    );
   }
 
   Future<String?> probeFirmwareVersion(

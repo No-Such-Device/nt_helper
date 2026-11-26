@@ -478,6 +478,7 @@ class _DeviceSelectionView extends StatefulWidget {
 class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
   late final TextEditingController _inputController;
   late final TextEditingController _outputController;
+  late final TextEditingController _sysExIdController;
 
   MidiDevice? _deviceWithId(List<MidiDevice> devices, String? id) => id == null
       ? null
@@ -506,6 +507,9 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
     _outputController = TextEditingController(
       text: _currentOutputDevice?.name ?? '',
     );
+    _sysExIdController = TextEditingController(
+      text: widget.selectedSysExId.toString(),
+    );
   }
 
   @override
@@ -513,12 +517,14 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
     super.didUpdateWidget(oldWidget);
     _syncControllerText(_inputController, _currentInputDevice?.name ?? '');
     _syncControllerText(_outputController, _currentOutputDevice?.name ?? '');
+    _syncControllerText(_sysExIdController, widget.selectedSysExId.toString());
   }
 
   @override
   void dispose() {
     _inputController.dispose();
     _outputController.dispose();
+    _sysExIdController.dispose();
     super.dispose();
   }
 
@@ -627,6 +633,7 @@ class _DeviceSelectionViewState extends State<_DeviceSelectionView> {
                 const SizedBox(height: 16),
                 DropdownMenu<int>(
                   width: 250,
+                  controller: _sysExIdController,
                   // Search text is not a committed SysEx ID. Show selections only.
                   selectOnly: true,
                   initialSelection: widget.selectedSysExId,

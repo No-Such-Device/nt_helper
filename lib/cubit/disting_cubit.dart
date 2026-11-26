@@ -478,6 +478,15 @@ class DistingCubit extends _DistingCubitBase
     return _offlineDemoDelegate.goOnline();
   }
 
+  /// Leaves the current session (online, offline, or demo) and opens the
+  /// device selection screen with saved preferences restored without
+  /// automatically connecting to any MIDI device.
+  Future<void> switchToDeviceSelection() async {
+    _checkpointDelegate.clearCheckpoints();
+    _cancelRespecificationForConnectionChange();
+    return _connectionDelegate.switchToDeviceSelection();
+  }
+
   Future<void> cancelSync() async {
     return _refreshDelegate.cancelSync();
   }

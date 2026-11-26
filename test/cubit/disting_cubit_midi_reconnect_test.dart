@@ -501,6 +501,7 @@ void main() {
     when(() => metadataDao.hasCachedAlgorithms())
         .thenAnswer((_) async => false);
     when(() => metadataDao.getAllUnits()).thenAnswer((_) async => []);
+    when(() => metadataDao.getOrderedUnitStrings()).thenAnswer((_) async => []);
     when(() => metadataDao.getAllAlgorithms()).thenAnswer((_) async => []);
     when(
       () => metadataDao.getAlgorithmInfoCache(
@@ -1842,4 +1843,515 @@ void main() {
     },
     tags: ['regression'],
   );
+
+  test('explicit device selection persists across restart and restores without auto-connecting', () async {
+    final otherIn = _makeEndpoint('other-in', 'Bus 1', MidiPortType.IN);
+    final otherOut = _makeEndpoint('other-out', 'Bus 1', MidiPortType.OUT);
+    final ntIn = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
+    final ntOut = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
+    midiCommand.availableDevices = [otherIn, otherOut, ntIn, ntOut];
+
+    await cubit.initialize();
+    expect(midiCommand.connectCalls, isEmpty);
+
+    cubit.updateDeviceSelection(
+      inputDevice: ntIn,
+      outputDevice: ntOut,
+      sysExId: 17,
+    );
+    await _flushEventQueue();
+    expect(midiCommand.connectCalls, isEmpty);
+
+    // Simulate cold app restart with a brand-new cubit and same SharedPreferences.
+    await cubit.close();
+    cubit = DistingCubit(
+      database,
+      midiCommand: midiCommand,
+      isWindowsOverride: false,
+      isLinuxOverride: false,
+    );
+
+    await cubit.initialize();
+    final restored = cubit.state as DistingStateSelectDevice;
+    expect(restored.selectedInputDevice, same(ntIn));
+    expect(restored.selectedOutputDevice, same(ntOut));
+    expect(restored.selectedSysExId, 17);
+    expect(midiCommand.connectCalls, isEmpty);
+  }, tags: ['regression']);
+
+  test('absent preferred ports retain desires without unrelated sole substitution and restore independently on hotplug with nonzero SysEx ID', () async {
+    final ntIn1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
+    final ntOut1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
+    final otherIn = _makeEndpoint('other-in', 'Bus 1', MidiPortType.IN);
+    final otherOut = _makeEndpoint('other-out', 'Bus 1', MidiPortType.OUT);
+    midiCommand.availableDevices = [ntIn1, ntOut1, otherIn, otherOut];
+
+    await cubit.initialize();
+    cubit.updateDeviceSelection(
+      inputDevice: ntIn1,
+      outputDevice: ntOut1,
+      sysExId: 9,
+    );
+    await _flushEventQueue();
+
+    // Restart while BOTH preferred ports are absent and only unrelated sole ports exist.
+    await cubit.close();
+    midiCommand.availableDevices = [otherIn, otherOut];
+    cubit = DistingCubit(
+      database,
+      midiCommand: midiCommand,
+      isWindowsOverride: false,
+      isLinuxOverride: false,
+    );
+
+    await cubit.initialize();
+    var state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, isNull);
+    expect(state.selectedOutputDevice, isNull);
+    expect(state.selectedSysExId, 9);
+    expect(midiCommand.connectCalls, isEmpty);
+
+    // Changing Device ID while both ports are absent must keep both saved port desires.
+    cubit.updateDeviceSelection(
+      inputDevice: null,
+      outputDevice: null,
+      sysExId: 14,
+    );
+    await _flushEventQueue();
+
+    // Only preferred input returns with a new OS ID; output still absent.
+    final ntIn2 = _makeEndpoint('nt-in-2', 'disting NT', MidiPortType.IN);
+    midiCommand.simulateDevicesAppeared([ntIn2]);
+    await _flushEventQueue();
+
+    state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, same(ntIn2));
+    expect(state.selectedOutputDevice, isNull);
+    expect(state.selectedSysExId, 14);
+    expect(midiCommand.connectCalls, isEmpty);
+
+    // Changing input explicitly while output is absent retains desired output.
+    cubit.updateDeviceSelection(
+      inputDevice: otherIn,
+      outputDevice: null,
+      sysExId: 14,
+    );
+    await _flushEventQueue();
+
+    // Preferred output returns later and resolves independently while picker stays disconnected.
+    final ntOut2 = _makeEndpoint('nt-out-2', 'disting NT', MidiPortType.OUT);
+    midiCommand.simulateDevicesAppeared([ntOut2]);
+    await _flushEventQueue();
+
+    state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, same(otherIn));
+    expect(state.selectedOutputDevice, same(ntOut2));
+    expect(state.selectedSysExId, 14);
+    expect(midiCommand.connectCalls, isEmpty);
+  }, tags: ['regression']);
+
+  test('nonzero SysEx ID 0..127 persists and restores independently when zero ports are present and invalid stored IDs fall back to 0', () async {
+    midiCommand.availableDevices = [];
+    await cubit.initialize();
+
+    cubit.updateDeviceSelection(
+      inputDevice: null,
+      outputDevice: null,
+      sysExId: 127,
+    );
+    await _flushEventQueue();
+
+    await cubit.close();
+    cubit = DistingCubit(
+      database,
+      midiCommand: midiCommand,
+      isWindowsOverride: false,
+      isLinuxOverride: false,
+    );
+    await cubit.initialize();
+    expect((cubit.state as DistingStateSelectDevice).selectedSysExId, 127);
+
+    // Out-of-range persisted value falls back to 0 cleanly.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('selectedSysExId', 200);
+    await cubit.close();
+    cubit = DistingCubit(
+      database,
+      midiCommand: midiCommand,
+      isWindowsOverride: false,
+      isLinuxOverride: false,
+    );
+    await cubit.initialize();
+    expect((cubit.state as DistingStateSelectDevice).selectedSysExId, 0);
+  }, tags: ['regression']);
+
+  test('duplicate-name ambiguity refuses first match and resolves once unambiguous', () async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selectedInputMidiDevice', 'disting NT');
+    await prefs.setString('selectedInputMidiDeviceId', 'nt-in-old');
+    await prefs.setString('selectedOutputMidiDevice', 'disting NT');
+    await prefs.setString('selectedOutputMidiDeviceId', 'nt-out-old');
+    await prefs.setInt('selectedSysExId', 5);
+
+    final dupIn1 = _makeEndpoint('nt-in-a', 'disting NT', MidiPortType.IN);
+    final dupIn2 = _makeEndpoint('nt-in-b', 'disting NT', MidiPortType.IN);
+    final dupOut1 = _makeEndpoint('nt-out-a', 'disting NT', MidiPortType.OUT);
+    final dupOut2 = _makeEndpoint('nt-out-b', 'disting NT', MidiPortType.OUT);
+    midiCommand.availableDevices = [dupIn1, dupIn2, dupOut1, dupOut2];
+
+    await cubit.initialize();
+    var state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, isNull);
+    expect(state.selectedOutputDevice, isNull);
+    expect(state.selectedSysExId, 5);
+    expect(midiCommand.connectCalls, isEmpty);
+
+    // Removing one duplicate in each direction makes the match unambiguous.
+    midiCommand.simulateDevicesDisappeared({dupIn1.id, dupOut1.id});
+    await _flushEventQueue();
+
+    state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, same(dupIn2));
+    expect(state.selectedOutputDevice, same(dupOut2));
+    expect(state.selectedSysExId, 5);
+    expect(midiCommand.connectCalls, isEmpty);
+  }, tags: ['regression']);
+
+  test('stable endpoint ID wins over duplicate names, tracks same-ID backend rename, and falls back to unique normalized directional name when ID changes', () async {
+    final ntIn1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
+    final ntOut1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
+    midiCommand.availableDevices = [ntIn1, ntOut1];
+
+    await cubit.initialize();
+    cubit.updateDeviceSelection(
+      inputDevice: ntIn1,
+      outputDevice: ntOut1,
+      sysExId: 4,
+    );
+    await _flushEventQueue();
+
+    // Restart with duplicate names where the saved stable ID is second in the list.
+    await cubit.close();
+    final otherSameNameIn = _makeEndpoint(
+      'nt-in-other',
+      'disting NT',
+      MidiPortType.IN,
+    );
+    final stableIn = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
+    final otherSameNameOut = _makeEndpoint(
+      'nt-out-other',
+      'disting NT',
+      MidiPortType.OUT,
+    );
+    final stableOut = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
+    midiCommand.availableDevices = [
+      otherSameNameIn,
+      stableIn,
+      otherSameNameOut,
+      stableOut,
+    ];
+    cubit = DistingCubit(
+      database,
+      midiCommand: midiCommand,
+      isWindowsOverride: false,
+      isLinuxOverride: false,
+    );
+
+    await cubit.initialize();
+    var state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, same(stableIn));
+    expect(state.selectedOutputDevice, same(stableOut));
+    expect(state.selectedSysExId, 4);
+
+    // Backend renames the same stable ID: selection follows ID and reflects new name.
+    final renamedIn = _makeEndpoint('nt-in-1', 'Studio NT', MidiPortType.IN);
+    final renamedOut = _makeEndpoint('nt-out-1', 'Studio NT', MidiPortType.OUT);
+    midiCommand.availableDevices = [
+      otherSameNameIn,
+      renamedIn,
+      otherSameNameOut,
+      renamedOut,
+    ];
+    midiCommand.emitSetupChange(MidiSetupChange.deviceStateChanged);
+    await _flushEventQueue();
+
+    state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, same(renamedIn));
+    expect(state.selectedInputDevice?.name, 'Studio NT');
+    expect(state.selectedOutputDevice, same(renamedOut));
+    expect(state.selectedOutputDevice?.name, 'Studio NT');
+
+    // Stable ID disappears and reappears with a new OS ID and different casing/whitespace;
+    // wrong-direction device with same name must be ignored.
+    final newIdIn = _makeEndpoint(
+      'nt-in-99',
+      '  DISTING nt  ',
+      MidiPortType.IN,
+    );
+    final newIdOut = _makeEndpoint(
+      'nt-out-99',
+      '  DISTING nt  ',
+      MidiPortType.OUT,
+    );
+    midiCommand.availableDevices = [newIdIn, newIdOut];
+    midiCommand.emitSetupChange(MidiSetupChange.deviceAppeared);
+    await _flushEventQueue();
+
+    state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, same(newIdIn));
+    expect(state.selectedOutputDevice, same(newIdOut));
+    expect(midiCommand.connectCalls, isEmpty);
+  }, tags: ['regression']);
+
+  test('newer explicit user selection wins over in-flight enumeration and earlier persistence', () async {
+    final inA = _makeEndpoint('in-a', 'Alpha', MidiPortType.IN);
+    final outA = _makeEndpoint('out-a', 'Alpha', MidiPortType.OUT);
+    final inB = _makeEndpoint('in-b', 'Beta', MidiPortType.IN);
+    final outB = _makeEndpoint('out-b', 'Beta', MidiPortType.OUT);
+    midiCommand.availableDevices = [inA, outA, inB, outB];
+
+    await cubit.initialize();
+
+    // Gate an async device enumeration while the user rapidly changes selection.
+    final refreshGate = Completer<void>();
+    midiCommand.pendingDevicesGate = refreshGate;
+    final inFlightRefresh = cubit.loadDevices();
+
+    cubit.updateDeviceSelection(
+      inputDevice: inA,
+      outputDevice: outA,
+      sysExId: 5,
+    );
+    cubit.updateDeviceSelection(
+      inputDevice: inB,
+      outputDevice: outB,
+      sysExId: 19,
+    );
+
+    refreshGate.complete();
+    await inFlightRefresh;
+    await _flushEventQueue();
+
+    final state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, same(inB));
+    expect(state.selectedOutputDevice, same(outB));
+    expect(state.selectedSysExId, 19);
+
+    // Restart confirms the latest explicit user choice won persistence.
+    await cubit.close();
+    cubit = DistingCubit(
+      database,
+      midiCommand: midiCommand,
+      isWindowsOverride: false,
+      isLinuxOverride: false,
+    );
+    await cubit.initialize();
+    final restarted = cubit.state as DistingStateSelectDevice;
+    expect(restarted.selectedInputDevice, same(inB));
+    expect(restarted.selectedOutputDevice, same(outB));
+    expect(restarted.selectedSysExId, 19);
+    expect(midiCommand.connectCalls, isEmpty);
+  }, tags: ['regression']);
+
+  testWidgets(
+    'manual Switch from offline after an online session opens restored Device page without reconnecting and displays one label per direction',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1400, 900);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final testDb = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(testDb.close);
+      await tester.runAsync(
+        () => AlgorithmMetadataService().initialize(testDb),
+      );
+
+      final appUpdateService = _createNoOpAppUpdateService();
+      final widgetMidi = _FakeMidiCommand();
+      addTearDown(widgetMidi.closeControllers);
+
+      final input1 = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
+      final output1 = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
+      final otherIn = _makeEndpoint('other-in', 'Bus 1', MidiPortType.IN);
+      final otherOut = _makeEndpoint('other-out', 'Bus 1', MidiPortType.OUT);
+      widgetMidi.availableDevices = [otherIn, otherOut, input1, output1];
+      widgetMidi.mutateNameOnFirstPacket = true;
+
+      final widgetCubit = DistingCubit(
+        testDb,
+        midiCommand: widgetMidi,
+        isWindowsOverride: false,
+        isLinuxOverride: false,
+      );
+      addTearDown(widgetCubit.close);
+
+      await widgetCubit.initialize();
+      await _awaitWhilePumping(
+        tester,
+        widgetCubit.connectToDevices(input1, output1, 11),
+      );
+      expect(widgetCubit.state, isA<DistingStateSynchronized>());
+      expect(input1.name, 'disting NT disting NT');
+
+      // Enter offline mode so _lastOnline* is populated.
+      await _awaitWhilePumping(tester, widgetCubit.goOffline());
+      expect((widgetCubit.state as DistingStateSynchronized).offline, isTrue);
+
+      // Fresh enumerated snapshot has clean backend names (as listDevices returns).
+      final freshIn = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
+      final freshOut = _makeEndpoint(
+        'nt-out-1',
+        'disting NT',
+        MidiPortType.OUT,
+      );
+      widgetMidi.availableDevices = [otherIn, otherOut, freshIn, freshOut];
+      widgetMidi.connectCalls.clear();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider<DistingCubit>.value(
+            value: widgetCubit,
+            child: DistingPage(appUpdateService: appUpdateService),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open overflow menu and tap Switch.
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Switch'));
+      await tester.pumpAndSettle();
+
+      // Must show restored Device page WITHOUT reconnecting to _lastOnline.
+      expect(widgetCubit.state, isA<DistingStateSelectDevice>());
+      expect(widgetMidi.connectCalls, isEmpty);
+      final selectState = widgetCubit.state as DistingStateSelectDevice;
+      expect(selectState.selectedInputDevice, same(freshIn));
+      expect(selectState.selectedOutputDevice, same(freshOut));
+      expect(selectState.selectedSysExId, 11);
+
+      String dropdownText(Key key) => tester
+          .widget<EditableText>(
+            find.descendant(
+              of: find.byKey(key),
+              matching: find.byType(EditableText),
+            ),
+          )
+          .controller
+          .text;
+
+      expect(
+        dropdownText(const ValueKey('input-midi-device-dropdown')),
+        'disting NT',
+      );
+      expect(
+        dropdownText(const ValueKey('output-midi-device-dropdown')),
+        'disting NT',
+      );
+      expect(
+        tester
+            .widget<EditableText>(
+              find.descendant(
+                of: find.byType(DropdownMenu<int>),
+                matching: find.byType(EditableText),
+              ),
+            )
+            .controller
+            .text,
+        '11',
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 150));
+    },
+    tags: ['regression'],
+  );
+
+  test('switchToDeviceSelection from online or pending silent reconnect returns to restored picker without connecting while goOnline preserves offline reconnect', () async {
+    final ntIn = _makeEndpoint('nt-in-1', 'disting NT', MidiPortType.IN);
+    final ntOut = _makeEndpoint('nt-out-1', 'disting NT', MidiPortType.OUT);
+    final otherIn = _makeEndpoint('other-in', 'Bus 1', MidiPortType.IN);
+    final otherOut = _makeEndpoint('other-out', 'Bus 1', MidiPortType.OUT);
+    midiCommand.availableDevices = [otherIn, otherOut, ntIn, ntOut];
+
+    await cubit.initialize();
+    await cubit.connectToDevices(ntIn, ntOut, 8);
+    expect(cubit.state, isA<DistingStateSynchronized>());
+
+    // Enter offline mode -> intentional goOnline still reconnects _lastOnline.
+    await cubit.goOffline();
+    expect((cubit.state as DistingStateSynchronized).offline, isTrue);
+    midiCommand.connectCalls.clear();
+    await cubit.goOnline();
+    expect(cubit.state, isA<DistingStateSynchronized>());
+    expect((cubit.state as DistingStateSynchronized).offline, isFalse);
+    expect(midiCommand.connectCalls, ['nt-in-1', 'nt-out-1']);
+
+    // Drop transport into silent reconnect pending state, then manually switch to Device page.
+    midiCommand.simulateDevicesDisappeared({ntIn.id, ntOut.id});
+    await _flushEventQueue();
+    expect(cubit.state, isA<DistingStateSynchronized>());
+
+    midiCommand.connectCalls.clear();
+    await cubit.switchToDeviceSelection();
+    var selectState = cubit.state as DistingStateSelectDevice;
+    expect(selectState.selectedInputDevice, isNull);
+    expect(selectState.selectedOutputDevice, isNull);
+    expect(selectState.selectedSysExId, 8);
+    expect(midiCommand.connectCalls, isEmpty);
+
+    // Returning endpoints restore in picker without auto-connecting.
+    final ntIn2 = _makeEndpoint('nt-in-2', 'disting NT', MidiPortType.IN);
+    final ntOut2 = _makeEndpoint('nt-out-2', 'disting NT', MidiPortType.OUT);
+    midiCommand.simulateDevicesAppeared([ntIn2, ntOut2]);
+    await _flushEventQueue();
+
+    selectState = cubit.state as DistingStateSelectDevice;
+    expect(selectState.selectedInputDevice, same(ntIn2));
+    expect(selectState.selectedOutputDevice, same(ntOut2));
+    expect(selectState.selectedSysExId, 8);
+    expect(midiCommand.connectCalls, isEmpty);
+  }, tags: ['regression']);
+
+  test('stale initialize completing after newer loadDevices and user override does not clobber newer selection', () async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selectedInputMidiDevice', 'Alpha');
+    await prefs.setString('selectedInputMidiDeviceId', 'in-a');
+    await prefs.setString('selectedOutputMidiDevice', 'Alpha');
+    await prefs.setString('selectedOutputMidiDeviceId', 'out-a');
+    await prefs.setInt('selectedSysExId', 3);
+
+    final inA = _makeEndpoint('in-a', 'Alpha', MidiPortType.IN);
+    final outA = _makeEndpoint('out-a', 'Alpha', MidiPortType.OUT);
+    final inB = _makeEndpoint('in-b', 'Beta', MidiPortType.IN);
+    final outB = _makeEndpoint('out-b', 'Beta', MidiPortType.OUT);
+    midiCommand.availableDevices = [inA, outA, inB, outB];
+
+    // Hold initialize() on its initial device enumeration.
+    final initGate = Completer<void>();
+    midiCommand.pendingDevicesGate = initGate;
+    final staleInit = cubit.initialize();
+    await _flushEventQueue();
+
+    // A newer loadDevices completes first and user overrides selection to Beta / 25.
+    await cubit.loadDevices();
+    cubit.updateDeviceSelection(
+      inputDevice: inB,
+      outputDevice: outB,
+      sysExId: 25,
+    );
+
+    // Now release stale initialize: it must not overwrite Beta / 25.
+    initGate.complete();
+    await staleInit;
+    await _flushEventQueue();
+
+    final state = cubit.state as DistingStateSelectDevice;
+    expect(state.selectedInputDevice, same(inB));
+    expect(state.selectedOutputDevice, same(outB));
+    expect(state.selectedSysExId, 25);
+    expect(midiCommand.connectCalls, isEmpty);
+  }, tags: ['regression']);
 }
