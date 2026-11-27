@@ -219,16 +219,218 @@ final class AlgorithmControllerRectangle
   final double strokeWidth;
 }
 
+sealed class AlgorithmControllerCanvasHitArea {
+  const AlgorithmControllerCanvasHitArea();
+}
+
+final class AlgorithmControllerCanvasCircleHitArea
+    extends AlgorithmControllerCanvasHitArea {
+  const AlgorithmControllerCanvasCircleHitArea({
+    required this.x,
+    required this.y,
+    required this.radius,
+  });
+
+  final double x;
+  final double y;
+  final double radius;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AlgorithmControllerCanvasCircleHitArea &&
+      other.x == x &&
+      other.y == y &&
+      other.radius == radius;
+
+  @override
+  int get hashCode => Object.hash(x, y, radius);
+}
+
+final class AlgorithmControllerCanvasRectHitArea
+    extends AlgorithmControllerCanvasHitArea {
+  const AlgorithmControllerCanvasRectHitArea({
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+  });
+
+  final double x;
+  final double y;
+  final double width;
+  final double height;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AlgorithmControllerCanvasRectHitArea &&
+      other.x == x &&
+      other.y == y &&
+      other.width == width &&
+      other.height == height;
+
+  @override
+  int get hashCode => Object.hash(x, y, width, height);
+}
+
+final class AlgorithmControllerCanvasAxisBinding {
+  const AlgorithmControllerCanvasAxisBinding({
+    required this.parameterNumber,
+    this.from = 0,
+    this.to = 1,
+    this.minimum,
+    this.maximum,
+    this.step = 1,
+    this.invert = false,
+    this.enabled = true,
+  });
+
+  final int parameterNumber;
+  final double from;
+  final double to;
+  final int? minimum;
+  final int? maximum;
+  final int step;
+  final bool invert;
+  final bool enabled;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AlgorithmControllerCanvasAxisBinding &&
+      other.parameterNumber == parameterNumber &&
+      other.from == from &&
+      other.to == to &&
+      other.minimum == minimum &&
+      other.maximum == maximum &&
+      other.step == step &&
+      other.invert == invert &&
+      other.enabled == enabled;
+
+  @override
+  int get hashCode => Object.hash(
+    parameterNumber,
+    from,
+    to,
+    minimum,
+    maximum,
+    step,
+    invert,
+    enabled,
+  );
+}
+
+final class AlgorithmControllerCanvasWheelBinding {
+  const AlgorithmControllerCanvasWheelBinding({
+    required this.parameterNumber,
+    this.minimum,
+    this.maximum,
+    this.step = 1,
+    this.invert = false,
+    this.enabled = true,
+  });
+
+  final int parameterNumber;
+  final int? minimum;
+  final int? maximum;
+  final int step;
+  final bool invert;
+  final bool enabled;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AlgorithmControllerCanvasWheelBinding &&
+      other.parameterNumber == parameterNumber &&
+      other.minimum == minimum &&
+      other.maximum == maximum &&
+      other.step == step &&
+      other.invert == invert &&
+      other.enabled == enabled;
+
+  @override
+  int get hashCode =>
+      Object.hash(parameterNumber, minimum, maximum, step, invert, enabled);
+}
+
+final class AlgorithmControllerCanvasTarget {
+  const AlgorithmControllerCanvasTarget({
+    required this.id,
+    required this.label,
+    required this.hitArea,
+    this.selectable = false,
+    this.order,
+    this.enabled = true,
+    this.xAxis,
+    this.yAxis,
+    this.wheel,
+  });
+
+  final String id;
+  final String label;
+  final AlgorithmControllerCanvasHitArea hitArea;
+  final bool selectable;
+  final int? order;
+  final bool enabled;
+  final AlgorithmControllerCanvasAxisBinding? xAxis;
+  final AlgorithmControllerCanvasAxisBinding? yAxis;
+  final AlgorithmControllerCanvasWheelBinding? wheel;
+}
+
+enum AlgorithmControllerCanvasInteractionEventType {
+  selected,
+  dragStart,
+  dragUpdate,
+  dragEnd,
+  dragCancel,
+  wheel,
+}
+
+enum AlgorithmControllerCanvasCancelReason {
+  pointerCancel,
+  escapeKey,
+  slotChanged,
+  bindingChanged,
+  reconnect,
+  disposed,
+  gestureRejected,
+}
+
+final class AlgorithmControllerCanvasInteractionEvent {
+  const AlgorithmControllerCanvasInteractionEvent({
+    required this.type,
+    required this.targetId,
+    this.pointer,
+    this.xValue,
+    this.yValue,
+    this.wheelValue,
+    this.cancelReason,
+  });
+
+  final AlgorithmControllerCanvasInteractionEventType type;
+  final String targetId;
+  final int? pointer;
+  final int? xValue;
+  final int? yValue;
+  final int? wheelValue;
+  final AlgorithmControllerCanvasCancelReason? cancelReason;
+}
+
 final class AlgorithmControllerCanvas extends AlgorithmControllerNode {
   const AlgorithmControllerCanvas({
     required this.semanticsLabel,
     required this.shapes,
     this.aspectRatio = 4,
+    this.targets = const [],
+    this.dragThreshold = 4,
+    this.cycleOverlappingSelection = false,
   });
 
   final String semanticsLabel;
   final double aspectRatio;
   final List<AlgorithmControllerCanvasShape> shapes;
+  final List<AlgorithmControllerCanvasTarget> targets;
+  final double dragThreshold;
+  final bool cycleOverlappingSelection;
+
+  bool get isInteractive => targets.isNotEmpty;
 }
 
 final class AlgorithmControllerXYPad extends AlgorithmControllerNode {

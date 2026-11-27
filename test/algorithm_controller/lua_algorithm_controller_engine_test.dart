@@ -609,8 +609,340 @@ return {
         canvas.shapes.whereType<AlgorithmControllerCircle>(),
         hasLength(16),
       );
+      expect(canvas.targets, isEmpty);
+      expect(canvas.isInteractive, isFalse);
     },
   );
+
+  group('canvas opt-in input targets', () {
+    test('parses circle and rect targets with axes, wheel, and options', () {
+      const source = r'''
+return {
+  version = 1,
+  title = "Interactive canvas",
+  root = ui.canvas {
+    semantics_label = "Synthetic interactive surface",
+    aspect_ratio = 3,
+    drag_threshold = 6.5,
+    cycle_overlapping_selection = true,
+    shapes = {
+      ui.circle { x = 0.5, y = 0.5, radius = 0.05, fill = "primary" }
+    },
+    targets = {
+      {
+        id = "handle-1",
+        label = "Handle 1",
+        shape = "circle",
+        x = 0.5,
+        y = 0.5,
+        radius = 0.06,
+        selectable = true,
+        order = 2,
+        x_axis = {
+          parameter = nt.parameter("1:Steps").number,
+          from = 0.1,
+          to = 0.9,
+          minimum = 2,
+          maximum = 24,
+          step = 2
+        },
+        y_axis = {
+          parameter = nt.parameter("1:Pulses").number,
+          from = 0.15,
+          to = 0.85,
+          invert = false
+        },
+        wheel = {
+          parameter = nt.parameter("1:Rotation").number,
+          minimum = 0,
+          maximum = 16,
+          step = 2,
+          invert = true
+        }
+      },
+      {
+        id = "fader-1",
+        label = "Fader 1",
+        shape = "rect",
+        x = 0.1,
+        y = 0.2,
+        width = 0.12,
+        height = 0.6,
+        enabled = false,
+        y_axis = {
+          parameter = nt.parameter("1:Pulses").number
+        }
+      }
+    }
+  }
+}
+''';
+
+      final document = engine.evaluate(
+        source: source,
+        slot: _euclideanSlot(),
+        slotIndex: 2,
+        units: const [],
+      );
+
+      final canvas = document.root as AlgorithmControllerCanvas;
+      expect(canvas.isInteractive, isTrue);
+      expect(canvas.dragThreshold, 6.5);
+      expect(canvas.cycleOverlappingSelection, isTrue);
+      expect(canvas.targets, hasLength(2));
+
+      final circleTarget = canvas.targets[0];
+      expect(circleTarget.id, 'handle-1');
+      expect(circleTarget.label, 'Handle 1');
+      expect(
+        circleTarget.hitArea,
+        const AlgorithmControllerCanvasCircleHitArea(
+          x: 0.5,
+          y: 0.5,
+          radius: 0.06,
+        ),
+      );
+      expect(circleTarget.selectable, isTrue);
+      expect(circleTarget.order, 2);
+      expect(circleTarget.enabled, isTrue);
+      expect(
+        circleTarget.xAxis,
+        const AlgorithmControllerCanvasAxisBinding(
+          parameterNumber: 2,
+          from: 0.1,
+          to: 0.9,
+          minimum: 2,
+          maximum: 24,
+          step: 2,
+          invert: false,
+          enabled: true,
+        ),
+      );
+      expect(
+        circleTarget.yAxis,
+        const AlgorithmControllerCanvasAxisBinding(
+          parameterNumber: 3,
+          from: 0.15,
+          to: 0.85,
+          invert: false,
+          enabled: true,
+        ),
+      );
+      expect(
+        circleTarget.wheel,
+        const AlgorithmControllerCanvasWheelBinding(
+          parameterNumber: 4,
+          minimum: 0,
+          maximum: 16,
+          step: 2,
+          invert: true,
+          enabled: true,
+        ),
+      );
+
+      final rectTarget = canvas.targets[1];
+      expect(rectTarget.id, 'fader-1');
+      expect(
+        rectTarget.hitArea,
+        const AlgorithmControllerCanvasRectHitArea(
+          x: 0.1,
+          y: 0.2,
+          width: 0.12,
+          height: 0.6,
+        ),
+      );
+      expect(rectTarget.enabled, isFalse);
+      expect(rectTarget.selectable, isFalse);
+      expect(rectTarget.yAxis?.invert, isTrue);
+      expect(rectTarget.xAxis, isNull);
+      expect(rectTarget.wheel, isNull);
+    });
+
+    test(
+      'legacy canvas without targets stays non-interactive with defaults',
+      () {
+        const source = r'''
+return {
+  version = 1,
+  title = "Legacy canvas",
+  root = ui.canvas {
+    semantics_label = "Paint only",
+    shapes = {
+      ui.rect { x = 0, y = 0, width = 1, height = 1, fill = "surface" }
+    }
+  }
+}
+''';
+
+        final document = engine.evaluate(
+          source: source,
+          slot: _euclideanSlot(),
+          slotIndex: 2,
+          units: const [],
+        );
+
+        final canvas = document.root as AlgorithmControllerCanvas;
+        expect(canvas.targets, isEmpty);
+        expect(canvas.isInteractive, isFalse);
+        expect(canvas.dragThreshold, 4);
+        expect(canvas.cycleOverlappingSelection, isFalse);
+      },
+    );
+
+    test('rejects invalid canvas target descriptors', () {
+      final invalidCases = <({String name, String canvasBody, String error})>[
+        (
+          name: 'negative drag threshold',
+          canvasBody: 'drag_threshold = -1, targets = {}',
+          error: 'drag_threshold must be non-negative',
+        ),
+        (
+          name: 'non-array targets',
+          canvasBody: 'targets = { id = "not-a-list" }',
+          error: 'must be an array table',
+        ),
+        (
+          name: 'empty target id',
+          canvasBody: 'targets = { { id = "  ", label = "A", shape = "circle", x = 0.5, y = 0.5, radius = 0.1 } }',
+          error: 'must be a non-empty string',
+        ),
+        (
+          name: 'duplicate target id',
+          canvasBody:
+              'targets = { '
+              '{ id = "dup", label = "A", shape = "circle", x = 0.2, y = 0.5, radius = 0.1 }, '
+              '{ id = "dup", label = "B", shape = "circle", x = 0.8, y = 0.5, radius = 0.1 } '
+              '}',
+          error: 'duplicates target "dup"',
+        ),
+        (
+          name: 'missing label',
+          canvasBody: 'targets = { { id = "a", shape = "circle", x = 0.5, y = 0.5, radius = 0.1 } }',
+          error: '.label must be a string',
+        ),
+        (
+          name: 'unknown shape',
+          canvasBody: 'targets = { { id = "a", label = "A", shape = "triangle", x = 0.5, y = 0.5 } }',
+          error: 'must be "circle" or "rect"',
+        ),
+        (
+          name: 'non-positive circle radius',
+          canvasBody: 'targets = { { id = "a", label = "A", shape = "circle", x = 0.5, y = 0.5, radius = 0 } }',
+          error: 'radius must be positive',
+        ),
+        (
+          name: 'non-positive rect width',
+          canvasBody: 'targets = { { id = "a", label = "A", shape = "rect", x = 0.1, y = 0.1, width = 0, height = 0.5 } }',
+          error: 'width must be positive',
+        ),
+        (
+          name: 'non-positive rect height',
+          canvasBody: 'targets = { { id = "a", label = "A", shape = "rect", x = 0.1, y = 0.1, width = 0.2, height = -0.1 } }',
+          error: 'height must be positive',
+        ),
+        (
+          name: 'inverted from/to bounds on axis',
+          canvasBody:
+              'targets = { { id = "a", label = "A", shape = "circle", x = 0.5, y = 0.5, radius = 0.1, '
+              'x_axis = { parameter = 2, from = 0.8, to = 0.2 } } }',
+          error: 'from must be less than to',
+        ),
+        (
+          name: 'non-positive axis step',
+          canvasBody:
+              'targets = { { id = "a", label = "A", shape = "circle", x = 0.5, y = 0.5, radius = 0.1, '
+              'x_axis = { parameter = 2, step = 0 } } }',
+          error: 'step must be at least 1',
+        ),
+        (
+          name: 'non-positive wheel step',
+          canvasBody:
+              'targets = { { id = "a", label = "A", shape = "circle", x = 0.5, y = 0.5, radius = 0.1, '
+              'wheel = { parameter = 2, step = 0 } } }',
+          error: 'step must be at least 1',
+        ),
+      ];
+
+      for (final testCase in invalidCases) {
+        final source =
+            '''
+return {
+  version = 1,
+  title = "Invalid canvas",
+  root = ui.canvas {
+    semantics_label = "Invalid",
+    shapes = {},
+    ${testCase.canvasBody}
+  }
+}
+''';
+        expect(
+          () => engine.evaluate(
+            source: source,
+            slot: _euclideanSlot(),
+            slotIndex: 2,
+            units: const [],
+          ),
+          throwsA(
+            isA<LuaAlgorithmControllerException>().having(
+              (error) => error.message,
+              'message',
+              contains(testCase.error),
+            ),
+          ),
+          reason: testCase.name,
+        );
+      }
+    });
+
+    test('rejects canvas targets bound to I/O parameters', () {
+      for (final binding in [
+        'x_axis = { parameter = 2 }',
+        'y_axis = { parameter = 2 }',
+        'wheel = { parameter = 2 }',
+      ]) {
+        final source =
+            '''
+return {
+  version = 1,
+  title = "I/O canvas",
+  root = ui.canvas {
+    semantics_label = "Forbidden",
+    shapes = {},
+    targets = {
+      {
+        id = "io",
+        label = "I/O target",
+        shape = "circle",
+        x = 0.5,
+        y = 0.5,
+        radius = 0.1,
+        $binding
+      }
+    }
+  }
+}
+''';
+
+        expect(
+          () => engine.evaluate(
+            source: source,
+            slot: _slotWithIoParameter(),
+            slotIndex: 2,
+            units: const [],
+          ),
+          throwsA(
+            isA<LuaAlgorithmControllerException>().having(
+              (error) => error.message,
+              'message',
+              contains('cannot bind I/O parameter 2 (1:Steps)'),
+            ),
+          ),
+          reason: binding,
+        );
+      }
+    });
+  });
 }
 
 Slot _euclideanSlot({int steps = 16, int channelCount = 1}) {

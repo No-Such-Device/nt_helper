@@ -250,6 +250,13 @@ end
       AlgorithmControllerNoteMask(:final notes) => [
         for (final note in notes) note.parameterNumber,
       ],
+      AlgorithmControllerCanvas(:final targets) => [
+        for (final target in targets) ...[
+          if (target.xAxis case final axis?) axis.parameterNumber,
+          if (target.yAxis case final axis?) axis.parameterNumber,
+          if (target.wheel case final wheel?) wheel.parameterNumber,
+        ],
+      ],
       _ => const <int>[],
     };
     for (final parameterNumber in parameterNumbers) {
@@ -364,9 +371,11 @@ end
 final class _AlgorithmControllerDocumentParser {
   static const _maximumNodes = 512;
   static const _maximumShapes = 2048;
+  static const _maximumCanvasTargets = 256;
 
   var _nodeCount = 0;
   var _shapeCount = 0;
+  var _canvasTargetCount = 0;
 
   AlgorithmControllerDocument parse(Object? value) {
     final document = _map(value, 'document');
@@ -445,15 +454,7 @@ final class _AlgorithmControllerDocumentParser {
       'spacer' => AlgorithmControllerSpacer(
         size: _optionalNumber(node['size'], '$path.size') ?? 8,
       ),
-      'canvas' => AlgorithmControllerCanvas(
-        semanticsLabel: _string(
-          node['semantics_label'],
-          '$path.semantics_label',
-        ),
-        aspectRatio:
-            _optionalNumber(node['aspect_ratio'], '$path.aspect_ratio') ?? 4,
-        shapes: _shapes(node['shapes'], '$path.shapes'),
-      ),
+      'canvas' => _canvas(node, path),
       'xy_pad' => AlgorithmControllerXYPad(
         label: _string(node['label'], '$path.label'),
         xParameterNumber: _integer(node['x_parameter'], '$path.x_parameter'),
@@ -585,6 +586,188 @@ final class _AlgorithmControllerDocumentParser {
     };
   }
 
+  AlgorithmControllerCanvas _canvas(Map<Object, Object?> node, String path) {
+    final dragThreshold =
+        _optionalNumber(node['drag_threshold'], '$path.drag_threshold') ?? 4;
+    if (dragThreshold < 0) {
+      throw LuaAlgorithmControllerException(
+        '$path.drag_threshold must be non-negative',
+      );
+    }
+    final rawTargets = node['targets'];
+    final targets = rawTargets == null
+        ? const <AlgorithmControllerCanvasTarget>[]
+        : _canvasTargets(rawTargets, '$path.targets');
+    return AlgorithmControllerCanvas(
+      semanticsLabel: _string(node['semantics_label'], '$path.semantics_label'),
+      aspectRatio:
+          _optionalNumber(node['aspect_ratio'], '$path.aspect_ratio') ?? 4,
+      shapes: _shapes(node['shapes'], '$path.shapes'),
+      targets: targets,
+      dragThreshold: dragThreshold,
+      cycleOverlappingSelection:
+          _optionalBoolean(
+            node['cycle_overlapping_selection'],
+            '$path.cycle_overlapping_selection',
+          ) ??
+          false,
+    );
+  }
+
+  List<AlgorithmControllerCanvasTarget> _canvasTargets(
+    Object? value,
+    String path,
+  ) {
+    final rawTargets = _list(value, path);
+    _canvasTargetCount += rawTargets.length;
+    if (_canvasTargetCount > _maximumCanvasTargets) {
+      throw const LuaAlgorithmControllerException(
+        'Controller document exceeds 256 canvas targets',
+      );
+    }
+    final seenIds = <String>{};
+    final targets = <AlgorithmControllerCanvasTarget>[];
+    for (var index = 0; index < rawTargets.length; index++) {
+      final targetPath = '$path[$index]';
+      final target = _canvasTarget(rawTargets[index], targetPath);
+      if (!seenIds.add(target.id)) {
+        throw LuaAlgorithmControllerException(
+          '$targetPath.id duplicates target "${target.id}"',
+        );
+      }
+      targets.add(target);
+    }
+    return List.unmodifiable(targets);
+  }
+
+  AlgorithmControllerCanvasTarget _canvasTarget(Object? value, String path) {
+    final target = _map(value, path);
+    final id = _nonEmptyString(target['id'], '$path.id');
+    final label = _nonEmptyString(target['label'], '$path.label');
+    final hitArea = _canvasHitArea(target, path);
+    return AlgorithmControllerCanvasTarget(
+      id: id,
+      label: label,
+      hitArea: hitArea,
+      selectable:
+          _optionalBoolean(target['selectable'], '$path.selectable') ?? false,
+      order: _optionalInteger(target['order'], '$path.order'),
+      enabled: _optionalBoolean(target['enabled'], '$path.enabled') ?? true,
+      xAxis: target['x_axis'] == null
+          ? null
+          : _canvasAxisBinding(
+              target['x_axis'],
+              '$path.x_axis',
+              defaultInvert: false,
+            ),
+      yAxis: target['y_axis'] == null
+          ? null
+          : _canvasAxisBinding(
+              target['y_axis'],
+              '$path.y_axis',
+              defaultInvert: true,
+            ),
+      wheel: target['wheel'] == null
+          ? null
+          : _canvasWheelBinding(target['wheel'], '$path.wheel'),
+    );
+  }
+
+  AlgorithmControllerCanvasHitArea _canvasHitArea(
+    Map<Object, Object?> target,
+    String path,
+  ) {
+    final shape = _string(target['shape'], '$path.shape');
+    return switch (shape) {
+      'circle' => _circleHitArea(target, path),
+      'rect' => _rectHitArea(target, path),
+      _ => throw LuaAlgorithmControllerException(
+        '$path.shape must be "circle" or "rect"',
+      ),
+    };
+  }
+
+  AlgorithmControllerCanvasCircleHitArea _circleHitArea(
+    Map<Object, Object?> target,
+    String path,
+  ) {
+    final x = _number(target['x'], '$path.x');
+    final y = _number(target['y'], '$path.y');
+    final radius = _number(target['radius'], '$path.radius');
+    if (radius <= 0) {
+      throw LuaAlgorithmControllerException('$path.radius must be positive');
+    }
+    return AlgorithmControllerCanvasCircleHitArea(x: x, y: y, radius: radius);
+  }
+
+  AlgorithmControllerCanvasRectHitArea _rectHitArea(
+    Map<Object, Object?> target,
+    String path,
+  ) {
+    final x = _number(target['x'], '$path.x');
+    final y = _number(target['y'], '$path.y');
+    final width = _number(target['width'], '$path.width');
+    final height = _number(target['height'], '$path.height');
+    if (width <= 0) {
+      throw LuaAlgorithmControllerException('$path.width must be positive');
+    }
+    if (height <= 0) {
+      throw LuaAlgorithmControllerException('$path.height must be positive');
+    }
+    return AlgorithmControllerCanvasRectHitArea(
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+    );
+  }
+
+  AlgorithmControllerCanvasAxisBinding _canvasAxisBinding(
+    Object? value,
+    String path, {
+    required bool defaultInvert,
+  }) {
+    final axis = _map(value, path);
+    final from = _optionalNumber(axis['from'], '$path.from') ?? 0;
+    final to = _optionalNumber(axis['to'], '$path.to') ?? 1;
+    if (from >= to) {
+      throw LuaAlgorithmControllerException('$path.from must be less than to');
+    }
+    final step = _optionalInteger(axis['step'], '$path.step') ?? 1;
+    if (step < 1) {
+      throw LuaAlgorithmControllerException('$path.step must be at least 1');
+    }
+    return AlgorithmControllerCanvasAxisBinding(
+      parameterNumber: _integer(axis['parameter'], '$path.parameter'),
+      from: from,
+      to: to,
+      minimum: _optionalInteger(axis['minimum'], '$path.minimum'),
+      maximum: _optionalInteger(axis['maximum'], '$path.maximum'),
+      step: step,
+      invert: _optionalBoolean(axis['invert'], '$path.invert') ?? defaultInvert,
+      enabled: _optionalBoolean(axis['enabled'], '$path.enabled') ?? true,
+    );
+  }
+
+  AlgorithmControllerCanvasWheelBinding _canvasWheelBinding(
+    Object? value,
+    String path,
+  ) {
+    final wheel = _map(value, path);
+    final step = _optionalInteger(wheel['step'], '$path.step') ?? 1;
+    if (step < 1) {
+      throw LuaAlgorithmControllerException('$path.step must be at least 1');
+    }
+    return AlgorithmControllerCanvasWheelBinding(
+      parameterNumber: _integer(wheel['parameter'], '$path.parameter'),
+      minimum: _optionalInteger(wheel['minimum'], '$path.minimum'),
+      maximum: _optionalInteger(wheel['maximum'], '$path.maximum'),
+      step: step,
+      invert: _optionalBoolean(wheel['invert'], '$path.invert') ?? false,
+      enabled: _optionalBoolean(wheel['enabled'], '$path.enabled') ?? true,
+    );
+  }
+
   List<AlgorithmControllerCanvasShape> _shapes(Object? value, String path) {
     final shapes = _list(value, path);
     _shapeCount += shapes.length;
@@ -651,6 +834,14 @@ final class _AlgorithmControllerDocumentParser {
   String _string(Object? value, String path) {
     if (value case String string) return string;
     throw LuaAlgorithmControllerException('$path must be a string');
+  }
+
+  String _nonEmptyString(Object? value, String path) {
+    final string = _string(value, path);
+    if (string.trim().isEmpty) {
+      throw LuaAlgorithmControllerException('$path must be a non-empty string');
+    }
+    return string;
   }
 
   String? _optionalString(Object? value, String path) {

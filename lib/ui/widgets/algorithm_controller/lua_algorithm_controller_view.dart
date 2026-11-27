@@ -9,6 +9,7 @@ import 'package:nt_helper/algorithm_controller/algorithm_controller.dart';
 import 'package:nt_helper/algorithm_controller/lua_algorithm_controller_engine.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/parameter_number_lookup.dart';
+import 'package:nt_helper/ui/widgets/algorithm_controller/algorithm_controller_canvas_input.dart';
 import 'package:nt_helper/ui/widgets/algorithm_controller/algorithm_controller_section_controller.dart';
 import 'package:nt_helper/ui/widgets/parameter_numeric_editing.dart';
 import 'package:nt_helper/util/ui_helpers.dart';
@@ -44,6 +45,7 @@ class LuaAlgorithmControllerView extends StatefulWidget {
     this.engine = const LuaAlgorithmControllerEngine(),
     this.sourceLoader,
     this.onError,
+    this.onCanvasInteraction,
   });
 
   final AlgorithmControllerDefinition definition;
@@ -54,6 +56,8 @@ class LuaAlgorithmControllerView extends StatefulWidget {
   final LuaAlgorithmControllerEngine engine;
   final AlgorithmControllerSourceLoader? sourceLoader;
   final ValueChanged<String>? onError;
+  final ValueChanged<AlgorithmControllerCanvasInteractionEvent>?
+  onCanvasInteraction;
 
   @override
   State<LuaAlgorithmControllerView> createState() =>
@@ -189,6 +193,8 @@ class _LuaAlgorithmControllerViewState
       slotIndex: widget.slotIndex,
       units: widget.units,
       sectionController: widget.sectionController,
+      documentGeneration: _loadGeneration,
+      onCanvasInteraction: widget.onCanvasInteraction,
     );
   }
 }
@@ -201,6 +207,8 @@ class AlgorithmControllerDocumentView extends StatefulWidget {
     required this.slotIndex,
     required this.units,
     required this.sectionController,
+    this.documentGeneration = 0,
+    this.onCanvasInteraction,
   });
 
   final AlgorithmControllerDocument document;
@@ -208,6 +216,9 @@ class AlgorithmControllerDocumentView extends StatefulWidget {
   final int slotIndex;
   final List<String> units;
   final AlgorithmControllerSectionController sectionController;
+  final int documentGeneration;
+  final ValueChanged<AlgorithmControllerCanvasInteractionEvent>?
+  onCanvasInteraction;
 
   @override
   State<AlgorithmControllerDocumentView> createState() =>
@@ -283,6 +294,8 @@ class _AlgorithmControllerDocumentViewState
       slotIndex: widget.slotIndex,
       units: widget.units,
       sectionController: widget.sectionController,
+      documentGeneration: widget.documentGeneration,
+      onCanvasInteraction: widget.onCanvasInteraction,
     );
   }
 }
@@ -294,6 +307,8 @@ class _AlgorithmControllerDocumentBody extends StatelessWidget {
     required this.slotIndex,
     required this.units,
     required this.sectionController,
+    required this.documentGeneration,
+    this.onCanvasInteraction,
   });
 
   final AlgorithmControllerDocument document;
@@ -301,6 +316,9 @@ class _AlgorithmControllerDocumentBody extends StatelessWidget {
   final int slotIndex;
   final List<String> units;
   final AlgorithmControllerSectionController sectionController;
+  final int documentGeneration;
+  final ValueChanged<AlgorithmControllerCanvasInteractionEvent>?
+  onCanvasInteraction;
 
   @override
   Widget build(BuildContext context) {
@@ -362,7 +380,7 @@ class _AlgorithmControllerDocumentBody extends StatelessWidget {
       AlgorithmControllerButton node => _buildButton(context, node),
       AlgorithmControllerDivider() => const Divider(),
       AlgorithmControllerSpacer node => SizedBox(height: node.size),
-      AlgorithmControllerCanvas node => _buildCanvas(context, node),
+      AlgorithmControllerCanvas node => _buildCanvas(context, node, path: path),
       AlgorithmControllerXYPad node => _buildXYPad(context, node),
       AlgorithmControllerNoteMask node => _buildNoteMask(context, node),
     };
@@ -664,27 +682,61 @@ class _AlgorithmControllerDocumentBody extends StatelessWidget {
     };
   }
 
-  Widget _buildCanvas(BuildContext context, AlgorithmControllerCanvas node) {
+  Widget _buildCanvas(
+    BuildContext context,
+    AlgorithmControllerCanvas node, {
+    required String path,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
+    final painter = _AlgorithmControllerCanvasPainter(
+      shapes: node.shapes,
+      colorScheme: colorScheme,
+    );
+    if (!node.isInteractive) {
+      return Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: _algorithmControllerCanvasWidth,
+          ),
+          child: Semantics(
+            image: true,
+            label: node.semanticsLabel,
+            child: ExcludeSemantics(
+              child: AspectRatio(
+                aspectRatio: node.aspectRatio.clamp(0.25, 20),
+                child: CustomPaint(painter: painter),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Align(
       alignment: AlignmentDirectional.centerStart,
       child: ConstrainedBox(
         constraints: const BoxConstraints(
           maxWidth: _algorithmControllerCanvasWidth,
         ),
-        child: Semantics(
-          image: true,
-          label: node.semanticsLabel,
-          child: ExcludeSemantics(
-            child: AspectRatio(
-              aspectRatio: node.aspectRatio.clamp(0.25, 20),
-              child: CustomPaint(
-                painter: _AlgorithmControllerCanvasPainter(
-                  shapes: node.shapes,
-                  colorScheme: colorScheme,
+        child: AspectRatio(
+          aspectRatio: node.aspectRatio.clamp(0.25, 20),
+          child: InteractiveAlgorithmControllerCanvas(
+            key: ValueKey('algorithm-controller-canvas:$path'),
+            node: node,
+            slot: slot,
+            slotIndex: slotIndex,
+            units: units,
+            documentGeneration: documentGeneration,
+            painter: painter,
+            onWriteParameter: (parameterNumber, value, {required changing}) =>
+                _writeParameter(
+                  context,
+                  parameterNumber,
+                  value,
+                  changing: changing,
                 ),
-              ),
-            ),
+            onInteraction: onCanvasInteraction,
           ),
         ),
       ),
