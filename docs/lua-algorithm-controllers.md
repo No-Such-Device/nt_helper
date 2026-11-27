@@ -333,25 +333,41 @@ Hit geometry, mapping, and pointer rules:
   cancel, or gesture rejection) with still-current writable bindings after
   actual writes settle only the already-edited axes once at their last accepted
   values with `changing: false` so normal host release reconciliation
-  (debounced readback, program refresh, anomaly check) still runs. Pre-threshold
-  cancels, unedited targets, and lifecycle invalidations (slot/document/binding
-  replacement, disconnect/reconnect, loading, or disposal) clear active state
-  immediately with no final write and reject late move/up events.
+  (debounced readback, program refresh, anomaly check) still runs. `Escape`
+  cancellation is focus-scoped to the active canvas interaction and consumed
+  while active so it cancels the drag without also triggering ancestor `Escape`
+  shortcuts (such as clearing algorithm selection); when idle (including after
+  release, cancel, or disposal), `Escape` reaches ancestor shortcuts unchanged.
+  Pre-threshold cancels, unedited targets, and lifecycle invalidations
+  (slot/document/binding replacement, disconnect/reconnect, loading, or
+  disposal) clear active state immediately with no final write and reject late
+  move/up events.
 - **Wheel arbitration:** Only vertical mouse-wheel signals (`kind == mouse`,
   `|dy| > |dx|`) over a single unambiguous, enabled, writable target are
-  consumed. Logical `dy` accumulates toward `120` logical pixels per notch
-  without per-event boosting of fractional deltas; each accumulated notch steps
-  by `step` (multi-notch events step proportionally in one quantized, clamped
-  write; `invert = false` increases on wheel up `dy < 0`). Batched events
-  within a frame progress from the latest valid local or live value and
-  reconcile immediately on fresh readback. Direction reversal, switching
-  targets, scrolling off-target, or session/binding invalidation clears unused
-  accumulation. At the clamped min/max limit in the scroll direction, the wheel
-  signal is still consumed (preventing sudden page-scroll jumps), accumulation
-  is cleared, and no write or interaction event is emitted. Horizontal wheel,
-  trackpad scroll/pan-zoom, background, ambiguous overlap, unsupported,
-  disabled, and stale-session wheel events pass through to parent scrolling
-  with zero writes.
+  consumed. Based on pinned Flutter desktop embedder source math (approximately
+  `40` logical pixels for a macOS line-wheel event, `53` on Linux, and
+  `66.7–100` on Windows at reviewed scales; verified with simulated input and
+  pinned source rather than physical-device/OS measurements across hardware),
+  any single vertical mouse-wheel event with `|dy| >= 40` logical pixels
+  (the **discrete-event floor**) steps once by `step` in its direction
+  (`invert = false` increases on wheel up `dy < 0`), discards any prior
+  fractional carry, and leaves no leftover fraction. This is a consistent UX
+  approximation rather than a universal unit conversion or true notch count; a
+  coalesced or accelerated large single event still takes one step per event.
+  Smaller same-direction sub-floor deltas (`|dy| < 40`) accumulate to the
+  `40`-logical-pixel floor without per-event boosting, emitting no write until
+  crossing the floor and retaining only the unused sub-floor remainder after a
+  sub-floor step. Precise versus discrete mouse devices cannot always be
+  distinguished at the Flutter event surface; trackpad-kind scroll and pan/zoom
+  gestures remain pass-through. Batched events within a frame progress from
+  the latest valid local or live value and reconcile immediately on fresh
+  readback. Direction reversal, switching targets, scrolling off-target, or
+  session/binding invalidation clears unused accumulation. At the clamped
+  min/max limit in the scroll direction, the wheel signal is still consumed
+  (preventing sudden page-scroll jumps), accumulation is cleared, and no write
+  or interaction event is emitted. Horizontal wheel, trackpad scroll/pan-zoom,
+  background, ambiguous overlap, unsupported, disabled, and stale-session wheel
+  events pass through to parent scrolling with zero writes.
 - **Keyboard traversal and accessibility:** Tab/Shift+Tab and assistive
   traversal follow declared target order (matching `OrdinalSortKey`) with
   normal focus entry before and exit after the canvas; invalid targets are

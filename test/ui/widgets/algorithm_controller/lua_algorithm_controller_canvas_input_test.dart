@@ -2069,33 +2069,33 @@ return {
         );
         final mouse = TestPointer(30, PointerDeviceKind.mouse);
 
-        // 1. Reviewer baseline: six dy=-20 events totaling one 120-unit notch -> ONE step ONCE.
+        // 1. Sub-floor fragments: four dy=-10 events totaling the 40-logical-px floor -> ONE step ONCE.
         tester.binding.handlePointerEvent(mouse.hover(centerA));
-        for (var i = 0; i < 5; i++) {
-          tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -20)));
+        for (var i = 0; i < 3; i++) {
+          tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -10)));
           await tester.pump();
           expect(writes, isEmpty);
           expect(scrollable.position.pixels, 0);
         }
-        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -20)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -10)));
         await tester.pump();
         expect(writes.map((w) => (w.parameterNumber, w.value, w.changing)), [
           (5, 51, false),
         ]);
 
-        // Opposite direction: six dy=+20 events -> steps back 51 -> 50 once.
+        // Opposite direction: four dy=+10 events -> steps back 51 -> 50 once.
         writes.clear();
-        for (var i = 0; i < 6; i++) {
-          tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, 20)));
+        for (var i = 0; i < 4; i++) {
+          tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, 10)));
           await tester.pump();
         }
         expect(writes.map((w) => (w.parameterNumber, w.value)), [(5, 50)]);
 
         // 2. Batched events in a single frame without rebuild progress cleanly (no duplicates).
         writes.clear();
-        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -120)));
-        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -120)));
-        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -120)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -40)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -53)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -100)));
         await tester.pump();
         expect(writes.map((w) => (w.parameterNumber, w.value)), [
           (5, 51),
@@ -2122,26 +2122,26 @@ return {
         );
         await tester.pump();
 
-        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -120)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -40)));
         await tester.pump();
         expect(writes.map((w) => (w.parameterNumber, w.value)), [(5, 31)]);
 
-        // 4. Unused accumulation on Wheel A must NOT carry to Wheel B on target switch.
+        // 4. Unused sub-floor accumulation on Wheel A must NOT carry to Wheel B on target switch.
         writes.clear();
-        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -80)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -30)));
         await tester.pump();
         expect(writes, isEmpty);
 
         tester.binding.handlePointerEvent(mouse.hover(centerB));
-        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -60)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -20)));
         await tester.pump();
         expect(
           writes,
           isEmpty,
-          reason: 'leftover -80 on wheel-a must not carry onto wheel-b',
+          reason: 'leftover -30 on wheel-a must not carry onto wheel-b',
         );
-        // Completing the full 120 on wheel-b (-60 + -60) steps param 4 by step=5 (50 -> 55).
-        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -60)));
+        // Completing the 40-logical-px floor on wheel-b (-20 + -20) steps param 4 by step=5 (50 -> 55).
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -20)));
         await tester.pump();
         expect(writes.map((w) => (w.parameterNumber, w.value)), [(4, 55)]);
 
@@ -2165,12 +2165,12 @@ return {
         );
         await tester.pump();
         tester.binding.handlePointerEvent(mouse.hover(centerA));
-        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -120)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -40)));
         await tester.pump();
         expect(writes, isEmpty);
         expect(scrollable.position.pixels, 0);
 
-        // Reconnect clears partial fractional accumulation (-80) so post-reconnect -60 does not fire.
+        // Reconnect clears partial fractional accumulation (-30) so post-reconnect -20 does not fire.
         final mgrA = _MockMidiManager();
         final mgrB = _MockMidiManager();
         final reconSlot = _syntheticSlot(p5: 50);
@@ -2180,7 +2180,7 @@ return {
         );
         await tester.pump();
         tester.binding.handlePointerEvent(mouse.hover(centerA));
-        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -80)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -30)));
         await tester.pump();
         expect(writes, isEmpty);
 
@@ -2188,7 +2188,7 @@ return {
         when(() => cubit.state).thenReturn(syncedB);
         stateStream.add(syncedB);
         await tester.pump();
-        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -60)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -20)));
         await tester.pump();
         expect(
           writes,
@@ -2771,7 +2771,689 @@ return {
         expect(events.last.targetId, 'first');
       },
     );
+
+    testWidgets(
+      'W1: desktop wheel discrete-event floor (±40/53/66.7/100) steps once without carry leak, accumulates sub-floor fragments, and preserves scroll pass-through',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(900, 650));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        const wheelPolicySource = r'''
+return {
+  version = 1,
+  title = "W1 Wheel Policy",
+  root = ui.column {
+    gap = 12,
+    padding = 16,
+    children = {
+      ui.canvas {
+        semantics_label = "W1 wheel canvas",
+        aspect_ratio = 2,
+        shapes = {},
+        targets = {
+          {
+            id = "wheel-a",
+            label = "Wheel A",
+            shape = "rect",
+            x = 0.05,
+            y = 0.1,
+            width = 0.4,
+            height = 0.8,
+            wheel = { parameter = 5, step = 1 }
+          },
+          {
+            id = "wheel-b",
+            label = "Wheel B",
+            shape = "rect",
+            x = 0.55,
+            y = 0.1,
+            width = 0.4,
+            height = 0.8,
+            wheel = { parameter = 4, step = 5 }
+          }
+        }
+      },
+      ui.spacer { size = 1200 }
+    }
+  }
+}
+''';
+
+        // 1. Parameterized embedder-derived samples in both directions on clean targets:
+        // macOS line-wheel (~40), Linux (~53), Windows 150%/100% (~66.7/100).
+        var pointerId = 60;
+        for (final magnitude in const [40.0, 53.0, 66.7, 100.0]) {
+          for (final isUp in const [true, false]) {
+            writes.clear();
+            final dy = isUp ? -magnitude : magnitude;
+            final expectedValue = isUp ? 51 : 49;
+            final label = 'dy=$dy';
+
+            await tester.pumpWidget(
+              _Harness(
+                key: ValueKey('w1-$magnitude-$isUp'),
+                cubit: cubit,
+                slot: _syntheticSlot(p4: 50, p5: 50),
+                source: wheelPolicySource,
+              ),
+            );
+            await tester.pumpAndSettle();
+
+            final scrollable = tester.state<ScrollableState>(
+              find.byType(Scrollable).first,
+            );
+            final canvasRect = tester.getRect(
+              find.byType(InteractiveAlgorithmControllerCanvas),
+            );
+            final centerA = Offset(
+              canvasRect.left + canvasRect.width * 0.25,
+              canvasRect.top + canvasRect.height * 0.5,
+            );
+            final mouse = TestPointer(pointerId++, PointerDeviceKind.mouse);
+
+            tester.binding.handlePointerEvent(mouse.hover(centerA));
+            tester.binding.handlePointerEvent(mouse.scroll(Offset(0, dy)));
+            await tester.pump();
+
+            expect(
+              writes.map((w) => (w.parameterNumber, w.value, w.changing)),
+              [(5, expectedValue, false)],
+              reason: '$label must emit precisely one write',
+            );
+            expect(
+              scrollable.position.pixels,
+              0,
+              reason: '$label must not scroll parent',
+            );
+
+            // Follow immediately with a sub-floor 30-px event in the same direction:
+            // must produce zero writes, proving no fractional carry leaked from the
+            // discrete event (e.g. 53/66.7/100 leaves 0 carry, not 13/26.7/60).
+            writes.clear();
+            final followUpDy = isUp ? -30.0 : 30.0;
+            tester.binding.handlePointerEvent(
+              mouse.scroll(Offset(0, followUpDy)),
+            );
+            await tester.pump();
+            expect(
+              writes,
+              isEmpty,
+              reason: 'no fraction may leak after discrete $label',
+            );
+            expect(scrollable.position.pixels, 0);
+          }
+        }
+
+        // 2. Clean target for sub-floor accumulation, discrete carry discard,
+        // batched events, reversal, target switch, and pass-through.
+        writes.clear();
+        await tester.pumpWidget(
+          _Harness(
+            key: const ValueKey('w1-subfloor-and-batch'),
+            cubit: cubit,
+            slot: _syntheticSlot(p4: 50, p5: 50),
+            source: wheelPolicySource,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final scrollable = tester.state<ScrollableState>(
+          find.byType(Scrollable).first,
+        );
+        final canvasRect = tester.getRect(
+          find.byType(InteractiveAlgorithmControllerCanvas),
+        );
+        final centerA = Offset(
+          canvasRect.left + canvasRect.width * 0.25,
+          canvasRect.top + canvasRect.height * 0.5,
+        );
+        final centerB = Offset(
+          canvasRect.left + canvasRect.width * 0.75,
+          canvasRect.top + canvasRect.height * 0.5,
+        );
+        final backgroundPoint = Offset(
+          canvasRect.left + canvasRect.width * 0.5,
+          canvasRect.top + canvasRect.height * 0.5,
+        );
+        final mouse = TestPointer(pointerId++, PointerDeviceKind.mouse);
+
+        // 2a. Sub-floor fragments (4 x -10): zero before threshold, then one write.
+        tester.binding.handlePointerEvent(mouse.hover(centerA));
+        for (var i = 0; i < 3; i++) {
+          tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -10)));
+          await tester.pump();
+          expect(writes, isEmpty);
+          expect(scrollable.position.pixels, 0);
+        }
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -10)));
+        await tester.pump();
+        expect(writes.map((w) => (w.parameterNumber, w.value, w.changing)), [
+          (5, 51, false),
+        ]);
+        expect(scrollable.position.pixels, 0);
+
+        // 2b. Direction reversal clears partial sub-floor carry.
+        writes.clear();
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -25)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, 25)));
+        await tester.pump();
+        expect(writes, isEmpty);
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, 15)));
+        await tester.pump();
+        expect(writes.map((w) => (w.parameterNumber, w.value)), [(5, 50)]);
+
+        // 2c. Discrete event discards earlier sub-floor carry without leaking.
+        writes.clear();
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -30)));
+        await tester.pump();
+        expect(writes, isEmpty);
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -53)));
+        await tester.pump();
+        expect(writes.map((w) => (w.parameterNumber, w.value)), [(5, 51)]);
+        writes.clear();
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -15)));
+        await tester.pump();
+        expect(
+          writes,
+          isEmpty,
+          reason: 'earlier -30 carry must be discarded by discrete -53 event',
+        );
+
+        // 2d. Batched events in one frame progress without rebuild.
+        writes.clear();
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -40)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -53)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -66.7)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -100)));
+        await tester.pump();
+        expect(writes.map((w) => (w.parameterNumber, w.value)), [
+          (5, 52),
+          (5, 53),
+          (5, 54),
+          (5, 55),
+        ]);
+        expect(scrollable.position.pixels, 0);
+
+        // Batched sub-floor fragments in one frame (8 x -10 -> 2 steps).
+        writes.clear();
+        for (var i = 0; i < 8; i++) {
+          tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -10)));
+        }
+        await tester.pump();
+        expect(writes.map((w) => (w.parameterNumber, w.value)), [
+          (5, 56),
+          (5, 57),
+        ]);
+        expect(scrollable.position.pixels, 0);
+
+        // 2e. No fraction leaking onto a new target.
+        writes.clear();
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -30)));
+        await tester.pump();
+        expect(writes, isEmpty);
+        tester.binding.handlePointerEvent(mouse.hover(centerB));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -20)));
+        await tester.pump();
+        expect(writes, isEmpty);
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -20)));
+        await tester.pump();
+        expect(writes.map((w) => (w.parameterNumber, w.value)), [(4, 55)]);
+
+        // 2f. Ineligible background, horizontal wheel, and trackpad pass through.
+        writes.clear();
+        tester.binding.handlePointerEvent(mouse.hover(centerB));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(53, 0)));
+        await tester.pump();
+        expect(writes, isEmpty);
+
+        tester.binding.handlePointerEvent(mouse.hover(backgroundPoint));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, 53)));
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(scrollable.position.pixels, greaterThan(0));
+
+        scrollable.position.jumpTo(0);
+        await tester.pump();
+        final trackpad = TestPointer(pointerId++, PointerDeviceKind.trackpad);
+        tester.binding.handlePointerEvent(trackpad.hover(centerA));
+        tester.binding.handlePointerEvent(trackpad.scroll(const Offset(0, 53)));
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(scrollable.position.pixels, greaterThan(0));
+      },
+    );
+
+    testWidgets(
+      'K1: Escape has one owner across two canvases and ancestor shortcut, preserves unrelated shortcuts, handles focus transfer/repeat/disposal',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(900, 900));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        var ancestorEscapeCount = 0;
+        var unrelatedShortcutCount = 0;
+        final writesA = <_RecordedWrite>[];
+        final writesB = <_RecordedWrite>[];
+        final eventsA = <AlgorithmControllerCanvasInteractionEvent>[];
+        final eventsB = <AlgorithmControllerCanvasInteractionEvent>[];
+        final externalFocus = FocusNode(debugLabel: 'external-button');
+        addTearDown(externalFocus.dispose);
+
+        const canvasANode = AlgorithmControllerCanvas(
+          semanticsLabel: 'Canvas A',
+          shapes: [],
+          aspectRatio: 2,
+          dragThreshold: 8,
+          targets: [
+            AlgorithmControllerCanvasTarget(
+              id: 'a1',
+              label: 'A1',
+              order: 1,
+              selectable: true,
+              hitArea: AlgorithmControllerCanvasRectHitArea(
+                x: 0.0,
+                y: 0.0,
+                width: 0.5,
+                height: 1.0,
+              ),
+              xAxis: AlgorithmControllerCanvasAxisBinding(parameterNumber: 1),
+            ),
+            AlgorithmControllerCanvasTarget(
+              id: 'a2',
+              label: 'A2',
+              order: 2,
+              selectable: true,
+              hitArea: AlgorithmControllerCanvasRectHitArea(
+                x: 0.5,
+                y: 0.0,
+                width: 0.5,
+                height: 1.0,
+              ),
+              xAxis: AlgorithmControllerCanvasAxisBinding(parameterNumber: 2),
+            ),
+          ],
+        );
+
+        const canvasBNode = AlgorithmControllerCanvas(
+          semanticsLabel: 'Canvas B',
+          shapes: [],
+          aspectRatio: 2,
+          dragThreshold: 8,
+          targets: [
+            AlgorithmControllerCanvasTarget(
+              id: 'b1',
+              label: 'B1',
+              order: 1,
+              selectable: true,
+              hitArea: AlgorithmControllerCanvasRectHitArea(
+                x: 0.0,
+                y: 0.0,
+                width: 1.0,
+                height: 1.0,
+              ),
+              xAxis: AlgorithmControllerCanvasAxisBinding(parameterNumber: 3),
+            ),
+          ],
+        );
+
+        Widget buildTree({required bool mountCanvasA}) {
+          return MaterialApp(
+            home: BlocProvider<DistingCubit>.value(
+              value: cubit,
+              child: Shortcuts(
+                shortcuts: const <ShortcutActivator, Intent>{
+                  SingleActivator(LogicalKeyboardKey.escape):
+                      _TestClearSelectionIntent(),
+                  SingleActivator(LogicalKeyboardKey.keyR):
+                      _TestUnrelatedShortcutIntent(),
+                },
+                child: Actions(
+                  actions: <Type, Action<Intent>>{
+                    _TestClearSelectionIntent:
+                        CallbackAction<_TestClearSelectionIntent>(
+                          onInvoke: (_) {
+                            ancestorEscapeCount++;
+                            return null;
+                          },
+                        ),
+                    _TestUnrelatedShortcutIntent:
+                        CallbackAction<_TestUnrelatedShortcutIntent>(
+                          onInvoke: (_) {
+                            unrelatedShortcutCount++;
+                            return null;
+                          },
+                        ),
+                  },
+                  child: Scaffold(
+                    body: Column(
+                      children: [
+                        ElevatedButton(
+                          focusNode: externalFocus,
+                          onPressed: () {},
+                          child: const Text('External'),
+                        ),
+                        if (mountCanvasA)
+                          SizedBox(
+                            key: const ValueKey('canvas-a-box'),
+                            width: 400,
+                            height: 200,
+                            child: InteractiveAlgorithmControllerCanvas(
+                              node: canvasANode,
+                              slot: _syntheticSlot(p1: 50, p2: 50),
+                              slotIndex: 2,
+                              documentGeneration: 0,
+                              painter: _NoOpPainter(),
+                              onWriteParameter: (p, v, {required changing}) =>
+                                  writesA.add((
+                                    algorithmIndex: 2,
+                                    parameterNumber: p,
+                                    value: v,
+                                    changing: changing,
+                                  )),
+                              onInteraction: eventsA.add,
+                            ),
+                          ),
+                        SizedBox(
+                          key: const ValueKey('canvas-b-box'),
+                          width: 400,
+                          height: 200,
+                          child: InteractiveAlgorithmControllerCanvas(
+                            node: canvasBNode,
+                            slot: _syntheticSlot(p3: 50),
+                            slotIndex: 2,
+                            documentGeneration: 0,
+                            painter: _NoOpPainter(),
+                            onWriteParameter: (p, v, {required changing}) =>
+                                writesB.add((
+                                  algorithmIndex: 2,
+                                  parameterNumber: p,
+                                  value: v,
+                                  changing: changing,
+                                )),
+                            onInteraction: eventsB.add,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        await tester.pumpWidget(buildTree(mountCanvasA: true));
+        await tester.pumpAndSettle();
+
+        final rectA = tester.getRect(
+          find.byKey(const ValueKey('canvas-a-box')),
+        );
+        final a1Point = Offset(
+          rectA.left + rectA.width * 0.25,
+          rectA.top + rectA.height * 0.5,
+        );
+        final a2Point = Offset(
+          rectA.left + rectA.width * 0.75,
+          rectA.top + rectA.height * 0.5,
+        );
+
+        // 1. Idle before drag: Escape reaches ancestor shortcut unchanged
+        // (both from external focus and from focused canvas target).
+        externalFocus.requestFocus();
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(ancestorEscapeCount, 1);
+        expect(writesA, isEmpty);
+        expect(writesB, isEmpty);
+
+        await _mouseClick(tester, a1Point);
+        expect(writesA, isEmpty);
+        expect(
+          FocusManager.instance.primaryFocus?.debugLabel,
+          'algorithm-controller-canvas-target:a1',
+        );
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(ancestorEscapeCount, 2);
+        expect(writesA, isEmpty);
+        expect(
+          eventsA.where(
+            (e) =>
+                e.type ==
+                AlgorithmControllerCanvasInteractionEventType.dragCancel,
+          ),
+          isEmpty,
+        );
+
+        // 2. Active drag on Canvas A:
+        // - Unrelated ancestor shortcut (KeyR) still fires normally.
+        // - Escape KeyDown + KeyRepeat cancels & settles Canvas A ONCE without
+        //   triggering ancestor Escape or affecting Canvas B.
+        eventsA.clear();
+        writesA.clear();
+        final drag1 = await tester.startGesture(
+          a1Point,
+          kind: PointerDeviceKind.mouse,
+        );
+        await drag1.moveTo(Offset(rectA.left + rectA.width * 0.65, a1Point.dy));
+        await tester.pump();
+        final writesBeforeEsc1 = writesA.length;
+        expect(writesBeforeEsc1, greaterThan(0));
+        expect(writesA.last.value, 65);
+        expect(writesA.last.changing, isTrue);
+
+        // Unrelated shortcut during active drag remains untouched.
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
+        await tester.pump();
+        expect(unrelatedShortcutCount, 1);
+
+        // Escape cancels drag once; repeated key event while held must neither
+        // trigger ancestor Escape nor emit a second terminal/settle write.
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+        await tester.sendKeyRepeatEvent(LogicalKeyboardKey.escape);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+
+        expect(
+          ancestorEscapeCount,
+          2,
+          reason: 'ancestor Escape must not fire during Canvas A active drag',
+        );
+        expect(writesA, hasLength(writesBeforeEsc1 + 1));
+        expect(
+          writesA
+              .where((w) => !w.changing)
+              .map((w) => (w.parameterNumber, w.value)),
+          [(1, 65)],
+        );
+        expect(writesB, isEmpty);
+        expect(eventsB, isEmpty);
+
+        // Late move/up after Escape produce zero writes and zero extra terminals.
+        await drag1.moveTo(Offset(rectA.left + rectA.width * 0.9, a1Point.dy));
+        await drag1.up();
+        await tester.pump();
+        expect(writesA, hasLength(writesBeforeEsc1 + 1));
+        expect(
+          eventsA.where(
+            (e) =>
+                e.type ==
+                    AlgorithmControllerCanvasInteractionEventType.dragCancel ||
+                e.type == AlgorithmControllerCanvasInteractionEventType.dragEnd,
+          ),
+          hasLength(1),
+        );
+        expect(
+          eventsA.last.cancelReason,
+          AlgorithmControllerCanvasCancelReason.escapeKey,
+        );
+
+        // 3. Idle after terminal cancel: Escape reaches ancestor shortcut again.
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(ancestorEscapeCount, 3);
+        expect(writesA, hasLength(writesBeforeEsc1 + 1));
+
+        // 4. Focus transfer within Canvas A during drag + repeated Escape presses:
+        // first cancels once (ancestor untouched), second reaches ancestor (idle),
+        // zero extra terminals/settlements.
+        writesA.clear();
+        eventsA.clear();
+        final drag2 = await tester.startGesture(
+          a1Point,
+          kind: PointerDeviceKind.mouse,
+        );
+        await drag2.moveTo(Offset(rectA.left + rectA.width * 0.70, a1Point.dy));
+        await tester.pump();
+        final writesBeforeEsc2 = writesA.length;
+
+        // Transfer focus to sibling target a2 inside Canvas A mid-drag.
+        final a2Focus = Focus.of(
+          tester.element(
+            find.byKey(const ValueKey('algorithm-controller-canvas-target:a2')),
+          ),
+        );
+        a2Focus.requestFocus();
+        await tester.pump();
+        expect(
+          eventsA.where(
+            (e) =>
+                e.type ==
+                AlgorithmControllerCanvasInteractionEventType.dragCancel,
+          ),
+          isEmpty,
+        );
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(ancestorEscapeCount, 3);
+        expect(writesA, hasLength(writesBeforeEsc2 + 1));
+        expect(
+          writesA
+              .where((w) => !w.changing)
+              .map((w) => (w.parameterNumber, w.value)),
+          [(1, 70)],
+        );
+
+        // Second Escape while now idle reaches ancestor with zero extra Canvas A terminals.
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(ancestorEscapeCount, 4);
+        await drag2.up();
+        await tester.pump();
+        expect(writesA, hasLength(writesBeforeEsc2 + 1));
+        expect(
+          eventsA.where(
+            (e) =>
+                e.type ==
+                    AlgorithmControllerCanvasInteractionEventType.dragCancel ||
+                e.type == AlgorithmControllerCanvasInteractionEventType.dragEnd,
+          ),
+          hasLength(1),
+        );
+
+        // 5. Focus transfer OUTSIDE Canvas A during drag does not cause extra
+        // terminals/settlements; ancestor receives Escape when external widget
+        // holds focus, and pointer release settles Canvas A cleanly once.
+        writesA.clear();
+        eventsA.clear();
+        final drag3 = await tester.startGesture(
+          a1Point,
+          kind: PointerDeviceKind.mouse,
+        );
+        await drag3.moveTo(Offset(rectA.left + rectA.width * 0.75, a1Point.dy));
+        await tester.pump();
+        externalFocus.requestFocus();
+        await tester.pump();
+        expect(
+          eventsA.where(
+            (e) =>
+                e.type ==
+                    AlgorithmControllerCanvasInteractionEventType.dragCancel ||
+                e.type == AlgorithmControllerCanvasInteractionEventType.dragEnd,
+          ),
+          isEmpty,
+        );
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(ancestorEscapeCount, 5);
+        await drag3.up();
+        await tester.pump();
+        expect(
+          eventsA.where(
+            (e) =>
+                e.type ==
+                    AlgorithmControllerCanvasInteractionEventType.dragCancel ||
+                e.type == AlgorithmControllerCanvasInteractionEventType.dragEnd,
+          ),
+          hasLength(1),
+        );
+        expect(
+          eventsA.last.type,
+          AlgorithmControllerCanvasInteractionEventType.dragEnd,
+        );
+        expect(writesA.where((w) => !w.changing), hasLength(1));
+
+        // 6. Pre-threshold Escape cancels pending press with zero writes and
+        // consumes Escape; subsequent idle Escape reaches ancestor unchanged.
+        writesA.clear();
+        eventsA.clear();
+        final preDrag = await tester.startGesture(
+          a2Point,
+          kind: PointerDeviceKind.mouse,
+        );
+        await preDrag.moveBy(const Offset(2, 0));
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(ancestorEscapeCount, 5);
+        await preDrag.moveBy(const Offset(80, 0));
+        await preDrag.up();
+        await tester.pump();
+        expect(writesA, isEmpty);
+        expect(eventsA, isEmpty);
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(ancestorEscapeCount, 6);
+
+        // 7. Disposal during active drag emits disposed cancel with no settle
+        // write, and Escape after disposal reaches ancestor shortcut unchanged.
+        writesA.clear();
+        eventsA.clear();
+        final drag4 = await tester.startGesture(
+          a1Point,
+          kind: PointerDeviceKind.mouse,
+        );
+        await drag4.moveTo(Offset(rectA.left + rectA.width * 0.80, a1Point.dy));
+        await tester.pump();
+        expect(writesA.where((w) => w.changing), isNotEmpty);
+
+        await tester.pumpWidget(buildTree(mountCanvasA: false));
+        await tester.pump();
+        expect(writesA.where((w) => !w.changing), isEmpty);
+        expect(
+          eventsA.last.cancelReason,
+          AlgorithmControllerCanvasCancelReason.disposed,
+        );
+
+        externalFocus.requestFocus();
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(ancestorEscapeCount, 7);
+        expect(writesB, isEmpty);
+        expect(eventsB, isEmpty);
+      },
+    );
   });
+}
+
+final class _TestClearSelectionIntent extends Intent {
+  const _TestClearSelectionIntent();
+}
+
+final class _TestUnrelatedShortcutIntent extends Intent {
+  const _TestUnrelatedShortcutIntent();
 }
 
 Future<void> _mouseClick(

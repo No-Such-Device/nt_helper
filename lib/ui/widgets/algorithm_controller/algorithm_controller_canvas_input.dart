@@ -14,9 +14,15 @@ import 'package:nt_helper/domain/parameter_number_lookup.dart';
 import 'package:nt_helper/ui/widgets/parameter_numeric_editing.dart';
 import 'package:nt_helper/util/ui_helpers.dart';
 
-/// Standard vertical logical-pixel scroll delta corresponding to one wheel
-/// notch/detent.
-const double kCanvasWheelNotchDelta = 120.0;
+/// Discrete vertical logical-pixel scroll floor for mouse-wheel input.
+///
+/// Pinned Flutter desktop embedder sources emit approximately 40 logical pixels
+/// for a macOS line-wheel event, 53 on Linux, and 66.7–100 on Windows at
+/// reviewed scales (derived from pinned engine source, not measured across
+/// physical hardware/OS configurations). Any single vertical mouse-wheel event
+/// at or above this floor steps once with no fractional carry; smaller
+/// same-direction deltas accumulate to this floor without per-event boosting.
+const double kCanvasWheelDiscreteEventFloor = 40.0;
 const double _kCanvasWheelEpsilon = 1e-9;
 
 typedef AlgorithmControllerCanvasWriteCallback = void Function(
@@ -349,33 +355,48 @@ ResolvedCanvasWheelEdit? resolveCanvasWheelValue({
     );
   }
 
-  var accumulatedDy = priorAccumulatedDy.isFinite ? priorAccumulatedDy : 0.0;
-  if (accumulatedDy != 0 &&
-      (accumulatedDy.isNegative != scrollDelta.dy.isNegative)) {
-    accumulatedDy = 0.0;
+  final isDiscreteEvent =
+      scrollDelta.dy.abs() + _kCanvasWheelEpsilon >=
+      kCanvasWheelDiscreteEventFloor;
+
+  final int stepCount;
+  final double remainingDy;
+  if (isDiscreteEvent) {
+    // A discrete event at or above the floor takes one step in its direction,
+    // discards any earlier fractional carry, and leaves no leftover fraction.
+    stepCount = 1;
+    remainingDy = 0.0;
+  } else {
+    var accumulatedDy = priorAccumulatedDy.isFinite ? priorAccumulatedDy : 0.0;
+    if (accumulatedDy != 0 &&
+        (accumulatedDy.isNegative != scrollDelta.dy.isNegative)) {
+      accumulatedDy = 0.0;
+    }
+    accumulatedDy += scrollDelta.dy;
+
+    final steps =
+        ((accumulatedDy.abs() + _kCanvasWheelEpsilon) /
+                kCanvasWheelDiscreteEventFloor)
+            .floor();
+    if (steps <= 0) {
+      return (
+        currentValue: currentValue,
+        nextValue: currentValue,
+        changed: false,
+        remainingDy: accumulatedDy,
+        stepCount: 0,
+      );
+    }
+
+    final consumed = steps * kCanvasWheelDiscreteEventFloor;
+    final residualMagnitude = accumulatedDy.abs() - consumed;
+    stepCount = steps;
+    remainingDy = residualMagnitude <= _kCanvasWheelEpsilon
+        ? 0.0
+        : (accumulatedDy.isNegative ? -residualMagnitude : residualMagnitude);
   }
-  accumulatedDy += scrollDelta.dy;
 
-  final notchCount =
-      ((accumulatedDy.abs() + _kCanvasWheelEpsilon) / kCanvasWheelNotchDelta)
-          .floor();
-  if (notchCount <= 0) {
-    return (
-      currentValue: currentValue,
-      nextValue: currentValue,
-      changed: false,
-      remainingDy: accumulatedDy,
-      stepCount: 0,
-    );
-  }
-
-  final consumed = notchCount * kCanvasWheelNotchDelta;
-  final residualMagnitude = accumulatedDy.abs() - consumed;
-  final remainingDy = residualMagnitude <= _kCanvasWheelEpsilon
-      ? 0.0
-      : (accumulatedDy.isNegative ? -residualMagnitude : residualMagnitude);
-
-  final rawNext = currentValue + effectiveDirection * notchCount * range.step;
+  final rawNext = currentValue + effectiveDirection * stepCount * range.step;
   final nextValue = quantizeAndClampCanvasValue(
     rawNext.toDouble(),
     minimum: range.minimum,
@@ -392,7 +413,7 @@ ResolvedCanvasWheelEdit? resolveCanvasWheelValue({
     nextValue: nextValue,
     changed: changed,
     remainingDy: !changed || hitLimitAfterStep ? 0.0 : remainingDy,
-    stepCount: notchCount,
+    stepCount: changed ? stepCount : 0,
   );
 }
 
@@ -542,7 +563,7 @@ final class _InteractiveAlgorithmControllerCanvasState
   _ActiveCanvasInteraction? _activeInteraction;
   _CanvasWheelSession? _wheelSession;
   _CanvasTargetGestureRecognizer? _recognizer;
-  bool _globalEscapeHandlerActive = false;
+  bool _escapeKeyDownConsumed = false;
   bool _disposed = false;
 
   late AlgorithmControllerCanvasSlotIdentity _slotIdentity =
@@ -671,13 +692,13 @@ final class _InteractiveAlgorithmControllerCanvasState
   @override
   void dispose() {
     _disposed = true;
+    _escapeKeyDownConsumed = false;
     _sessionGeneration++;
     _wheelSession = null;
     _cancelActiveInteraction(
       AlgorithmControllerCanvasCancelReason.disposed,
       notifyRebuild: false,
     );
-    _setGlobalEscapeHandlerActive(false);
     unawaited(_cubitSubscription?.cancel());
     _cubitSubscription = null;
     _canvasFocusNode.dispose();
@@ -686,26 +707,6 @@ final class _InteractiveAlgorithmControllerCanvasState
     }
     _focusNodes.clear();
     super.dispose();
-  }
-
-  void _setGlobalEscapeHandlerActive(bool active) {
-    if (active == _globalEscapeHandlerActive) return;
-    _globalEscapeHandlerActive = active;
-    if (active) {
-      HardwareKeyboard.instance.addHandler(_handleGlobalKeyEvent);
-    } else {
-      HardwareKeyboard.instance.removeHandler(_handleGlobalKeyEvent);
-    }
-  }
-
-  bool _handleGlobalKeyEvent(KeyEvent event) {
-    if (_disposed || _activeInteraction == null) return false;
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.escape) {
-      _cancelActiveInteraction(AlgorithmControllerCanvasCancelReason.escapeKey);
-      return true;
-    }
-    return false;
   }
 
   void _observeCubitState(DistingState state, {required bool isStreamEvent}) {
@@ -1047,7 +1048,9 @@ final class _InteractiveAlgorithmControllerCanvasState
       initialX: xRange?.value,
       initialY: yRange?.value,
     );
-    _setGlobalEscapeHandlerActive(true);
+    if (!_canvasFocusNode.hasFocus && _canvasFocusNode.canRequestFocus) {
+      _canvasFocusNode.requestFocus();
+    }
   }
 
   /// Returns `true` when drag capture is active, `false` when still below
@@ -1085,7 +1088,6 @@ final class _InteractiveAlgorithmControllerCanvasState
           (target.yAxis != null && active.initialY != null);
       if (!hasWritableAxis) {
         _activeInteraction = null;
-        _setGlobalEscapeHandlerActive(false);
         return null;
       }
 
@@ -1117,7 +1119,6 @@ final class _InteractiveAlgorithmControllerCanvasState
     // Clear active state before any callbacks or writes so late or re-entrant
     // events can never observe or repeat a terminal transition.
     _activeInteraction = null;
-    _setGlobalEscapeHandlerActive(false);
     final wasDragging = active.dragging;
     if (_activeDragTargetId != null) {
       setState(() => _activeDragTargetId = null);
@@ -1233,7 +1234,6 @@ final class _InteractiveAlgorithmControllerCanvasState
   }) {
     final active = _activeInteraction;
     _activeInteraction = null;
-    _setGlobalEscapeHandlerActive(false);
     _recognizer?.cancelActivePointer();
 
     if (active == null) {
@@ -1724,26 +1724,42 @@ final class _InteractiveAlgorithmControllerCanvasState
     });
   }
 
-  KeyEventResult _handleCanvasKeyEvent(FocusNode _, KeyEvent event) {
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.escape &&
-        _activeInteraction != null) {
-      _cancelActiveInteraction(AlgorithmControllerCanvasCancelReason.escapeKey);
+  KeyEventResult _handleEscapeKeyEvent(KeyEvent event) {
+    if (event.logicalKey != LogicalKeyboardKey.escape) {
+      return KeyEventResult.ignored;
+    }
+    if (event is KeyDownEvent) {
+      if (_activeInteraction != null) {
+        _escapeKeyDownConsumed = true;
+        _cancelActiveInteraction(
+          AlgorithmControllerCanvasCancelReason.escapeKey,
+        );
+        return KeyEventResult.handled;
+      }
+      _escapeKeyDownConsumed = false;
+      return KeyEventResult.ignored;
+    }
+    if (event is KeyRepeatEvent && _escapeKeyDownConsumed) {
       return KeyEventResult.handled;
     }
+    if (event is KeyUpEvent) {
+      _escapeKeyDownConsumed = false;
+    }
     return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _handleCanvasKeyEvent(FocusNode _, KeyEvent event) {
+    return _handleEscapeKeyEvent(event);
   }
 
   KeyEventResult _handleTargetKeyEvent(
     AlgorithmControllerCanvasTarget target,
     KeyEvent event,
   ) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.escape &&
-        _activeInteraction != null) {
-      _cancelActiveInteraction(AlgorithmControllerCanvasCancelReason.escapeKey);
-      return KeyEventResult.handled;
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      return _handleEscapeKeyEvent(event);
     }
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
     if ((event.logicalKey == LogicalKeyboardKey.enter ||
             event.logicalKey == LogicalKeyboardKey.numpadEnter ||
             event.logicalKey == LogicalKeyboardKey.space) &&
@@ -1766,8 +1782,14 @@ final class _InteractiveAlgorithmControllerCanvasState
 
     return Focus(
       focusNode: _canvasFocusNode,
-      canRequestFocus: false,
+      canRequestFocus: true,
+      skipTraversal: true,
       includeSemantics: false,
+      onFocusChange: (hasFocus) {
+        if (!hasFocus) {
+          _escapeKeyDownConsumed = false;
+        }
+      },
       onKeyEvent: _handleCanvasKeyEvent,
       child: Semantics(
         container: true,

@@ -297,80 +297,166 @@ void main() {
       expect(diagonalHorizontal, isNull);
     });
 
-    test('accumulates fractional wheel deltas to notch boundary, handles multi-notch, reversal, invert, and at-limit reset', () {
+    test('W1: treats discrete vertical wheel events at or above 40 logical px as one step with no carry, and accumulates sub-floor fragments', () {
       final slot = _syntheticSlot(qValue: 50);
       const wheel = AlgorithmControllerCanvasWheelBinding(
         parameterNumber: 3,
         step: 1,
       );
 
-      // Six dy=-20 events total one 120-unit notch -> exactly one step on #6.
+      // Parameterized embedder-derived samples (macOS ~40, Linux ~53,
+      // Windows ~66.7-100) plus a large coalesced/accelerated sample (240):
+      // each single event takes exactly one step with zero leftover fraction.
+      for (final magnitude in const [40.0, 53.0, 66.7, 100.0, 240.0]) {
+        final up = resolveCanvasWheelValue(
+          slot: slot,
+          wheel: wheel,
+          scrollDelta: Offset(0, -magnitude),
+        );
+        expect(up, isNotNull, reason: 'up -$magnitude');
+        expect(up!.changed, isTrue, reason: 'up -$magnitude');
+        expect(up.stepCount, 1, reason: 'up -$magnitude');
+        expect(up.nextValue, 51, reason: 'up -$magnitude');
+        expect(up.remainingDy, 0.0, reason: 'up -$magnitude');
+
+        final down = resolveCanvasWheelValue(
+          slot: slot,
+          wheel: wheel,
+          scrollDelta: Offset(0, magnitude),
+        );
+        expect(down, isNotNull, reason: 'down +$magnitude');
+        expect(down!.changed, isTrue, reason: 'down +$magnitude');
+        expect(down.stepCount, 1, reason: 'down +$magnitude');
+        expect(down.nextValue, 49, reason: 'down +$magnitude');
+        expect(down.remainingDy, 0.0, reason: 'down +$magnitude');
+
+        // A discrete event also discards any earlier sub-floor carry.
+        final withCarry = resolveCanvasWheelValue(
+          slot: slot,
+          wheel: wheel,
+          scrollDelta: Offset(0, -magnitude),
+          priorAccumulatedDy: -30.0,
+        )!;
+        expect(withCarry.changed, isTrue, reason: 'carry -$magnitude');
+        expect(withCarry.stepCount, 1, reason: 'carry -$magnitude');
+        expect(withCarry.nextValue, 51, reason: 'carry -$magnitude');
+        expect(withCarry.remainingDy, 0.0, reason: 'carry -$magnitude');
+      }
+
+      // Sub-floor fragments (4 x -10): zero change on first 3, one step on #4.
       var acc = 0.0;
-      var changedCount = 0;
-      int? lastNext;
-      for (var i = 0; i < 6; i++) {
+      for (var i = 0; i < 3; i++) {
         final res = resolveCanvasWheelValue(
           slot: slot,
           wheel: wheel,
-          scrollDelta: const Offset(0, -20),
+          scrollDelta: const Offset(0, -10),
           priorAccumulatedDy: acc,
         )!;
+        expect(res.changed, isFalse);
+        expect(res.stepCount, 0);
         acc = res.remainingDy;
-        if (res.changed) {
-          changedCount++;
-          lastNext = res.nextValue;
-        }
       }
-      expect(changedCount, 1);
-      expect(lastNext, 51);
-      expect(acc, 0.0);
+      expect(acc, closeTo(-30.0, 1e-6));
 
-      // Multi-notch single event (-240) steps by 2*step in one write.
-      final twoNotches = resolveCanvasWheelValue(
+      final fourth = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: wheel,
+        scrollDelta: const Offset(0, -10),
+        priorAccumulatedDy: acc,
+      )!;
+      expect(fourth.changed, isTrue);
+      expect(fourth.stepCount, 1);
+      expect(fourth.nextValue, 51);
+      expect(fourth.remainingDy, 0.0);
+
+      // Sub-floor overshoot keeps only the unused sub-floor fraction.
+      final part1 = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: wheel,
+        scrollDelta: const Offset(0, -25),
+      )!;
+      expect(part1.changed, isFalse);
+      expect(part1.remainingDy, closeTo(-25.0, 1e-6));
+
+      final part2 = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: wheel,
+        scrollDelta: const Offset(0, -25),
+        priorAccumulatedDy: part1.remainingDy,
+      )!;
+      expect(part2.changed, isTrue);
+      expect(part2.stepCount, 1);
+      expect(part2.nextValue, 51);
+      expect(part2.remainingDy, closeTo(-10.0, 1e-6));
+
+      final part3 = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: wheel,
+        scrollDelta: const Offset(0, -30),
+        priorAccumulatedDy: part2.remainingDy,
+        currentValueOverride: part2.nextValue,
+      )!;
+      expect(part3.changed, isTrue);
+      expect(part3.stepCount, 1);
+      expect(part3.nextValue, 52);
+      expect(part3.remainingDy, 0.0);
+    });
+
+    test('handles wheel direction reversal, invert, step scaling, and at-limit reset under the 40-logical-px floor', () {
+      final slot = _syntheticSlot(qValue: 50);
+      const wheel = AlgorithmControllerCanvasWheelBinding(
+        parameterNumber: 3,
+        step: 1,
+      );
+
+      // Direction reversal clears opposite-direction sub-floor carry.
+      final reversedSubFloor = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: wheel,
+        scrollDelta: const Offset(0, 25),
+        priorAccumulatedDy: -30.0,
+        currentValueOverride: 52,
+      )!;
+      expect(reversedSubFloor.changed, isFalse);
+      expect(reversedSubFloor.remainingDy, closeTo(25.0, 1e-6));
+
+      final reversedComplete = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: wheel,
+        scrollDelta: const Offset(0, 15),
+        priorAccumulatedDy: reversedSubFloor.remainingDy,
+        currentValueOverride: 52,
+      )!;
+      expect(reversedComplete.changed, isTrue);
+      expect(reversedComplete.nextValue, 51);
+      expect(reversedComplete.remainingDy, 0.0);
+
+      // Reversal with a discrete event clears opposite carry and steps once.
+      final reversedDiscrete = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: wheel,
+        scrollDelta: const Offset(0, 40),
+        priorAccumulatedDy: -30.0,
+        currentValueOverride: 52,
+      )!;
+      expect(reversedDiscrete.changed, isTrue);
+      expect(reversedDiscrete.stepCount, 1);
+      expect(reversedDiscrete.nextValue, 51);
+      expect(reversedDiscrete.remainingDy, 0.0);
+
+      // Configured step > 1 still steps once per discrete event (even for large delta).
+      final stepped = resolveCanvasWheelValue(
         slot: slot,
         wheel: const AlgorithmControllerCanvasWheelBinding(
           parameterNumber: 3,
           step: 5,
         ),
-        scrollDelta: const Offset(0, -240),
+        scrollDelta: const Offset(0, -100),
       )!;
-      expect(twoNotches.changed, isTrue);
-      expect(twoNotches.stepCount, 2);
-      expect(twoNotches.nextValue, 60);
-      expect(twoNotches.remainingDy, 0.0);
-
-      // Remainder carries forward (-180 -> 1 step + -60 remainder -> -60 -> 1 step).
-      final first = resolveCanvasWheelValue(
-        slot: slot,
-        wheel: wheel,
-        scrollDelta: const Offset(0, -180),
-      )!;
-      expect(first.changed, isTrue);
-      expect(first.nextValue, 51);
-      expect(first.remainingDy, closeTo(-60.0, 1e-6));
-
-      final second = resolveCanvasWheelValue(
-        slot: slot,
-        wheel: wheel,
-        scrollDelta: const Offset(0, -60),
-        priorAccumulatedDy: first.remainingDy,
-        currentValueOverride: first.nextValue,
-      )!;
-      expect(second.changed, isTrue);
-      expect(second.nextValue, 52);
-      expect(second.remainingDy, 0.0);
-
-      // Direction reversal clears opposite-direction accumulation.
-      final reversed = resolveCanvasWheelValue(
-        slot: slot,
-        wheel: wheel,
-        scrollDelta: const Offset(0, 120),
-        priorAccumulatedDy: -80.0,
-        currentValueOverride: 52,
-      )!;
-      expect(reversed.changed, isTrue);
-      expect(reversed.nextValue, 51);
-      expect(reversed.remainingDy, 0.0);
+      expect(stepped.changed, isTrue);
+      expect(stepped.stepCount, 1);
+      expect(stepped.nextValue, 55);
+      expect(stepped.remainingDy, 0.0);
 
       // Inverted wheel reverses direction.
       final inverted = resolveCanvasWheelValue(
@@ -380,29 +466,31 @@ void main() {
           step: 5,
           invert: true,
         ),
-        scrollDelta: const Offset(0, -120),
+        scrollDelta: const Offset(0, -40),
       )!;
       expect(inverted.changed, isTrue);
       expect(inverted.nextValue, 45);
+      expect(inverted.remainingDy, 0.0);
 
       // At-limit clears accumulation immediately without writing.
       final atLimit = resolveCanvasWheelValue(
         slot: _syntheticSlot(qValue: 100),
         wheel: wheel,
-        scrollDelta: const Offset(0, -60),
-        priorAccumulatedDy: -40.0,
+        scrollDelta: const Offset(0, -10),
+        priorAccumulatedDy: -25.0,
       )!;
       expect(atLimit.changed, isFalse);
       expect(atLimit.remainingDy, 0.0);
 
-      // Stepping into max clears over-limit remainder.
+      // Stepping into max via sub-floor carry clears over-limit remainder.
       final hitMax = resolveCanvasWheelValue(
         slot: _syntheticSlot(qValue: 98),
         wheel: const AlgorithmControllerCanvasWheelBinding(
           parameterNumber: 3,
           step: 5,
         ),
-        scrollDelta: const Offset(0, -180),
+        scrollDelta: const Offset(0, -25),
+        priorAccumulatedDy: -25.0,
       )!;
       expect(hitMax.changed, isTrue);
       expect(hitMax.nextValue, 100);
