@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
@@ -10,6 +11,13 @@ import 'package:nt_helper/algorithm_controller/algorithm_controller.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/parameter_number_lookup.dart';
+import 'package:nt_helper/ui/widgets/parameter_numeric_editing.dart';
+import 'package:nt_helper/util/ui_helpers.dart';
+
+/// Standard vertical logical-pixel scroll delta corresponding to one wheel
+/// notch/detent.
+const double kCanvasWheelNotchDelta = 120.0;
+const double _kCanvasWheelEpsilon = 1e-9;
 
 typedef AlgorithmControllerCanvasWriteCallback = void Function(
   int parameterNumber,
@@ -78,6 +86,8 @@ typedef ResolvedCanvasWheelEdit = ({
   int currentValue,
   int nextValue,
   bool changed,
+  double remainingDy,
+  int stepCount,
 });
 
 bool isCanvasHitAreaValid(AlgorithmControllerCanvasHitArea hitArea) {
@@ -301,8 +311,15 @@ ResolvedCanvasWheelEdit? resolveCanvasWheelValue({
   required Slot slot,
   required AlgorithmControllerCanvasWheelBinding wheel,
   required Offset scrollDelta,
+  double priorAccumulatedDy = 0.0,
+  int? currentValueOverride,
 }) {
-  if (!scrollDelta.dy.isFinite || scrollDelta.dy == 0) return null;
+  if (!scrollDelta.dy.isFinite ||
+      scrollDelta.dy == 0 ||
+      !scrollDelta.dx.isFinite ||
+      scrollDelta.dx.abs() >= scrollDelta.dy.abs()) {
+    return null;
+  }
   final range = resolveWritableParameterRange(
     slot: slot,
     parameterNumber: wheel.parameterNumber,
@@ -313,19 +330,107 @@ ResolvedCanvasWheelEdit? resolveCanvasWheelValue({
   );
   if (range == null) return null;
 
+  final currentValue = (currentValueOverride ?? range.value)
+      .clamp(range.minimum, range.maximum)
+      .toInt();
+
   final rawDirection = scrollDelta.dy < 0 ? 1 : -1;
-  final direction = wheel.invert ? -rawDirection : rawDirection;
-  final rawNext = range.value + direction * range.step;
+  final effectiveDirection = wheel.invert ? -rawDirection : rawDirection;
+  final atLimit =
+      (effectiveDirection > 0 && currentValue >= range.maximum) ||
+      (effectiveDirection < 0 && currentValue <= range.minimum);
+  if (atLimit) {
+    return (
+      currentValue: currentValue,
+      nextValue: currentValue,
+      changed: false,
+      remainingDy: 0.0,
+      stepCount: 0,
+    );
+  }
+
+  var accumulatedDy = priorAccumulatedDy.isFinite ? priorAccumulatedDy : 0.0;
+  if (accumulatedDy != 0 &&
+      (accumulatedDy.isNegative != scrollDelta.dy.isNegative)) {
+    accumulatedDy = 0.0;
+  }
+  accumulatedDy += scrollDelta.dy;
+
+  final notchCount =
+      ((accumulatedDy.abs() + _kCanvasWheelEpsilon) / kCanvasWheelNotchDelta)
+          .floor();
+  if (notchCount <= 0) {
+    return (
+      currentValue: currentValue,
+      nextValue: currentValue,
+      changed: false,
+      remainingDy: accumulatedDy,
+      stepCount: 0,
+    );
+  }
+
+  final consumed = notchCount * kCanvasWheelNotchDelta;
+  final residualMagnitude = accumulatedDy.abs() - consumed;
+  final remainingDy = residualMagnitude <= _kCanvasWheelEpsilon
+      ? 0.0
+      : (accumulatedDy.isNegative ? -residualMagnitude : residualMagnitude);
+
+  final rawNext = currentValue + effectiveDirection * notchCount * range.step;
   final nextValue = quantizeAndClampCanvasValue(
     rawNext.toDouble(),
     minimum: range.minimum,
     maximum: range.maximum,
     step: range.step,
   );
+  final changed = nextValue != currentValue;
+  final hitLimitAfterStep =
+      (effectiveDirection > 0 && nextValue >= range.maximum) ||
+      (effectiveDirection < 0 && nextValue <= range.minimum);
+
   return (
-    currentValue: range.value,
+    currentValue: currentValue,
     nextValue: nextValue,
-    changed: nextValue != range.value,
+    changed: changed,
+    remainingDy: !changed || hitLimitAfterStep ? 0.0 : remainingDy,
+    stepCount: notchCount,
+  );
+}
+
+String? formatCanvasParameterValue({
+  required Slot slot,
+  required int parameterNumber,
+  required int value,
+  List<String> units = const [],
+}) {
+  final info = slot.parameters.byParameterNumber(parameterNumber);
+  if (info == null || info.ioFlags != 0) return null;
+  final slotValue = slot.values.byParameterNumber(parameterNumber);
+  final currentSlotValue = slotValue?.value ?? info.defaultValue;
+  final displayValue =
+      slot.valueStrings.byParameterNumber(parameterNumber)?.value.trim() ?? '';
+  if (value == currentSlotValue && displayValue.isNotEmpty) {
+    return displayValue;
+  }
+  final enumValues = [
+    for (final enumValue
+        in slot.enums.byParameterNumber(parameterNumber)?.values ??
+            const <String>[])
+      enumValue.trim(),
+  ];
+  if (value >= 0 && value < enumValues.length && enumValues[value].isNotEmpty) {
+    return enumValues[value];
+  }
+  final rawUnit = info.getUnitString(units)?.trim();
+  if (rawUnit == null || rawUnit.isEmpty) {
+    return formatEditableNumericValue(value, info.powerOfTen);
+  }
+  return formatWithUnit(
+    value,
+    name: info.name,
+    min: info.min,
+    max: info.max,
+    unit: rawUnit,
+    powerOfTen: info.powerOfTen,
   );
 }
 
@@ -338,6 +443,7 @@ final class InteractiveAlgorithmControllerCanvas extends StatefulWidget {
     required this.documentGeneration,
     required this.painter,
     required this.onWriteParameter,
+    this.units = const [],
     this.onInteraction,
   });
 
@@ -347,6 +453,7 @@ final class InteractiveAlgorithmControllerCanvas extends StatefulWidget {
   final int documentGeneration;
   final CustomPainter painter;
   final AlgorithmControllerCanvasWriteCallback onWriteParameter;
+  final List<String> units;
   final ValueChanged<AlgorithmControllerCanvasInteractionEvent>? onInteraction;
 
   @override
@@ -387,6 +494,33 @@ final class _ActiveCanvasInteraction {
   bool dirtyY = false;
 }
 
+final class _CanvasWheelSession {
+  _CanvasWheelSession({
+    required this.targetId,
+    required this.binding,
+    required this.slotIdentity,
+    required this.sessionGeneration,
+    required this.lastObservedSlotValue,
+    required this.lastSlotParamValue,
+  });
+
+  final String targetId;
+  final AlgorithmControllerCanvasWheelBinding binding;
+  final AlgorithmControllerCanvasSlotIdentity slotIdentity;
+  final int sessionGeneration;
+  double accumulatedDy = 0.0;
+  int? lastWrittenValue;
+  int lastObservedSlotValue;
+  ParameterValue? lastSlotParamValue;
+}
+
+typedef _TargetSemanticsBinding = ({
+  String role,
+  int parameterNumber,
+  String parameterName,
+  ResolvedCanvasParameterRange range,
+});
+
 final class _InteractiveAlgorithmControllerCanvasState
     extends State<InteractiveAlgorithmControllerCanvas> {
   final GlobalKey _canvasKey = GlobalKey();
@@ -403,9 +537,12 @@ final class _InteractiveAlgorithmControllerCanvasState
 
   int _sessionGeneration = 0;
   String? _selectedTargetId;
+  String? _focusedTargetId;
   String? _activeDragTargetId;
   _ActiveCanvasInteraction? _activeInteraction;
+  _CanvasWheelSession? _wheelSession;
   _CanvasTargetGestureRecognizer? _recognizer;
+  bool _globalEscapeHandlerActive = false;
   bool _disposed = false;
 
   late AlgorithmControllerCanvasSlotIdentity _slotIdentity =
@@ -425,6 +562,7 @@ final class _InteractiveAlgorithmControllerCanvasState
     super.didChangeDependencies();
     final cubit = context.read<DistingCubit>();
     if (!identical(cubit, _cubit)) {
+      _wheelSession = null;
       if (_activeInteraction != null) {
         _cancelActiveInteraction(
           AlgorithmControllerCanvasCancelReason.reconnect,
@@ -441,6 +579,7 @@ final class _InteractiveAlgorithmControllerCanvasState
         onDone: () {
           _connectionInvalidated = true;
           _sessionGeneration++;
+          _wheelSession = null;
           _cancelActiveInteraction(
             AlgorithmControllerCanvasCancelReason.reconnect,
           );
@@ -467,16 +606,44 @@ final class _InteractiveAlgorithmControllerCanvasState
 
     if (slotReplaced) {
       _sessionGeneration++;
+      _wheelSession = null;
       _cancelActiveInteraction(
         AlgorithmControllerCanvasCancelReason.slotChanged,
       );
       _selectedTargetId = null;
-    } else if (_activeInteraction case final active?) {
-      if (!_isCapturedTargetStillConsistent(active)) {
-        _sessionGeneration++;
-        _cancelActiveInteraction(
-          AlgorithmControllerCanvasCancelReason.bindingChanged,
-        );
+      _focusedTargetId = null;
+    } else {
+      if (_activeInteraction case final active?) {
+        if (!_isCapturedTargetStillConsistent(active)) {
+          _sessionGeneration++;
+          _wheelSession = null;
+          _cancelActiveInteraction(
+            AlgorithmControllerCanvasCancelReason.bindingChanged,
+          );
+        }
+      }
+      if (_wheelSession case final wheelSession?) {
+        final liveTarget = _findTargetById(wheelSession.targetId);
+        final liveSlot = _currentLiveSlot();
+        final range =
+            liveTarget != null &&
+                liveTarget.enabled &&
+                isCanvasTargetValid(liveTarget) &&
+                liveTarget.wheel == wheelSession.binding
+            ? resolveWritableParameterRange(
+                slot: liveSlot,
+                parameterNumber: wheelSession.binding.parameterNumber,
+                minimumOverride: wheelSession.binding.minimum,
+                maximumOverride: wheelSession.binding.maximum,
+                step: wheelSession.binding.step,
+                bindingEnabled: wheelSession.binding.enabled,
+              )
+            : null;
+        if (range == null ||
+            wheelSession.slotIdentity != _slotIdentity ||
+            wheelSession.sessionGeneration != _sessionGeneration) {
+          _wheelSession = null;
+        }
       }
     }
 
@@ -484,8 +651,19 @@ final class _InteractiveAlgorithmControllerCanvasState
 
     if (_selectedTargetId != null) {
       final selected = _findTargetById(_selectedTargetId!);
-      if (selected == null || !selected.enabled || !selected.selectable) {
+      if (selected == null ||
+          !selected.enabled ||
+          !selected.selectable ||
+          !isCanvasTargetValid(selected)) {
         _selectedTargetId = null;
+      }
+    }
+    if (_focusedTargetId != null) {
+      final focused = _findTargetById(_focusedTargetId!);
+      if (focused == null ||
+          !focused.enabled ||
+          !isCanvasTargetValid(focused)) {
+        _focusedTargetId = null;
       }
     }
   }
@@ -494,10 +672,12 @@ final class _InteractiveAlgorithmControllerCanvasState
   void dispose() {
     _disposed = true;
     _sessionGeneration++;
+    _wheelSession = null;
     _cancelActiveInteraction(
       AlgorithmControllerCanvasCancelReason.disposed,
       notifyRebuild: false,
     );
+    _setGlobalEscapeHandlerActive(false);
     unawaited(_cubitSubscription?.cancel());
     _cubitSubscription = null;
     _canvasFocusNode.dispose();
@@ -506,6 +686,26 @@ final class _InteractiveAlgorithmControllerCanvasState
     }
     _focusNodes.clear();
     super.dispose();
+  }
+
+  void _setGlobalEscapeHandlerActive(bool active) {
+    if (active == _globalEscapeHandlerActive) return;
+    _globalEscapeHandlerActive = active;
+    if (active) {
+      HardwareKeyboard.instance.addHandler(_handleGlobalKeyEvent);
+    } else {
+      HardwareKeyboard.instance.removeHandler(_handleGlobalKeyEvent);
+    }
+  }
+
+  bool _handleGlobalKeyEvent(KeyEvent event) {
+    if (_disposed || _activeInteraction == null) return false;
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape) {
+      _cancelActiveInteraction(AlgorithmControllerCanvasCancelReason.escapeKey);
+      return true;
+    }
+    return false;
   }
 
   void _observeCubitState(DistingState state, {required bool isStreamEvent}) {
@@ -534,11 +734,14 @@ final class _InteractiveAlgorithmControllerCanvasState
           _everSynchronized = true;
           _lastSynchronizedDisting = disting;
           _connectionInvalidated = false;
-          if (isStreamEvent && _activeInteraction != null) {
-            _sessionGeneration++;
-            _cancelActiveInteraction(
-              AlgorithmControllerCanvasCancelReason.reconnect,
-            );
+          if (isStreamEvent) {
+            _wheelSession = null;
+            if (_activeInteraction != null) {
+              _sessionGeneration++;
+              _cancelActiveInteraction(
+                AlgorithmControllerCanvasCancelReason.reconnect,
+              );
+            }
           }
           return;
         }
@@ -549,6 +752,7 @@ final class _InteractiveAlgorithmControllerCanvasState
             _lastSynchronizedDisting = disting;
           }
           _sessionGeneration++;
+          _wheelSession = null;
           _cancelActiveInteraction(
             AlgorithmControllerCanvasCancelReason.reconnect,
           );
@@ -556,16 +760,20 @@ final class _InteractiveAlgorithmControllerCanvasState
         }
 
         _connectionInvalidated = false;
-        if (slotMismatch && _activeInteraction != null) {
-          _sessionGeneration++;
-          _cancelActiveInteraction(
-            AlgorithmControllerCanvasCancelReason.slotChanged,
-          );
+        if (slotMismatch) {
+          _wheelSession = null;
+          if (_activeInteraction != null) {
+            _sessionGeneration++;
+            _cancelActiveInteraction(
+              AlgorithmControllerCanvasCancelReason.slotChanged,
+            );
+          }
         }
       case DistingStateInitial():
         if (_everSynchronized || isStreamEvent) {
           _connectionInvalidated = true;
           _sessionGeneration++;
+          _wheelSession = null;
           _cancelActiveInteraction(
             AlgorithmControllerCanvasCancelReason.reconnect,
           );
@@ -574,10 +782,31 @@ final class _InteractiveAlgorithmControllerCanvasState
       case DistingStateConnected():
         _connectionInvalidated = true;
         _sessionGeneration++;
+        _wheelSession = null;
         _cancelActiveInteraction(
           AlgorithmControllerCanvasCancelReason.reconnect,
         );
     }
+  }
+
+  Slot _currentLiveSlot() {
+    final state = _cubit?.state;
+    if (state is DistingStateSynchronized &&
+        !state.loading &&
+        (!_everSynchronized ||
+            identical(state.disting, _lastSynchronizedDisting)) &&
+        widget.slotIndex >= 0 &&
+        widget.slotIndex < state.slots.length) {
+      final liveSlot = state.slots[widget.slotIndex];
+      if (AlgorithmControllerCanvasSlotIdentity.fromSlot(
+            widget.slotIndex,
+            liveSlot,
+          ) ==
+          _slotIdentity) {
+        return liveSlot;
+      }
+    }
+    return widget.slot;
   }
 
   bool _isSessionLive() {
@@ -663,9 +892,10 @@ final class _InteractiveAlgorithmControllerCanvasState
         current.yAxis != active.capturedTarget.yAxis) {
       return false;
     }
+    final liveSlot = _currentLiveSlot();
     if (active.initialX != null && current.xAxis != null) {
       final range = resolveWritableParameterRange(
-        slot: widget.slot,
+        slot: liveSlot,
         parameterNumber: current.xAxis!.parameterNumber,
         minimumOverride: current.xAxis!.minimum,
         maximumOverride: current.xAxis!.maximum,
@@ -676,7 +906,7 @@ final class _InteractiveAlgorithmControllerCanvasState
     }
     if (active.initialY != null && current.yAxis != null) {
       final range = resolveWritableParameterRange(
-        slot: widget.slot,
+        slot: liveSlot,
         parameterNumber: current.yAxis!.parameterNumber,
         minimumOverride: current.yAxis!.minimum,
         maximumOverride: current.yAxis!.maximum,
@@ -731,7 +961,13 @@ final class _InteractiveAlgorithmControllerCanvasState
     return box.globalToLocal(globalPosition);
   }
 
+  bool _isPrimaryMouseDown(PointerDownEvent event) {
+    return event.kind == PointerDeviceKind.mouse &&
+        event.buttons == kPrimaryMouseButton;
+  }
+
   bool _canAcceptPointerDown(PointerDownEvent event) {
+    if (!_isPrimaryMouseDown(event)) return false;
     if (_activeInteraction != null || !_isSessionLive()) return false;
     final box = _canvasRenderBox();
     if (box == null) return false;
@@ -745,6 +981,7 @@ final class _InteractiveAlgorithmControllerCanvasState
   }
 
   void _handlePointerDown(PointerDownEvent event) {
+    if (!_isPrimaryMouseDown(event)) return;
     if (_activeInteraction != null || !_isSessionLive()) return;
     final box = _canvasRenderBox();
     if (box == null) return;
@@ -756,15 +993,25 @@ final class _InteractiveAlgorithmControllerCanvasState
     );
     if (hits.isEmpty) return;
 
-    final selectedHit = _selectedTargetId == null
-        ? null
-        : hits.firstWhereOrNull((target) => target.id == _selectedTargetId);
-    final capturedTarget = selectedHit ?? hits.first;
+    _wheelSession = null;
 
+    // Align overlap priority with click selection: when cycling is enabled,
+    // dragging captures the currently selected overlapping target; otherwise
+    // both click and drag resolve deterministically to the highest-priority hit.
+    final AlgorithmControllerCanvasTarget capturedTarget;
+    if (widget.node.cycleOverlappingSelection && _selectedTargetId != null) {
+      capturedTarget =
+          hits.firstWhereOrNull((target) => target.id == _selectedTargetId) ??
+          hits.first;
+    } else {
+      capturedTarget = hits.first;
+    }
+
+    final liveSlot = _currentLiveSlot();
     final xRange = capturedTarget.xAxis == null
         ? null
         : resolveWritableParameterRange(
-            slot: widget.slot,
+            slot: liveSlot,
             parameterNumber: capturedTarget.xAxis!.parameterNumber,
             minimumOverride: capturedTarget.xAxis!.minimum,
             maximumOverride: capturedTarget.xAxis!.maximum,
@@ -774,7 +1021,7 @@ final class _InteractiveAlgorithmControllerCanvasState
     final yRange = capturedTarget.yAxis == null
         ? null
         : resolveWritableParameterRange(
-            slot: widget.slot,
+            slot: liveSlot,
             parameterNumber: capturedTarget.yAxis!.parameterNumber,
             minimumOverride: capturedTarget.yAxis!.minimum,
             maximumOverride: capturedTarget.yAxis!.maximum,
@@ -800,6 +1047,7 @@ final class _InteractiveAlgorithmControllerCanvasState
       initialX: xRange?.value,
       initialY: yRange?.value,
     );
+    _setGlobalEscapeHandlerActive(true);
   }
 
   /// Returns `true` when drag capture is active, `false` when still below
@@ -837,6 +1085,7 @@ final class _InteractiveAlgorithmControllerCanvasState
           (target.yAxis != null && active.initialY != null);
       if (!hasWritableAxis) {
         _activeInteraction = null;
+        _setGlobalEscapeHandlerActive(false);
         return null;
       }
 
@@ -868,6 +1117,7 @@ final class _InteractiveAlgorithmControllerCanvasState
     // Clear active state before any callbacks or writes so late or re-entrant
     // events can never observe or repeat a terminal transition.
     _activeInteraction = null;
+    _setGlobalEscapeHandlerActive(false);
     final wasDragging = active.dragging;
     if (_activeDragTargetId != null) {
       setState(() => _activeDragTargetId = null);
@@ -895,6 +1145,7 @@ final class _InteractiveAlgorithmControllerCanvasState
 
     final box = _canvasRenderBox();
     final target = active.capturedTarget;
+    final liveSlot = _currentLiveSlot();
     int? finalX = active.lastX;
     int? finalY = active.lastY;
 
@@ -902,7 +1153,7 @@ final class _InteractiveAlgorithmControllerCanvasState
       final localPosition = box.globalToLocal(event.position);
       if (target.xAxis case final xAxis? when active.initialX != null) {
         final computed = resolveCanvasAxisValue(
-          slot: widget.slot,
+          slot: liveSlot,
           axis: xAxis,
           normalizedCoordinate: localPosition.dx / box.size.width,
         );
@@ -915,7 +1166,7 @@ final class _InteractiveAlgorithmControllerCanvasState
       }
       if (target.yAxis case final yAxis? when active.initialY != null) {
         final computed = resolveCanvasAxisValue(
-          slot: widget.slot,
+          slot: liveSlot,
           axis: yAxis,
           normalizedCoordinate: localPosition.dy / box.size.height,
         );
@@ -962,12 +1213,27 @@ final class _InteractiveAlgorithmControllerCanvasState
     );
   }
 
+  bool _isSameSessionCancelReason(
+    AlgorithmControllerCanvasCancelReason reason,
+  ) {
+    return switch (reason) {
+      AlgorithmControllerCanvasCancelReason.escapeKey ||
+      AlgorithmControllerCanvasCancelReason.pointerCancel ||
+      AlgorithmControllerCanvasCancelReason.gestureRejected => true,
+      AlgorithmControllerCanvasCancelReason.slotChanged ||
+      AlgorithmControllerCanvasCancelReason.bindingChanged ||
+      AlgorithmControllerCanvasCancelReason.reconnect ||
+      AlgorithmControllerCanvasCancelReason.disposed => false,
+    };
+  }
+
   void _cancelActiveInteraction(
     AlgorithmControllerCanvasCancelReason reason, {
     bool notifyRebuild = true,
   }) {
     final active = _activeInteraction;
     _activeInteraction = null;
+    _setGlobalEscapeHandlerActive(false);
     _recognizer?.cancelActivePointer();
 
     if (active == null) {
@@ -988,12 +1254,70 @@ final class _InteractiveAlgorithmControllerCanvasState
       }
     }
 
+    int? finalizedX;
+    int? finalizedY;
+    if (wasDragging &&
+        _isSameSessionCancelReason(reason) &&
+        _invalidationReasonFor(active) == null) {
+      final target = active.capturedTarget;
+      if (target.xAxis case final xAxis?
+          when active.dirtyX && active.lastX != null) {
+        final liveSlot = _currentLiveSlot();
+        final xRange = resolveWritableParameterRange(
+          slot: liveSlot,
+          parameterNumber: xAxis.parameterNumber,
+          minimumOverride: xAxis.minimum,
+          maximumOverride: xAxis.maximum,
+          step: xAxis.step,
+          bindingEnabled: xAxis.enabled,
+        );
+        if (xRange != null) {
+          final settledX = active.lastX!
+              .clamp(xRange.minimum, xRange.maximum)
+              .toInt();
+          finalizedX = settledX;
+          widget.onWriteParameter(
+            xAxis.parameterNumber,
+            settledX,
+            changing: false,
+          );
+        }
+      }
+      if (target.yAxis case final yAxis?
+          when active.dirtyY &&
+              active.lastY != null &&
+              _invalidationReasonFor(active) == null) {
+        final liveSlot = _currentLiveSlot();
+        final yRange = resolveWritableParameterRange(
+          slot: liveSlot,
+          parameterNumber: yAxis.parameterNumber,
+          minimumOverride: yAxis.minimum,
+          maximumOverride: yAxis.maximum,
+          step: yAxis.step,
+          bindingEnabled: yAxis.enabled,
+        );
+        if (yRange != null) {
+          final settledY = active.lastY!
+              .clamp(yRange.minimum, yRange.maximum)
+              .toInt();
+          finalizedY = settledY;
+          widget.onWriteParameter(
+            yAxis.parameterNumber,
+            settledY,
+            changing: false,
+          );
+        }
+      }
+    }
+
     if (wasDragging) {
       widget.onInteraction?.call(
         AlgorithmControllerCanvasInteractionEvent(
           type: AlgorithmControllerCanvasInteractionEventType.dragCancel,
           targetId: active.capturedTarget.id,
           pointer: active.pointer,
+          xValue: finalizedX,
+          yValue: finalizedY,
           cancelReason: reason,
         ),
       );
@@ -1007,12 +1331,13 @@ final class _InteractiveAlgorithmControllerCanvasState
     required bool changing,
   }) {
     final target = active.capturedTarget;
+    final liveSlot = _currentLiveSlot();
     int? writtenX;
     int? writtenY;
 
     if (target.xAxis case final xAxis? when active.initialX != null) {
       final nextX = resolveCanvasAxisValue(
-        slot: widget.slot,
+        slot: liveSlot,
         axis: xAxis,
         normalizedCoordinate: localPosition.dx / canvasSize.width,
       );
@@ -1028,25 +1353,28 @@ final class _InteractiveAlgorithmControllerCanvasState
       }
     }
 
-    if (target.yAxis case final yAxis? when active.initialY != null) {
-      final nextY = resolveCanvasAxisValue(
-        slot: widget.slot,
-        axis: yAxis,
-        normalizedCoordinate: localPosition.dy / canvasSize.height,
-      );
-      if (nextY != null && nextY != active.lastY) {
-        active.lastY = nextY;
-        active.dirtyY = true;
-        writtenY = nextY;
-        widget.onWriteParameter(
-          yAxis.parameterNumber,
-          nextY,
-          changing: changing,
+    if (identical(_activeInteraction, active)) {
+      if (target.yAxis case final yAxis? when active.initialY != null) {
+        final nextY = resolveCanvasAxisValue(
+          slot: liveSlot,
+          axis: yAxis,
+          normalizedCoordinate: localPosition.dy / canvasSize.height,
         );
+        if (nextY != null && nextY != active.lastY) {
+          active.lastY = nextY;
+          active.dirtyY = true;
+          writtenY = nextY;
+          widget.onWriteParameter(
+            yAxis.parameterNumber,
+            nextY,
+            changing: changing,
+          );
+        }
       }
     }
 
-    if (writtenX != null || writtenY != null) {
+    if (identical(_activeInteraction, active) &&
+        (writtenX != null || writtenY != null)) {
       widget.onInteraction?.call(
         AlgorithmControllerCanvasInteractionEvent(
           type: AlgorithmControllerCanvasInteractionEventType.dragUpdate,
@@ -1078,17 +1406,142 @@ final class _InteractiveAlgorithmControllerCanvasState
       chosen = selectableHits.first;
     }
 
-    if (_selectedTargetId != chosen.id) {
-      setState(() => _selectedTargetId = chosen.id);
+    _selectTargetById(chosen.id, pointer: active.pointer, announce: false);
+  }
+
+  void _selectTargetById(
+    String targetId, {
+    int? pointer,
+    bool announce = true,
+  }) {
+    if (!_isSessionLive()) return;
+    final target = _findTargetById(targetId);
+    if (target == null ||
+        !target.enabled ||
+        !target.selectable ||
+        !isCanvasTargetValid(target)) {
+      return;
     }
-    _focusTarget(chosen);
+    if (_selectedTargetId != target.id) {
+      setState(() => _selectedTargetId = target.id);
+    }
+    _focusTarget(target);
     widget.onInteraction?.call(
       AlgorithmControllerCanvasInteractionEvent(
         type: AlgorithmControllerCanvasInteractionEventType.selected,
-        targetId: chosen.id,
-        pointer: active.pointer,
+        targetId: target.id,
+        pointer: pointer,
       ),
     );
+    if (announce && mounted) {
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        '${target.label} selected',
+        Directionality.of(context),
+      );
+    }
+  }
+
+  void _handleSemanticsAdjust(String targetId, String role, int direction) {
+    if (!_isSessionLive()) return;
+    final target = _findTargetById(targetId);
+    if (target == null || !target.enabled || !isCanvasTargetValid(target)) {
+      return;
+    }
+    final liveSlot = _currentLiveSlot();
+    final ({int parameterNumber, ResolvedCanvasParameterRange range})? resolved;
+    switch (role) {
+      case 'X':
+        final axis = target.xAxis;
+        if (axis == null ||
+            !axis.from.isFinite ||
+            !axis.to.isFinite ||
+            axis.from >= axis.to) {
+          return;
+        }
+        final range = resolveWritableParameterRange(
+          slot: liveSlot,
+          parameterNumber: axis.parameterNumber,
+          minimumOverride: axis.minimum,
+          maximumOverride: axis.maximum,
+          step: axis.step,
+          bindingEnabled: axis.enabled,
+        );
+        resolved = range == null
+            ? null
+            : (parameterNumber: axis.parameterNumber, range: range);
+      case 'Y':
+        final axis = target.yAxis;
+        if (axis == null ||
+            !axis.from.isFinite ||
+            !axis.to.isFinite ||
+            axis.from >= axis.to) {
+          return;
+        }
+        final range = resolveWritableParameterRange(
+          slot: liveSlot,
+          parameterNumber: axis.parameterNumber,
+          minimumOverride: axis.minimum,
+          maximumOverride: axis.maximum,
+          step: axis.step,
+          bindingEnabled: axis.enabled,
+        );
+        resolved = range == null
+            ? null
+            : (parameterNumber: axis.parameterNumber, range: range);
+      case 'Wheel':
+        final wheel = target.wheel;
+        if (wheel == null) return;
+        final range = resolveWritableParameterRange(
+          slot: liveSlot,
+          parameterNumber: wheel.parameterNumber,
+          minimumOverride: wheel.minimum,
+          maximumOverride: wheel.maximum,
+          step: wheel.step,
+          bindingEnabled: wheel.enabled,
+        );
+        resolved = range == null
+            ? null
+            : (parameterNumber: wheel.parameterNumber, range: range);
+      default:
+        return;
+    }
+
+    if (resolved == null) return;
+    final range = resolved.range;
+    final rawNext = range.value + direction * range.step;
+    final nextValue = quantizeAndClampCanvasValue(
+      rawNext.toDouble(),
+      minimum: range.minimum,
+      maximum: range.maximum,
+      step: range.step,
+    );
+    if (nextValue == range.value) return;
+
+    _wheelSession = null;
+    widget.onWriteParameter(
+      resolved.parameterNumber,
+      nextValue,
+      changing: false,
+    );
+    if (mounted) {
+      final info = liveSlot.parameters.byParameterNumber(
+        resolved.parameterNumber,
+      );
+      final formatted = formatCanvasParameterValue(
+        slot: liveSlot,
+        parameterNumber: resolved.parameterNumber,
+        value: nextValue,
+        units: widget.units,
+      );
+      if (info != null && formatted != null) {
+        SemanticsService.sendAnnouncement(
+          View.of(context),
+          '${target.label} ${info.name} $formatted',
+          Directionality.of(context),
+        );
+      }
+    }
   }
 
   void _focusTarget(AlgorithmControllerCanvasTarget target) {
@@ -1101,16 +1554,45 @@ final class _InteractiveAlgorithmControllerCanvasState
     }
   }
 
+  void _handleTargetFocusChange(
+    AlgorithmControllerCanvasTarget target,
+    bool hasFocus,
+  ) {
+    if (_disposed || !mounted) return;
+    if (hasFocus) {
+      if (_focusedTargetId != target.id) {
+        setState(() => _focusedTargetId = target.id);
+      }
+    } else if (_focusedTargetId == target.id) {
+      setState(() => _focusedTargetId = null);
+    }
+  }
+
   void _handlePointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) return;
-    if (event.scrollDelta.dy == 0 || !event.scrollDelta.dy.isFinite) return;
-    if (!_isSessionLive()) return;
+    if (event.kind != PointerDeviceKind.mouse) return;
+    if (!event.scrollDelta.dy.isFinite ||
+        event.scrollDelta.dy == 0 ||
+        !event.scrollDelta.dx.isFinite ||
+        event.scrollDelta.dx.abs() >= event.scrollDelta.dy.abs()) {
+      return;
+    }
+    if (!_isSessionLive()) {
+      _wheelSession = null;
+      return;
+    }
 
     final box = _canvasRenderBox();
-    if (box == null || box.size.width <= 0 || box.size.height <= 0) return;
+    if (box == null || box.size.width <= 0 || box.size.height <= 0) {
+      _wheelSession = null;
+      return;
+    }
 
     final localPosition = _localPositionFromGlobal(event.position);
-    if (localPosition == null) return;
+    if (localPosition == null) {
+      _wheelSession = null;
+      return;
+    }
 
     final hits = hitTestCanvasTargets(
       widget.node.targets,
@@ -1118,39 +1600,117 @@ final class _InteractiveAlgorithmControllerCanvasState
       box.size,
     );
     // Only consume wheel when exactly one enabled target is unambiguously hit.
-    if (hits.length != 1) return;
+    if (hits.length != 1) {
+      _wheelSession = null;
+      return;
+    }
 
     final target = hits.single;
     final wheel = target.wheel;
-    if (wheel == null) return;
+    if (wheel == null) {
+      _wheelSession = null;
+      return;
+    }
 
-    final preview = resolveCanvasWheelValue(
-      slot: widget.slot,
-      wheel: wheel,
-      scrollDelta: event.scrollDelta,
+    final liveSlot = _currentLiveSlot();
+    final previewRange = resolveWritableParameterRange(
+      slot: liveSlot,
+      parameterNumber: wheel.parameterNumber,
+      minimumOverride: wheel.minimum,
+      maximumOverride: wheel.maximum,
+      step: wheel.step,
+      bindingEnabled: wheel.enabled,
     );
-    if (preview == null) return;
+    if (previewRange == null) {
+      _wheelSession = null;
+      return;
+    }
+
+    if (_wheelSession case final existing?) {
+      if (existing.targetId != target.id ||
+          existing.binding != wheel ||
+          existing.slotIdentity != _slotIdentity ||
+          existing.sessionGeneration != _sessionGeneration) {
+        _wheelSession = null;
+      }
+    }
 
     final generation = _sessionGeneration;
     final targetId = target.id;
+    final expectedSlotIdentity = _slotIdentity;
     GestureBinding.instance.pointerSignalResolver.register(event, (signal) {
       if (signal is! PointerScrollEvent) return;
-      if (!_isSessionLive() || generation != _sessionGeneration) return;
+      if (signal.kind != PointerDeviceKind.mouse) return;
+      if (!_isSessionLive() ||
+          generation != _sessionGeneration ||
+          expectedSlotIdentity != _slotIdentity) {
+        _wheelSession = null;
+        return;
+      }
       final liveTarget = _findTargetById(targetId);
       if (liveTarget == null ||
           !liveTarget.enabled ||
-          liveTarget.wheel == null) {
+          !isCanvasTargetValid(liveTarget) ||
+          liveTarget.wheel == null ||
+          liveTarget.wheel != wheel) {
+        _wheelSession = null;
         return;
       }
-      final resolved = resolveCanvasWheelValue(
-        slot: widget.slot,
-        wheel: liveTarget.wheel!,
-        scrollDelta: signal.scrollDelta,
-      );
-      if (resolved == null || !resolved.changed) return;
 
+      final currentSlot = _currentLiveSlot();
+      final liveRange = resolveWritableParameterRange(
+        slot: currentSlot,
+        parameterNumber: wheel.parameterNumber,
+        minimumOverride: wheel.minimum,
+        maximumOverride: wheel.maximum,
+        step: wheel.step,
+        bindingEnabled: wheel.enabled,
+      );
+      if (liveRange == null) {
+        _wheelSession = null;
+        return;
+      }
+
+      final liveParamValue = currentSlot.values.byParameterNumber(
+        wheel.parameterNumber,
+      );
+      var session = _wheelSession;
+      if (session == null ||
+          session.targetId != targetId ||
+          session.binding != wheel ||
+          session.slotIdentity != _slotIdentity ||
+          session.sessionGeneration != _sessionGeneration) {
+        session = _CanvasWheelSession(
+          targetId: targetId,
+          binding: wheel,
+          slotIdentity: _slotIdentity,
+          sessionGeneration: _sessionGeneration,
+          lastObservedSlotValue: liveRange.value,
+          lastSlotParamValue: liveParamValue,
+        );
+        _wheelSession = session;
+      } else if (!identical(liveParamValue, session.lastSlotParamValue) ||
+          liveRange.value != session.lastObservedSlotValue) {
+        // Fresh readback or external update arrived: reconcile immediately.
+        session.lastWrittenValue = null;
+        session.lastSlotParamValue = liveParamValue;
+        session.lastObservedSlotValue = liveRange.value;
+      }
+
+      final resolved = resolveCanvasWheelValue(
+        slot: currentSlot,
+        wheel: wheel,
+        scrollDelta: signal.scrollDelta,
+        priorAccumulatedDy: session.accumulatedDy,
+        currentValueOverride: session.lastWrittenValue,
+      );
+      if (resolved == null) return;
+      session.accumulatedDy = resolved.remainingDy;
+      if (!resolved.changed) return;
+
+      session.lastWrittenValue = resolved.nextValue;
       widget.onWriteParameter(
-        liveTarget.wheel!.parameterNumber,
+        wheel.parameterNumber,
         resolved.nextValue,
         changing: false,
       );
@@ -1164,7 +1724,7 @@ final class _InteractiveAlgorithmControllerCanvasState
     });
   }
 
-  KeyEventResult _handleKeyEvent(FocusNode _, KeyEvent event) {
+  KeyEventResult _handleCanvasKeyEvent(FocusNode _, KeyEvent event) {
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.escape &&
         _activeInteraction != null) {
@@ -1174,15 +1734,41 @@ final class _InteractiveAlgorithmControllerCanvasState
     return KeyEventResult.ignored;
   }
 
+  KeyEventResult _handleTargetKeyEvent(
+    AlgorithmControllerCanvasTarget target,
+    KeyEvent event,
+  ) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.escape &&
+        _activeInteraction != null) {
+      _cancelActiveInteraction(AlgorithmControllerCanvasCancelReason.escapeKey);
+      return KeyEventResult.handled;
+    }
+    if ((event.logicalKey == LogicalKeyboardKey.enter ||
+            event.logicalKey == LogicalKeyboardKey.numpadEnter ||
+            event.logicalKey == LogicalKeyboardKey.space) &&
+        _activeInteraction == null &&
+        target.enabled &&
+        target.selectable) {
+      _selectTargetById(target.id);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final orderedTargets = orderCanvasTargets(widget.node.targets);
+    final validOrderedTargets = [
+      for (final target in orderCanvasTargets(widget.node.targets))
+        if (isCanvasTargetValid(target)) target,
+    ];
     final colorScheme = Theme.of(context).colorScheme;
 
     return Focus(
       focusNode: _canvasFocusNode,
       canRequestFocus: false,
-      onKeyEvent: _handleKeyEvent,
+      includeSemantics: false,
+      onKeyEvent: _handleCanvasKeyEvent,
       child: Semantics(
         container: true,
         label: widget.node.semanticsLabel,
@@ -1217,6 +1803,7 @@ final class _InteractiveAlgorithmControllerCanvasState
                       child: CustomPaint(painter: widget.painter),
                     ),
                     if (_selectedTargetId != null ||
+                        _focusedTargetId != null ||
                         _activeDragTargetId != null)
                       IgnorePointer(
                         child: ExcludeSemantics(
@@ -1224,18 +1811,27 @@ final class _InteractiveAlgorithmControllerCanvasState
                             painter: _CanvasInteractionOverlayPainter(
                               targets: widget.node.targets,
                               selectedTargetId: _selectedTargetId,
+                              focusedTargetId: _focusedTargetId,
                               activeDragTargetId: _activeDragTargetId,
                               colorScheme: colorScheme,
                             ),
                           ),
                         ),
                       ),
-                    IgnorePointer(
+                    FocusTraversalGroup(
+                      policy: OrderedTraversalPolicy(),
                       child: Stack(
                         children: [
-                          for (final target in orderedTargets)
-                            if (isCanvasTargetValid(target))
-                              _buildTargetSemanticsNode(target, size),
+                          for (
+                            var ordinal = 0;
+                            ordinal < validOrderedTargets.length;
+                            ordinal++
+                          )
+                            _buildTargetSemanticsNode(
+                              validOrderedTargets[ordinal],
+                              size,
+                              ordinal: ordinal,
+                            ),
                         ],
                       ),
                     ),
@@ -1251,41 +1847,236 @@ final class _InteractiveAlgorithmControllerCanvasState
 
   Widget _buildTargetSemanticsNode(
     AlgorithmControllerCanvasTarget target,
-    Size canvasSize,
-  ) {
+    Size canvasSize, {
+    required int ordinal,
+  }) {
     final rect = canvasHitAreaBounds(target.hitArea, canvasSize);
     final focusNode = _focusNodes[target.id];
+    final isFocused =
+        target.enabled &&
+        (_focusedTargetId == target.id || (focusNode?.hasFocus ?? false));
     final isSelected = target.selectable && _selectedTargetId == target.id;
-    return Positioned.fromRect(
-      rect: rect,
-      child: Focus(
-        focusNode: focusNode,
-        canRequestFocus: target.enabled,
-        skipTraversal: !target.enabled,
-        onKeyEvent: _handleKeyEvent,
-        onFocusChange: (hasFocus) {
-          if (hasFocus &&
-              target.enabled &&
-              target.selectable &&
-              _selectedTargetId != target.id) {
-            setState(() => _selectedTargetId = target.id);
-            widget.onInteraction?.call(
-              AlgorithmControllerCanvasInteractionEvent(
-                type: AlgorithmControllerCanvasInteractionEventType.selected,
-                targetId: target.id,
-              ),
+    final liveSlot = _currentLiveSlot();
+    final sessionLive = _isSessionLive();
+
+    final valueParts = <String>[];
+    final seenDisplayParams = <int>{};
+    final writableBindings = <_TargetSemanticsBinding>[];
+    final seenWritableParams = <int>{};
+
+    void inspectBinding({
+      required String role,
+      required int parameterNumber,
+      required int? minimumOverride,
+      required int? maximumOverride,
+      required int step,
+      required bool bindingEnabled,
+      bool validCoordinateRange = true,
+    }) {
+      final info = liveSlot.parameters.byParameterNumber(parameterNumber);
+      if (info == null || info.ioFlags != 0) return;
+
+      final liveRange = target.enabled && sessionLive && validCoordinateRange
+          ? resolveWritableParameterRange(
+              slot: liveSlot,
+              parameterNumber: parameterNumber,
+              minimumOverride: minimumOverride,
+              maximumOverride: maximumOverride,
+              step: step,
+              bindingEnabled: bindingEnabled,
+            )
+          : null;
+
+      final slotVal =
+          liveSlot.values.byParameterNumber(parameterNumber)?.value ??
+          info.defaultValue;
+      final effectiveVal =
+          (_wheelSession != null &&
+              _wheelSession!.targetId == target.id &&
+              _wheelSession!.binding.parameterNumber == parameterNumber &&
+              _wheelSession!.lastWrittenValue != null)
+          ? _wheelSession!.lastWrittenValue!
+          : slotVal;
+
+      if (seenDisplayParams.add(parameterNumber)) {
+        final formatted = formatCanvasParameterValue(
+          slot: liveSlot,
+          parameterNumber: parameterNumber,
+          value: effectiveVal,
+          units: widget.units,
+        );
+        if (formatted != null) {
+          valueParts.add('${info.name} $formatted');
+        }
+      }
+
+      if (liveRange != null) {
+        final adjustedRange = (
+          minimum: liveRange.minimum,
+          maximum: liveRange.maximum,
+          value: effectiveVal
+              .clamp(liveRange.minimum, liveRange.maximum)
+              .toInt(),
+          step: liveRange.step,
+        );
+        if (seenWritableParams.add(parameterNumber)) {
+          writableBindings.add((
+            role: role,
+            parameterNumber: parameterNumber,
+            parameterName: info.name,
+            range: adjustedRange,
+          ));
+        } else if (role == 'Wheel') {
+          final idx = writableBindings.indexWhere(
+            (b) => b.parameterNumber == parameterNumber,
+          );
+          if (idx >= 0) {
+            writableBindings[idx] = (
+              role: role,
+              parameterNumber: parameterNumber,
+              parameterName: info.name,
+              range: adjustedRange,
             );
           }
-        },
-        child: Semantics(
-          key: ValueKey('algorithm-controller-canvas-target:${target.id}'),
-          container: true,
-          enabled: target.enabled,
-          focusable: target.enabled,
-          focused: focusNode?.hasFocus ?? false,
-          selected: target.selectable ? isSelected : null,
-          label: target.label,
-          child: const SizedBox.expand(),
+        }
+      }
+    }
+
+    if (target.xAxis case final xAxis?) {
+      inspectBinding(
+        role: 'X',
+        parameterNumber: xAxis.parameterNumber,
+        minimumOverride: xAxis.minimum,
+        maximumOverride: xAxis.maximum,
+        step: xAxis.step,
+        bindingEnabled: xAxis.enabled,
+        validCoordinateRange:
+            xAxis.from.isFinite && xAxis.to.isFinite && xAxis.from < xAxis.to,
+      );
+    }
+    if (target.yAxis case final yAxis?) {
+      inspectBinding(
+        role: 'Y',
+        parameterNumber: yAxis.parameterNumber,
+        minimumOverride: yAxis.minimum,
+        maximumOverride: yAxis.maximum,
+        step: yAxis.step,
+        bindingEnabled: yAxis.enabled,
+        validCoordinateRange:
+            yAxis.from.isFinite && yAxis.to.isFinite && yAxis.from < yAxis.to,
+      );
+    }
+    if (target.wheel case final wheel?) {
+      inspectBinding(
+        role: 'Wheel',
+        parameterNumber: wheel.parameterNumber,
+        minimumOverride: wheel.minimum,
+        maximumOverride: wheel.maximum,
+        step: wheel.step,
+        bindingEnabled: wheel.enabled,
+      );
+    }
+
+    final semanticsValue = valueParts.isEmpty ? null : valueParts.join(', ');
+    final canSelect = target.enabled && target.selectable && sessionLive;
+
+    VoidCallback? onIncrease;
+    VoidCallback? onDecrease;
+    String? increasedValue;
+    String? decreasedValue;
+    Map<CustomSemanticsAction, VoidCallback>? customActions;
+    String? semanticsHint;
+
+    if (writableBindings.length == 1) {
+      final binding = writableBindings.single;
+      final nextUp = quantizeAndClampCanvasValue(
+        (binding.range.value + binding.range.step).toDouble(),
+        minimum: binding.range.minimum,
+        maximum: binding.range.maximum,
+        step: binding.range.step,
+      );
+      final nextDown = quantizeAndClampCanvasValue(
+        (binding.range.value - binding.range.step).toDouble(),
+        minimum: binding.range.minimum,
+        maximum: binding.range.maximum,
+        step: binding.range.step,
+      );
+      final formattedUp =
+          formatCanvasParameterValue(
+            slot: liveSlot,
+            parameterNumber: binding.parameterNumber,
+            value: nextUp,
+            units: widget.units,
+          ) ??
+          '$nextUp';
+      final formattedDown =
+          formatCanvasParameterValue(
+            slot: liveSlot,
+            parameterNumber: binding.parameterNumber,
+            value: nextDown,
+            units: widget.units,
+          ) ??
+          '$nextDown';
+      increasedValue = '${binding.parameterName} $formattedUp';
+      decreasedValue = '${binding.parameterName} $formattedDown';
+      onIncrease = () => _handleSemanticsAdjust(target.id, binding.role, 1);
+      onDecrease = () => _handleSemanticsAdjust(target.id, binding.role, -1);
+    } else if (writableBindings.length > 1) {
+      final nameCounts = <String, int>{};
+      for (final binding in writableBindings) {
+        nameCounts[binding.parameterName] =
+            (nameCounts[binding.parameterName] ?? 0) + 1;
+      }
+      final actionsMap = <CustomSemanticsAction, VoidCallback>{};
+      final actionTargetNames = <String>[];
+      for (final binding in writableBindings) {
+        final actionName = (nameCounts[binding.parameterName] ?? 0) > 1
+            ? '${binding.role} (${binding.parameterName})'
+            : binding.parameterName;
+        actionTargetNames.add(actionName);
+        actionsMap[CustomSemanticsAction(label: 'Decrease $actionName')] = () =>
+            _handleSemanticsAdjust(target.id, binding.role, -1);
+        actionsMap[CustomSemanticsAction(label: 'Increase $actionName')] = () =>
+            _handleSemanticsAdjust(target.id, binding.role, 1);
+      }
+      customActions = actionsMap;
+      semanticsHint =
+          'Use custom actions or parameter controls to adjust '
+          '${actionTargetNames.join(', ')}.';
+    }
+
+    return Positioned.fromRect(
+      rect: rect,
+      child: FocusTraversalOrder(
+        order: NumericFocusOrder(ordinal.toDouble()),
+        child: Focus(
+          focusNode: focusNode,
+          canRequestFocus: target.enabled,
+          skipTraversal: !target.enabled,
+          includeSemantics: false,
+          onKeyEvent: (_, event) => _handleTargetKeyEvent(target, event),
+          onFocusChange: (hasFocus) =>
+              _handleTargetFocusChange(target, hasFocus),
+          child: Semantics(
+            key: ValueKey('algorithm-controller-canvas-target:${target.id}'),
+            sortKey: OrdinalSortKey(ordinal.toDouble()),
+            container: true,
+            enabled: target.enabled,
+            focusable: target.enabled,
+            focused: isFocused,
+            selected: target.selectable ? isSelected : null,
+            label: target.label,
+            value: semanticsValue,
+            hint: semanticsHint,
+            onTap: canSelect ? () => _selectTargetById(target.id) : null,
+            onTapHint: canSelect ? 'Select ${target.label}' : null,
+            increasedValue: increasedValue,
+            decreasedValue: decreasedValue,
+            onIncrease: onIncrease,
+            onDecrease: onDecrease,
+            customSemanticsActions: customActions,
+            child: const SizedBox.expand(),
+          ),
         ),
       ),
     );
@@ -1296,12 +2087,14 @@ final class _CanvasInteractionOverlayPainter extends CustomPainter {
   const _CanvasInteractionOverlayPainter({
     required this.targets,
     required this.selectedTargetId,
+    required this.focusedTargetId,
     required this.activeDragTargetId,
     required this.colorScheme,
   });
 
   final List<AlgorithmControllerCanvasTarget> targets;
   final String? selectedTargetId;
+  final String? focusedTargetId;
   final String? activeDragTargetId;
   final ColorScheme colorScheme;
 
@@ -1312,41 +2105,74 @@ final class _CanvasInteractionOverlayPainter extends CustomPainter {
       if (!target.enabled || !isCanvasTargetValid(target)) continue;
       final isDragging = target.id == activeDragTargetId;
       final isSelected = target.id == selectedTargetId;
-      if (!isDragging && !isSelected) continue;
+      final isFocused = target.id == focusedTargetId;
+      if (!isDragging && !isSelected && !isFocused) continue;
 
-      final paint = Paint()
-        ..color = isDragging ? colorScheme.primary : colorScheme.outline
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = isDragging ? 2.5 : 1.5;
-
-      switch (target.hitArea) {
-        case AlgorithmControllerCanvasCircleHitArea(
-          :final x,
-          :final y,
-          :final radius,
-        ):
-          final scale = math.min(size.width, size.height);
-          canvas.drawCircle(
-            Offset(x * size.width, y * size.height),
-            radius * scale + 2,
-            paint,
-          );
-        case AlgorithmControllerCanvasRectHitArea(
-          :final x,
-          :final y,
-          :final width,
-          :final height,
-        ):
-          canvas.drawRect(
-            Rect.fromLTWH(
-              x * size.width,
-              y * size.height,
-              width * size.width,
-              height * size.height,
-            ).inflate(1),
-            paint,
-          );
+      if (isSelected && !isDragging) {
+        _paintRing(
+          canvas,
+          size,
+          target.hitArea,
+          Paint()
+            ..color = colorScheme.outline
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5,
+          circlePadding: 2,
+          rectInflate: 1,
+        );
       }
+
+      if (isDragging || isFocused) {
+        _paintRing(
+          canvas,
+          size,
+          target.hitArea,
+          Paint()
+            ..color = colorScheme.primary
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = isDragging ? 2.5 : 2.0,
+          circlePadding: isFocused && !isDragging ? 4 : 2,
+          rectInflate: isFocused && !isDragging ? 2.5 : 1,
+        );
+      }
+    }
+  }
+
+  void _paintRing(
+    Canvas canvas,
+    Size size,
+    AlgorithmControllerCanvasHitArea hitArea,
+    Paint paint, {
+    required double circlePadding,
+    required double rectInflate,
+  }) {
+    switch (hitArea) {
+      case AlgorithmControllerCanvasCircleHitArea(
+        :final x,
+        :final y,
+        :final radius,
+      ):
+        final scale = math.min(size.width, size.height);
+        canvas.drawCircle(
+          Offset(x * size.width, y * size.height),
+          radius * scale + circlePadding,
+          paint,
+        );
+      case AlgorithmControllerCanvasRectHitArea(
+        :final x,
+        :final y,
+        :final width,
+        :final height,
+      ):
+        canvas.drawRect(
+          Rect.fromLTWH(
+            x * size.width,
+            y * size.height,
+            width * size.width,
+            height * size.height,
+          ).inflate(rectInflate),
+          paint,
+        );
     }
   }
 
@@ -1354,6 +2180,7 @@ final class _CanvasInteractionOverlayPainter extends CustomPainter {
   bool shouldRepaint(covariant _CanvasInteractionOverlayPainter oldDelegate) {
     return oldDelegate.targets != targets ||
         oldDelegate.selectedTargetId != selectedTargetId ||
+        oldDelegate.focusedTargetId != focusedTargetId ||
         oldDelegate.activeDragTargetId != activeDragTargetId ||
         oldDelegate.colorScheme != colorScheme;
   }
@@ -1374,6 +2201,8 @@ final class _CanvasTargetGestureRecognizer
   @override
   bool isPointerAllowed(PointerDownEvent event) {
     if (_activePointer != null) return false;
+    if (event.kind != PointerDeviceKind.mouse) return false;
+    if (event.buttons != kPrimaryMouseButton) return false;
     final check = onCheckPointerDown;
     if (check == null || !check(event)) return false;
     return super.isPointerAllowed(event);
@@ -1393,6 +2222,7 @@ final class _CanvasTargetGestureRecognizer
 
     if (event is PointerMoveEvent) {
       final result = onPointerMove?.call(event);
+      if (_activePointer != event.pointer) return;
       if (result == null) {
         final pointer = event.pointer;
         _activePointer = null;

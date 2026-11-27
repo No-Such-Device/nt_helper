@@ -231,17 +231,22 @@ non-focusable with normal parent scrolling.
 
 ### Opt-in canvas input targets
 
-A `ui.canvas` can opt in to typed host pointer, focus, and wheel input by
-supplying a `targets` array (up to 256 targets per document). When `targets` is
-omitted or empty, the canvas remains paint-only.
+A `ui.canvas` can opt in to typed host pointer, keyboard/focus, semantics, and
+mouse-wheel input by supplying a `targets` array (up to 256 targets per
+document). When `targets` is omitted or empty, the canvas remains paint-only
+with its original layout, semantics, and parent scrolling.
 
 Optional canvas-level fields:
 
 - `drag_threshold` — finite non-negative movement distance in logical pixels
-  before a drag begins (defaults to `4`)
-- `cycle_overlapping_selection` — when `true`, repeated clicks on overlapping
-  selectable targets cycle selection and focus in deterministic order without
-  writing parameters (defaults to `false`)
+  before a drag begins (defaults to `4`). No parameter write occurs before
+  movement reaches `drag_threshold`.
+- `cycle_overlapping_selection` — when `true`, repeated primary mouse clicks on
+  overlapping selectable targets cycle selection and focus in deterministic
+  order without writing parameters, and dragging an overlap captures the
+  currently selected hit (or the highest-priority hit if none is selected).
+  When `false` (the default), both click selection and drag capture at an
+  overlap always resolve to the single highest-priority hit in declared order.
 
 Each entry in `targets` binds directly to live parameters (never I/O
 parameters) and uses normalized canvas coordinates (`0..1`):
@@ -257,46 +262,117 @@ ui.canvas {
     {
       id = "point-1",
       label = "Point 1",
-      shape = "circle", -- or "rect" with x, y, width, height
+      shape = "circle", -- center (x, y); radius scales by min(width, height)
       x = 0.5,
       y = 0.5,
       radius = 0.06,
+      -- or shape = "rect" with top-left (x, y) and normalized (width, height)
       selectable = true,
       order = 1,
       enabled = true,
       x_axis = {
         parameter = 2,
-        from = 0.04,
-        to = 0.96,
-        step = 1,
-        invert = false,
-        enabled = true
+        from = 0.04,    -- defaults to 0
+        to = 0.96,      -- defaults to 1 (must satisfy from < to)
+        minimum = nil,  -- optional int override intersected with live range
+        maximum = nil,  -- optional int override intersected with live range
+        step = 1,       -- integer >= 1, defaults to 1
+        invert = false, -- defaults to false for x_axis
+        enabled = true  -- defaults to true
       },
       y_axis = {
         parameter = 3,
-        from = 0.08,
-        to = 0.92,
-        step = 1,
-        invert = true,
-        enabled = true
+        from = 0.08,    -- defaults to 0
+        to = 0.92,      -- defaults to 1 (must satisfy from < to)
+        minimum = nil,  -- optional int override intersected with live range
+        maximum = nil,  -- optional int override intersected with live range
+        step = 1,       -- integer >= 1, defaults to 1
+        invert = true,  -- defaults to true for y_axis (higher Y up)
+        enabled = true  -- defaults to true
       },
       wheel = {
         parameter = 4,
-        step = 1,
-        invert = false,
-        enabled = true
+        minimum = nil,  -- optional int override intersected with live range
+        maximum = nil,  -- optional int override intersected with live range
+        step = 1,       -- integer >= 1, defaults to 1
+        invert = false, -- defaults to false (wheel up increases by step)
+        enabled = true  -- defaults to true
       }
     }
   }
 }
 ```
 
-The host routes hits against the actual rendered canvas bounds, separates
-selection-only click/focus from thresholded single-pointer drag capture, writes
-through `DistingCubit.updateParameterValue` with clamping and quantization,
-clears active capture immediately on release, cancel, Escape, disposal,
-slot/binding replacement, or reconnect (without fabricating undo writes), and
-consumes mouse wheel only over a single unambiguous, enabled, writable target.
+Hit geometry, mapping, and pointer rules:
+
+- **Geometry and bounds:** Hits are tested against the actual rendered canvas
+  bounds (after `maxWidth: 720` and `aspect_ratio` clamping). Circle hit areas
+  use `(x, y)` as the normalized center with `radius` scaled by
+  `min(width, height)`. Rect hit areas use `(x, y)` as the normalized top-left
+  corner with normalized `width` and `height`. Background, out-of-bounds,
+  disabled, and invalid targets are excluded.
+- **Ordering:** Targets are ordered deterministically by ascending `order`
+  (explicit integer `order` before omitted `order`), breaking ties by
+  declaration order independent of visual geometry.
+- **Absolute axis mapping:** Dragging maps the pointer's normalized canvas
+  coordinate directly across `[from, to]` (clamped to `[0, 1]`, inverted when
+  `invert = true`, quantized to `step`, and clamped to the intersected
+  `[minimum, maximum]` and live parameter range). There is no relative drag
+  mode in this prerequisite: once movement crosses `drag_threshold`, the value
+  jumps to the absolute pointer position (no writes occur before threshold).
+- **Pointer-kind policy and fallback:** Direct canvas click/drag registration
+  is mouse primary-button only. Touch, pen/stylus, secondary/middle mouse
+  buttons, and trackpad pan/zoom gestures are never captured over canvas
+  targets, preserving normal parent scrolling; existing standard controller
+  widgets (`ui.slider`, `ui.choice`, `ui.toggle`, `ui.xy_pad`, etc.) and the
+  standard parameter editor remain the touch/pen and precision fallback.
+- **Drag capture and cancellation:** A drag captures one pointer and one stable
+  target across overlaps and canvas bounds exit until release or cancel.
+  Ordinary release writes each edited axis once with `changing: false`.
+  Cancellation is never an undo: same-session cancels (`Escape`, pointer
+  cancel, or gesture rejection) with still-current writable bindings after
+  actual writes settle only the already-edited axes once at their last accepted
+  values with `changing: false` so normal host release reconciliation
+  (debounced readback, program refresh, anomaly check) still runs. Pre-threshold
+  cancels, unedited targets, and lifecycle invalidations (slot/document/binding
+  replacement, disconnect/reconnect, loading, or disposal) clear active state
+  immediately with no final write and reject late move/up events.
+- **Wheel arbitration:** Only vertical mouse-wheel signals (`kind == mouse`,
+  `|dy| > |dx|`) over a single unambiguous, enabled, writable target are
+  consumed. Logical `dy` accumulates toward `120` logical pixels per notch
+  without per-event boosting of fractional deltas; each accumulated notch steps
+  by `step` (multi-notch events step proportionally in one quantized, clamped
+  write; `invert = false` increases on wheel up `dy < 0`). Batched events
+  within a frame progress from the latest valid local or live value and
+  reconcile immediately on fresh readback. Direction reversal, switching
+  targets, scrolling off-target, or session/binding invalidation clears unused
+  accumulation. At the clamped min/max limit in the scroll direction, the wheel
+  signal is still consumed (preventing sudden page-scroll jumps), accumulation
+  is cleared, and no write or interaction event is emitted. Horizontal wheel,
+  trackpad scroll/pan-zoom, background, ambiguous overlap, unsupported,
+  disabled, and stale-session wheel events pass through to parent scrolling
+  with zero writes.
+- **Keyboard traversal and accessibility:** Tab/Shift+Tab and assistive
+  traversal follow declared target order (matching `OrdinalSortKey`) with
+  normal focus entry before and exit after the canvas; invalid targets are
+  excluded and disabled targets are skipped. Focusing a target shows a focus
+  ring without writing; pressing `Enter`/`Space` or invoking the named
+  semantics tap action (`Select <label>`) selects a selectable target without
+  writing. Target semantics expose formatted current parameter values using the
+  same formatter precedence as standard controls (device string, enum string,
+  scaled/unit value). Targets with a single writable parameter expose standard
+  increase/decrease semantics actions with next-value previews; targets with
+  multiple distinct writable parameters expose parameter-named custom actions
+  (`Increase <param>`, `Decrease <param>`) instead of an ambiguous generic
+  adjust action.
+- **Host hook and presentation:** `LuaAlgorithmControllerView` and
+  `InteractiveAlgorithmControllerCanvas` expose an optional
+  `onCanvasInteraction` (`onInteraction`) callback emitting
+  `AlgorithmControllerCanvasInteractionEvent` (`selected`, `dragStart`,
+  `dragUpdate`, `dragEnd`, `dragCancel` with `cancelReason`, and `wheel`). The
+  host paints lightweight non-layout-shifting stroke overlays around selected,
+  focused, and actively dragged targets using theme colors (`primary` for
+  active drag and focus, `outline` for selection).
 
 ## Runtime restrictions
 

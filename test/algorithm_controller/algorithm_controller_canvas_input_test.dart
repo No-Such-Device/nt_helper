@@ -288,6 +288,237 @@ void main() {
         scrollDelta: const Offset(40, 0),
       );
       expect(zeroDelta, isNull);
+
+      final diagonalHorizontal = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: wheel,
+        scrollDelta: const Offset(120, -120),
+      );
+      expect(diagonalHorizontal, isNull);
+    });
+
+    test('accumulates fractional wheel deltas to notch boundary, handles multi-notch, reversal, invert, and at-limit reset', () {
+      final slot = _syntheticSlot(qValue: 50);
+      const wheel = AlgorithmControllerCanvasWheelBinding(
+        parameterNumber: 3,
+        step: 1,
+      );
+
+      // Six dy=-20 events total one 120-unit notch -> exactly one step on #6.
+      var acc = 0.0;
+      var changedCount = 0;
+      int? lastNext;
+      for (var i = 0; i < 6; i++) {
+        final res = resolveCanvasWheelValue(
+          slot: slot,
+          wheel: wheel,
+          scrollDelta: const Offset(0, -20),
+          priorAccumulatedDy: acc,
+        )!;
+        acc = res.remainingDy;
+        if (res.changed) {
+          changedCount++;
+          lastNext = res.nextValue;
+        }
+      }
+      expect(changedCount, 1);
+      expect(lastNext, 51);
+      expect(acc, 0.0);
+
+      // Multi-notch single event (-240) steps by 2*step in one write.
+      final twoNotches = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: const AlgorithmControllerCanvasWheelBinding(
+          parameterNumber: 3,
+          step: 5,
+        ),
+        scrollDelta: const Offset(0, -240),
+      )!;
+      expect(twoNotches.changed, isTrue);
+      expect(twoNotches.stepCount, 2);
+      expect(twoNotches.nextValue, 60);
+      expect(twoNotches.remainingDy, 0.0);
+
+      // Remainder carries forward (-180 -> 1 step + -60 remainder -> -60 -> 1 step).
+      final first = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: wheel,
+        scrollDelta: const Offset(0, -180),
+      )!;
+      expect(first.changed, isTrue);
+      expect(first.nextValue, 51);
+      expect(first.remainingDy, closeTo(-60.0, 1e-6));
+
+      final second = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: wheel,
+        scrollDelta: const Offset(0, -60),
+        priorAccumulatedDy: first.remainingDy,
+        currentValueOverride: first.nextValue,
+      )!;
+      expect(second.changed, isTrue);
+      expect(second.nextValue, 52);
+      expect(second.remainingDy, 0.0);
+
+      // Direction reversal clears opposite-direction accumulation.
+      final reversed = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: wheel,
+        scrollDelta: const Offset(0, 120),
+        priorAccumulatedDy: -80.0,
+        currentValueOverride: 52,
+      )!;
+      expect(reversed.changed, isTrue);
+      expect(reversed.nextValue, 51);
+      expect(reversed.remainingDy, 0.0);
+
+      // Inverted wheel reverses direction.
+      final inverted = resolveCanvasWheelValue(
+        slot: slot,
+        wheel: const AlgorithmControllerCanvasWheelBinding(
+          parameterNumber: 3,
+          step: 5,
+          invert: true,
+        ),
+        scrollDelta: const Offset(0, -120),
+      )!;
+      expect(inverted.changed, isTrue);
+      expect(inverted.nextValue, 45);
+
+      // At-limit clears accumulation immediately without writing.
+      final atLimit = resolveCanvasWheelValue(
+        slot: _syntheticSlot(qValue: 100),
+        wheel: wheel,
+        scrollDelta: const Offset(0, -60),
+        priorAccumulatedDy: -40.0,
+      )!;
+      expect(atLimit.changed, isFalse);
+      expect(atLimit.remainingDy, 0.0);
+
+      // Stepping into max clears over-limit remainder.
+      final hitMax = resolveCanvasWheelValue(
+        slot: _syntheticSlot(qValue: 98),
+        wheel: const AlgorithmControllerCanvasWheelBinding(
+          parameterNumber: 3,
+          step: 5,
+        ),
+        scrollDelta: const Offset(0, -180),
+      )!;
+      expect(hitMax.changed, isTrue);
+      expect(hitMax.nextValue, 100);
+      expect(hitMax.remainingDy, 0.0);
+    });
+
+    test('formats canvas parameter values with device strings, enums, scaling/units, and rejects I/O', () {
+      final slot = Slot(
+        algorithm: Algorithm(algorithmIndex: 1, guid: 'test', name: 'Test'),
+        routing: RoutingInfo.filler(),
+        pages: ParameterPages(algorithmIndex: 1, pages: const []),
+        parameters: [
+          ParameterInfo(
+            algorithmIndex: 1,
+            parameterNumber: 1,
+            min: -100,
+            max: 100,
+            defaultValue: 0,
+            unit: 2,
+            name: 'Gain',
+            powerOfTen: -1,
+          ),
+          ParameterInfo(
+            algorithmIndex: 1,
+            parameterNumber: 2,
+            min: 0,
+            max: 1,
+            defaultValue: 0,
+            unit: 1,
+            name: 'Mode',
+            powerOfTen: 0,
+          ),
+          ParameterInfo(
+            algorithmIndex: 1,
+            parameterNumber: 3,
+            min: 0,
+            max: 100,
+            defaultValue: 50,
+            unit: 0,
+            name: 'IO Param',
+            powerOfTen: 0,
+            ioFlags: 1,
+          ),
+        ],
+        values: [
+          ParameterValue(algorithmIndex: 1, parameterNumber: 1, value: 35),
+          ParameterValue(algorithmIndex: 1, parameterNumber: 2, value: 1),
+          ParameterValue(algorithmIndex: 1, parameterNumber: 3, value: 50),
+        ],
+        enums: [
+          ParameterEnumStrings(
+            algorithmIndex: 1,
+            parameterNumber: 1,
+            values: const [],
+          ),
+          ParameterEnumStrings(
+            algorithmIndex: 1,
+            parameterNumber: 2,
+            values: const ['Off', 'Peak'],
+          ),
+          ParameterEnumStrings(
+            algorithmIndex: 1,
+            parameterNumber: 3,
+            values: const [],
+          ),
+        ],
+        mappings: [Mapping.filler(), Mapping.filler(), Mapping.filler()],
+        valueStrings: [
+          ParameterValueString(
+            algorithmIndex: 1,
+            parameterNumber: 1,
+            value: '+3.5 dB',
+          ),
+          ParameterValueString(
+            algorithmIndex: 1,
+            parameterNumber: 2,
+            value: '',
+          ),
+          ParameterValueString(
+            algorithmIndex: 1,
+            parameterNumber: 3,
+            value: '',
+          ),
+        ],
+      );
+
+      expect(
+        formatCanvasParameterValue(
+          slot: slot,
+          parameterNumber: 1,
+          value: 35,
+          units: const ['%', 'dB'],
+        ),
+        '+3.5 dB',
+      );
+      expect(
+        formatCanvasParameterValue(
+          slot: slot,
+          parameterNumber: 1,
+          value: 40,
+          units: const ['%', 'dB'],
+        ),
+        '4.0 dB',
+      );
+      expect(
+        formatCanvasParameterValue(slot: slot, parameterNumber: 2, value: 1),
+        'Peak',
+      );
+      expect(
+        formatCanvasParameterValue(slot: slot, parameterNumber: 3, value: 50),
+        isNull,
+      );
+      expect(
+        formatCanvasParameterValue(slot: slot, parameterNumber: 99, value: 10),
+        isNull,
+      );
     });
   });
 }

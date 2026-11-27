@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui' show Tristate;
+import 'dart:ui' show SemanticsAction, Tristate;
 
 import 'package:drift/native.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -296,9 +297,8 @@ void main() {
           Tristate.isTrue,
         );
 
-        // Second click at identical center cycles deterministically t1 -> t2.
-        await tester.tapAt(overlapCenter);
-        await tester.pump();
+        // Second primary mouse click at identical center cycles deterministically t1 -> t2.
+        await _mouseClick(tester, overlapCenter);
         expect(writes, isEmpty);
         expect(events.last.targetId, 't2');
         expect(
@@ -306,9 +306,8 @@ void main() {
           'algorithm-controller-canvas-target:t2',
         );
 
-        // Third click wraps t2 -> t1.
-        await tester.tapAt(overlapCenter);
-        await tester.pump();
+        // Third primary mouse click wraps t2 -> t1.
+        await _mouseClick(tester, overlapCenter);
         expect(writes, isEmpty);
         expect(events.last.targetId, 't1');
         expect(
@@ -316,10 +315,9 @@ void main() {
           'algorithm-controller-canvas-target:t1',
         );
 
-        // Fourth click leaves t2 selected; dragging from the exact overlap
+        // Fourth primary mouse click leaves t2 selected; dragging from the exact overlap
         // captures t2 only and release does not cycle back to t1.
-        await tester.tapAt(overlapCenter);
-        await tester.pump();
+        await _mouseClick(tester, overlapCenter);
         expect(events.last.targetId, 't2');
         events.clear();
 
@@ -397,16 +395,27 @@ void main() {
         );
         await tester.pump();
 
-        // A second concurrent pointer on solo-y must be ignored (no retarget).
-        final secondary = await tester.startGesture(
+        // A second concurrent mouse or touch pointer on solo-y must be ignored (no retarget).
+        final secondaryMouse = await tester.startGesture(
+          Offset(
+            canvasRect.left + canvasRect.width * 0.875,
+            canvasRect.top + canvasRect.height * 0.5,
+          ),
+          kind: PointerDeviceKind.mouse,
+        );
+        await secondaryMouse.moveBy(const Offset(0, -40));
+        await secondaryMouse.up();
+        await tester.pump();
+
+        final secondaryTouch = await tester.startGesture(
           Offset(
             canvasRect.left + canvasRect.width * 0.875,
             canvasRect.top + canvasRect.height * 0.5,
           ),
           kind: PointerDeviceKind.touch,
         );
-        await secondary.moveBy(const Offset(0, -40));
-        await secondary.up();
+        await secondaryTouch.moveBy(const Offset(0, -40));
+        await secondaryTouch.up();
         await tester.pump();
 
         // Move primary pointer outside canvas bounds (right and above):
@@ -587,10 +596,8 @@ return {
         final center = tester.getCenter(
           find.byType(InteractiveAlgorithmControllerCanvas),
         );
-        await tester.tapAt(center);
-        await tester.pump();
-        await tester.tapAt(center);
-        await tester.pump();
+        await _mouseClick(tester, center);
+        await _mouseClick(tester, center);
 
         expect(writes, isEmpty);
         expect(events.map((e) => e.targetId), ['first', 'first']);
@@ -715,7 +722,7 @@ return {
     );
 
     testWidgets(
-      'pointer cancel and Escape clear active state immediately without final write or late writes',
+      'pointer cancel and Escape settle dirty axes once with changing:false (not undo) and reject late writes',
       (tester) async {
         final events = <AlgorithmControllerCanvasInteractionEvent>[];
         await tester.binding.setSurfaceSize(const Size(900, 900));
@@ -735,7 +742,7 @@ return {
           find.byType(InteractiveAlgorithmControllerCanvas),
         );
 
-        // 1. PointerCancelEvent
+        // 1. PointerCancelEvent: X moved from 50 -> 70, Y unchanged at 50.
         final gesture1 = await tester.startGesture(
           canvasRect.center,
           kind: PointerDeviceKind.mouse,
@@ -750,13 +757,20 @@ return {
         final countBeforeCancel = writes.length;
         expect(countBeforeCancel, greaterThan(0));
         expect(writes.every((w) => w.changing), isTrue);
+        final lastWriteBeforeCancel = writes.last;
+        expect(lastWriteBeforeCancel.parameterNumber, 1);
+        expect(lastWriteBeforeCancel.value, 70);
 
         await gesture1.cancel();
         await tester.pump();
 
-        // Cancel must not issue a final write or undo prior sent writes.
-        expect(writes, hasLength(countBeforeCancel));
-        expect(writes.where((w) => !w.changing), isEmpty);
+        // Same-session cancel settles ONLY already-edited axis X once at its
+        // last accepted value (70, not undone to 50) with changing:false.
+        expect(writes, hasLength(countBeforeCancel + 1));
+        final settledCancelWrites = writes.where((w) => !w.changing).toList();
+        expect(settledCancelWrites, hasLength(1));
+        expect(settledCancelWrites.single.parameterNumber, 1);
+        expect(settledCancelWrites.single.value, 70);
         expect(
           events.where(
             (e) =>
@@ -770,8 +784,10 @@ return {
           events.last.cancelReason,
           AlgorithmControllerCanvasCancelReason.pointerCancel,
         );
+        expect(events.last.xValue, 70);
+        expect(events.last.yValue, isNull);
 
-        // 2. Escape key mid-drag + late move/up rejected
+        // 2. Escape key mid-drag settles dirty X once + late move/up rejected.
         writes.clear();
         events.clear();
         final gesture2 = await tester.startGesture(
@@ -787,12 +803,14 @@ return {
         await tester.pump();
         final writesBeforeEscape = writes.length;
         expect(writesBeforeEscape, greaterThan(0));
+        expect(writes.last.parameterNumber, 1);
+        expect(writes.last.value, 65);
 
         await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
         await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
         await tester.pump();
 
-        // Late move and release after Escape must emit zero writes & no 2nd terminal event.
+        // Late move and release after Escape must emit zero extra writes & no 2nd terminal event.
         await gesture2.moveTo(
           Offset(
             canvasRect.left + canvasRect.width * 0.9,
@@ -802,8 +820,11 @@ return {
         await gesture2.up();
         await tester.pump();
 
-        expect(writes, hasLength(writesBeforeEscape));
-        expect(writes.where((w) => !w.changing), isEmpty);
+        expect(writes, hasLength(writesBeforeEscape + 1));
+        final settledEscapeWrites = writes.where((w) => !w.changing).toList();
+        expect(settledEscapeWrites, hasLength(1));
+        expect(settledEscapeWrites.single.parameterNumber, 1);
+        expect(settledEscapeWrites.single.value, 65);
         final terminalEvents = events.where(
           (e) =>
               e.type ==
@@ -815,6 +836,8 @@ return {
           terminalEvents.single.cancelReason,
           AlgorithmControllerCanvasCancelReason.escapeKey,
         );
+        expect(terminalEvents.single.xValue, 65);
+        expect(terminalEvents.single.yValue, isNull);
       },
     );
 
@@ -1137,9 +1160,10 @@ return {
         );
         await tester.pump();
 
+        // Without a rebuild, wheel down progresses from the latest local value (55 -> 50).
         expect(writes, hasLength(1));
         expect(writes.single.parameterNumber, 5);
-        expect(writes.single.value, 45);
+        expect(writes.single.value, 50);
         expect(scrollable.position.pixels, 140);
       },
     );
@@ -1214,8 +1238,7 @@ return {
         );
 
         // 3. Ambiguous overlap (t1 + t2, even after selecting t1)
-        await tester.tapAt(canvasRect.center);
-        await tester.pump();
+        await _mouseClick(tester, canvasRect.center);
         await expectScrollPassThrough(canvasRect.center, 'ambiguous overlap');
 
         // 4. Unsupported target (wheel == null: solo-x)
@@ -1465,6 +1488,1366 @@ return {
       },
     );
   });
+
+  group('Correction regressions: findings 1-5 and 7', () {
+    testWidgets(
+      'F1: Tab, Shift+Tab, and semantics follow declared order with geometry-independent tie-break, entry/exit, focus ring, and no-write keyboard select',
+      (tester) async {
+        final semanticsHandle = tester.ensureSemantics();
+        final events = <AlgorithmControllerCanvasInteractionEvent>[];
+        await tester.binding.setSurfaceSize(const Size(900, 900));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        const traversalSource = r'''
+return {
+  version = 1,
+  title = "Traversal Order Canvas",
+  root = ui.column {
+    gap = 12,
+    padding = 16,
+    children = {
+      ui.button {
+        label = "Before Canvas",
+        action = { type = "set_parameter", parameter = 1, value = 10 }
+      },
+      ui.canvas {
+        semantics_label = "Ordered traversal surface",
+        aspect_ratio = 2,
+        shapes = {},
+        targets = {
+          {
+            id = "left-order-2",
+            label = "Left Order 2",
+            shape = "circle",
+            x = 0.15,
+            y = 0.5,
+            radius = 0.08,
+            selectable = true,
+            order = 2
+          },
+          {
+            id = "right-tie-first",
+            label = "Right Tie First",
+            shape = "circle",
+            x = 0.85,
+            y = 0.25,
+            radius = 0.08,
+            selectable = true,
+            order = 3
+          },
+          {
+            id = "left-tie-second",
+            label = "Left Tie Second",
+            shape = "circle",
+            x = 0.15,
+            y = 0.25,
+            radius = 0.08,
+            selectable = true,
+            order = 3
+          },
+          {
+            id = "disabled-order-0",
+            label = "Disabled Target",
+            shape = "circle",
+            x = 0.5,
+            y = 0.25,
+            radius = 0.08,
+            selectable = true,
+            enabled = false,
+            order = 0
+          },
+          {
+            id = "right-order-1",
+            label = "Right Order 1",
+            shape = "circle",
+            x = 0.85,
+            y = 0.5,
+            radius = 0.08,
+            selectable = true,
+            order = 1,
+            x_axis = { parameter = 1 }
+          },
+          {
+            id = "unordered-right",
+            label = "Unordered Right",
+            shape = "circle",
+            x = 0.85,
+            y = 0.75,
+            radius = 0.08,
+            selectable = true
+          },
+          {
+            id = "unordered-left",
+            label = "Unordered Left",
+            shape = "circle",
+            x = 0.15,
+            y = 0.75,
+            radius = 0.08,
+            selectable = true
+          }
+        }
+      },
+      ui.button {
+        label = "After Canvas",
+        action = { type = "set_parameter", parameter = 1, value = 20 }
+      }
+    }
+  }
+}
+''';
+
+        await tester.pumpWidget(
+          _Harness(
+            cubit: cubit,
+            slot: _syntheticSlot(),
+            source: traversalSource,
+            onCanvasInteraction: events.add,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Focus the button before the canvas, then Tab through the entire canvas and out.
+        final beforeButtonFocus = Focus.of(
+          tester.element(find.text('Before Canvas')),
+        );
+        final afterButtonFocus = Focus.of(
+          tester.element(find.text('After Canvas')),
+        );
+        beforeButtonFocus.requestFocus();
+        await tester.pump();
+        expect(beforeButtonFocus.hasFocus, isTrue);
+
+        const expectedOrder = [
+          'algorithm-controller-canvas-target:right-order-1',
+          'algorithm-controller-canvas-target:left-order-2',
+          'algorithm-controller-canvas-target:right-tie-first',
+          'algorithm-controller-canvas-target:left-tie-second',
+          'algorithm-controller-canvas-target:unordered-right',
+          'algorithm-controller-canvas-target:unordered-left',
+        ];
+
+        final forwardLabels = <String?>[];
+        for (var i = 0; i < expectedOrder.length; i++) {
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.pump();
+          forwardLabels.add(FocusManager.instance.primaryFocus?.debugLabel);
+        }
+        expect(forwardLabels, expectedOrder);
+        // Focus traversal alone does not write parameters or emit selection.
+        expect(writes, isEmpty);
+        expect(events, isEmpty);
+
+        // Focus indication: Semantics reports isFocused on the focused target and
+        // overlay CustomPaint is mounted (base painter + interaction overlay painter).
+        final focusedSemantics = tester
+            .getSemantics(
+              find.byKey(
+                const ValueKey(
+                  'algorithm-controller-canvas-target:unordered-left',
+                ),
+              ),
+            )
+            .getSemanticsData();
+        expect(focusedSemantics.flagsCollection.isFocused, Tristate.isTrue);
+        expect(
+          find.descendant(
+            of: find.byType(InteractiveAlgorithmControllerCanvas),
+            matching: find.byType(CustomPaint),
+          ),
+          findsNWidgets(2),
+        );
+
+        // One more Tab exits canvas cleanly to the following button.
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        expect(afterButtonFocus.hasFocus, isTrue);
+
+        // Shift+Tab enters canvas from the end and reverses exact declared order.
+        final reverseLabels = <String?>[];
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+        for (var i = 0; i < expectedOrder.length; i++) {
+          await tester.sendKeyDownEvent(LogicalKeyboardKey.tab);
+          await tester.sendKeyUpEvent(LogicalKeyboardKey.tab);
+          await tester.pump();
+          reverseLabels.add(FocusManager.instance.primaryFocus?.debugLabel);
+        }
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+        expect(reverseLabels, expectedOrder.reversed.toList());
+
+        // Keyboard selection action (Enter and Space) selects without writing.
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(events.map((e) => (e.type, e.targetId)), [
+          (
+            AlgorithmControllerCanvasInteractionEventType.selected,
+            'right-order-1',
+          ),
+        ]);
+        expect(
+          tester
+              .getSemantics(
+                find.byKey(
+                  const ValueKey(
+                    'algorithm-controller-canvas-target:right-order-1',
+                  ),
+                ),
+              )
+              .getSemanticsData()
+              .flagsCollection
+              .isSelected,
+          Tristate.isTrue,
+        );
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(events.last.targetId, 'left-order-2');
+
+        // Verify Semantics tree child order matches declared order (and excludes invalid targets).
+        final canvasNode = tester.getSemantics(
+          find.bySemanticsLabel('Ordered traversal surface'),
+        );
+        final childLabels = <String>[];
+        canvasNode.visitChildren((child) {
+          childLabels.add(child.label);
+          return true;
+        });
+        expect(childLabels, [
+          'Disabled Target',
+          'Right Order 1',
+          'Left Order 2',
+          'Right Tie First',
+          'Left Tie Second',
+          'Unordered Right',
+          'Unordered Left',
+        ]);
+
+        semanticsHandle.dispose();
+      },
+    );
+
+    testWidgets(
+      'F2: accessible targets expose named select, formatted values, unambiguous single/multi-axis adjust actions, and guard disabled/stale bindings',
+      (tester) async {
+        final semanticsHandle = tester.ensureSemantics();
+        final events = <AlgorithmControllerCanvasInteractionEvent>[];
+        await tester.binding.setSurfaceSize(const Size(900, 900));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        final slot = Slot(
+          algorithm: Algorithm(
+            algorithmIndex: 2,
+            guid: 'synt',
+            name: 'Synthetic',
+          ),
+          routing: RoutingInfo.filler(),
+          pages: ParameterPages(algorithmIndex: 2, pages: const []),
+          parameters: [
+            ParameterInfo(
+              algorithmIndex: 2,
+              parameterNumber: 0,
+              min: 0,
+              max: 1,
+              defaultValue: 0,
+              unit: 0,
+              name: 'Bypass',
+              powerOfTen: 0,
+            ),
+            ParameterInfo(
+              algorithmIndex: 2,
+              parameterNumber: 1,
+              min: 0,
+              max: 100,
+              defaultValue: 50,
+              unit: 2,
+              name: 'Freq',
+              powerOfTen: -1,
+            ),
+            ParameterInfo(
+              algorithmIndex: 2,
+              parameterNumber: 2,
+              min: 0,
+              max: 100,
+              defaultValue: 50,
+              unit: 0,
+              name: 'Gain',
+              powerOfTen: 0,
+            ),
+            ParameterInfo(
+              algorithmIndex: 2,
+              parameterNumber: 3,
+              min: 0,
+              max: 100,
+              defaultValue: 50,
+              unit: 0,
+              name: 'X2',
+              powerOfTen: 0,
+            ),
+            ParameterInfo(
+              algorithmIndex: 2,
+              parameterNumber: 4,
+              min: 0,
+              max: 100,
+              defaultValue: 50,
+              unit: 0,
+              name: 'Y2',
+              powerOfTen: 0,
+            ),
+            ParameterInfo(
+              algorithmIndex: 2,
+              parameterNumber: 5,
+              min: 0,
+              max: 100,
+              defaultValue: 50,
+              unit: 0,
+              name: 'Q',
+              powerOfTen: 0,
+            ),
+          ],
+          values: [
+            ParameterValue(algorithmIndex: 2, parameterNumber: 0, value: 0),
+            ParameterValue(algorithmIndex: 2, parameterNumber: 1, value: 50),
+            ParameterValue(algorithmIndex: 2, parameterNumber: 2, value: 50),
+            ParameterValue(algorithmIndex: 2, parameterNumber: 3, value: 50),
+            ParameterValue(algorithmIndex: 2, parameterNumber: 4, value: 50),
+            ParameterValue(algorithmIndex: 2, parameterNumber: 5, value: 50),
+          ],
+          enums: [
+            ParameterEnumStrings(
+              algorithmIndex: 2,
+              parameterNumber: 0,
+              values: const ['Off', 'On'],
+            ),
+            for (var i = 1; i <= 5; i++)
+              ParameterEnumStrings(
+                algorithmIndex: 2,
+                parameterNumber: i,
+                values: const [],
+              ),
+          ],
+          mappings: [for (var i = 0; i <= 5; i++) Mapping.filler()],
+          valueStrings: [
+            ParameterValueString(
+              algorithmIndex: 2,
+              parameterNumber: 0,
+              value: '',
+            ),
+            ParameterValueString(
+              algorithmIndex: 2,
+              parameterNumber: 1,
+              value: '5.0 kHz',
+            ),
+            for (var i = 2; i <= 5; i++)
+              ParameterValueString(
+                algorithmIndex: 2,
+                parameterNumber: i,
+                value: '',
+              ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          _Harness(
+            cubit: cubit,
+            slot: slot,
+            units: const ['%', 'kHz'],
+            source: _overlappingTwoAxisSource,
+            onCanvasInteraction: events.add,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // 1. Single-axis target (solo-x -> param 1, step 5): named select, formatted
+        // value/next-values, and standard increase/decrease actions.
+        final soloXNode = tester.getSemantics(
+          find.byKey(
+            const ValueKey('algorithm-controller-canvas-target:solo-x'),
+          ),
+        );
+        final owner = soloXNode.owner!;
+        final soloXData = soloXNode.getSemanticsData();
+        expect(soloXData.value, 'Freq 5.0 kHz');
+        expect(soloXData.increasedValue, 'Freq 5.5 kHz');
+        expect(soloXData.decreasedValue, 'Freq 4.5 kHz');
+        expect(soloXData.hasAction(SemanticsAction.tap), isTrue);
+        final soloXTapOverride =
+            (soloXData.customSemanticsActionIds ?? const <int>[])
+                .map(CustomSemanticsAction.getAction)
+                .whereType<CustomSemanticsAction>()
+                .firstWhere((action) => action.action == SemanticsAction.tap);
+        expect(soloXTapOverride.hint, 'Select Solo Horizontal');
+        expect(soloXData.hasAction(SemanticsAction.increase), isTrue);
+        expect(soloXData.hasAction(SemanticsAction.decrease), isTrue);
+
+        // Invoking named select (SemanticsAction.tap) selects without writing.
+        owner.performAction(soloXNode.id, SemanticsAction.tap);
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(events.map((e) => (e.type, e.targetId)), [
+          (AlgorithmControllerCanvasInteractionEventType.selected, 'solo-x'),
+        ]);
+
+        // Invoking increase writes param 1 -> 55 with changing:false.
+        owner.performAction(soloXNode.id, SemanticsAction.increase);
+        await tester.pump();
+        expect(writes, hasLength(1));
+        expect(writes.single.parameterNumber, 1);
+        expect(writes.single.value, 55);
+        expect(writes.single.changing, isFalse);
+
+        // 2. Multi-parameter target (t1 -> Freq, Gain, Q): exposes all values,
+        // named select, NO generic increase/decrease, and explicit parameter-named custom actions.
+        writes.clear();
+        final t1Node = tester.getSemantics(
+          find.byKey(const ValueKey('algorithm-controller-canvas-target:t1')),
+        );
+        final t1Data = t1Node.getSemanticsData();
+        expect(t1Data.value, 'Freq 5.0 kHz, Gain 50, Q 50');
+        expect(t1Data.hasAction(SemanticsAction.tap), isTrue);
+        final t1TapOverride = (t1Data.customSemanticsActionIds ?? const <int>[])
+            .map(CustomSemanticsAction.getAction)
+            .whereType<CustomSemanticsAction>()
+            .firstWhere((action) => action.action == SemanticsAction.tap);
+        expect(t1TapOverride.hint, 'Select Target One');
+        expect(t1Data.hasAction(SemanticsAction.increase), isFalse);
+        expect(t1Data.hasAction(SemanticsAction.decrease), isFalse);
+
+        final customLabels = <String, int>{
+          for (final id in t1Data.customSemanticsActionIds ?? const <int>[])
+            ?CustomSemanticsAction.getAction(id)?.label: id,
+        };
+        expect(
+          customLabels.keys,
+          containsAll([
+            'Increase Freq',
+            'Decrease Freq',
+            'Increase Gain',
+            'Decrease Gain',
+            'Increase Q',
+            'Decrease Q',
+          ]),
+        );
+
+        // Invoke 'Increase Gain' -> writes ONLY parameter 2 (50 -> 51).
+        owner.performAction(
+          t1Node.id,
+          SemanticsAction.customAction,
+          customLabels['Increase Gain'],
+        );
+        await tester.pump();
+        expect(writes, hasLength(1));
+        expect(writes.single.parameterNumber, 2);
+        expect(writes.single.value, 51);
+        expect(writes.single.changing, isFalse);
+
+        // Invoke 'Decrease Q' -> writes ONLY parameter 5 (50 -> 45, step=5).
+        writes.clear();
+        owner.performAction(
+          t1Node.id,
+          SemanticsAction.customAction,
+          customLabels['Decrease Q'],
+        );
+        await tester.pump();
+        expect(writes, hasLength(1));
+        expect(writes.single.parameterNumber, 5);
+        expect(writes.single.value, 45);
+        expect(writes.single.changing, isFalse);
+
+        // 3. Disabled target & missing-param target expose no adjust actions.
+        final disabledData = tester
+            .getSemantics(
+              find.byKey(
+                const ValueKey(
+                  'algorithm-controller-canvas-target:disabled-target',
+                ),
+              ),
+            )
+            .getSemanticsData();
+        expect(disabledData.hasAction(SemanticsAction.tap), isFalse);
+        expect(disabledData.hasAction(SemanticsAction.increase), isFalse);
+        expect(disabledData.hasAction(SemanticsAction.decrease), isFalse);
+        expect(disabledData.customSemanticsActionIds, anyOf(isNull, isEmpty));
+
+        final missingData = tester
+            .getSemantics(
+              find.byKey(
+                const ValueKey(
+                  'algorithm-controller-canvas-target:missing-param',
+                ),
+              ),
+            )
+            .getSemanticsData();
+        expect(missingData.value, isEmpty);
+        expect(missingData.hasAction(SemanticsAction.increase), isFalse);
+        expect(missingData.hasAction(SemanticsAction.decrease), isFalse);
+
+        // 4. Stale / disconnected session blocks semantics writes even before rebuild.
+        writes.clear();
+        final disconnected = const DistingState.selectDevice(
+          inputDevices: [],
+          outputDevices: [],
+          canWorkOffline: false,
+        );
+        when(() => cubit.state).thenReturn(disconnected);
+        owner.performAction(soloXNode.id, SemanticsAction.increase);
+        await tester.pump();
+        expect(writes, isEmpty);
+
+        semanticsHandle.dispose();
+      },
+    );
+
+    testWidgets(
+      'F3: wheel accumulates fractional deltas, progresses across batched events, reconciles fresh readback, clears on target switch/remap/reconnect, and preserves pass-through',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(900, 650));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        const twoWheelSource = r'''
+return {
+  version = 1,
+  title = "Wheel Delta Surface",
+  root = ui.column {
+    gap = 12,
+    padding = 16,
+    children = {
+      ui.canvas {
+        semantics_label = "Wheel accumulation canvas",
+        aspect_ratio = 2,
+        shapes = {},
+        targets = {
+          {
+            id = "wheel-a",
+            label = "Wheel A",
+            shape = "rect",
+            x = 0.05,
+            y = 0.1,
+            width = 0.4,
+            height = 0.8,
+            wheel = { parameter = 5, step = 1 }
+          },
+          {
+            id = "wheel-b",
+            label = "Wheel B",
+            shape = "rect",
+            x = 0.55,
+            y = 0.1,
+            width = 0.4,
+            height = 0.8,
+            wheel = { parameter = 4, step = 5 }
+          }
+        }
+      },
+      ui.spacer { size = 1200 }
+    }
+  }
+}
+''';
+
+        final slot0 = _syntheticSlot(p4: 50, p5: 50);
+        await tester.pumpWidget(
+          _Harness(cubit: cubit, slot: slot0, source: twoWheelSource),
+        );
+        await tester.pumpAndSettle();
+
+        final scrollable = tester.state<ScrollableState>(
+          find.byType(Scrollable).first,
+        );
+        final canvasRect = tester.getRect(
+          find.byType(InteractiveAlgorithmControllerCanvas),
+        );
+        final centerA = Offset(
+          canvasRect.left + canvasRect.width * 0.25,
+          canvasRect.top + canvasRect.height * 0.5,
+        );
+        final centerB = Offset(
+          canvasRect.left + canvasRect.width * 0.75,
+          canvasRect.top + canvasRect.height * 0.5,
+        );
+        final mouse = TestPointer(30, PointerDeviceKind.mouse);
+
+        // 1. Reviewer baseline: six dy=-20 events totaling one 120-unit notch -> ONE step ONCE.
+        tester.binding.handlePointerEvent(mouse.hover(centerA));
+        for (var i = 0; i < 5; i++) {
+          tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -20)));
+          await tester.pump();
+          expect(writes, isEmpty);
+          expect(scrollable.position.pixels, 0);
+        }
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -20)));
+        await tester.pump();
+        expect(writes.map((w) => (w.parameterNumber, w.value, w.changing)), [
+          (5, 51, false),
+        ]);
+
+        // Opposite direction: six dy=+20 events -> steps back 51 -> 50 once.
+        writes.clear();
+        for (var i = 0; i < 6; i++) {
+          tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, 20)));
+          await tester.pump();
+        }
+        expect(writes.map((w) => (w.parameterNumber, w.value)), [(5, 50)]);
+
+        // 2. Batched events in a single frame without rebuild progress cleanly (no duplicates).
+        writes.clear();
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -120)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -120)));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -120)));
+        await tester.pump();
+        expect(writes.map((w) => (w.parameterNumber, w.value)), [
+          (5, 51),
+          (5, 52),
+          (5, 53),
+        ]);
+
+        // 3. Fresh readback reconciles immediately (even when hardware reports a different value).
+        writes.clear();
+        final readbackSlot = slot0.copyWith(
+          values: [
+            for (final v in slot0.values)
+              v.parameterNumber == 5
+                  ? ParameterValue(
+                      algorithmIndex: v.algorithmIndex,
+                      parameterNumber: 5,
+                      value: 30,
+                    )
+                  : v,
+          ],
+        );
+        await tester.pumpWidget(
+          _Harness(cubit: cubit, slot: readbackSlot, source: twoWheelSource),
+        );
+        await tester.pump();
+
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -120)));
+        await tester.pump();
+        expect(writes.map((w) => (w.parameterNumber, w.value)), [(5, 31)]);
+
+        // 4. Unused accumulation on Wheel A must NOT carry to Wheel B on target switch.
+        writes.clear();
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -80)));
+        await tester.pump();
+        expect(writes, isEmpty);
+
+        tester.binding.handlePointerEvent(mouse.hover(centerB));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -60)));
+        await tester.pump();
+        expect(
+          writes,
+          isEmpty,
+          reason: 'leftover -80 on wheel-a must not carry onto wheel-b',
+        );
+        // Completing the full 120 on wheel-b (-60 + -60) steps param 4 by step=5 (50 -> 55).
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -60)));
+        await tester.pump();
+        expect(writes.map((w) => (w.parameterNumber, w.value)), [(4, 55)]);
+
+        // 5. At-limit arbitration consumes scroll without writing and clears accumulation,
+        // and remap / disconnect-reconnect clears unused accumulation.
+        writes.clear();
+        final atMaxSlot = slot0.copyWith(
+          values: [
+            for (final v in slot0.values)
+              v.parameterNumber == 5
+                  ? ParameterValue(
+                      algorithmIndex: v.algorithmIndex,
+                      parameterNumber: 5,
+                      value: 100,
+                    )
+                  : v,
+          ],
+        );
+        await tester.pumpWidget(
+          _Harness(cubit: cubit, slot: atMaxSlot, source: twoWheelSource),
+        );
+        await tester.pump();
+        tester.binding.handlePointerEvent(mouse.hover(centerA));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -120)));
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(scrollable.position.pixels, 0);
+
+        // Reconnect clears partial fractional accumulation (-80) so post-reconnect -60 does not fire.
+        final mgrA = _MockMidiManager();
+        final mgrB = _MockMidiManager();
+        final reconSlot = _syntheticSlot(p5: 50);
+        when(() => cubit.state).thenReturn(_synchronizedState(mgrA, reconSlot));
+        await tester.pumpWidget(
+          _Harness(cubit: cubit, slot: reconSlot, source: twoWheelSource),
+        );
+        await tester.pump();
+        tester.binding.handlePointerEvent(mouse.hover(centerA));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -80)));
+        await tester.pump();
+        expect(writes, isEmpty);
+
+        final syncedB = _synchronizedState(mgrB, reconSlot);
+        when(() => cubit.state).thenReturn(syncedB);
+        stateStream.add(syncedB);
+        await tester.pump();
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(0, -60)));
+        await tester.pump();
+        expect(
+          writes,
+          isEmpty,
+          reason: 'reconnect must clear prior partial wheel accumulation',
+        );
+
+        // 6. Horizontal wheel and trackpad scroll pass through to parent without writes.
+        writes.clear();
+        tester.binding.handlePointerEvent(mouse.hover(centerB));
+        tester.binding.handlePointerEvent(mouse.scroll(const Offset(120, 0)));
+        await tester.pump();
+        expect(writes, isEmpty);
+
+        final trackpad = TestPointer(31, PointerDeviceKind.trackpad);
+        tester.binding.handlePointerEvent(trackpad.hover(centerB));
+        tester.binding.handlePointerEvent(trackpad.scroll(const Offset(0, 80)));
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(scrollable.position.pixels, greaterThan(0));
+      },
+    );
+
+    testWidgets(
+      'F4: touch, pen, non-primary mouse, and trackpad pan/zoom over writable target do not capture or write; vertical touch drag scrolls parent',
+      (tester) async {
+        final events = <AlgorithmControllerCanvasInteractionEvent>[];
+        await tester.binding.setSurfaceSize(const Size(600, 500));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        const fullTargetSource = r'''
+return {
+  version = 1,
+  title = "Pointer Kind Policy",
+  root = ui.column {
+    gap = 12,
+    padding = 16,
+    children = {
+      ui.canvas {
+        semantics_label = "Full target surface",
+        aspect_ratio = 2,
+        drag_threshold = 4,
+        shapes = {},
+        targets = {
+          {
+            id = "full",
+            label = "Full Target",
+            shape = "rect",
+            x = 0,
+            y = 0,
+            width = 1,
+            height = 1,
+            selectable = true,
+            x_axis = { parameter = 1 },
+            y_axis = { parameter = 2, invert = true }
+          }
+        }
+      },
+      ui.spacer { size = 1200 }
+    }
+  }
+}
+''';
+
+        await tester.pumpWidget(
+          _Harness(
+            cubit: cubit,
+            slot: _syntheticSlot(),
+            source: fullTargetSource,
+            onCanvasInteraction: events.add,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final scrollable = tester.state<ScrollableState>(
+          find.byType(Scrollable).first,
+        );
+        final canvasRect = tester.getRect(
+          find.byType(InteractiveAlgorithmControllerCanvas),
+        );
+
+        // 1. Vertical touch drag directly over writable target scrolls parent with ZERO writes.
+        final touchDrag = await tester.startGesture(
+          canvasRect.center,
+          kind: PointerDeviceKind.touch,
+        );
+        for (var i = 0; i < 8; i++) {
+          await touchDrag.moveBy(const Offset(0, -12));
+          await tester.pump();
+        }
+        await touchDrag.up();
+        await tester.pumpAndSettle();
+        expect(writes, isEmpty);
+        expect(events, isEmpty);
+        expect(scrollable.position.pixels, greaterThan(0));
+
+        // Reset scroll to 0 for remaining pointer-kind assertions.
+        scrollable.position.jumpTo(0);
+        await tester.pump();
+
+        // 2. Touch tap over selectable target does not select or write.
+        await tester.tapAt(canvasRect.center);
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(events, isEmpty);
+
+        // 3. Stylus/pen drag over writable target does not capture or write.
+        final stylusDrag = await tester.startGesture(
+          canvasRect.center,
+          kind: PointerDeviceKind.stylus,
+        );
+        await stylusDrag.moveBy(const Offset(60, 0));
+        await stylusDrag.up();
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(events, isEmpty);
+
+        // 4. Secondary and middle mouse buttons do not capture or write.
+        for (final button in const [
+          kSecondaryMouseButton,
+          kMiddleMouseButton,
+        ]) {
+          final nonPrimary = await tester.startGesture(
+            canvasRect.center,
+            kind: PointerDeviceKind.mouse,
+            buttons: button,
+          );
+          await nonPrimary.moveBy(const Offset(60, 0));
+          await nonPrimary.up();
+          await tester.pump();
+        }
+        expect(writes, isEmpty);
+        expect(events, isEmpty);
+
+        // 5. Trackpad pan/zoom over writable target scrolls parent without writes.
+        final trackpad = TestPointer(40, PointerDeviceKind.trackpad);
+        tester.binding.handlePointerEvent(
+          trackpad.panZoomStart(canvasRect.center),
+        );
+        tester.binding.handlePointerEvent(
+          trackpad.panZoomUpdate(canvasRect.center, pan: const Offset(0, -25)),
+        );
+        tester.binding.handlePointerEvent(
+          trackpad.panZoomUpdate(canvasRect.center, pan: const Offset(0, -90)),
+        );
+        tester.binding.handlePointerEvent(trackpad.panZoomEnd());
+        await tester.pumpAndSettle();
+        expect(writes, isEmpty);
+        expect(events, isEmpty);
+        expect(scrollable.position.pixels, greaterThan(0));
+
+        // 6. Primary mouse drag still captures and writes cleanly.
+        scrollable.position.jumpTo(0);
+        await tester.pump();
+        final freshRect = tester.getRect(
+          find.byType(InteractiveAlgorithmControllerCanvas),
+        );
+        final mouseDrag = await tester.startGesture(
+          freshRect.center,
+          kind: PointerDeviceKind.mouse,
+          buttons: kPrimaryMouseButton,
+        );
+        await mouseDrag.moveTo(
+          Offset(freshRect.left + freshRect.width * 0.75, freshRect.center.dy),
+        );
+        await mouseDrag.up();
+        await tester.pump();
+        expect(writes, isNotEmpty);
+        expect(writes.last.parameterNumber, 1);
+        expect(writes.last.value, 75);
+        expect(writes.last.changing, isFalse);
+      },
+    );
+
+    testWidgets(
+      'F5: pre-threshold cancel, no-dirty cancel, stale-session Escape, and post-threshold gestureRejected follow exact settlement rules',
+      (tester) async {
+        final events = <AlgorithmControllerCanvasInteractionEvent>[];
+        await tester.binding.setSurfaceSize(const Size(900, 900));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        // 1. Pre-threshold Escape and pointerCancel emit ZERO writes and ZERO dragCancel.
+        await tester.pumpWidget(
+          _Harness(
+            cubit: cubit,
+            slot: _syntheticSlot(),
+            source: _overlappingTwoAxisSource,
+            onCanvasInteraction: events.add,
+          ),
+        );
+        await tester.pumpAndSettle();
+        final canvasRect = tester.getRect(
+          find.byType(InteractiveAlgorithmControllerCanvas),
+        );
+
+        final preThresholdEsc = await tester.startGesture(
+          canvasRect.center,
+          kind: PointerDeviceKind.mouse,
+        );
+        await preThresholdEsc.moveBy(const Offset(3, 0)); // < 8px threshold
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        await preThresholdEsc.moveBy(const Offset(80, 0));
+        await preThresholdEsc.up();
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(events, isEmpty);
+
+        final preThresholdCancel = await tester.startGesture(
+          canvasRect.center,
+          kind: PointerDeviceKind.mouse,
+        );
+        await preThresholdCancel.moveBy(const Offset(3, 0));
+        await preThresholdCancel.cancel();
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(events, isEmpty);
+
+        // 2. Drag past threshold with no dirty axis (solo-x dragged vertically only so X stays 50).
+        final soloXCenter = Offset(
+          canvasRect.left + canvasRect.width * 0.5,
+          canvasRect.top + canvasRect.height * 0.5,
+        );
+        // Put solo-x with step=100 or drag t1 vertically? Better: test solo-x where initial X=50
+        // and drag straight up on solo-x? solo-x rect is x: 0.05..0.20, so at x=0.125 rawX is 8.
+        // Instead use a dedicated 1-axis target with step=100 so small post-threshold move stays 50.
+        const noDirtySource = r'''
+return {
+  version = 1,
+  title = "No Dirty Axis",
+  root = ui.canvas {
+    semantics_label = "No dirty surface",
+    aspect_ratio = 2,
+    drag_threshold = 4,
+    shapes = {},
+    targets = {
+      {
+        id = "coarse",
+        label = "Coarse",
+        shape = "rect",
+        x = 0,
+        y = 0,
+        width = 1,
+        height = 1,
+        x_axis = { parameter = 1, from = 0, to = 1, step = 50 }
+      }
+    }
+  }
+}
+''';
+        await tester.pumpWidget(
+          _Harness(
+            cubit: cubit,
+            slot: _syntheticSlot(p1: 50),
+            source: noDirtySource,
+            assetPath: 'no-dirty.lua',
+            onCanvasInteraction: events.add,
+          ),
+        );
+        await tester.pumpAndSettle();
+        final coarseRect = tester.getRect(
+          find.byType(InteractiveAlgorithmControllerCanvas),
+        );
+        final noDirtyDrag = await tester.startGesture(
+          coarseRect.center,
+          kind: PointerDeviceKind.mouse,
+        );
+        // Move 10px (> 4px threshold) — still quantizes to 50 (no dirty writes).
+        await noDirtyDrag.moveBy(const Offset(10, 0));
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        await noDirtyDrag.up();
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(events.map((e) => (e.type, e.cancelReason)), [
+          (AlgorithmControllerCanvasInteractionEventType.dragStart, null),
+          (
+            AlgorithmControllerCanvasInteractionEventType.dragCancel,
+            AlgorithmControllerCanvasCancelReason.escapeKey,
+          ),
+        ]);
+        expect(soloXCenter.dx, greaterThan(0));
+
+        // 3. Stale session invalidation synchronously before Escape -> ZERO final write.
+        writes.clear();
+        events.clear();
+        final manager = _MockMidiManager();
+        final syncSlot = _syntheticSlot(p1: 50);
+        when(() => cubit.state)
+            .thenReturn(_synchronizedState(manager, syncSlot));
+        await tester.pumpWidget(
+          _Harness(
+            cubit: cubit,
+            slot: syncSlot,
+            source: _overlappingTwoAxisSource,
+            onCanvasInteraction: events.add,
+          ),
+        );
+        await tester.pumpAndSettle();
+        final syncRect = tester.getRect(
+          find.byType(InteractiveAlgorithmControllerCanvas),
+        );
+        final staleDrag = await tester.startGesture(
+          syncRect.center,
+          kind: PointerDeviceKind.mouse,
+        );
+        await staleDrag.moveTo(
+          Offset(syncRect.left + syncRect.width * 0.7, syncRect.center.dy),
+        );
+        await tester.pump();
+        final writesBeforeStaleEscape = writes.length;
+        expect(writesBeforeStaleEscape, greaterThan(0));
+        expect(writes.every((w) => w.changing), isTrue);
+
+        // Cubit transitions to disconnected WITHOUT pumping a rebuild first, then Escape arrives.
+        when(() => cubit.state).thenReturn(
+          const DistingState.selectDevice(
+            inputDevices: [],
+            outputDevices: [],
+            canWorkOffline: false,
+          ),
+        );
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        await staleDrag.up();
+        await tester.pump();
+        expect(writes, hasLength(writesBeforeStaleEscape));
+        expect(writes.where((w) => !w.changing), isEmpty);
+
+        // 4a. Real gesture-arena pre-threshold rejection (competing recognizer wins before threshold).
+        writes.clear();
+        events.clear();
+        when(() => cubit.state).thenReturn(const DistingState.initial());
+        const rejectNode = AlgorithmControllerCanvas(
+          semanticsLabel: 'reject-probe',
+          shapes: [],
+          aspectRatio: 2,
+          dragThreshold: 8,
+          targets: [
+            AlgorithmControllerCanvasTarget(
+              id: 't',
+              label: 'T',
+              hitArea: AlgorithmControllerCanvasRectHitArea(
+                x: 0,
+                y: 0,
+                width: 1,
+                height: 1,
+              ),
+              xAxis: AlgorithmControllerCanvasAxisBinding(parameterNumber: 1),
+            ),
+          ],
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocProvider<DistingCubit>.value(
+              value: cubit,
+              child: Scaffold(
+                body: RawGestureDetector(
+                  gestures: {
+                    _EarlyAcceptGestureRecognizer:
+                        GestureRecognizerFactoryWithHandlers<
+                          _EarlyAcceptGestureRecognizer
+                        >(() => _EarlyAcceptGestureRecognizer(), (_) {}),
+                  },
+                  child: SizedBox(
+                    width: 400,
+                    height: 200,
+                    child: InteractiveAlgorithmControllerCanvas(
+                      node: rejectNode,
+                      slot: _syntheticSlot(p1: 50),
+                      slotIndex: 2,
+                      documentGeneration: 0,
+                      painter: _NoOpPainter(),
+                      onWriteParameter: (p, v, {required changing}) =>
+                          writes.add((
+                            algorithmIndex: 2,
+                            parameterNumber: p,
+                            value: v,
+                            changing: changing,
+                          )),
+                      onInteraction: events.add,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final preRejDrag = await tester.startGesture(
+          const Offset(200, 100),
+          kind: PointerDeviceKind.mouse,
+        );
+        // Move 3px (< 8px canvas threshold): parent claims arena -> canvas gets rejectGesture.
+        await preRejDrag.moveBy(const Offset(3, 0));
+        await preRejDrag.moveBy(const Offset(60, 0));
+        await preRejDrag.up();
+        await tester.pump();
+        expect(writes, isEmpty);
+        expect(events, isEmpty);
+
+        // 4b. Post-threshold gestureRejected after actual drag writes settles dirty axis once.
+        writes.clear();
+        events.clear();
+        _ManualClaimGestureRecognizer? manualParent;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocProvider<DistingCubit>.value(
+              value: cubit,
+              child: Scaffold(
+                body: RawGestureDetector(
+                  gestures: {
+                    _ManualClaimGestureRecognizer:
+                        GestureRecognizerFactoryWithHandlers<
+                          _ManualClaimGestureRecognizer
+                        >(() => _ManualClaimGestureRecognizer(), (instance) {
+                          manualParent = instance;
+                        }),
+                  },
+                  child: SizedBox(
+                    width: 400,
+                    height: 200,
+                    child: InteractiveAlgorithmControllerCanvas(
+                      node: rejectNode,
+                      slot: _syntheticSlot(p1: 50),
+                      slotIndex: 2,
+                      documentGeneration: 0,
+                      painter: _NoOpPainter(),
+                      onWriteParameter: (p, v, {required changing}) {
+                        writes.add((
+                          algorithmIndex: 2,
+                          parameterNumber: p,
+                          value: v,
+                          changing: changing,
+                        ));
+                        // Competing recognizer claims the arena right after the
+                        // first real-time write, before canvas claims acceptance.
+                        if (changing) {
+                          manualParent?.claimArena();
+                        }
+                      },
+                      onInteraction: events.add,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final rejDrag = await tester.startGesture(
+          const Offset(200, 100),
+          kind: PointerDeviceKind.mouse,
+        );
+        await rejDrag.moveBy(const Offset(60, 0));
+        await tester.pump();
+
+        // Late move/up after rejection must emit zero additional writes.
+        await rejDrag.moveBy(const Offset(80, 0));
+        await rejDrag.up();
+        await tester.pump();
+
+        expect(writes.map((w) => (w.parameterNumber, w.value, w.changing)), [
+          (1, 65, true),
+          (1, 65, false),
+        ]);
+        expect(
+          events.where(
+            (e) =>
+                e.type ==
+                    AlgorithmControllerCanvasInteractionEventType.dragCancel ||
+                e.type == AlgorithmControllerCanvasInteractionEventType.dragEnd,
+          ),
+          hasLength(1),
+        );
+        expect(
+          events.last.cancelReason,
+          AlgorithmControllerCanvasCancelReason.gestureRejected,
+        );
+      },
+    );
+
+    testWidgets(
+      'F7: non-cycling overlap aligns click and drag priority to highest-priority ordered target',
+      (tester) async {
+        final events = <AlgorithmControllerCanvasInteractionEvent>[];
+        await tester.binding.setSurfaceSize(const Size(900, 900));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        const partialOverlapSource = r'''
+return {
+  version = 1,
+  title = "Non-cycling Overlap Priority",
+  root = ui.canvas {
+    semantics_label = "Non-cycling priority surface",
+    aspect_ratio = 2,
+    drag_threshold = 4,
+    cycle_overlapping_selection = false,
+    shapes = {},
+    targets = {
+      {
+        id = "second",
+        label = "Second",
+        shape = "rect",
+        x = 0.4,
+        y = 0.0,
+        width = 0.6,
+        height = 1.0,
+        selectable = true,
+        order = 2,
+        x_axis = { parameter = 3 }
+      },
+      {
+        id = "first",
+        label = "First",
+        shape = "rect",
+        x = 0.0,
+        y = 0.0,
+        width = 0.6,
+        height = 1.0,
+        selectable = true,
+        order = 1,
+        x_axis = { parameter = 1 }
+      }
+    }
+  }
+}
+''';
+
+        await tester.pumpWidget(
+          _Harness(
+            cubit: cubit,
+            slot: _syntheticSlot(),
+            source: partialOverlapSource,
+            onCanvasInteraction: events.add,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final canvasRect = tester.getRect(
+          find.byType(InteractiveAlgorithmControllerCanvas),
+        );
+        final secondOnlyPoint = Offset(
+          canvasRect.left + canvasRect.width * 0.85,
+          canvasRect.center.dy,
+        );
+        final overlapPoint = canvasRect.center;
+
+        // Select 'second' via its non-overlapping region (no writes).
+        await _mouseClick(tester, secondOnlyPoint);
+        expect(writes, isEmpty);
+        expect(events.last.targetId, 'second');
+
+        // Dragging from the overlap must capture 'first' (order 1), matching click priority.
+        events.clear();
+        final drag = await tester.startGesture(
+          overlapPoint,
+          kind: PointerDeviceKind.mouse,
+        );
+        await drag.moveTo(
+          Offset(canvasRect.left + canvasRect.width * 0.75, overlapPoint.dy),
+        );
+        await drag.up();
+        await tester.pump();
+
+        expect(writes, isNotEmpty);
+        expect(writes.every((w) => w.parameterNumber == 1), isTrue);
+        expect(events.first.targetId, 'first');
+
+        // Select 'second' again, then click the overlap -> also resolves to 'first' without writes.
+        writes.clear();
+        await _mouseClick(tester, secondOnlyPoint);
+        expect(events.last.targetId, 'second');
+        await _mouseClick(tester, overlapPoint);
+        expect(writes, isEmpty);
+        expect(events.last.targetId, 'first');
+      },
+    );
+  });
+}
+
+Future<void> _mouseClick(
+  WidgetTester tester,
+  Offset position, {
+  int buttons = kPrimaryMouseButton,
+}) async {
+  final gesture = await tester.startGesture(
+    position,
+    kind: PointerDeviceKind.mouse,
+    buttons: buttons,
+  );
+  await gesture.up();
+  await tester.pump();
+}
+
+final class _NoOpPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {}
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+final class _EarlyAcceptGestureRecognizer extends OneSequenceGestureRecognizer {
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    super.addAllowedPointer(event);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    if (event is PointerMoveEvent) {
+      resolve(GestureDisposition.accepted);
+    } else if (event is PointerUpEvent || event is PointerCancelEvent) {
+      stopTrackingPointer(event.pointer);
+    }
+  }
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {}
+
+  @override
+  String get debugDescription => 'earlyAcceptTestRecognizer';
+}
+
+final class _ManualClaimGestureRecognizer extends OneSequenceGestureRecognizer {
+  int? _pointer;
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    super.addAllowedPointer(event);
+    _pointer = event.pointer;
+  }
+
+  void claimArena() {
+    final pointer = _pointer;
+    if (pointer == null) return;
+    _pointer = null;
+    resolvePointer(pointer, GestureDisposition.accepted);
+    stopTrackingPointer(pointer);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    if (event is PointerUpEvent || event is PointerCancelEvent) {
+      if (_pointer == event.pointer) _pointer = null;
+      stopTrackingPointer(event.pointer);
+    }
+  }
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {}
+
+  @override
+  String get debugDescription => 'manualClaimTestRecognizer';
 }
 
 class _Harness extends StatefulWidget {
@@ -1473,6 +2856,7 @@ class _Harness extends StatefulWidget {
     required this.cubit,
     required this.slot,
     required this.source,
+    this.units = const [],
     this.assetPath = 'synthetic.lua',
     this.onCanvasInteraction,
   });
@@ -1480,6 +2864,7 @@ class _Harness extends StatefulWidget {
   final DistingCubit cubit;
   final Slot slot;
   final String source;
+  final List<String> units;
   final String assetPath;
   final ValueChanged<AlgorithmControllerCanvasInteractionEvent>?
   onCanvasInteraction;
@@ -1515,7 +2900,7 @@ class _HarnessState extends State<_Harness> {
             ),
             slot: widget.slot,
             slotIndex: widget.slot.algorithm.algorithmIndex,
-            units: const [],
+            units: widget.units,
             sectionController: _sectionController,
             sourceLoader: _loadSource,
             onCanvasInteraction: widget.onCanvasInteraction,

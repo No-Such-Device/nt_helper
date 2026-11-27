@@ -726,6 +726,7 @@ class _AlgorithmControllerDocumentBody extends StatelessWidget {
             node: node,
             slot: slot,
             slotIndex: slotIndex,
+            units: units,
             documentGeneration: documentGeneration,
             painter: painter,
             onWriteParameter: (parameterNumber, value, {required changing}) =>
