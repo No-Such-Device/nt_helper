@@ -226,7 +226,77 @@ Theme tokens include `primary`, `on_primary`, `secondary`, `tertiary`,
 `surface`, `surface_container`, `surface_container_highest`, `on_surface`,
 `on_surface_variant`, `outline`, `error`, and `transparent`. Hex colors are
 accepted, but theme tokens should be preferred. Every canvas requires a useful
-`semantics_label`; individual shapes are deliberately not focusable.
+`semantics_label`; paint-only canvases omit `targets` and keep shapes
+non-focusable with normal parent scrolling.
+
+### Opt-in canvas input targets
+
+A `ui.canvas` can opt in to typed host pointer, focus, and wheel input by
+supplying a `targets` array (up to 256 targets per document). When `targets` is
+omitted or empty, the canvas remains paint-only.
+
+Optional canvas-level fields:
+
+- `drag_threshold` — finite non-negative movement distance in logical pixels
+  before a drag begins (defaults to `4`)
+- `cycle_overlapping_selection` — when `true`, repeated clicks on overlapping
+  selectable targets cycle selection and focus in deterministic order without
+  writing parameters (defaults to `false`)
+
+Each entry in `targets` binds directly to live parameters (never I/O
+parameters) and uses normalized canvas coordinates (`0..1`):
+
+```lua
+ui.canvas {
+  semantics_label = "Interactive two-axis control surface",
+  aspect_ratio = 4,
+  drag_threshold = 4,
+  cycle_overlapping_selection = true,
+  shapes = { ... },
+  targets = {
+    {
+      id = "point-1",
+      label = "Point 1",
+      shape = "circle", -- or "rect" with x, y, width, height
+      x = 0.5,
+      y = 0.5,
+      radius = 0.06,
+      selectable = true,
+      order = 1,
+      enabled = true,
+      x_axis = {
+        parameter = 2,
+        from = 0.04,
+        to = 0.96,
+        step = 1,
+        invert = false,
+        enabled = true
+      },
+      y_axis = {
+        parameter = 3,
+        from = 0.08,
+        to = 0.92,
+        step = 1,
+        invert = true,
+        enabled = true
+      },
+      wheel = {
+        parameter = 4,
+        step = 1,
+        invert = false,
+        enabled = true
+      }
+    }
+  }
+}
+```
+
+The host routes hits against the actual rendered canvas bounds, separates
+selection-only click/focus from thresholded single-pointer drag capture, writes
+through `DistingCubit.updateParameterValue` with clamping and quantization,
+clears active capture immediately on release, cancel, Escape, disposal,
+slot/binding replacement, or reconnect (without fabricating undo writes), and
+consumes mouse wheel only over a single unambiguous, enabled, writable target.
 
 ## Runtime restrictions
 
