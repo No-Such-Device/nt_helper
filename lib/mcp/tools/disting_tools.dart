@@ -25,6 +25,7 @@ import 'package:nt_helper/ui/metadata_sync/metadata_sync_cubit.dart';
 import 'package:nt_helper/util/case_converter.dart';
 import 'package:nt_helper/mcp/mcp_constants.dart';
 import 'package:nt_helper/mcp/utils/bus_mapping.dart';
+import 'package:nt_helper/ui/parameter_editor_registry.dart';
 import 'package:nt_helper/models/cpu_usage.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
 
@@ -270,6 +271,31 @@ class DistingTools {
   }
 
   /// Checks if a parameter is an enum type
+  /// Text parameters (mixer channel names, Notes lines, sample paths) hold
+  /// printable ASCII with a hardware limit of 31 characters.
+  static const int maxParameterStringLength = 31;
+
+  bool _isStringParameter(ParameterInfo paramInfo) =>
+      ParameterEditorRegistry.isStringTypeUnit(paramInfo.unit);
+
+  /// Returns an error message when [value] cannot be written to a text
+  /// parameter, or null when it can.
+  String? _validateParameterString(Object? value) {
+    if (value is! String) {
+      return 'is a text parameter and requires a string value.';
+    }
+    if (value.length > maxParameterStringLength) {
+      return 'is a text parameter limited to $maxParameterStringLength '
+          'characters; the provided value has ${value.length}.';
+    }
+    for (final unit in value.codeUnits) {
+      if (unit < 0x20 || unit > 0x7e) {
+        return 'is a text parameter and accepts printable ASCII only.';
+      }
+    }
+    return null;
+  }
+
   bool _isEnumParameter(ParameterInfo paramInfo) {
     return paramInfo.unit == 1;
   }
@@ -426,6 +452,14 @@ class DistingTools {
                   _enumIndexToString(enumValues, liveRawValue) ?? '';
             }
           }
+        } else if (_isStringParameter(pInfo)) {
+          paramData['is_string'] = true;
+          paramData['value'] =
+              await _controller.getParameterStringValue(
+                slotIndex,
+                pInfo.parameterNumber,
+              ) ??
+              '';
         } else {
           paramData['value'] = liveRawValue != null
               ? _scaleForDisplay(liveRawValue, pInfo.powerOfTen)
@@ -832,6 +866,36 @@ class DistingTools {
         );
       }
 
+      if (_isStringParameter(paramInfo)) {
+        final stringError = _validateParameterString(value);
+        if (stringError != null) {
+          return jsonEncode(
+            convertToSnakeCaseKeys(
+              MCPUtils.buildError('Parameter ${paramInfo.name} $stringError'),
+            ),
+          );
+        }
+        await _controller.updateParameterString(
+          slotIndex,
+          targetParameterNumber,
+          value as String,
+        );
+        return jsonEncode(
+          convertToSnakeCaseKeys(
+            MCPUtils.buildSuccess(
+              'Parameter ${paramInfo.name} (number $targetParameterNumber) '
+              'in slot $slotIndex set to "$value".',
+              data: {
+                'value': value,
+                'parameter_number': targetParameterNumber,
+                'parameter_name': paramInfo.name,
+                'is_string': true,
+              },
+            ),
+          ),
+        );
+      }
+
       int rawValue;
       if (_isEnumParameter(paramInfo)) {
         if (value is! String) {
@@ -1035,7 +1099,15 @@ class DistingTools {
         'is_output_mode': paramInfo.isOutputMode,
       };
 
-      if (_isEnumParameter(paramInfo)) {
+      if (_isStringParameter(paramInfo)) {
+        responseData['is_string'] = true;
+        responseData['value'] =
+            await _controller.getParameterStringValue(
+              slotIndex,
+              resolvedParameterNumber,
+            ) ??
+            '';
+      } else if (_isEnumParameter(paramInfo)) {
         final enumValues = await _getParameterEnumValues(
           slotIndex,
           resolvedParameterNumber,
@@ -3559,7 +3631,18 @@ class DistingTools {
           if (paramValue != null) {
             final pInfo = parameterInfos[paramIdx];
 
-            if (_isEnumParameter(pInfo)) {
+            if (_isStringParameter(pInfo)) {
+              final stringError = _validateParameterString(paramValue);
+              if (stringError != null) {
+                return jsonEncode(
+                  convertToSnakeCaseKeys(
+                    MCPUtils.buildError(
+                      'Parameter "${pInfo.name}" $stringError',
+                    ),
+                  ),
+                );
+              }
+            } else if (_isEnumParameter(pInfo)) {
               if (paramValue is! String) {
                 return jsonEncode(
                   convertToSnakeCaseKeys(
@@ -3708,16 +3791,24 @@ class DistingTools {
             final pInfo = allParams.firstWhere(
               (p) => p.parameterNumber == paramNumber,
             );
-            // Enum values are already resolved to raw ints during validation;
-            // only scale display→raw for regular numeric params.
-            final int rawValue = _isEnumParameter(pInfo)
-                ? (paramValue as num).toInt()
-                : MCPUtils.scaleToRaw(paramValue, pInfo.powerOfTen);
-            await _controller.updateParameterValue(
-              slotIndex,
-              paramNumber,
-              rawValue,
-            );
+            if (_isStringParameter(pInfo)) {
+              await _controller.updateParameterString(
+                slotIndex,
+                paramNumber,
+                paramValue as String,
+              );
+            } else {
+              // Enum values are already resolved to raw ints during validation;
+              // only scale display→raw for regular numeric params.
+              final int rawValue = _isEnumParameter(pInfo)
+                  ? (paramValue as num).toInt()
+                  : MCPUtils.scaleToRaw(paramValue, pInfo.powerOfTen);
+              await _controller.updateParameterValue(
+                slotIndex,
+                paramNumber,
+                rawValue,
+              );
+            }
           } catch (e) {
             return jsonEncode(
               convertToSnakeCaseKeys(
@@ -3797,7 +3888,15 @@ class DistingTools {
             'is_disabled': paramValue?.isDisabled ?? false,
           };
 
-          if (_isEnumParameter(pInfo) && liveRawValue != null) {
+          if (_isStringParameter(pInfo)) {
+            paramData['is_string'] = true;
+            paramData['value'] =
+                await _controller.getParameterStringValue(
+                  slotIndex,
+                  pInfo.parameterNumber,
+                ) ??
+                '';
+          } else if (_isEnumParameter(pInfo) && liveRawValue != null) {
             final enumValues = await _getParameterEnumValues(
               slotIndex,
               pInfo.parameterNumber,
@@ -4012,8 +4111,21 @@ class DistingTools {
       );
 
       // Step 5: Validate value (if provided) — convert display→raw
+      if (_isStringParameter(paramInfo)) {
+        if (value != null) {
+          final stringError = _validateParameterString(value);
+          if (stringError != null) {
+            return jsonEncode(
+              convertToSnakeCaseKeys(
+                MCPUtils.buildError('Parameter "$parameterName" $stringError'),
+              ),
+            );
+          }
+        }
+      }
+
       int? rawValue;
-      if (value != null) {
+      if (value != null && !_isStringParameter(paramInfo)) {
         if (_isEnumParameter(paramInfo)) {
           if (value is! String) {
             return jsonEncode(
@@ -4103,6 +4215,15 @@ class DistingTools {
         );
       }
 
+      final isStringParameter = _isStringParameter(paramInfo);
+      if (value != null && isStringParameter) {
+        await _controller.updateParameterString(
+          slotIndex,
+          resolvedParameterNumber,
+          value as String,
+        );
+      }
+
       // Update mappings if provided
       if (mapping != null && mapping.isNotEmpty) {
         await _applyMappingUpdates(slotIndex, resolvedParameterNumber, mapping);
@@ -4129,7 +4250,15 @@ class DistingTools {
         'is_disabled': updatedParamValue?.isDisabled ?? false,
       };
 
-      if (_isEnumParameter(paramInfo)) {
+      if (isStringParameter) {
+        result['is_string'] = true;
+        result['value'] =
+            await _controller.getParameterStringValue(
+              slotIndex,
+              resolvedParameterNumber,
+            ) ??
+            '';
+      } else if (_isEnumParameter(paramInfo)) {
         final enumValues = await _getParameterEnumValues(
           slotIndex,
           resolvedParameterNumber,
