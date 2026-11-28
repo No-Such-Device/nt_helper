@@ -1020,20 +1020,17 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
     }
 
     // Find the ES-5 Output parameter
-    // For multi-channel algorithms (Clock/Euclidean/etc): "$channel:ES-5 Output"
+    // For multi-channel algorithms (Clock/Euclidean/etc): "1:ES-5 Output", or
+    // the channel's name after a rename ("Grov:ES-5 Output").
     // For Poly CV: "ES-5 Output" (no channel prefix, controls starting port for all voices)
-    String es5OutputParamName = '$channel:ES-5 Output';
-    var es5OutputParam = slot.parameters.firstWhere(
-      (p) => p.name == es5OutputParamName,
-      orElse: () => ParameterInfo.filler(),
-    );
+    final es5OutputParamName = 'ES-5 Output';
+    var es5OutputParam = _channelParameter(slot, channel, es5OutputParamName);
 
     int targetValue = es5PortNumber;
     bool isPolyCv = false;
 
     // If not found with channel prefix, try without (Poly CV case)
     if (es5OutputParam.parameterNumber < 0) {
-      es5OutputParamName = 'ES-5 Output';
       es5OutputParam = slot.parameters.firstWhere(
         (p) => p.name == es5OutputParamName,
         orElse: () => ParameterInfo.filler(),
@@ -1110,12 +1107,9 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
 
     final channel = int.parse(channelMatch.group(1)!);
 
-    // Find the Output parameter for this channel (format: "N:Output")
-    final outputParamName = '$channel:Output';
-    final outputParam = slot.parameters.firstWhere(
-      (p) => p.name == outputParamName,
-      orElse: () => ParameterInfo.filler(),
-    );
+    // Find the Output parameter for this channel ("N:Output", or the channel's
+    // name after a rename: "Grov:Output")
+    final outputParam = _channelParameter(slot, channel, 'Output');
 
     if (outputParam.parameterNumber < 0) {
       return null;
@@ -2593,6 +2587,28 @@ class RoutingEditorCubit extends Cubit<RoutingEditorState> {
       parameterNumber: parameterNumber,
       value: busValue,
       userIsChangingTheValue: true,
+    );
+  }
+
+  /// Finds a channel's parameter by name, independent of its channel prefix.
+  ///
+  /// The firmware prefixes a multi-channel algorithm's parameters with the
+  /// channel's name, so a rename replaces "1:" with an arbitrary label. The
+  /// channel's ordinal position is its identity, not the prefix text.
+  ParameterInfo _channelParameter(Slot slot, int channel, String name) {
+    final numeric = slot.parameters.firstWhere(
+      (p) => p.name == '$channel:$name',
+      orElse: () => ParameterInfo.filler(),
+    );
+    if (numeric.parameterNumber >= 0) return numeric;
+
+    final prefixes = core_routing.AlgorithmRouting.channelPrefixes(slot);
+    if (channel < 1 || channel > prefixes.length) return numeric;
+
+    final prefix = prefixes[channel - 1];
+    return slot.parameters.firstWhere(
+      (p) => p.name == '$prefix$name',
+      orElse: () => ParameterInfo.filler(),
     );
   }
 

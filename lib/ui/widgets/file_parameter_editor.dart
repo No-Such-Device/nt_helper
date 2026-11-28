@@ -182,7 +182,7 @@ class _FileParameterEditorState extends State<FileParameterEditor> {
     final currentParamName = widget.parameterInfo.name;
 
     // Extract trigger number from current parameter name (e.g., "2:Sample" -> "2")
-    final triggerMatch = RegExp(r'^(\d+):').firstMatch(currentParamName);
+    final triggerMatch = RegExp(r'^([^:]+):').firstMatch(currentParamName);
     if (triggerMatch != null) {
       final triggerNumber = triggerMatch.group(1)!;
       final expectedFolderParamName = '$triggerNumber:Folder';

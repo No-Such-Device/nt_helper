@@ -3021,12 +3021,17 @@ class _RoutingEditorWidgetState extends State<RoutingEditorWidget>
       // Clock/Euclidean/Clock Multiplier/Clock Divider: per-channel ES-5 configuration
       // Find all ES-5 Expander parameters (format: "N:ES-5 Expander" for multi-channel,
       // or "ES-5 Expander" for single-channel algorithms like Clock Multiplier)
+      var namedChannel = 0;
       for (final param in slot.parameters) {
         // Try multi-channel format first (e.g., "1:ES-5 Expander")
-        final multiChannelMatch = RegExp(r'^(\d+):ES-5 Expander$')
+        final multiChannelMatch = RegExp(r'^([^:]+):ES-5 Expander$')
             .firstMatch(param.name);
         if (multiChannelMatch != null) {
-          final channel = int.parse(multiChannelMatch.group(1)!);
+          namedChannel++;
+          // The prefix is the channel's name, so a renamed channel has no
+          // number to parse; fall back to the order the parameters appear in.
+          final channel =
+              int.tryParse(multiChannelMatch.group(1)!) ?? namedChannel;
 
           // Get the parameter value
           final value = slot.values
