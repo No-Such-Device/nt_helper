@@ -7,13 +7,11 @@ import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/db/database.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
 import 'package:nt_helper/domain/i_disting_midi_manager.dart';
-import 'package:nt_helper/mcp/tools/algorithm_tools.dart';
 import 'package:nt_helper/mcp/tools/disting_tools.dart';
 import 'package:nt_helper/models/device_io_profile.dart';
 import 'package:nt_helper/models/firmware_version.dart';
 import 'package:nt_helper/services/algorithm_metadata_service.dart';
 import 'package:nt_helper/services/disting_controller_impl.dart';
-import 'package:nt_helper/services/metadata_import_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../test_helpers/mock_midi_command.dart';
@@ -133,7 +131,6 @@ void main() {
   late DistingCubit cubit;
   late MockDistingMidiManager manager;
   late DistingTools tools;
-  late MCPAlgorithmTools algorithmTools;
 
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
@@ -149,7 +146,6 @@ void main() {
     cubit = DistingCubit(database, midiCommand: MockMidiCommand());
     final controller = DistingControllerImpl(cubit);
     tools = DistingTools(controller, cubit);
-    algorithmTools = MCPAlgorithmTools(controller, cubit);
 
     _emitSlotWithStringParameter(cubit);
     final state = cubit.state as DistingStateSynchronized;
