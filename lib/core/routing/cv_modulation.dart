@@ -186,8 +186,16 @@ List<CvModulation> projectCvModulations({
           ? null
           : RegExp(r'^Channel (\d+)$').firstMatch(page.name)?.group(1);
       final rawName = metadata?.name ?? '';
-      final parameterName = channel != null && rawName.startsWith('$channel:')
-          ? rawName.substring(channel.length + 1).trimLeft()
+      // The prefix is the channel's name: the page's channel number, or a label
+      // the channel was renamed to. The page already names the channel, so that
+      // prefix is dropped; a different numeric prefix belongs to the parameter.
+      final colonIndex = rawName.indexOf(':');
+      final prefix = colonIndex >= 0 ? rawName.substring(0, colonIndex) : '';
+      final prefixIsChannel =
+          colonIndex >= 0 &&
+          (prefix == channel || int.tryParse(prefix) == null);
+      final parameterName = prefixIsChannel
+          ? rawName.substring(colonIndex + 1).trimLeft()
           : rawName;
       final name = metadata == null || metadata.name.isEmpty
           ? 'Parameter $p'

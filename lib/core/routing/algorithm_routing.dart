@@ -602,16 +602,17 @@ abstract class AlgorithmRouting {
 
   /// Hardcoded input parameters that firmware doesn't flag with isInput.
   /// Remove once OS fixes ioFlags for these algorithms.
+  ///
+  /// Patterns match the name after its channel prefix is removed: the prefix is
+  /// the channel's custom name, so it is not always a number.
   static final _hardcodedInputs = <String, RegExp>{
-    'logi': RegExp(r'^\d+:Input [XY]$'),
-    'musw': RegExp(
-      r'^\d+:(In control source|Out control source|Reset source)$',
-    ),
+    'logi': RegExp(r'^Input [XY]$'),
+    'musw': RegExp(r'^(In control source|Out control source|Reset source)$'),
   };
 
   static bool isHardcodedInput(String guid, String paramName) {
     final pattern = _hardcodedInputs[guid];
-    return pattern != null && pattern.hasMatch(paramName);
+    return pattern != null && pattern.hasMatch(stripPagePrefix(paramName));
   }
 
   /// Helper method to extract mode-related parameters from a slot.
@@ -793,6 +794,18 @@ abstract class AlgorithmRouting {
   static String channelPrefix(String name) {
     final colonIndex = name.indexOf(':');
     return colonIndex >= 0 ? name.substring(0, colonIndex + 1) : '';
+  }
+
+  /// Returns the distinct channel prefixes of [slot]'s parameters, in the order
+  /// the parameters appear. Unprefixed parameters contribute nothing.
+  static List<String> channelPrefixes(Slot slot) {
+    final prefixes = <String>[];
+    for (final param in slot.parameters) {
+      final prefix = channelPrefix(param.name);
+      if (prefix.isEmpty || prefixes.contains(prefix)) continue;
+      prefixes.add(prefix);
+    }
+    return prefixes;
   }
 }
 

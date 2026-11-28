@@ -1,7 +1,10 @@
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+
+import 'algorithm_routing.dart';
 import 'models/port.dart';
 import 'multi_channel_algorithm_routing.dart';
+
 import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Routing implementation for Saturator algorithm.
@@ -33,16 +36,18 @@ class SaturatorAlgorithmRouting extends MultiChannelAlgorithmRouting {
     Map<String, ({int parameterNumber, int value})>? modeParametersWithNumbers,
     String? algorithmUuid,
   }) {
-    // Count channels by finding highest channel prefix in parameter names
-    int channelCount = 0;
-    for (final param in slot.parameters) {
-      final match = RegExp(r'^(\d+):').firstMatch(param.name);
-      if (match != null) {
-        final channelNum = int.parse(match.group(1)!);
-        if (channelNum > channelCount) {
-          channelCount = channelNum;
-        }
-      }
+    // A channel's prefix is its name, so a renamed channel reports
+    // "Grov:Input" instead of "1:Input".
+    final channelPrefixes = AlgorithmRouting.channelPrefixes(slot);
+    final channelCount = channelPrefixes.length;
+
+    ParameterInfo channelParameter(String prefix, String name) {
+      return slot.parameters.firstWhere(
+        (p) =>
+            AlgorithmRouting.channelPrefix(p.name) == prefix &&
+            AlgorithmRouting.stripPagePrefix(p.name) == name,
+        orElse: () => ParameterInfo.filler(),
+      );
     }
 
     // Build input and output port lists
@@ -50,12 +55,12 @@ class SaturatorAlgorithmRouting extends MultiChannelAlgorithmRouting {
     final outputPorts = <Map<String, Object?>>[];
 
     // Process each channel
-    for (int channel = 1; channel <= channelCount; channel++) {
+    for (var channelIndex = 0; channelIndex < channelCount; channelIndex++) {
+      final channel = channelIndex + 1;
+      final prefix = channelPrefixes[channelIndex];
+
       // Find Input parameter for this channel
-      final inputParam = slot.parameters.firstWhere(
-        (p) => p.name == '$channel:Input',
-        orElse: () => ParameterInfo.filler(),
-      );
+      final inputParam = channelParameter(prefix, 'Input');
 
       if (inputParam.parameterNumber < 0) {
         continue; // Skip if parameter not found
@@ -74,10 +79,7 @@ class SaturatorAlgorithmRouting extends MultiChannelAlgorithmRouting {
           .value;
 
       // Find Width parameter for this channel
-      final widthParam = slot.parameters.firstWhere(
-        (p) => p.name == '$channel:Width',
-        orElse: () => ParameterInfo.filler(),
-      );
+      final widthParam = channelParameter(prefix, 'Width');
 
       // Get width value (default to 1 if not found)
       final width = widthParam.parameterNumber >= 0
@@ -98,16 +100,16 @@ class SaturatorAlgorithmRouting extends MultiChannelAlgorithmRouting {
         // Single port without numeric suffix
         inputPorts.add({
           'id': '${algorithmUuid ?? 'satu'}_channel_${channel}_input',
-          'name': '$channel:Input',
+          'name': inputParam.name,
           'type': 'audio',
-          'busParam': '$channel:Input',
+          'busParam': inputParam.name,
           'busValue': inputBusValue,
           'parameterNumber': inputParam.parameterNumber,
         });
 
         outputPorts.add({
           'id': '${algorithmUuid ?? 'satu'}_channel_${channel}_output',
-          'name': '$channel:Output',
+          'name': '${prefix}Output',
           'type': 'audio',
           'busParam': null,
           'busValue': inputBusValue,
@@ -121,7 +123,7 @@ class SaturatorAlgorithmRouting extends MultiChannelAlgorithmRouting {
 
           inputPorts.add({
             'id': '${algorithmUuid ?? 'satu'}_channel_${channel}_input_$w',
-            'name': '$channel:Input $w',
+            'name': '${prefix}Input $w',
             'type': 'audio',
             'busParam': '$channel:Input',
             'busValue': busValue,
@@ -130,7 +132,7 @@ class SaturatorAlgorithmRouting extends MultiChannelAlgorithmRouting {
 
           outputPorts.add({
             'id': '${algorithmUuid ?? 'satu'}_channel_${channel}_output_$w',
-            'name': '$channel:Output $w',
+            'name': '${prefix}Output $w',
             'type': 'audio',
             'busParam': null,
             'busValue': busValue,

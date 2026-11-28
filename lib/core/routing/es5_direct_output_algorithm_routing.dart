@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:nt_helper/cubit/disting_cubit.dart';
 import 'package:nt_helper/domain/disting_nt_sysex.dart';
+
+import 'algorithm_routing.dart';
 import 'multi_channel_algorithm_routing.dart';
 import 'models/port.dart';
+
 import 'package:nt_helper/models/device_io_profile.dart';
 
 /// Base class for algorithms that support ES-5 direct output routing.
@@ -219,6 +222,19 @@ abstract class Es5DirectOutputAlgorithmRouting
     );
   }
 
+  /// Returns the parameter prefix of the channel at [channel] (1-based).
+  ///
+  /// The firmware writes the channel's name into its parameter names, so the
+  /// prefix is a label rather than a number after a rename.
+  @protected
+  String channelPrefixFor(int channel) {
+    final prefixes = AlgorithmRouting.channelPrefixes(slot);
+    if (channel >= 1 && channel <= prefixes.length) {
+      return prefixes[channel - 1];
+    }
+    return '$channel:';
+  }
+
   /// Gets a parameter's value and number by name for a specific channel.
   ///
   /// This is the canonical method for retrieving parameter metadata used across
@@ -234,8 +250,8 @@ abstract class Es5DirectOutputAlgorithmRouting
     int channel,
     String paramName,
   ) {
-    // Look for parameter with channel prefix (e.g., "1:Output")
-    final prefixedName = '$channel:$paramName';
+    // Look for parameter with channel prefix (e.g., "1:Output", "Grov:Output")
+    final prefixedName = '${channelPrefixFor(channel)}$paramName';
 
     var param = slot.parameters.firstWhere(
       (p) => p.name == prefixedName,
@@ -288,9 +304,10 @@ abstract class Es5DirectOutputAlgorithmRouting
     final regex = RegExp(paramPattern);
 
     // Look for parameter with channel prefix first (e.g., "1:Clock output")
+    final prefix = channelPrefixFor(channel);
     final prefixedMatch = slot.parameters.firstWhere((p) {
-      if (!p.name.startsWith('$channel:')) return false;
-      final nameWithoutPrefix = p.name.substring('$channel:'.length);
+      if (!p.name.startsWith(prefix)) return false;
+      final nameWithoutPrefix = p.name.substring(prefix.length);
       return regex.hasMatch(nameWithoutPrefix);
     }, orElse: () => ParameterInfo.filler());
 
@@ -345,8 +362,8 @@ abstract class Es5DirectOutputAlgorithmRouting
   /// Returns the parameter value, or null if not found
   @protected
   int? getChannelParameter(int channel, String paramName) {
-    // Look for parameter with channel prefix (e.g., "1:Output")
-    final prefixedName = '$channel:$paramName';
+    // Look for parameter with channel prefix (e.g., "1:Output", "Grov:Output")
+    final prefixedName = '${channelPrefixFor(channel)}$paramName';
 
     var param = slot.parameters.firstWhere(
       (p) => p.name == prefixedName,
@@ -418,17 +435,9 @@ abstract class Es5DirectOutputAlgorithmRouting
     String? algorithmUuid,
     required String debugName,
   }) {
-    // Count channels by finding highest channel prefix in parameter names
-    int channelCount = 0;
-    for (final param in slot.parameters) {
-      final match = RegExp(r'^(\d+):').firstMatch(param.name);
-      if (match != null) {
-        final channelNum = int.parse(match.group(1)!);
-        if (channelNum > channelCount) {
-          channelCount = channelNum;
-        }
-      }
-    }
+    // A channel's prefix is its name, so a renamed channel reports
+    // "Grov:Output" instead of "1:Output".
+    final channelCount = AlgorithmRouting.channelPrefixes(slot).length;
 
     // Use base class to process normal inputs (non-channel-prefixed parameters)
     final baseRouting = MultiChannelAlgorithmRouting.createFromSlot(
