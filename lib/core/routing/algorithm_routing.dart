@@ -782,6 +782,18 @@ abstract class AlgorithmRouting {
     final colonIndex = name.indexOf(':');
     return colonIndex >= 0 ? name.substring(colonIndex + 1) : name;
   }
+
+  /// Returns a parameter name's channel prefix including its colon
+  /// ("1:Gain" → "1:", "Grov:Gain" → "Grov:"), or an empty string.
+  ///
+  /// The firmware writes the channel's name into every parameter of that
+  /// channel, so renaming a channel changes the prefix. Treat the prefix as an
+  /// opaque label: match channel members on [stripPagePrefix], and keep the
+  /// parameter number as their identity.
+  static String channelPrefix(String name) {
+    final colonIndex = name.indexOf(':');
+    return colonIndex >= 0 ? name.substring(0, colonIndex + 1) : '';
+  }
 }
 
 /// Common base for routing implementations that cache generated ports.

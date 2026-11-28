@@ -24,19 +24,20 @@ local function engineering_value(parameter)
 end
 
 local function band_parameter(channel, band, name)
-  return nt.parameter(channel .. ":" .. band .. ":" .. name)
+  return nt.channel_parameter(channel, band .. ":" .. name)
 end
 
 local function discover_bands(channel)
   local discovered = {}
+  local prefix = nt.channel_prefix(channel)
+  if prefix == nil then return {} end
   for _, parameter in ipairs(algorithm.parameters) do
-    local first_separator = string.find(parameter.name, ":")
+    local first_separator = string.find(parameter.name, ":", 1, true)
     if first_separator ~= nil then
-      local found_channel =
-        tonumber(string.sub(parameter.name, 1, first_separator - 1))
+      local found_channel = string.sub(parameter.name, 1, first_separator - 1)
       local remainder = string.sub(parameter.name, first_separator + 1)
-      local second_separator = string.find(remainder, ":")
-      if found_channel == channel and second_separator ~= nil and
+      local second_separator = string.find(remainder, ":", 1, true)
+      if found_channel == prefix and second_separator ~= nil and
           string.sub(remainder, second_separator + 1) == "Enable" then
         local found_band =
           tonumber(string.sub(remainder, 1, second_separator - 1))
