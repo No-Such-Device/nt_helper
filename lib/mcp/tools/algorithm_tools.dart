@@ -18,6 +18,7 @@ import 'package:nt_helper/domain/disting_nt_sysex.dart'
 import 'package:nt_helper/util/case_converter.dart';
 import 'package:nt_helper/mcp/mcp_constants.dart';
 import 'package:nt_helper/mcp/utils/bus_mapping.dart';
+import 'package:nt_helper/ui/parameter_editor_registry.dart';
 
 /// Class containing methods representing MCP tools.
 /// Requires DistingController for accessing state and DistingCubit for
@@ -1308,6 +1309,7 @@ class MCPAlgorithmTools {
     Mapping mapping,
   ) async {
     final isEnum = parameter.unit == 1;
+    final isString = ParameterEditorRegistry.isStringTypeUnit(parameter.unit);
 
     final paramJson = <String, dynamic>{
       'parameter_number': parameter.parameterNumber,
@@ -1315,7 +1317,17 @@ class MCPAlgorithmTools {
       if (value.isDisabled) 'is_disabled': true,
     };
 
-    if (isEnum) {
+    if (isString) {
+      // A text parameter's numeric value carries no information; report the
+      // text itself so a rename (mixer channel name, Notes line) is readable.
+      paramJson['is_string'] = true;
+      paramJson['value'] =
+          await _controller.getParameterStringValue(
+            slotIndex,
+            parameter.parameterNumber,
+          ) ??
+          '';
+    } else if (isEnum) {
       final strings = await _controller.getParameterEnumStrings(
         slotIndex,
         parameter.parameterNumber,
@@ -1362,6 +1374,7 @@ class MCPAlgorithmTools {
     Mapping mapping,
   ) async {
     final isEnum = parameter.unit == 1;
+    final isString = ParameterEditorRegistry.isStringTypeUnit(parameter.unit);
 
     final paramJson = <String, dynamic>{
       'parameter_number': parameterNumber,
@@ -1370,7 +1383,16 @@ class MCPAlgorithmTools {
       'is_disabled': value.isDisabled,
     };
 
-    if (isEnum) {
+    if (isString) {
+      paramJson['is_string'] = true;
+      paramJson['value'] =
+          await _controller.getParameterStringValue(
+            slotIndex,
+            parameterNumber,
+          ) ??
+          '';
+      paramJson['max_length'] = 31;
+    } else if (isEnum) {
       final strings = await _controller.getParameterEnumStrings(
         slotIndex,
         parameterNumber,
