@@ -209,7 +209,7 @@ for _, channel in ipairs(channels) do
     })
   end
   for _, send in ipairs(sends) do
-    local send_gain = nt.parameter(channel .. ":" .. send .. ":Send gain")
+    local send_gain = nt.channel_parameter(channel, send .. ":Send gain")
     if send_gain ~= nil then
       table.insert(children, ui.slider {
         label = "Send " .. send,

@@ -1019,10 +1019,10 @@ class MultiChannelAlgorithmRouting extends CachedAlgorithmRouting {
     final audioOutputs = outputPorts
         .where((p) => p['type'] == 'audio')
         .toList();
-    final hasExplicitChannels = [
-      ...audioInputs,
-      ...audioOutputs,
-    ].any((p) => RegExp(r'^\d+:').hasMatch(p['busParam'] as String? ?? ''));
+    final hasExplicitChannels = [...audioInputs, ...audioOutputs].any(
+      (p) =>
+          AlgorithmRouting.channelPrefix(p['busParam'] as String? ?? '') != '',
+    );
     final usesSpecificationChannels =
         !hasWidthParameter &&
         specificationChannels != null &&

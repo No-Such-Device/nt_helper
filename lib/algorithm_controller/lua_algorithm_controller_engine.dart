@@ -78,24 +78,82 @@ function nt.page(name, occurrence)
   return nil
 end
 
-function nt.channel_parameter(channel, name, occurrence)
-  return nt.parameter(tostring(channel) .. ":" .. name, occurrence)
+-- The firmware prefixes a channel's parameters with the channel's name, so a
+-- renamed channel reports "Grov:Gain" instead of "1:Gain". Channels are
+-- identified by their "Channel N" pages, whose members keep their parameter
+-- numbers across a rename.
+local function channel_number_of_page(page_name)
+  if string.sub(page_name, 1, 8) ~= "Channel " then return nil end
+  local digits = string.sub(page_name, 9)
+  if digits == "" then return nil end
+  for index = 1, string.len(digits) do
+    local byte = string.byte(digits, index)
+    if byte < 48 or byte > 57 then return nil end
+  end
+  return tonumber(digits)
 end
 
-function nt.channels()
-  local found = {}
-  for _, parameter in ipairs(algorithm.parameters) do
-    local separator = string.find(parameter.name, ":")
-    if separator ~= nil then
-      local channel = tonumber(string.sub(parameter.name, 1, separator - 1))
-      if channel ~= nil then found[channel] = true end
+local function compute_channel_prefixes()
+  local prefixes = {}
+  local mapped = false
+  for _, page in ipairs(algorithm.pages) do
+    local number = channel_number_of_page(page.name)
+    if number ~= nil then
+      for _, member in ipairs(page.parameters) do
+        local parameter = nt.parameter_by_number(member)
+        if parameter ~= nil then
+          local separator = string.find(parameter.name, ":", 1, true)
+          if separator ~= nil and separator > 1 then
+            prefixes[number] = string.sub(parameter.name, 1, separator - 1)
+            mapped = true
+            break
+          end
+        end
+      end
     end
   end
 
-  local channels = {}
-  for channel, _ in pairs(found) do table.insert(channels, channel) end
-  table.sort(channels)
-  return channels
+  if mapped then return prefixes end
+
+  -- Algorithms without channel pages: fall back to numeric prefixes, in the
+  -- order the parameters appear.
+  for _, parameter in ipairs(algorithm.parameters) do
+    local separator = string.find(parameter.name, ":", 1, true)
+    if separator ~= nil and separator > 1 then
+      local prefix = string.sub(parameter.name, 1, separator - 1)
+      local number = tonumber(prefix)
+      if number ~= nil and prefixes[number] == nil then
+        prefixes[number] = prefix
+      end
+    end
+  end
+  return prefixes
+end
+
+local prefixes_cache = nil
+
+local function channel_prefixes()
+  if prefixes_cache == nil then
+    prefixes_cache = compute_channel_prefixes()
+  end
+  return prefixes_cache
+end
+
+function nt.channel_prefix(channel)
+  return channel_prefixes()[channel]
+end
+
+function nt.channel_parameter(channel, name, occurrence)
+  local prefix = channel_prefixes()[channel]
+  if prefix == nil then return nil end
+  return nt.parameter(prefix .. ":" .. name, occurrence)
+end
+
+function nt.channels()
+  local numbers = {}
+  for channel, _ in pairs(channel_prefixes()) do table.insert(numbers, channel) end
+  table.sort(numbers)
+  return numbers
 end
 ''';
 
